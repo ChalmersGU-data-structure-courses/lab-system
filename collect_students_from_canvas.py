@@ -9,7 +9,7 @@ baseurl = 'https://chalmers.instructure.com/api/v1'
 # To get one, go to Account -> Settings
 # Scroll down to "Approved integrations" and click "New access token"
 headers = {
-    'Authorization': 'Bearer 12523~N83XOPdjXN9turnqu6OF6bTypmU8g1xGIlSAHRyAWiFDJrqArsR65q01WDh5nqUH',
+    'Authorization': '<-- REPLACE WITH YOUR ACCESS TOKEN -->',
 }
 params = (('per_page', '100'),)
 
