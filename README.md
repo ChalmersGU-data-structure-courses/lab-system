@@ -12,7 +12,7 @@ Do the following, in order:
 ### Collect the students
 
 ***Note***: Before you do this you have to get an access token, and the lab group id.
-See the file `collect_students_from_canvas.py` for more details.
+See the files `config.py` and `collect_students_from_canvas.py` for more details.
 
 
 ```
