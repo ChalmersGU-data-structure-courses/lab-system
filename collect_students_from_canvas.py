@@ -19,7 +19,6 @@ groupset = 5387
 
 
 response = requests.get(f'{baseurl}/group_categories/{groupset}/groups', headers=headers, params=params)
-print(response.json());
 groups = { g["id"]: g["name"] for g in response.json() }
 
 while "next" in response.links:
