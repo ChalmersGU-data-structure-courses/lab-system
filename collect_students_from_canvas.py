@@ -1,15 +1,14 @@
-
 import json
 import sys
 import requests
 
+# Configure your access token in here.
+import config
+
 baseurl = 'https://chalmers.instructure.com/api/v1'
 
-# This is a unique access token for your account.
-# To get one, go to Account -> Settings
-# Scroll down to "Approved integrations" and click "New access token"
 headers = {
-    'Authorization': '<-- REPLACE WITH YOUR ACCESS TOKEN -->',
+    'Authorization': f'Bearer {config.canvas_token}',
 }
 params = (('per_page', '100'),)
 
@@ -20,6 +19,7 @@ groupset = 5387
 
 
 response = requests.get(f'{baseurl}/group_categories/{groupset}/groups', headers=headers, params=params)
+print(response.json());
 groups = { g["id"]: g["name"] for g in response.json() }
 
 while "next" in response.links:
