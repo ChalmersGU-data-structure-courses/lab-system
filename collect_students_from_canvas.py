@@ -25,11 +25,7 @@ while "next" in response.links:
     response = requests.get(response.links["next"]["url"], headers=headers)
     groups.update({ g["id"]: g["name"] for g in response.json() })
 
-print(f"Nr. groups: {len(groups)}\n", file=sys.stderr)
-
-
-def getCID(user):
-    return user["login_id"].partition("@")[0]
+print(f"Nr. groups: {len(groups)}", file=sys.stderr)
 
 
 users = {}
@@ -38,16 +34,16 @@ for gid, group in groups.items():
     response = requests.get(f'{baseurl}/groups/{gid}/users', headers=headers, params=params)
     for u in response.json():
         pnr = u["sis_user_id"]
-        cid = getCID(u)
-        users[cid] = {
+        users[pnr] = {
             "id": u["id"],
-            "pnr": pnr,
             "name": u["name"],
             "sortname": u["sortable_name"],
             "gid": gid,
             "group": group,
         }
-        print(cid, end=' ', flush=True, file=sys.stderr)
-print("\n", file=sys.stderr)
+        print('.', end='', flush=True, file=sys.stderr)
+print(file=sys.stderr)
+print(f"Nr. students: len(users)", file=sys.stderr)
+print(file=sys.stderr)
 
 json.dump(users, sys.stdout, indent=4)
