@@ -24,3 +24,8 @@ hs_err_pid*
 
 # secrets
 Lab-grading/config.py
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
