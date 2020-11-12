@@ -32,7 +32,7 @@ This will create the folder `labX-submissions`, and inside that one folder per l
 ### Run the test script
 
 ```
-python autograde_generic_lab.py --subs labX-submissions --solution ../LabX-solution/solution/ --skeleton ../LabX --out labX-results
+python autograde_generic_lab.py --users labX-students.json --subs labX-submissions --solution ../LabX-solution/solution/ --skeleton ../LabX --out labX-results
 ```
 
 This will create the folder `labX-results`, and in that folder `index.html` with the results for each submission.

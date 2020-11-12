@@ -1,4 +1,5 @@
 
+import json
 import difflib
 import sys
 import re
@@ -13,6 +14,8 @@ from glob import glob
 
 
 parser = argparse.ArgumentParser(description='Split the downloaded Canvas submissions into groups.')
+parser.add_argument('--users', type=argparse.FileType('r'), required=True,
+                    help='json file with student/user data')
 parser.add_argument('--subs', required=True,
                     help='the folder containing the (cleaned) submissions')
 parser.add_argument('--solution', required=True,
@@ -33,6 +36,14 @@ labname = basename(args.skeleton)
 if not labname:
     labname = basename(os.path.dirname(args.skeleton))
 labfiles = set(map(basename, glob(pjoin(args.solution, '*.*'))))
+
+
+## Read the students, and map the lab groups to their students
+
+group_users = {}
+labusers = json.loads(args.users.read())
+for user in labusers.values():
+    group_users.setdefault(user['group'], []).append(user['sortname'])
 
 
 ## get the groups, and sort by group number
@@ -92,18 +103,29 @@ with open(pjoin(args.outfolder, "index.html"), "w") as OUT:
     print(HEADER, file=OUT)
     print(f"""
 <h1>Grading {labname}</h1>
-<p>Files to submit: <strong>{', '.join(labfiles)}</strong></p>
-<table class="results"><tr><th>Group</th><th>Missing</th><th>Excessive</th><th>Compilation</th><th>Similarity</th></tr>
+<p>Files to submit: <strong>{', '.join(sorted(labfiles))}</strong></p>
+<p>Total submissions: <strong>{len(labgroups)}</strong></p>
+<table class="results"><tr>
+<th>Group</th><th>Members</th><th>Missing</th><th>Excessive</th><th>Compilation</th><th>Similarity</th>
+</tr>
 """, file=OUT)
     for grp in labgroups:
         print(grp)
         print(f'<td class="nowrap">{grp}</td>', file=OUT)
-        submitted = set(map(basename, glob(pjoin(args.subs, grp, '*.*'))))
+
+        print('<td>', file=OUT)
+        users = group_users[grp[:-5]] if grp.endswith(' LATE') else group_users[grp]
+        for i, name in enumerate(sorted(users)):
+            if i>0: print('<br/>', file=OUT)
+            print(name, file=OUT)
+        print('</td>', file=OUT)
 
         grpdir = pjoin(args.outfolder, grp)
         os.mkdir(grpdir)
         javadir = pjoin(grpdir, 'java')
         os.mkdir(javadir)
+
+        submitted = set(map(basename, glob(pjoin(args.subs, grp, '*.*'))))
 
         # check missing files, and over-submissions
 
@@ -114,9 +136,8 @@ with open(pjoin(args.outfolder, "index.html"), "w") as OUT:
         print('<td>', file=OUT)
         for i, f in enumerate(toomany):
             if i>0: print(f'<br/>', file=OUT)
-            d = javadir if f.endswith('.java') else grp
+            d = pjoin(grp, 'java') if f.endswith('.java') else grp
             print(f'<a href="{d}/{f}">{f}</a>', file=OUT)
-            #print(f'<td>{"<br/>".join(toomany)}</td>', file=OUT)
         print('</td>', file=OUT)
 
         # copy files to out directory
@@ -138,7 +159,7 @@ with open(pjoin(args.outfolder, "index.html"), "w") as OUT:
         print('<td>', file=OUT)
         for f in glob(pjoin(args.subs, grp, '*.java')):
             javafile = basename(f)
-            process = subprocess.run(["javac", javafile], cwd=javadir, capture_output=True)
+            process = subprocess.run(['javac', javafile], cwd=javadir, capture_output=True)
             if process.returncode:
                 print(f'<pre>{process.stderr.decode()}</pre>', file=OUT)
         print('</td>', file=OUT)

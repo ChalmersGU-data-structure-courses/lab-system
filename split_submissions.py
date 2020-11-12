@@ -42,11 +42,15 @@ submissions = {}
 for filename in glob(os.path.join(args.infolder, "*.*")):
     uid = re.sub(r"_\d+_\d+_.+", "", os.path.basename(filename))
     uid = normalize(uid)
-    grp = user_groups[uid]
+    if uid.lower().endswith("_late"):
+        uid = uid[:-5]
+        grp = user_groups[uid] + " LATE"
+    else:
+        grp = user_groups[uid]
     grpdir = os.path.join(args.outfolder, grp)
     os.makedirs(grpdir, exist_ok=True)
-    dest = re.sub(r"^[^_]+_\d+_\d+_", "", os.path.basename(filename))
-    if dest.endswith('.txt'):
+    dest = re.sub(r"^[^_]+(_LATE)?_\d+_\d+_", "", os.path.basename(filename), flags=re.IGNORECASE)
+    if dest.lower().endswith('.txt'):
         dest = dest.lower()
     cmd = ["cp", filename, os.path.join(grpdir, dest)]
     print(" ".join(cmd))
