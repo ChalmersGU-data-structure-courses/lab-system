@@ -59,8 +59,10 @@ for filename in glob(os.path.join(args.infolder, "*.*")):
 
 ## Rename submission files filename-5.xxx to filename.xxx
 
-for suffix in range(20):
-    for filename in glob(os.path.join(args.outfolder, "*", f"*-{suffix}.*")):
-        newname = re.sub(f"-{suffix}(\.[^.]*)", r"\1", filename)
-        print(f"mv {filename} {newname}")
-        os.replace(filename, newname)
+# repeat three times, beacuse there might be files like filename-2-1.xxx or even filename-4-2-1.xxx
+for _repeats in range(2):
+    for suffix in range(10):
+        for filename in glob(os.path.join(args.outfolder, "*", f"*-{suffix}.*")):
+            newname = re.sub(f"-{suffix}(\.[^.]*)", r"\1", filename)
+            print(f"mv {filename} {newname}")
+            os.replace(filename, newname)
