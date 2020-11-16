@@ -12,11 +12,11 @@ from glob import glob
 # - run 'collect_students_from_canvas.py' and pipe the output to a json file
 
 parser = argparse.ArgumentParser(description='Split the downloaded Canvas submissions into groups.')
-parser.add_argument('--users', type=argparse.FileType('r'), required=True,
-                    help='json file with student/user data')
-parser.add_argument('--in', dest='infolder', required=True,
+parser.add_argument('--students', metavar='JSON', type=argparse.FileType('r'), required=True,
+                    help='json file with student data')
+parser.add_argument('--in', metavar='DIR', dest='infolder', required=True,
                     help='the folder containing the raw submissions')
-parser.add_argument('--out', dest='outfolder', required=True,
+parser.add_argument('--out', metavar='DIR', dest='outfolder', required=True,
                     help='the destination folder (must not exist)')
 args = parser.parse_args()
 
@@ -30,7 +30,7 @@ def normalize(s):
 ## Read the students, and map them to their lab group
 
 user_groups = {}
-labusers = json.loads(args.users.read())
+labusers = json.loads(args.students.read())
 for user in labusers.values():
     uid = re.sub(r"\W", "", normalize(user['sortname']).lower())
     user_groups[uid] = user['group']
