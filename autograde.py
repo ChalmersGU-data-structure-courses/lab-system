@@ -74,9 +74,6 @@ def autograde(group, cfg):
         shutil.copy(pjoin(cfg.skeleton, f), pjoin(outfolder, f))
     for f in cfg.datadirs:
         os.symlink(relpath(pjoin(cfg.skeleton, f), outfolder), pjoin(outfolder, f))
-    # if cfg.testfolder:
-    #     for f in cfg.testscripts:
-    #         shutil.copy(pjoin(cfg.testfolder, f), pjoin(outfolder, f))
 
     # Copy submitted files to outfolder
     submitted = {}
@@ -142,7 +139,7 @@ def autograde(group, cfg):
     process = subprocess.run(['javac'] + javafiles, cwd=outfolder, capture_output=True)
     compilation_errors = bool(process.returncode)
     if compilation_errors:
-        print(' + compilation error')
+        print('   + compilation error')
         row += [
             H('td', '') if cfg.testfile else '',
             H('td', joinBR((
@@ -154,32 +151,40 @@ def autograde(group, cfg):
     elif cfg.testfile:
         # Run test scripts
         runtime_errors = []
-        print(f' - run tests')
-        for outfile, script in cfg.testscripts.items():
-            script = script.split()
+        print(f' - run tests', end='', flush=True)
+        for outfile, script in cfg.testscripts:
+            print(f' .', end='', flush=True)
+            if isinstance(script, str):
+                script = script.split()
             try:
                 process = subprocess.run(script, cwd=outfolder, timeout=cfg.timeout, capture_output=True)
             except subprocess.TimeoutExpired:
-                print(f' + timeout error: {outfile}')
+                print(f'timeout', end='', flush=True)
                 runtime_errors += [
                     H('strong', f'Timeout (>{cfg.timeout}s): {outfile}'),
                 ]
                 continue
             if process.returncode:
-                print(f' + runtime error: {outfile}')
+                print(f'error', end='', flush=True)
                 runtime_errors += [
                     H('strong', f'Runtime error: {outfile}'),
                     H('pre', process.stderr.decode()),
                 ]
-            with open(pjoin(outfolder, outfile), 'w') as F:
+            with open(pjoin(outfolder, outfile), 'a') as F:
+                print(f'===== {" ".join(script)[:70]}...', file=F)
                 print(process.stdout.decode(), file=F)
-                print(process.stderr.decode(), file=F)
+                if process.stderr:
+                    print(file=F)
+                    print(' STDERR '.center(60, '='), file=F)
+                    print(process.stderr.decode(), file=F)
+                print(file=F)
+        print()
 
         row += [
             H('td', joinBR(
                 diff_and_link(pjoin(outfolder, f), pjoin(dirname(cfg.testfile.name), f + GOLD),
                                   'OUT', 'GOLD', pjoin(outfolder, f))
-                for f in cfg.testscripts
+                for f in sorted(set(f for f,_ in cfg.testscripts))
             )),
             H('td', joinBR(runtime_errors)),
         ]
@@ -300,8 +305,6 @@ def read_args():
                         help='the folder containing the (cleaned) submissions')
     parser.add_argument('--previous', metavar='DIR', 
                         help='the folder containing the previous submissions (if this is a resubmission)')
-    # parser.add_argument('--tests', metavar='DIR', dest='testfolder', 
-    #                     help='the folder containing the test scripts (*.sh) and outputs (*.out)')
     parser.add_argument('--testfile', metavar='PY', type=argparse.FileType('r'),
                         help='the python file containing the test scripts')
     parser.add_argument('--timeout', metavar='T', type=int, default=5, 
@@ -315,13 +318,8 @@ def read_args():
     assert isdir(args.solution), "The --solution folder must exist!"
     if args.previous:
         assert isdir(args.previous), "The --previous folder must exist!"
-    # if args.testfolder:
-    #     assert isdir(args.testfolder), "The --test folder must exist!"
-    #     assert isfile(pjoin(args.testfolder, 'tests.py')), \
-    #       "There must be a file 'tests.py' in the test folder!"
     assert not os.path.exists(args.outfolder), "The --out folder must not exist!"
 
-    
     def labgroup_sortkey(g):
         digs = re.sub(r'\D', '', g)
         n = int(digs) if digs else 0
@@ -339,11 +337,6 @@ def main():
     cfg.templates = [basename(f) for f in glob(pjoin(cfg.skeleton, '*.*'))]
     cfg.required = [basename(f) for f in glob(pjoin(cfg.solution, '*.*'))]
     cfg.datadirs = [basename(f) for f in glob(pjoin(cfg.skeleton, '*')) if isdir(f)]
-    # if cfg.testfolder:
-    #     testdict = {}
-    #     with open(pjoin(cfg.testfolder, 'tests.py')) as F:
-    #         exec(F.read(), testdict)
-    #     cfg.testscripts = testdict['tests']
     if cfg.testfile:
         testdict = {}
         exec(cfg.testfile.read(), testdict)
