@@ -12,6 +12,11 @@ import argparse
 from glob import glob
 import signal
 
+# Set this to False if you haven't installed diff2html-cli:
+#   https://www.npmjs.com/package/diff2html-cli
+# (or if you want to use Python's internal difflib of some reason)
+USE_GIT_DIFF2HTML = True
+
 
 def autograde_all(cfg):
     os.mkdir(cfg.outfolder)
@@ -196,6 +201,9 @@ def autograde(group, cfg):
     return H('tr', '\n'.join(row))
 
 
+GIT_DIFF_CMD = 'git diff --no-index --histogram --unified=1000 --ignore-space-at-eol'.split()
+DIFF2HTML_CMD = 'diff2html --style side --summary open --input file'.split()
+
 def diff_and_link(afile, bfile, atitle, btitle, diffile):
     diffile += '.diff'
     try:
@@ -210,26 +218,42 @@ def diff_and_link(afile, bfile, atitle, btitle, diffile):
         diffile += '.txt'
         with open(diffile, 'w') as F:
             print(atext, file=F)
-        return f'{NBSP}={NBSP}' + \
-          H('a', basename(afile), href=diffile, klass='grey')
-    alines = atext.splitlines()
-    blines = btext.splitlines()
-    sim = difflib.SequenceMatcher(a=alines, b=blines).ratio()
-    difftable = difflib.HtmlDiff().make_table(alines, blines, atitle, btitle)
-    difftable = difftable.replace('<td nowrap="nowrap">', '<td class="diff_column">')
-    difftable = difftable.replace(NBSP, ' ')
-    # difftable = re.sub(r'(<span class="diff_(?:add|sub)">)(\s+)', r'\2\1', difftable)
-    diffile += '.html'
-    with open(diffile, 'w') as F:
-        print(
-            HEADER % '.',
-            H('h1', diffile),
-            difftable,
-            FOOTER,
-            file=F
-        )
-    return f'{100*sim:.0f}%{NBSP}' + \
-      H('a', basename(afile), href=diffile)
+        return f'{NBSP}={NBSP}' + H('a', basename(afile), href=diffile, klass='grey')
+
+    if USE_GIT_DIFF2HTML:
+        cmd = GIT_DIFF_CMD + [afile, bfile]
+        process = subprocess.run(cmd, capture_output=True)
+        with open(diffile, 'wb') as F:
+            F.write(process.stdout)
+        difflines = process.stdout.splitlines()
+        sim = 1 - sum(line.startswith(b'+') or line.startswith(b'-') for line in difflines) / len(difflines)
+        cmd = DIFF2HTML_CMD + [
+            '--highlightCode', str(afile.endswith('.java')).lower(),
+            '--file', diffile + '.html',
+            '--', diffile,
+        ]
+        subprocess.run(cmd)
+        diffile += '.html'
+
+    else: # use difflib
+        alines = atext.splitlines()
+        blines = btext.splitlines()
+        sim = difflib.SequenceMatcher(a=alines, b=blines).ratio()
+        difftable = difflib.HtmlDiff().make_table(alines, blines, atitle, btitle)
+        difftable = difftable.replace('<td nowrap="nowrap">', '<td class="diff_column">')
+        difftable = difftable.replace(NBSP, ' ')
+        # difftable = re.sub(r'(<span class="diff_(?:add|sub)">)(\s+)', r'\2\1', difftable)
+        diffile += '.html'
+        with open(diffile, 'w') as F:
+            print(
+                HEADER % '.',
+                H('h1', diffile),
+                difftable,
+                FOOTER,
+                file=F
+            )
+
+    return f'{100*sim:.0f}%{NBSP}' + H('a', basename(afile), href=diffile)
 
 
 
