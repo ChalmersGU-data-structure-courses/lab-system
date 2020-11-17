@@ -171,9 +171,11 @@ def autograde(group, cfg):
                 continue
             if process.returncode:
                 print(f'error', end='', flush=True)
+                errlines = process.stderr.decode().splitlines(keepends=True)
+                del errlines[30:]
                 runtime_errors += [
                     H('strong', f'Runtime error: {outfile}'),
-                    H('pre', process.stderr.decode()),
+                    H('pre', ''.join(errlines)),
                 ]
             with open(pjoin(outfolder, outfile), 'a') as F:
                 print(f'===== {" ".join(script)[:70]}...', file=F)
