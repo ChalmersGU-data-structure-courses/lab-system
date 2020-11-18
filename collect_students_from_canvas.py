@@ -1,14 +1,20 @@
 import json
 import sys
 import requests
+import pathlib
 
-# Configure your access token in here.
-import config
+# Put your Canvas access token in AUTH_TOKEN
+auth_file = pathlib.Path('AUTH_TOKEN')
+try:
+    auth_token = auth_file.open().read().strip()
+except FileNotFoundError:
+    print_error('No Canvas authorization token found.')
+    print_error('Expected Canvas authorization token in file {}.'.format(auth_file))
+    exit(1)
 
 baseurl = 'https://chalmers.instructure.com/api/v1'
-
 headers = {
-    'Authorization': f'Bearer {config.canvas_token}',
+    'Authorization': f'Bearer {auth_token}',
 }
 params = (('per_page', '100'),)
 

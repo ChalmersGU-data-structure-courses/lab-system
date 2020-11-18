@@ -23,7 +23,7 @@
 hs_err_pid*
 
 # secrets
-Lab-grading/config.py
+Lab-grading/AUTH_TOKEN
 
 # Python
 __pycache__/
