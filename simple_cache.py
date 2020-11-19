@@ -7,7 +7,7 @@ import logging
 logger = logging.getLogger("simple_cache")
 
 class SimpleCache:
-    __filename = "value"
+    __filename = "_value"
 
     def __init__(self, cache_dir):
         self.cache_dir = cache_dir
