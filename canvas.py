@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 import logging
 
-from general import unique_by, JSONObject, print_error, write_lines, set_modification_time, OpenWithModificationTime
+from general import unique_by, JSONObject, print_json, print_error, write_lines, set_modification_time, OpenWithModificationTime
 import simple_cache
 
 logger = logging.getLogger("canvas")
@@ -148,7 +148,7 @@ class Course:
         exit(1)
 
 class Groups:
-    def __init__(self, canvas, groupset):
+    def __init__(self, canvas, course_id, groupset):
         self.canvas = canvas
         self.groupset = groupset
 
@@ -158,6 +158,9 @@ class Groups:
         self.user_to_group = dict()
         self.user_details = dict()
 
+        for user in canvas.get_list(['courses', course_id, 'users']):
+            self.user_details[user.id] = user
+
         for group in canvas.get_list(['group_categories', groupset, 'groups']):
             self.group_details[group.id] = group;
             self.group_name_to_id[group.name] = group.id
@@ -166,7 +169,6 @@ class Groups:
                 users.add(user.id)
                 self.user_to_group[user.id] = group.id
                 self.group_users[group.id] = users
-                self.user_details[user.id] = user
 
     def user_str(self, id):
         return '{} (id {})'.format(self.user_details[id].name, id)
@@ -185,7 +187,7 @@ class Assignment:
             self.assignment_id = assignment_id
 
         self.assignment = canvas.get(['courses', course_id, 'assignments', self.assignment_id])
-        self.groups = Groups(canvas, self.assignment.group_category_id)
+        self.groups = Groups(canvas, course_id, self.assignment.group_category_id)
 
     @staticmethod
     def is_duplicate_comment(a, b):
@@ -195,11 +197,11 @@ class Assignment:
     def merge_comments(comments):
         return unique_by(Assignment.is_duplicate_comment, comments)
 
-    def build_submissions(self):
+    def build_submissions(self, use_cache = True):
         submissions_by_group = defaultdict(lambda: dict())
-        for submission in self.canvas.get_list(['courses', self.course_id, 'assignments', self.assignment_id, 'submissions'], params = {'include[]': ['submission_comments', 'submission_history']}):
-            if submission.workflow_state != 'unsubmitted':
-                if (not submission.user_id in self.groups.user_to_group):
+        for submission in self.canvas.get_list(['courses', self.course_id, 'assignments', self.assignment_id, 'submissions'], params = {'include[]': ['submission_comments', 'submission_history']}, use_cache = use_cache):
+            if not submission.missing and submission.workflow_state != 'unsubmitted':
+                if not submission.user_id in self.groups.user_to_group:
                     print_error('User {} submitted despite not being in a group; ignoring.'.format(self.groups.user_str(submission.user_id)))
                 else:
                     submissions_by_group[self.groups.user_to_group[submission.user_id]][submission.user_id] = submission
@@ -226,10 +228,8 @@ class Assignment:
             for user in submissions_this_group:
                 attempts_set.add(tuple(map(lambda old_submission: old_submission.attempt, submissions_this_group[user].submission_history)))
                 if len(attempts_set) != 1:
-                    print_error(f'incongruous submissions for members of group {group} [{group_details[group].name}]')
+                    print_error('Incongruous submissions for members of group {}.'.format(self.groups.group_str(group)))
                     exit(1)
-
-            # submissions_this_group
 
             r = SimpleNamespace();
             r.submissions = submissions_this_group[user].submission_history
@@ -306,52 +306,48 @@ class Assignment:
 
     def create_submission_dir(self, dir, submission, files):
         dir.mkdir()
-        #set_modification_time(dir, submission.submitted_at_date)
         for file in files:
             self.canvas.place_file(dir / urllib.parse.unquote_plus(file.filename), file)
+        set_modification_time(dir, submission.submitted_at_date)
 
-    def prepare_submission(self, deadline, cleanup_hook, group, dir, s):
+    def prepare_submission(self, deadline, group, dir, s):
+        dir.mkdir()
+
+        current_dir = dir / 'current'
         current = Assignment.current_submission(s)
-        self.create_submission_dir(dir, current, Assignment.get_current_files(s))
-        Assignment.write_comments(dir / '_new-comments.txt', Assignment.ungraded_comments(s))
+        self.create_submission_dir(current_dir, current, Assignment.get_current_files(s))
+        Assignment.write_comments(dir / 'new-comments.txt', Assignment.ungraded_comments(s))
 
-        last_graded = Assignment.last_graded_submission(s)
-        if last_graded != None:
-            prev_dir = dir / '_previous'
-            self.create_submission_dir(prev_dir, last_graded, Assignment.get_graded_files(s))
-            Assignment.write_comments(prev_dir / '_comments.txt', Assignment.graded_comments(s))
-            if cleanup_hook != None:
-                cleanup_hook(prev_dir)
+        previous = Assignment.last_graded_submission(s)
+        if previous != None:
+            previous_dir = dir / 'previous'
+            self.create_submission_dir(previous_dir, previous, Assignment.get_graded_files(s))
+            Assignment.write_comments(dir / 'previous-comments.txt', Assignment.graded_comments(s))
 
         if deadline != None:
             time_diff = current.submitted_at_date - deadline
             if time_diff >= timedelta(minutes = 5):
-                with OpenWithModificationTime(dir / '_LATE', current.submitted_at_date) as file:
+                with OpenWithModificationTime(dir / 'late.txt', current.submitted_at_date) as file:
                     write_lines(file, ['{:.2f} hours'.format(time_diff / timedelta(hours=1))])
 
-        with (dir / '_members.txt').open('w') as file:
+        with (dir / 'members.txt').open('w') as file:
             for user in self.groups.group_users[group]:
                 write_lines(file, [self.groups.user_details[user].name])
 
-        if cleanup_hook != None:
-            cleanup_hook(dir)
-
-    # cleanup_hook cleans up an individual submission.
-    # Its argument is the path to the submission directory
-    def prepare_submissions(self, dir, deadline = None, cleanup_hook = None):
+    def prepare_submissions(self, dir, deadline = None):
         #self.build_submissions()
         dir = Path(dir)
         dir.mkdir()
         for group in self.submissions:
             s = self.submissions[group]
             if Assignment.current_submission(s).workflow_state != 'graded':
-                self.prepare_submission(deadline, cleanup_hook, group, dir / self.groups.group_details[group].name, s)
+                self.prepare_submission(deadline, group, dir / self.groups.group_details[group].name, s)
 
     def grade_group(self, group, comment, grade):
         user = self.groups.group_details[group].leader.id
         endpoint = ['courses', self.course_id, 'assignments', self.assignment_id, 'submissions', user]
         params = {
-            'comment[text_comment]' : comment + '1',
+            'comment[text_comment]' : comment,
             'comment[group_comment]' : 'false',
         }
         if grade:
