@@ -6,8 +6,8 @@ import logging
 from general import with_stem, OpenWithNoModificationTime
 from canvas import Canvas, Assignment
 
-logging.basicConfig()
-logging.getLogger().setLevel(logging.INFO)
+#logging.basicConfig()
+#logging.getLogger().setLevel(logging.INFO)
 
 lab1_deadline0 = datetime.fromisoformat("2020-11-11 20:00+01:00")
 lab1_deadline1 = datetime.fromisoformat("2020-11-19 20:00+01:00")

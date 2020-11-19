@@ -168,6 +168,12 @@ class Groups:
                 self.group_users[group.id] = users
                 self.user_details[user.id] = user
 
+    def user_str(self, id):
+        return '{} (id {})'.format(self.user_details[id].name, id)
+
+    def group_str(self, id):
+        return '{} (id {})'.format(self.group_details[id].name, id)
+
 class Assignment:
     def __init__(self, canvas, course_id, assignment_id):
         self.canvas = canvas
@@ -194,14 +200,22 @@ class Assignment:
         for submission in self.canvas.get_list(['courses', self.course_id, 'assignments', self.assignment_id, 'submissions'], params = {'include[]': ['submission_comments', 'submission_history']}):
             if submission.workflow_state != 'unsubmitted':
                 if (not submission.user_id in self.groups.user_to_group):
-                    print_error(f'user_id {submission.user_id} submitted despite not being in a group; ignoring')
+                    print_error('User {} submitted despite not being in a group; ignoring.'.format(self.groups.user_str(submission.user_id)))
                 else:
                     submissions_by_group[self.groups.user_to_group[submission.user_id]][submission.user_id] = submission
 
         self.submissions = dict()
         for group in submissions_by_group:
-            first_user = self.groups.group_details[group].leader.id
             submissions_this_group = submissions_by_group[group]
+            first_user = next(iter(submissions_this_group)) #self.groups.group_details[group].leader.id
+
+            us = self.groups.group_users[group]
+            vs = set(submissions_this_group)
+            if not us.issubset(vs):
+                ws = us.difference(vs)
+                print_error('The following users have not submitted with their group {}:'.format(self.groups.group_str(group)))
+                for user_id in ws:
+                    print_error('  {}'.format(self.groups.user_str(user_id)))
 
             all_comments = list()
             for user in submissions_this_group:
@@ -214,6 +228,8 @@ class Assignment:
                 if len(attempts_set) != 1:
                     print_error(f'incongruous submissions for members of group {group} [{group_details[group].name}]')
                     exit(1)
+
+            # submissions_this_group
 
             r = SimpleNamespace();
             r.submissions = submissions_this_group[user].submission_history
@@ -293,7 +309,6 @@ class Assignment:
         #set_modification_time(dir, submission.submitted_at_date)
         for file in files:
             self.canvas.place_file(dir / urllib.parse.unquote_plus(file.filename), file)
-            print(file.filename)
 
     def prepare_submission(self, deadline, cleanup_hook, group, dir, s):
         current = Assignment.current_submission(s)
