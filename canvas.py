@@ -3,67 +3,14 @@ from types import SimpleNamespace
 import requests
 import urllib.parse
 from pathlib import PurePath, Path
-import re
 from datetime import datetime, timedelta, timezone
 from collections import defaultdict
-import sys
 import logging
-import os
 
+from general import unique_by, JSONObject, print_error, write_lines, set_modification_time, OpenWithModificationTime
 import simple_cache
 
 logger = logging.getLogger("canvas")
-
-################################################################################
-# General purpose functions (could be in a tools module)
-
-def unique_by(f, xs):
-    rs = list()
-    for x in xs:
-        if not any(f(x, r) for r in rs):
-            rs.append(x)
-
-    return rs
-
-class JSONObject(SimpleNamespace):
-    DATE_PATTERN = re.compile("[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z")
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self._dict = kwargs
-
-        for key in kwargs:
-            value = str(kwargs[key])
-            # idea from canvasapi/canvas_object.py
-            if JSONObject.DATE_PATTERN.match(value):
-                t = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo = timezone.utc)
-                new_key = key + "_date"
-                self.__setattr__(new_key, t)
-
-class JSONEncoderForJSONObject(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, JSONObject):
-            return obj._dict
-
-def print_json(x):
-    print(json_encoder.encode(x))
-
-json_encoder = JSONEncoderForJSONObject(indent = 4, sort_keys = True)
-
-def write_lines(file, lines):
-    for line in lines:
-        file.write(line)
-        file.write('\n')
-
-def print_error(*objects, sep = ' ', end = '\n'):
-    print(*objects, sep = sep, end = end, file = sys.stderr)
-
-def set_modification_time(path, date):
-    t = date.timestamp()
-    os.utime(path, (t, t))
-
-################################################################################
-# Canvas stuff stars here
 
 class Canvas:
     def __init__(self, domain, auth_token = Path("AUTH_TOKEN"), cache_dir = Path("cache")):
@@ -171,6 +118,11 @@ class Canvas:
         target.write_bytes(source.read_bytes())
         set_modification_time(target, file_descr.modified_at_date)
 
+    def put(self, endpoint, params):
+        logger.log(logging.INFO, 'accessing endpoint ' + self.get_url(Canvas.with_api(endpoint)))
+        response = self.session.put(self.get_url(Canvas.with_api(endpoint)), params = params)
+        response.raise_for_status()
+
     def courses(self):
         return self.get_list(['courses'])
 
@@ -204,6 +156,7 @@ class Groups:
         self.group_name_to_id = dict()
         self.group_users = dict()
         self.user_to_group = dict()
+        self.user_details = dict()
 
         for group in canvas.get_list(['group_categories', groupset, 'groups']):
             self.group_details[group.id] = group;
@@ -213,6 +166,7 @@ class Groups:
                 users.add(user.id)
                 self.user_to_group[user.id] = group.id
                 self.group_users[group.id] = users
+                self.user_details[user.id] = user
 
 class Assignment:
     def __init__(self, canvas, course_id, assignment_id):
@@ -322,7 +276,7 @@ class Assignment:
     @staticmethod
     def write_comments(path, comments):
         if comments:
-            with open(path, 'w') as file:
+            with OpenWithModificationTime(path, comments[-1].created_at_date) as file:
                 for comment in comments:
                     write_lines(file, [
                         '=' * 80,
@@ -331,39 +285,60 @@ class Assignment:
                         comment.created_at,
                         '',
                         comment.comment,
+                        '',
                     ])
-            set_modification_time(path, comments[-1].created_at_date)
 
     def create_submission_dir(self, dir, submission, files):
         dir.mkdir()
         #set_modification_time(dir, submission.submitted_at_date)
         for file in files:
-            self.canvas.place_file(dir / file.filename, file)
+            self.canvas.place_file(dir / urllib.parse.unquote_plus(file.filename), file)
+            print(file.filename)
 
-    def prepare_submission(self, deadline, dir, s):
+    def prepare_submission(self, deadline, cleanup_hook, group, dir, s):
         current = Assignment.current_submission(s)
         self.create_submission_dir(dir, current, Assignment.get_current_files(s))
-        Assignment.write_comments(dir / 'new-comments.txt', Assignment.ungraded_comments(s))
+        Assignment.write_comments(dir / '_new-comments.txt', Assignment.ungraded_comments(s))
 
         last_graded = Assignment.last_graded_submission(s)
         if last_graded != None:
-            prev_dir = dir / 'previous'
+            prev_dir = dir / '_previous'
             self.create_submission_dir(prev_dir, last_graded, Assignment.get_graded_files(s))
-            Assignment.write_comments(prev_dir / 'comments.txt', Assignment.graded_comments(s))
+            Assignment.write_comments(prev_dir / '_comments.txt', Assignment.graded_comments(s))
+            if cleanup_hook != None:
+                cleanup_hook(prev_dir)
 
         if deadline != None:
             time_diff = current.submitted_at_date - deadline
             if time_diff >= timedelta(minutes = 5):
-                late_path = dir / 'LATE'
-                with open(late_path, 'w') as file:
+                with OpenWithModificationTime(dir / '_LATE', current.submitted_at_date) as file:
                     write_lines(file, ['{:.2f} hours'.format(time_diff / timedelta(hours=1))])
-                set_modification_time(late_path, current.submitted_at_date)
 
-    def prepare_submissions(self, dir, deadline = None):
+        with (dir / '_members.txt').open('w') as file:
+            for user in self.groups.group_users[group]:
+                write_lines(file, [self.groups.user_details[user].name])
+
+        if cleanup_hook != None:
+            cleanup_hook(dir)
+
+    # cleanup_hook cleans up an individual submission.
+    # Its argument is the path to the submission directory
+    def prepare_submissions(self, dir, deadline = None, cleanup_hook = None):
         #self.build_submissions()
         dir = Path(dir)
         dir.mkdir()
         for group in self.submissions:
             s = self.submissions[group]
             if Assignment.current_submission(s).workflow_state != 'graded':
-                self.prepare_submission(deadline, dir / self.groups.group_details[group].name, s)
+                self.prepare_submission(deadline, cleanup_hook, group, dir / self.groups.group_details[group].name, s)
+
+    def grade_group(self, group, comment, grade):
+        user = self.groups.group_details[group].leader.id
+        endpoint = ['courses', self.course_id, 'assignments', self.assignment_id, 'submissions', user]
+        params = {
+            'comment[text_comment]' : comment + '1',
+            'comment[group_comment]' : 'false',
+        }
+        if grade:
+            params['submission[posted_grade]'] = grade
+        self.canvas.put(endpoint, params = params)
