@@ -3,11 +3,11 @@ import re
 import http_logging
 import logging
 
-from general import with_stem, OpenWithNoModificationTime
+from general import with_stem, OpenWithNoModificationTime, print_json
 from canvas import Canvas, Assignment
 
-#logging.basicConfig()
-#logging.getLogger().setLevel(logging.INFO)
+logging.basicConfig()
+logging.getLogger().setLevel(logging.INFO)
 
 lab1_deadline0 = datetime.fromisoformat("2020-11-11 20:00+01:00")
 lab1_deadline1 = datetime.fromisoformat("2020-11-19 20:00+01:00")
@@ -39,6 +39,7 @@ def cleanup_hook(dir):
            file.write(content)
 
 canvas = Canvas('chalmers.instructure.com')
+
 a = Assignment(canvas, course_id, assignment_id)
-a.build_submissions()
-a.prepare_submissions(output_dir, deadline = deadline, cleanup_hook = cleanup_hook)
+a.build_submissions(use_cache = False)
+a.prepare_submissions(output_dir, deadline = lab1_deadline1)
