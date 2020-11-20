@@ -28,7 +28,7 @@ def autograde_all(cfg):
         H('th', 'Unknown'),
         H('th', 'Compared with skeleton'),
         H('th', 'Compared with solution'),
-        H('th', 'Compared with previous'),
+        H('th', 'Compared with previous grading'),
         H('th', 'Test output') if cfg.testfile else '',
         H('th', 'Compilation & runtime errors' if cfg.testfile else 'Compilation errors'),
         H('th', 'Comments'),
@@ -94,7 +94,9 @@ def autograde(group, cfg):
     # Create the result table row
     row = [
         # Group
-        H('td', [group.replace(' ', NBSP)]),
+        # Temporary hack
+        H('td', [s for s in group.split() if s.isdigit()]),
+        #H('td', [group.replace(' ', NBSP)]),
 
         # Late
         H('td', [late_file.open().read() if late_file.exists() else '']),
