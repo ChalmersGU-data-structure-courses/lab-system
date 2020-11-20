@@ -340,7 +340,8 @@ class Assignment:
         dir.mkdir()
         for group in self.submissions:
             s = self.submissions[group]
-            if Assignment.current_submission(s).workflow_state != 'graded':
+            current = Assignment.current_submission(s)
+            if not (current.workflow_state == 'graded' and current.grade == 'complete') and (current.workflow_state == 'submitted' or Assignment.ungraded_comments(s)):
                 self.prepare_submission(deadline, group, dir / self.groups.group_details[group].name, s)
 
     def grade_group(self, group, comment, grade):
