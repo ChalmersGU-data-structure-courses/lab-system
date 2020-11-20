@@ -5,6 +5,7 @@ import urllib.parse
 from pathlib import PurePath, Path
 from datetime import datetime, timedelta, timezone
 from collections import defaultdict
+import os.path
 import logging
 
 from general import unique_by, JSONObject, print_json, print_error, write_lines, set_modification_time, OpenWithModificationTime
@@ -131,11 +132,17 @@ class Course:
         self.canvas = canvas
         self.course_id = course_id
 
-    def assignments(self):
+        self.assignments_name_to_id = dict()
+        self.assignment_details = dict()
+        for assignment in self.get_assignments():
+            self.assignment_details[assignment.id] = assignment
+            self.assignments_name_to_id[assignment.name] = assignment.id
+
+    def get_assignments(self):
         return self.canvas.get_list(['courses', self.course_id, 'assignments'])
 
     def select_assignment(self, assignment_name):
-        xs = list(filter(lambda assignment: assignment.name.lower().startswith(assignment_name.lower()), self.assignments()))
+        xs = list(filter(lambda assignment: assignment.name.lower().startswith(assignment_name.lower()), self.assignment_details.values()))
         if len(xs) == 1:
             return xs[0]
 
@@ -147,19 +154,25 @@ class Course:
                 print_error('  ' + assignment.name)
         exit(1)
 
+    def assignment_str(self, id):
+        return '{} (id {})'.format(self.assignment_details[id].name, id)
+
 class Groups:
     def __init__(self, canvas, course_id, groupset):
         self.canvas = canvas
         self.groupset = groupset
 
-        self.group_details = dict()
-        self.group_name_to_id = dict()
-        self.group_users = dict()
-        self.user_to_group = dict()
         self.user_details = dict()
-
+        self.user_name_to_id = dict()
         for user in canvas.get_list(['courses', course_id, 'users']):
             self.user_details[user.id] = user
+            self.user_name_to_id[user.name] = user.id
+
+        self.group_details = dict()
+        self.group_name_to_id = dict()
+
+        self.group_users = dict()
+        self.user_to_group = dict()
 
         for group in canvas.get_list(['group_categories', groupset, 'groups']):
             self.group_details[group.id] = group;
@@ -168,7 +181,9 @@ class Groups:
             for user in canvas.get_list(['groups', group.id, 'users']):
                 users.add(user.id)
                 self.user_to_group[user.id] = group.id
-                self.group_users[group.id] = users
+            self.group_users[group.id] = users
+
+        self.group_prefix = os.path.commonprefix([group.name for (_, group) in self.group_details.items()])
 
     def user_str(self, id):
         return '{} (id {})'.format(self.user_details[id].name, id)
@@ -344,13 +359,14 @@ class Assignment:
             if not (current.workflow_state == 'graded' and current.grade == 'complete') and (current.workflow_state == 'submitted' or Assignment.ungraded_comments(s)):
                 self.prepare_submission(deadline, group, dir / self.groups.group_details[group].name, s)
 
-    def grade_group(self, group, comment, grade):
-        user = self.groups.group_details[group].leader.id
+    def grade(self, user, comment = None, grade = None):
+        assert(grade in [None, 'complete', 'incomplete', 'fail'])
+
+        #user = self.groups.group_details[group].leader.id
         endpoint = ['courses', self.course_id, 'assignments', self.assignment_id, 'submissions', user]
-        params = {
-            'comment[text_comment]' : comment,
-            'comment[group_comment]' : 'false',
-        }
+        params = {'comment[group_comment]' : 'false'}
+        if comment:
+            params['comment[text_comment]'] = comment
         if grade:
             params['submission[posted_grade]'] = grade
         self.canvas.put(endpoint, params = params)
