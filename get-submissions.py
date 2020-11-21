@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 import re
-import canvas_instance
+from canvas_instance import *
 
 lab1_deadline0 = datetime.fromisoformat("2020-11-11 20:00+01:00")
 lab1_deadline1 = datetime.fromisoformat("2020-11-19 20:00+01:00")
@@ -9,7 +9,7 @@ lab1_deadline2 = datetime.fromisoformat("2020-11-27 20:00+01:00")
 deadline = lab1_deadline1
 output_dir = 'output' #needs to not exist
 
-assignment.build_submissions(use_cache = False)
+assignment.build_submissions(use_cache = True)
 assignment.prepare_submissions(output_dir, deadline = lab1_deadline1)
 
 # for future work
@@ -20,7 +20,7 @@ def cleanup_hook(dir):
 
     # remove copy suffices
     for path in dir.iterdir():
-        if path.is_file() and not path.name.startswith('_'):
+        if path.is_file()
             stem = path.stem
             stem = re.sub(r'^(-\d+| \(\d+\))$', '\1', stem)
             path.rename(with_stem(path, stem))

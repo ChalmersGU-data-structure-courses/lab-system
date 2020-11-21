@@ -230,7 +230,7 @@ class Assignment:
             vs = set(submissions_this_group)
             if not us.issubset(vs):
                 ws = us.difference(vs)
-                print_error('The following users have not submitted with their group {}:'.format(self.groups.group_str(group)))
+                print_error('The following members have not submitted with {}:'.format(self.groups.group_str(group)))
                 for user_id in ws:
                     print_error('  {}'.format(self.groups.user_str(user_id)))
 
