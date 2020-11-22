@@ -13,6 +13,12 @@ import simple_cache
 
 logger = logging.getLogger("canvas")
 
+# This class manages requests to Canvas and their caching.
+# Caching is important to maintain quick execution time of higher level scripts on repeat invocation.
+# Cache behaviour is controlled by the parameter 'use_cache' of the request methods.
+# It can be:
+# * a Boolean,
+# * a timestamp: only entries at most this old are considered valid.
 class Canvas:
     def __init__(self, domain, auth_token = Path("AUTH_TOKEN"), cache_dir = Path("cache")):
         if isinstance(auth_token, Path):
@@ -65,7 +71,9 @@ class Canvas:
     # internal
     def get_json(self, endpoint, params = dict()):
         r = self.session.get(self.get_url(Canvas.with_api(endpoint)), params = params)
-        return Canvas.get_response_json(r)
+        result = Canvas.get_response_json(r)
+        assert(not isinstance(r, list))
+        return result
 
     # internal
     def get_list_json(self, endpoint, params = dict()):
@@ -73,6 +81,7 @@ class Canvas:
         p['per_page'] = '100'
         r = self.session.get(self.get_url(Canvas.with_api(endpoint)), params = p)
         x = Canvas.get_response_json(r)
+        assert(isinstance(x, list))
         while 'next' in r.links:
             r = self.session.get(r.links['next']['url'], headers = {'Authorization': 'Bearer {}'.format(self.auth_token)})
             x.extend(Canvas.get_response_json(r))
@@ -85,9 +94,15 @@ class Canvas:
             return Canvas.objectify_json(self.cache.with_cache_json(Canvas.get_cache_path(Canvas.with_api(endpoint), params), lambda: method(endpoint, params), use_cache))
         return f
 
+    # Using GET to retrieve a JSON object.
+    # 'endpoint' is a list of strings and integers constituting the path component of the url.
+    # The starting elements 'api' and 'v1' are omitted.
     def get(self, endpoint, params = dict(), use_cache = True):
         return self.json_cacher(self.get_json)(endpoint, params, use_cache)
 
+    # Using GET to retrieve a JSON list.
+    # 'endpoint' is a list of strings and integers constituting the path component of the url.
+    # The starting elements 'api' and 'v1' are omitted.
     def get_list(self, endpoint, params = dict(), use_cache = True):
         return self.json_cacher(self.get_list_json)(endpoint, params, use_cache)
 
@@ -111,19 +126,29 @@ class Canvas:
         r = urllib.parse.urlparse(url)
         return urllib.parse.parse_qs(r.query)['verifier'][0]
 
+    # Retrieve a file from canvas.
+    # 'file' is a file description object retrieved from Canvas.
+    # Returns a path to the stored location of the file in the cache (not to be modified).
     def get_file(self, file_descr, use_cache = True):
         return self.get_file_bare(file_descr.id, Canvas.parse_verifier(file_descr.url), use_cache)
 
+    # Store a file from canvas in a designated location.
+    # 'file' is a file description object retrieved from Canvas.
+    # The file modification time is set to the modification time of the file on Canvas.
     def place_file(self, target, file_descr, use_cache = True):
         source = self.get_file(file_descr, use_cache)
         target.write_bytes(source.read_bytes())
         set_modification_time(target, file_descr.modified_at_date)
 
+    # Perform a PUT request to the designated endpoint.
+    # 'endpoint' is a list of strings and integers constituting the path component of the url.
+    # The starting elements 'api' and 'v1' are omitted.
     def put(self, endpoint, params):
         logger.log(logging.INFO, 'accessing endpoint ' + self.get_url(Canvas.with_api(endpoint)))
         response = self.session.put(self.get_url(Canvas.with_api(endpoint)), params = params)
         response.raise_for_status()
 
+    # Retrieve the list of courses that the current user is a member of.
     def courses(self):
         return self.get_list(['courses'])
 
