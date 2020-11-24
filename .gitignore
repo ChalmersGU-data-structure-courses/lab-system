@@ -29,3 +29,7 @@ Lab-grading/AUTH_TOKEN
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Emacs
+*~
+

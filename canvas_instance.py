@@ -1,16 +1,15 @@
-import http_logging
 import logging
 
 from general import OpenWithNoModificationTime, print_json
 from canvas import Canvas, Course, Groups, Assignment
 
-#logging.basicConfig()
-#logging.getLogger().setLevel(logging.INFO)
+logging.basicConfig()
+logging.getLogger().setLevel(logging.INFO)
 
 canvas = Canvas('chalmers.instructure.com')
 course_id = 10681
 group_set = 5387 # inferrable from assignment
-assignment_id = 'lab 1' #23431
+assignment_id = 'lab 2' #23431
 
 canvas = Canvas('chalmers.instructure.com')
 course = Course(canvas, course_id)

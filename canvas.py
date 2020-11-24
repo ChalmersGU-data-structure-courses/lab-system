@@ -1,14 +1,15 @@
 import json
-from types import SimpleNamespace
 import requests
+import types
 import urllib.parse
 from pathlib import PurePath, Path
 from datetime import datetime, timedelta, timezone
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 import os.path
+import http_logging
 import logging
 
-from general import unique_by, JSONObject, print_json, print_error, write_lines, set_modification_time, OpenWithModificationTime
+from general import unique_by, group_by, JSONObject, print_json, print_error, write_lines, set_modification_time, OpenWithModificationTime, modify_no_modification_time
 import simple_cache
 
 logger = logging.getLogger("canvas")
@@ -93,6 +94,11 @@ class Canvas:
             logger.log(logging.INFO, 'accessing endpoint ' + self.get_url(Canvas.with_api(endpoint)))
             return Canvas.objectify_json(self.cache.with_cache_json(Canvas.get_cache_path(Canvas.with_api(endpoint), params), lambda: method(endpoint, params), use_cache))
         return f
+
+    # Return the URL to the web browser page on Canvas corresponding to an endpoint.
+    # Does not always corresponds to an API endpoint.
+    def interactive_url(self, endpoint):
+        return self.get_url(endpoint)
 
     # Using GET to retrieve a JSON object.
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
@@ -213,8 +219,14 @@ class Groups:
     def user_str(self, id):
         return '{} (id {})'.format(self.user_details[id].name, id)
 
+    def users_str(self, ids):
+        return ', '.join(self.user_str(id) for id in ids) if ids else '[no users]'
+
     def group_str(self, id):
         return '{} (id {})'.format(self.group_details[id].name, id)
+
+    def group_members_str(self, id):
+        return self.users_str(self.group_users[id])
 
 class Assignment:
     def __init__(self, canvas, course_id, assignment_id):
@@ -237,44 +249,83 @@ class Assignment:
     def merge_comments(comments):
         return unique_by(Assignment.is_duplicate_comment, comments)
 
-    def build_submissions(self, use_cache = True):
-        submissions_by_group = defaultdict(lambda: dict())
-        for submission in self.canvas.get_list(['courses', self.course_id, 'assignments', self.assignment_id, 'submissions'], params = {'include[]': ['submission_comments', 'submission_history']}, use_cache = use_cache):
-            if not submission.missing and submission.workflow_state != 'unsubmitted':
-                if not submission.user_id in self.groups.user_to_group:
-                    print_error('User {} submitted despite not being in a group; ignoring.'.format(self.groups.user_str(submission.user_id)))
-                else:
-                    submissions_by_group[self.groups.user_to_group[submission.user_id]][submission.user_id] = submission
+    # Get the web browser URL for a submission.
+    def submission_interactive_url(self, submission):
+        return self.canvas.interactive_url(['courses', self.course_id, 'assignments', self.assignment_id, 'submissions', submission.user_id])
 
-        self.submissions = dict()
-        for group in submissions_by_group:
-            submissions_this_group = submissions_by_group[group]
-            first_user = next(iter(submissions_this_group)) #self.groups.group_details[group].leader.id
+    def submission_speedgrader_url(self, submission):
+        return self.canvas.interactive_url(['courses', self.course_id, 'gradebook', 'speed_grader']) + '?' + urllib.parse.urlencode({'assignment_id' : self.assignment_id, 'student_id' : submission.user_id})
 
-            us = self.groups.group_users[group]
-            vs = set(submissions_this_group)
-            if not us.issubset(vs):
-                ws = us.difference(vs)
+    # Keep only the real submissions.
+    @staticmethod
+    def filter_submissions(raw_submissions):
+        return filter(lambda raw_submission: not raw_submission.missing and raw_submission.workflow_state != 'unsubmitted', raw_submissions)
+
+    # Returns list of named tuples with attributes:
+    # - members: list of users with this submission
+    # - submissions: merged submission history
+    # - comments: merged comments
+    # TODO: Revisit implementation of this method when there is a conflict of the produced grouping with groupset.
+    @staticmethod
+    def group_identical_submissions(raw_submissions):
+        grouping = group_by(lambda raw_submission: tuple(sorted([(s.attempt, tuple(sorted(file.id for file in s.attachments))) for s in raw_submission.submission_history])), raw_submissions)
+        submission_data_type = namedtuple('submission_data', ['members', 'submissions', 'comments']) # TODO: make static
+        return [submission_data_type(
+            members = [submission.user_id for submission in grouped_submissions],
+            submissions = grouped_submissions[0].submission_history,
+            comments = Assignment.merge_comments([c for s in grouped_submissions for c in s.submission_comments]),
+        ) for _, grouped_submissions in grouping.items()]
+
+    def align_with_groups(self, user_grouped_submissions):
+        user_to_user_grouping = dict((user, submission_data.members) for submission_data in user_grouped_submissions for user in submission_data.members)
+        lookup = dict((tuple(user_grouped_submission.members), user_grouped_submission) for user_grouped_submission in user_grouped_submissions)
+
+        result = dict()
+        for group in self.groups.group_details:
+            group_users = self.groups.group_users[group]
+
+            user_groupings = set()
+            for user in group_users:
+                user_grouping = user_to_user_grouping.get(user)
+                if user_grouping:
+                    user_groupings.add(tuple(user_grouping))
+
+            if not user_groupings:
+                print_error('{} did not submit.'.format(self.groups.group_str(group)))
+                continue
+
+            # TODO: handle this somehow if it ever happens (assuming students can change groups).
+            if len(user_groupings) > 1:
+                print_error('Incongruous submissions for members of {}.'.format(self.groups.group_str(group)))
+                print_error('The group consists of: {}.'.format(self.groups.group_members_str(group)))
+                print_error('But only the groups of users have submitted identically:')
+                for user_grouping in user_groupings:
+                    print_error('- {}'.format(self.groups.users_str(user_grouping)))
+                exit(1)
+
+            user_grouping = next(iter(user_groupings))
+            #print_error('The group consists of: {}.'.format(self.groups.group_members_str(group)))
+            #print_error('The user grouping is: {}.'.format(self.groups.users_str(user_grouping)))
+
+            did_not_submit = set(group_users).difference(set(user_grouping))
+            if did_not_submit:
                 print_error('The following members have not submitted with {}:'.format(self.groups.group_str(group)))
-                for user_id in ws:
-                    print_error('  {}'.format(self.groups.user_str(user_id)))
+                for user_id in did_not_submit:
+                    print_error('- {}'.format(self.groups.user_str(user_id)))
 
-            all_comments = list()
-            for user in submissions_this_group:
-                all_comments.extend(submissions_this_group[user].submission_comments)
-    
-            # sanity check
-            attempts_set = set()
-            for user in submissions_this_group:
-                attempts_set.add(tuple(map(lambda old_submission: old_submission.attempt, submissions_this_group[user].submission_history)))
-                if len(attempts_set) != 1:
-                    print_error('Incongruous submissions for members of group {}.'.format(self.groups.group_str(group)))
-                    exit(1)
+            not_part_of_group = set(user_grouping).difference(set(group_users))
+            if not_part_of_group:
+                print_error('The following non-members have submitted with {}:'.format(self.groups.group_str(group)))
+                for user_id in not_part_of_group:
+                    print_error('- {}'.format(self.groups.user_str(user_id)))
 
-            r = SimpleNamespace();
-            r.submissions = submissions_this_group[user].submission_history
-            r.comments = Assignment.merge_comments(all_comments)
-            self.submissions[group] = r
+            result[group] = lookup[tuple(user_grouping)]
+        return result
+
+    def build_submissions(self, use_cache = True):
+        raw_submissions = self.canvas.get_list(['courses', self.course_id, 'assignments', self.assignment_id, 'submissions'], params = {'include[]': ['submission_comments', 'submission_history']}, use_cache = use_cache)
+        grouped_submission = Assignment.group_identical_submissions(Assignment.filter_submissions(raw_submissions))
+        self.submissions = self.align_with_groups(grouped_submission)
 
     @staticmethod
     def current_submission(s):
@@ -313,21 +364,47 @@ class Assignment:
         return list(filter(lambda comment: is_new(comment.created_at_date), s.comments))
 
     @staticmethod
-    def get_files(submissions):
+    def get_file_name(file):
+        return urllib.parse.unquote_plus(file.filename)
+
+    # Use with 'get_files' and assorted functions
+    @staticmethod
+    def name_handler(whitelist, handlers, unhandled = None):
+        def f(id, name):
+            if name in whitelist:
+                return name;
+            handler = handlers.get(id)
+            if handler:
+                if isinstance(handler, types.FunctionType):
+                    handler = [handler]
+                for h in handler:
+                    name = h(name)
+                return name
+            if unhandled:
+                return unhandled(id, name)
+            return None
+        return f
+
+    @staticmethod
+    def get_files(submissions, name_handler = None):
         files = dict()
         for submission in submissions:
             for attachment in submission.attachments:
-                files[attachment.filename] = attachment
+                name = Assignment.get_file_name(attachment)
+                if name_handler:
+                    name = name_handler(attachment.id, name)
+                if name:
+                    files[name] = attachment
 
-        return files.values()
+        return files
 
     @staticmethod
-    def get_graded_files(s):
-        return Assignment.get_files(s.submissions[:Assignment.first_ungraded(s)])
+    def get_graded_files(s, name_handler = None):
+        return Assignment.get_files(s.submissions[:Assignment.first_ungraded(s)], name_handler = name_handler)
 
     @staticmethod
-    def get_current_files(s):
-        return Assignment.get_files(s.submissions)
+    def get_current_files(s, name_handler = None):
+        return Assignment.get_files(s.submissions, name_handler = name_handler)
 
     @staticmethod
     def write_comments(path, comments):
@@ -344,11 +421,26 @@ class Assignment:
                         '',
                     ])
 
-    def create_submission_dir(self, dir, submission, files):
-        dir.mkdir()
-        for file in files:
-            self.canvas.place_file(dir / urllib.parse.unquote_plus(file.filename), file)
+    # Returns a mapping from file ids to paths.
+    def create_submission_dir(self, dir, submission, files, write_ids = False, content_handlers = None):
+        dir.mkdir(exist_ok = True) # useful if unpacking on top of template files
+        file_mapping = dict()
+        for filename, attachment in files.items():
+            path = dir / filename
+            self.canvas.place_file(path, attachment)
+            file_mapping[attachment.id] = path
+            if write_ids:
+                with (dir / ('.' + filename)).open('w') as file:
+                    file.write(str(attachment.id))
+            if content_handlers:
+                content_handler = content_handlers.get(attachment.id)
+                if content_handler:
+                    if isinstance(content_handler, types.FunctionType):
+                        content_handler = [content_handler]
+                    for handler in content_handler:
+                        modify_no_modification_time(path, handler)
         set_modification_time(dir, submission.submitted_at_date)
+        return file_mapping
 
     def prepare_submission(self, deadline, group, dir, s):
         dir.mkdir()
