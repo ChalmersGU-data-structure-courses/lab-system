@@ -1,0 +1,45 @@
+# This is not a self-contained python file.
+# It is read by code under ../Lab-grading to fix issues with submitted files in student submissions.
+
+answers = 'answers.txt'
+
+# This is a dictionary from file ids to name handlers.
+# A name handler takes a filename and returns the intended filename, or 'None' if the file is to be ignored.
+# This is used for the following purposes:
+# * Correct wrongly named files such as , 'answers-3.txt', 'answers-revised.txt', 'answers.TXT', 'Group 88 answers.txt'.
+#   Use:
+#   - remove_windows_copy [example: 'answers (2).txt']
+#   - remove_dash_copy [example: 'answers-3.txt']
+#   - normalize_suffix('answers.txt') [examples: 'answers-revised.txt', 'answers.TXT']
+#   - rename('answers.txt') [if necessary, example: 'Group 88 answers.txt']
+# * Ignore copies of template files not part of the solution.
+#   Use:
+#   - is_template_file
+# * Rename modified template files not part of the solution so that they don't collide with the ones copied in by us.
+#   Use:
+#   - suffix
+# * Ignore irrelevant extraneous files:
+#   Use:
+#   - ignore
+# * Keep extraneous files relevant to the submission:
+#   Use:
+#   - keep
+name_handlers = {
+}
+
+# This is a dictionary from file ids to content handlers (or lists of content handlers).
+# A content handler fixes the content of a submitted file so that it may be compiled/graded.
+# All edits should be marked with a comment that includes the string 'SUBMISSION_EDIT'.
+# This makes it easy to detect if edits have been performed by the submission system.
+# Instead of removing lines in source code, they should be commented out.
+# Takes the submitted file content and returns the intended file content.
+# Here are pre-defined handlers:
+# * To replace using a regular expression, use:
+#   - replace(pattern, replacement)
+#     
+# * Some student groups like to follow "best practice" and put all their code in a package.
+#   However, they can only submit the individual Java files.
+#   To eliminate the package declarations, use:
+#   - remove_package_declaration.
+content_handlers = {
+}

@@ -1,3 +1,4 @@
+from collections import defaultdict
 import json
 from types import SimpleNamespace
 import re
@@ -12,6 +13,15 @@ def unique_by(f, xs):
             rs.append(x)
 
     return rs
+
+def multidict(xs):
+    r = defaultdict(list)
+    for (k, v) in xs:
+        r[k].append(v)
+    return r
+
+def group_by(f, xs):
+    return multidict([(f(x), x) for x in xs])
 
 class JSONObject(SimpleNamespace):
     DATE_PATTERN = re.compile("[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z")
@@ -79,3 +89,13 @@ class OpenWithNoModificationTime(OpenWithModificationTime):
     def __exit__(self, exc_type, exc_value, traceback):
         self.file.__exit__(exc_type, exc_value, traceback)
         os.utime(self.path, (self.time, self.time))
+
+def modify(path, callback):
+    content = path.read_text()
+    with path.open('w') as file:
+       file.write(callback(content))
+
+def modify_no_modification_time(path, callback):
+    content = path.read_text()
+    with OpenWithNoModificationTime(path) as file:
+       file.write(callback(content))
