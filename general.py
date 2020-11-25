@@ -99,3 +99,8 @@ def modify_no_modification_time(path, callback):
     content = path.read_text()
     with OpenWithNoModificationTime(path) as file:
        file.write(callback(content))
+
+def exec_simple(file):
+    r = dict()
+    exec(file.read_text(), r)
+    return SimpleNamespace(**r)
