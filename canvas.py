@@ -238,7 +238,7 @@ class Assignment:
         else:
             self.assignment_id = assignment_id
 
-        self.assignment = canvas.get(['courses', course_id, 'assignments', self.assignment_id])
+        self.assignment = self.canvas.get(['courses', course_id, 'assignments', self.assignment_id])
         self.groups = Groups(canvas, course_id, self.assignment.group_category_id)
 
     @staticmethod
@@ -420,6 +420,17 @@ class Assignment:
                         comment.comment,
                         '',
                     ])
+
+    @staticmethod
+    def format_comments(comments):
+        lines = list()
+        for comment in comments:
+            lines.append(comment.author.display_name)
+            lines.append(comment.created_at)
+            lines.append('')
+            lines.append(comment.comment)
+            lines.append('')
+        return lines
 
     # Returns a mapping from file ids to paths.
     def create_submission_dir(self, dir, submission, files, write_ids = False, content_handlers = None):
