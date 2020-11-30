@@ -9,7 +9,7 @@ import os.path
 import http_logging
 import logging
 
-from general import unique_by, group_by, JSONObject, print_json, print_error, write_lines, set_modification_time, OpenWithModificationTime, modify_no_modification_time
+from general import unique_by, group_by, JSONObject, print_json, print_error, write_lines, set_modification_time, OpenWithModificationTime, OpenWithNoModificationTime, modify_no_modification_time, guess_encoding
 import simple_cache
 
 logger = logging.getLogger("canvas")
@@ -150,8 +150,16 @@ class Canvas:
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
     # The starting elements 'api' and 'v1' are omitted.
     def put(self, endpoint, params):
-        logger.log(logging.INFO, 'accessing endpoint ' + self.get_url(Canvas.with_api(endpoint)))
+        logger.log(logging.INFO, 'PUT with endpoint ' + self.get_url(Canvas.with_api(endpoint)))
         response = self.session.put(self.get_url(Canvas.with_api(endpoint)), params = params)
+        response.raise_for_status()
+
+    # Perform a DELETE request to the designated endpoint.
+    # 'endpoint' is a list of strings and integers constituting the path component of the url.
+    # The starting elements 'api' and 'v1' are omitted.
+    def delete(self, endpoint, params = dict()):
+        logger.log(logging.INFO, 'DELETE with endpoint ' + self.get_url(Canvas.with_api(endpoint)))
+        response = self.session.delete(self.get_url(Canvas.with_api(endpoint)), params = params)
         response.raise_for_status()
 
     # Retrieve the list of courses that the current user is a member of.
@@ -322,7 +330,7 @@ class Assignment:
             result[group] = lookup[tuple(user_grouping)]
         return result
 
-    def build_submissions(self, use_cache = True):
+    def collect_submissions(self, use_cache = True):
         raw_submissions = self.canvas.get_list(['courses', self.course_id, 'assignments', self.assignment_id, 'submissions'], params = {'include[]': ['submission_comments', 'submission_history']}, use_cache = use_cache)
         grouped_submission = Assignment.group_identical_submissions(Assignment.filter_submissions(raw_submissions))
         self.submissions = self.align_with_groups(grouped_submission)
@@ -333,8 +341,9 @@ class Assignment:
 
     @staticmethod
     def first_ungraded(s):
-        for i in reversed(range(len(s.submissions))):
-            if s.submissions[i].workflow_state == 'graded':
+        submissions = s.submissions
+        for i in reversed(range(len(submissions))):
+            if submissions[i].workflow_state == 'graded':
                 return i + 1
 
         return 0
@@ -346,6 +355,13 @@ class Assignment:
             return None
 
         return s.submissions[i - 1]
+
+    @staticmethod
+    def get_submissions(s, previous = False):
+        submissions = s.submissions
+        if previous:
+            submissions = submissions[:Assignment.first_ungraded(s)]
+        return submissions
 
     @staticmethod
     def graded_comments(s):
@@ -439,6 +455,12 @@ class Assignment:
         for filename, attachment in files.items():
             path = dir / filename
             self.canvas.place_file(path, attachment)
+
+            # make sure encoding is utf-8
+            content = guess_encoding(path.read_bytes())
+            with OpenWithNoModificationTime(path) as file:
+                file.write(content)
+
             file_mapping[attachment.id] = path
             if write_ids:
                 with (dir / ('.' + filename)).open('w') as file:

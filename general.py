@@ -3,7 +3,9 @@ import json
 from types import SimpleNamespace
 import re
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 import os
+import shutil
 import sys
 
 def unique_by(f, xs):
@@ -64,6 +66,9 @@ def set_modification_time(path, date):
 def with_stem(path, stem):
     return path.with_name(stem + path.suffix)
 
+def add_suffix(path, suffix):
+    return path.parent / (path.name + suffix)
+
 class OpenWithModificationTime:
     def __init__(self, path, date):
         self.path = path
@@ -100,7 +105,41 @@ def modify_no_modification_time(path, callback):
     with OpenWithNoModificationTime(path) as file:
        file.write(callback(content))
 
+def mkdir_fresh(path):
+    if path.exists():
+        shutil.rmtree(path)
+    path.mkdir()
+
+# 'rel' is the path to 'dir_from', taken relative to 'dir_to'.
+def link_dir_contents(dir_from, dir_to, rel = None):
+    if rel == None:
+        rel = Path(os.path.relpath(dir_from, dir_to))
+
+    for path in dir_from.iterdir():
+        (dir_to / path.name).symlink_to(rel / path.name, path.is_dir())
+
 def exec_simple(file):
     r = dict()
     exec(file.read_text(), r)
     return SimpleNamespace(**r)
+
+def readfile(fil):
+    with open(fil, "br") as F:
+        bstr = F.read()
+    try:
+        return bstr.decode()
+    except UnicodeDecodeError:
+        try:
+            return bstr.decode(encoding="latin1")
+        except UnicodeDecodeError:
+            return bstr.decode(errors="replace")
+
+def guess_encoding(b):
+    encodings = ['utf-8', 'latin1']
+    for encoding in encodings:
+        try:
+            return b.decode(encoding = encoding)
+        except UnicodeDecodeError:
+            pass
+
+    return b.decode()
