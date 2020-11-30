@@ -1,19 +1,35 @@
 import csv
 from collections import namedtuple
 from pathlib import Path
+import logging
 
-from canvas_instance import *
+from general import print_error
+from canvas import Canvas, Course, Groups, Assignment
+import config
 
-grading_sheet = "lab1-regrade.csv"
-header_group = 'Group'
-header_grade = '0/1'
-header_comment = 'Comments for students'
+logging.basicConfig()
+logging.getLogger().setLevel(logging.INFO)
+
+assignment_id = 'lab 2' #23431
 
 # Run first with check_run = true to create the check_dir.
 # Then run with check_run = false to post the grades.
 # This operation is idempotent (no duplicate postings).
 check_dir = Path('ungraded')
 check_run = False
+
+grading_sheet = "lab2-grading.csv"
+header_group = 'Group'
+header_grader = 'Grader'
+header_grade = '0/1'
+header_comment = 'Comments for students'
+header_group_formatter = 'Lab group {}'
+filter_groups = None # Optional list of groups (as on the spreadsheet) to restrict attention to
+
+canvas = Canvas('chalmers.instructure.com')
+course = Course(canvas, config.course_id)
+assignment = Assignment(canvas, config.course_id, assignment_id)
+groups = assignment.groups
 
 # Pass use_cache = False if you haven't run this method yet after the current submission.
 assignment.build_submissions(use_cache = True)
@@ -34,6 +50,12 @@ def grade_str(x):
 def parse_comment(x):
     if x == '':
         return None
+
+    return x.rstrip() + '\n'
+
+def parse_grader(x):
+    if x == '':
+        return None
     return x
 
 def comment_str(x):
@@ -45,12 +67,28 @@ group_grading = dict()
 with open(grading_sheet) as file:
     csv_reader = csv.DictReader(file)
     for rows in csv_reader:
-        group_name = "Lab group {}".format(rows[header_group])
+        group_name = header_group_formatter.format(rows[header_group])
+
+        grade_prepared = rows[header_grade]
+        if grade_prepared == '':
+            print_error('No grade entered for {}.'.format(group_name))
+            exit(1)
+        grade = grade_parser[grade_prepared]
+
+        comment = parse_comment(rows[header_comment])
+        grader = parse_grader(rows[header_grader])
+        if grade:
+            if not comment:
+                print_error('Warning: No comment entered for {}.'.format(group_name))
+            if not grader:
+                print_error('No grader given for {}'.format(group_name))
+                exit(1)
+
         group_id = groups.group_name_to_id[group_name]
         group_grading[group_id] = GradeType(
-            grade = grade_parser[rows[header_grade]],
-            comment = parse_comment(rows[header_comment]),
-            grader = rows['Grader']
+            grade = grade,
+            comment = comment,
+            grader = grader
         )
 
 print('Statistics:')
@@ -61,7 +99,7 @@ print()
 print('Parsed grading for assignment {}.'.format(course.assignment_str(assignment.assignment_id)))
 for group in group_grading:
     grading = group_grading[group]
-    print('* {}: {}, graded by {}, {}'.format(groups.group_str(group), grade_str('no grade entered'), grading.grader, 'comments:' if grading.comment else comment_str(grading.comment)))
+    print('* {}: {}, graded by {}, {}'.format(groups.group_str(group), grade_str(grading.grade), grading.grader, 'comments:' if grading.comment else comment_str(grading.comment)))
     if grading.comment:
         print(*map(lambda x: '  | ' + x, grading.comment.splitlines()), sep = '\n', end = '')
 print()
@@ -78,7 +116,7 @@ print('Submitting grades (and comments)...')
 for user in groups.user_details:
     if user in groups.user_to_group:
         group = groups.user_to_group[user]
-        if group in group_grading:
+        if not filter or groups.group_details[group].name in map (lambda n: header_group_formatter.format(n), filter_groups):
             grading = group_grading[group]
             if grading.comment or grading.grade:
                 grading = group_grading[group]
@@ -88,8 +126,8 @@ for user in groups.user_details:
                 if check_run:
                     check_file.open('w').close()
                 elif check_file.exists():
-                    assignment.grade(user, comment = grading.comment, grade = grading.grade)
-                    assignment.grade(user, comment = '(The above grading was performed by {}.)'.format(grading.grader))
+                    final_comment = '{}\n(The above grading was performed by {}.)\n'.format(grading.comment, grading.grader)
+                    assignment.grade(user, comment = final_comment, grade = grading.grade)
                     check_file.unlink()
 
 if not check_run:
