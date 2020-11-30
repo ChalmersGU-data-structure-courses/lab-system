@@ -16,6 +16,9 @@ def ignore(name):
 # Use only if submitted file is unmodified template file.
 is_template_file = ignore
 
+# Use if submitted file is modified template file.
+is_modified_template_file = keep
+
 # Use if a student has submitted a filename already part of the problem files
 def suffix(name):
     return name + '.submitted'
@@ -47,9 +50,13 @@ def normalize_suffix(target):
 def replace(pattern, replacement):
     return lambda content: re.sub(pattern, replacement, content)
 
+# TODO: fix issues /* ^@ SUBMISSION_EDIT */
+def uncomment(pattern):
+    return replace(pattern, r'/* \g<0> SUBMISSION_EDIT */')
+
 # Uncomment a package declaration.
 # All submitted classes are supposed to be in the default package.
-remove_package_declaration = replace(r'^(package[^;]*;)', r'/* \1 SUBMISSION_EDIT */')
+remove_package_declaration = uncomment(r'^package[^;]*;')
 
 ################################################################################
 # Loading a submission fixes file.
