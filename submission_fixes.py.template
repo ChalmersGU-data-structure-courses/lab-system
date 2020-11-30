@@ -34,12 +34,13 @@ name_handlers = {
 # Instead of removing lines in source code, they should be commented out.
 # Takes the submitted file content and returns the intended file content.
 # Here are pre-defined handlers:
-# * To replace using a regular expression, use:
-#   - replace(pattern, replacement)
-#     
 # * Some student groups like to follow "best practice" and put all their code in a package.
 #   However, they can only submit the individual Java files.
 #   To eliminate the package declarations, use:
 #   - remove_package_declaration.
+# * To uncomment a statement using a regular expression, use:
+#   - uncomment(pattern)
+# * To replace using a regular expression, use:
+#   - replace(pattern, replacement)
 content_handlers = {
 }
