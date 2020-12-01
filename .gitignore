@@ -23,7 +23,7 @@
 hs_err_pid*
 
 # secrets
-Lab-grading/AUTH_TOKEN
+Lab-grading/auth_token
 
 # Python
 __pycache__/
@@ -32,4 +32,3 @@ __pycache__/
 
 # Emacs
 *~
-

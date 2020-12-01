@@ -1,4 +1,5 @@
 from collections import defaultdict
+import decimal
 import json
 from types import SimpleNamespace
 import re
@@ -7,6 +8,12 @@ from pathlib import Path
 import os
 import shutil
 import sys
+
+def from_singleton(xs):
+    ys = list(xs)
+    assert(len(ys) >= 1)
+    assert(len(ys) <= 1)
+    return ys[0]
 
 def unique_by(f, xs):
     rs = list()
@@ -111,12 +118,21 @@ def mkdir_fresh(path):
     path.mkdir()
 
 # 'rel' is the path to 'dir_from', taken relative to 'dir_to'.
+# Returns list of newly created files.
 def link_dir_contents(dir_from, dir_to, rel = None):
     if rel == None:
         rel = Path(os.path.relpath(dir_from, dir_to))
 
+    files = list()
     for path in dir_from.iterdir():
-        (dir_to / path.name).symlink_to(rel / path.name, path.is_dir())
+        file = dir_to / path.name
+        files.append(file)
+        target = rel / path.name
+        if file.exists():
+            assert(Path(os.readlink(file)) == target)
+        else:
+            file.symlink_to(target, path.is_dir())
+    return files
 
 def exec_simple(file):
     r = dict()
@@ -143,3 +159,27 @@ def guess_encoding(b):
             pass
 
     return b.decode()
+
+def appropriate_time_unit(delta):
+    time_units_min = {
+        'microseconds': timedelta(microseconds = 1),
+        'milliseconds': timedelta(milliseconds = 1),
+        'seconds': timedelta(seconds = 1),
+        'minutes': timedelta(seconds = 100),
+        'hours': timedelta(minutes = 100),
+        'days': timedelta(days = 2),
+        'weeks': timedelta(days = 30),
+    }
+
+    for time_unit, min in reversed(time_units_min.items()):
+        if abs(delta) >= min:
+            return time_unit
+    return time_unit
+
+def format_timespan_using(delta, time_unit, precision = 2):
+    num = delta / timedelta(**{time_unit: 1})
+    context = decimal.Context(prec = precision, rounding = decimal.ROUND_DOWN)
+    return '{} {}'.format(context.create_decimal_from_float(num), time_unit)
+
+def format_timespan(delta, precision = 2):
+    return format_timespan_using(delta, appropriate_time_unit(delta), precision)

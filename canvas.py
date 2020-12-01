@@ -9,7 +9,7 @@ import os.path
 import http_logging
 import logging
 
-from general import unique_by, group_by, JSONObject, print_json, print_error, write_lines, set_modification_time, OpenWithModificationTime, OpenWithNoModificationTime, modify_no_modification_time, guess_encoding
+from general import from_singleton, unique_by, group_by, JSONObject, print_json, print_error, write_lines, set_modification_time, OpenWithModificationTime, OpenWithNoModificationTime, modify_no_modification_time, guess_encoding
 import simple_cache
 
 logger = logging.getLogger("canvas")
@@ -21,14 +21,14 @@ logger = logging.getLogger("canvas")
 # * a Boolean,
 # * a timestamp: only entries at most this old are considered valid.
 class Canvas:
-    def __init__(self, domain, auth_token = Path("AUTH_TOKEN"), cache_dir = Path("cache")):
-        if isinstance(auth_token, Path):
+    def __init__(self, domain, auth_token = Path(__file__).parent / "auth_token", cache_dir = Path("cache")):
+        if isinstance(auth_token, PurePath):
             try:
-                self.auth_token = auth_token.open().read().strip()
+                self.auth_token = Path(auth_token).open().read().strip()
             except FileNotFoundError:
                 print_error('No Canvas authorization token found.')
                 print_error('Expected Canvas authorization token in file {}.'.format(auth_token))
-                exit(1)
+                assert(False)
         else:
             self.auth_token = auth_token
 
@@ -181,6 +181,10 @@ class Course:
         return self.canvas.get_list(['courses', self.course_id, 'assignments'])
 
     def select_assignment(self, assignment_name):
+        id = self.assignments_name_to_id.get(assignment_name)
+        if id:
+            return self.assignment_details[id]
+
         xs = list(filter(lambda assignment: assignment.name.lower().startswith(assignment_name.lower()), self.assignment_details.values()))
         if len(xs) == 1:
             return xs[0]
@@ -191,19 +195,22 @@ class Course:
             print_error('Multiple assignments found fitting \'{}\':'.format(assignment_name))
             for assignment in xs:
                 print_error('  ' + assignment.name)
-        exit(1)
+        assert(False)
 
     def assignment_str(self, id):
         return '{} (id {})'.format(self.assignment_details[id].name, id)
 
-class Groups:
-    def __init__(self, canvas, course_id, groupset):
+class GroupSet:
+    def __init__(self, canvas, course_id, group_set, use_cache = True):
         self.canvas = canvas
-        self.groupset = groupset
+        self.course_id = course_id
+
+        group_sets = self.canvas.get_list(['courses', self.course_id, 'group_categories'])
+        self.group_set = from_singleton(filter(lambda x: (isinstance(group_set, str) and x.name == group_set) or x.id == group_set, group_sets))
 
         self.user_details = dict()
         self.user_name_to_id = dict()
-        for user in canvas.get_list(['courses', course_id, 'users']):
+        for user in self.canvas.get_list(['courses', course_id, 'users'], use_cache = use_cache):
             self.user_details[user.id] = user
             self.user_name_to_id[user.name] = user.id
 
@@ -213,11 +220,11 @@ class Groups:
         self.group_users = dict()
         self.user_to_group = dict()
 
-        for group in canvas.get_list(['group_categories', groupset, 'groups']):
+        for group in canvas.get_list(['group_categories', self.group_set.id, 'groups'], use_cache = use_cache):
             self.group_details[group.id] = group;
             self.group_name_to_id[group.name] = group.id
             users = set()
-            for user in canvas.get_list(['groups', group.id, 'users']):
+            for user in canvas.get_list(['groups', group.id, 'users'], use_cache = use_cache):
                 users.add(user.id)
                 self.user_to_group[user.id] = group.id
             self.group_users[group.id] = users
@@ -247,7 +254,7 @@ class Assignment:
             self.assignment_id = assignment_id
 
         self.assignment = self.canvas.get(['courses', course_id, 'assignments', self.assignment_id])
-        self.groups = Groups(canvas, course_id, self.assignment.group_category_id)
+        self.group_set = GroupSet(canvas, course_id, self.assignment.group_category_id)
 
     @staticmethod
     def is_duplicate_comment(a, b):
@@ -289,8 +296,10 @@ class Assignment:
         lookup = dict((tuple(user_grouped_submission.members), user_grouped_submission) for user_grouped_submission in user_grouped_submissions)
 
         result = dict()
-        for group in self.groups.group_details:
-            group_users = self.groups.group_users[group]
+        for group in self.group_set.group_details:
+            group_users = self.group_set.group_users[group]
+            if not group_users:
+                continue
 
             user_groupings = set()
             for user in group_users:
@@ -299,33 +308,32 @@ class Assignment:
                     user_groupings.add(tuple(user_grouping))
 
             if not user_groupings:
-                print_error('{} did not submit.'.format(self.groups.group_str(group)))
+                print_error('Info: {} did not submit:'.format(self.group_set.group_str(group)))
+                print_error('- {}'.format(self.group_set.users_str(group_users)))
                 continue
 
             # TODO: handle this somehow if it ever happens (assuming students can change groups).
             if len(user_groupings) > 1:
-                print_error('Incongruous submissions for members of {}.'.format(self.groups.group_str(group)))
-                print_error('The group consists of: {}.'.format(self.groups.group_members_str(group)))
+                print_error('Incongruous submissions for members of {}.'.format(self.group_set.group_str(group)))
+                print_error('The group consists of: {}.'.format(self.group_set.group_members_str(group)))
                 print_error('But only the groups of users have submitted identically:')
                 for user_grouping in user_groupings:
-                    print_error('- {}'.format(self.groups.users_str(user_grouping)))
-                exit(1)
+                    print_error('- {}'.format(self.group_set.users_str(user_grouping)))
+                assert(False)
 
             user_grouping = next(iter(user_groupings))
-            #print_error('The group consists of: {}.'.format(self.groups.group_members_str(group)))
-            #print_error('The user grouping is: {}.'.format(self.groups.users_str(user_grouping)))
 
             did_not_submit = set(group_users).difference(set(user_grouping))
             if did_not_submit:
-                print_error('The following members have not submitted with {}:'.format(self.groups.group_str(group)))
+                print_error('The following members have not submitted with {}:'.format(self.group_set.group_str(group)))
                 for user_id in did_not_submit:
-                    print_error('- {}'.format(self.groups.user_str(user_id)))
+                    print_error('- {}'.format(self.group_set.user_str(user_id)))
 
             not_part_of_group = set(user_grouping).difference(set(group_users))
             if not_part_of_group:
-                print_error('The following non-members have submitted with {}:'.format(self.groups.group_str(group)))
+                print_error('The following non-members have submitted with {}:'.format(self.group_set.group_str(group)))
                 for user_id in not_part_of_group:
-                    print_error('- {}'.format(self.groups.user_str(user_id)))
+                    print_error('- {}'.format(self.group_set.user_str(user_id)))
 
             result[group] = lookup[tuple(user_grouping)]
         return result
@@ -475,44 +483,43 @@ class Assignment:
         set_modification_time(dir, submission.submitted_at_date)
         return file_mapping
 
-    def prepare_submission(self, deadline, group, dir, s):
-        dir.mkdir()
+    # def prepare_submission(self, deadline, group, dir, s):
+    #     dir.mkdir()
 
-        current_dir = dir / 'current'
-        current = Assignment.current_submission(s)
-        self.create_submission_dir(current_dir, current, Assignment.get_current_files(s))
-        Assignment.write_comments(dir / 'new-comments.txt', Assignment.ungraded_comments(s))
+    #     current_dir = dir / 'current'
+    #     current = Assignment.current_submission(s)
+    #     self.create_submission_dir(current_dir, current, Assignment.get_current_files(s))
+    #     Assignment.write_comments(dir / 'new-comments.txt', Assignment.ungraded_comments(s))
 
-        previous = Assignment.last_graded_submission(s)
-        if previous != None:
-            previous_dir = dir / 'previous'
-            self.create_submission_dir(previous_dir, previous, Assignment.get_graded_files(s))
-            Assignment.write_comments(dir / 'previous-comments.txt', Assignment.graded_comments(s))
+    #     previous = Assignment.last_graded_submission(s)
+    #     if previous != None:
+    #         previous_dir = dir / 'previous'
+    #         self.create_submission_dir(previous_dir, previous, Assignment.get_graded_files(s))
+    #         Assignment.write_comments(dir / 'previous-comments.txt', Assignment.graded_comments(s))
 
-        if deadline != None:
-            time_diff = current.submitted_at_date - deadline
-            if time_diff >= timedelta(minutes = 5):
-                with OpenWithModificationTime(dir / 'late.txt', current.submitted_at_date) as file:
-                    write_lines(file, ['{:.2f} hours'.format(time_diff / timedelta(hours=1))])
+    #     if deadline != None:
+    #         time_diff = current.submitted_at_date - deadline
+    #         if time_diff >= timedelta(minutes = 5):
+    #             with OpenWithModificationTime(dir / 'late.txt', current.submitted_at_date) as file:
+    #                 write_lines(file, ['{:.2f} hours'.format(time_diff / timedelta(hours=1))])
 
-        with (dir / 'members.txt').open('w') as file:
-            for user in self.groups.group_users[group]:
-                write_lines(file, [self.groups.user_details[user].name])
+    #     with (dir / 'members.txt').open('w') as file:
+    #         for user in self.group_set.group_users[group]:
+    #             write_lines(file, [self.group_set.user_details[user].name])
 
-    def prepare_submissions(self, dir, deadline = None):
-        #self.build_submissions()
-        dir = Path(dir)
-        dir.mkdir()
-        for group in self.submissions:
-            s = self.submissions[group]
-            current = Assignment.current_submission(s)
-            if not (current.workflow_state == 'graded' and current.grade == 'complete') and (current.workflow_state == 'submitted' or Assignment.ungraded_comments(s)):
-                self.prepare_submission(deadline, group, dir / self.groups.group_details[group].name, s)
+    # def prepare_submissions(self, dir, deadline = None):
+    #     #self.build_submissions()
+    #     dir = Path(dir)
+    #     dir.mkdir()
+    #     for group in self.submissions:
+    #         s = self.submissions[group]
+    #         current = Assignment.current_submission(s)
+    #         if not (current.workflow_state == 'graded' and current.grade == 'complete') and (current.workflow_state == 'submitted' or Assignment.ungraded_comments(s)):
+    #             self.prepare_submission(deadline, group, dir / self.group_set.group_details[group].name, s)
 
     def grade(self, user, comment = None, grade = None):
         assert(grade in [None, 'complete', 'incomplete', 'fail'])
 
-        #user = self.groups.group_details[group].leader.id
         endpoint = ['courses', self.course_id, 'assignments', self.assignment_id, 'submissions', user]
         params = {'comment[group_comment]' : 'false'}
         if comment:
