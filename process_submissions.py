@@ -19,6 +19,10 @@ p = argparse.ArgumentParser(add_help = False, description = '\n'.join([
     f'Process student submissions to an assignment on Canvas.',
     f'This involves two stages, \'unpack\' and \'process\', that can be specified as arguments.',
     f'The \'process\' stage caches its results; it can be called iteratively on the same submission working directory with varying options.'
+]), epilog = '\n'.join([
+    f'This Python script supports bash completion.',
+    f'For this, python-argparse needs to be installed and configured.',
+    f'See https://github.com/kislyuk/argcomplete for more information.',
 ]))
 
 g = p.add_argument_group('primary arguments')
@@ -121,7 +125,6 @@ g.add_argument('--no-pregrading', action = 'store_true', help = '\n'.join([
     f'Skip the pregrading phase of the submission processing workflow.',
 ]))
 
-
 g = p.add_argument_group('overview options')
 g.add_argument('--remove-class-files', action = 'store_true', help = '\n'.join([
     f'After finishing processing, remove all compiled java files from the submission working directory.',
@@ -144,7 +147,7 @@ try:
     argcomplete.autocomplete(p)
 except ModuleNotFoundError:
     pass
-# argcomplete is done: expensive initialization operations can start now.
+# argcomplete is done: expensive initialization can start now.
 
 import logging
 import os
