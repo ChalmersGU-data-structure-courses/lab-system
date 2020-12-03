@@ -67,65 +67,75 @@ g.add_argument('-v', '--verbose', action = 'store_true', help = '\n'.join([
 ]))
 g.add_argument('--auth-token-file', type = str, default = file_auth_token_default, help = '\n'.join([
     f'Path to a file storing the Canvas authentication token.',
-    f'This defaults to {shlex.quote(str(file_auth_token_default))}.',
+    f'Defaults to {shlex.quote(str(file_auth_token_default))}.',
 ]))
 g.add_argument('--cache-dir', type = str, default = cache_dir_default, help = '\n'.join([
     f'The cache directory to use.',
     f'If it does not exist, it will be created.',
-    f'This defaults to {shlex.quote(str(cache_dir_default))}.',
+    f'Defaults to {shlex.quote(str(cache_dir_default))}.',
 ]))
-g.add_argument('--refresh-submissions', action = 'store_true', help = '\n'.join([
-    f'Collect submissions from Canvas instead of the cache.',
-    f'Use this at the beginning of a submission procession workflow to make sure the cached submissions are up to date.',
-    f'It is recommended to use this option only then for collecting the submission from Canvas is an expensive operation (on the order of 5 minutes).'
+g.add_argument('--groups', nargs = '+', type = str, help = '\n'.join([
+    f'Restrict submission processing to these groups.',
+    f'If omitted, all currently ungraded submissions will be processed.',
+]))
+
+g = p.add_argument_group('unpacking options')
+g.add_argument('--recreate-swd', action = 'store_true', help = '\n'.join([
+    f'Recreate the entire submission wording directory.'
 ]))
 g.add_argument('--refresh-group-set', action = 'store_true', help = '\n'.join([
     f'Collect group membership information from Canvas instead of the cache.',
     f'Use this at the beginning of a submission procession workflow to make sure the cached group memberships are up to date.',
     f'Collecting group membership information from Canvas is an expensive operation (on the order of 1 minute).'
 ]))
-g.add_argument('--recreate-swd', action = 'store_true', help = '\n'.join([
-    f'Recreate the entire submission wording directory.'
-]))
-g.add_argument('--groups', nargs = '+', type = str, help = '\n'.join([
-    f'Restrict submission processing to these groups.',
-    f'If omitted, all currently ungraded submissions will be processed.',
-]))
-g.add_argument('--deadline', type = int, choices = [0, 1, 2], help = '\n'.join([
-    f'Deadline to use for the overview index file.',
-    f'These are specified in \'{lab_assignment_constants.rel_file_deadlines}\' in the lab folder.',
-    f'If unspecified, information is late submissions will not be recorded in the overview file.'
-]))
-g.add_argument('--timeout', type = float, default = timeout_default, help = '\n'.join([
-    f'Timeout in seconds to use for individual tests.',
-    f'Defaults to {timeout_default}',
+g.add_argument('--refresh-submissions', action = 'store_true', help = '\n'.join([
+    f'Collect submissions from Canvas instead of the cache.',
+    f'Use this at the beginning of a submission procession workflow to make sure the cached submissions are up to date.',
+    f'It is recommended to use this option only then for collecting the submission from Canvas is an expensive operation (on the order of 5 minutes).'
 ]))
 g.add_argument('--write-ids', action = 'store_true', help = '\n'.join([
-    f'Together with each submitted file \'<file>\' written in the \'{lab_assignment_constants.rel_dir_current}\' and \'{lab_assignment_constants.rel_dir_previous}\' subdirectories of each lab group, store a file \'.<file>\' containing its Canvas id.',
+    f'Together with each submitted file \'<file>\' written in the \'{lab_assignment_constants.rel_dir_current}\' and \'{lab_assignment_constants.rel_dir_previous}\' subdirectories of each lab group, store its Canvas id in \'.<file>\'.',
     f'This can be used for easy Canvas id lookup when writing \'content_handlers\' to fix compilation errors.'
 ]))
-g.add_argument('--no-preview', action = 'store_true', help = '\n'.join([
-    f'After finishing processing, do not open the overview index file in a webbrowser tab.'
+
+g = p.add_argument_group('compilation options')
+g.add_argument('--no-compilation', action = 'store_true', help = '\n'.join([
+    f'Skip the compilation phase of the submission procession workflow.',
 ]))
 g.add_argument('--allow-compilation-errors', action = 'store_true', help = '\n'.join([
     f'Continue the submission procession workflow if there were errors in the compilation stage.',
     f'Compilation errors will be listed in the overview document.',
 ]))
-g.add_argument('--no-compilation', action = 'store_true', help = '\n'.join([
-    f'Skip the compilation phase of the submission procession workflow.',
-]))
+
+g = p.add_argument_group('testing options')
 g.add_argument('--no-testing', action = 'store_true', help = '\n'.join([
     f'Skip the testing phase of the submission procession workflow.',
 ]))
+g.add_argument('--timeout', type = float, default = timeout_default, help = '\n'.join([
+    f'Timeout in seconds to use for individual tests.',
+    f'Defaults to {timeout_default}',
+]))
+
+g = p.add_argument_group('pregrading options')
 g.add_argument('--no-pregrading', action = 'store_true', help = '\n'.join([
     f'Skip the pregrading phase of the submission procession workflow.',
+]))
+
+
+g = p.add_argument_group('overview options')
+g.add_argument('--remove-class-files', action = 'store_true', help = '\n'.join([
+    f'After finishing processing, remove all compiled java files from the submission working directory.',
+    f'Use this option if you plan to share this folder with people who may be running different versions of the Java Development Kit.',
 ]))
 g.add_argument('--no-overview', action = 'store_true', help = '\n'.join([
     f'Skip creaton of an overview index file at the end of the submission procession workflow.',
 ]))
-g.add_argument('--remove-class-files', action = 'store_true', help = '\n'.join([
-    f'After finishing processing, remove all compiled java files from the submission working directory.',
-    f'Use this option if you plan to share this folder with people who may be running different versions of the Java Development Kit.',
+g.add_argument('--deadline', type = int, choices = [0, 1, 2], help = '\n'.join([
+    f'Optional deadline to use for recording of late submissions in the overview index file.',
+    f'These are specified in \'{lab_assignment_constants.rel_file_deadlines}\' in the lab folder.',
+]))
+g.add_argument('--no-preview', action = 'store_true', help = '\n'.join([
+    f'After finishing processing, do not open the overview index file in a webbrowser tab.'
 ]))
 
 #Support for argcomplete.
@@ -169,15 +179,14 @@ group_set = GroupSet(canvas, config.course_id, config.group_set, use_cache = not
 lab_assignment = LabAssignment(canvas, config.course_id, args.lab)
 lab_assignment.collect_submissions(use_cache = not args.refresh_submissions)
 
-if args.recreate_swd and args.dir.exists():
-    shutil.rmtree(args.dir)
-
 extra = dict()
 extra['dir'] = args.dir
 if args.groups:
     extra['groups'] = args.groups
 
 if args.unpack:
+    if args.recreate_swd and args.dir.exists():
+        shutil.rmtree(args.dir)
     lab_assignment.submissions_unpack(write_ids = args.write_ids, **extra)
     lab_assignment.submissions_prepare_build(**extra)
 
