@@ -480,7 +480,6 @@ class Assignment:
                     file.write(str(attachment.id))
             content_handler = content_handlers(attachment.id) if content_handlers else None
             if content_handler:
-                print(attachment.id, path)
                 try:
                     modify_no_modification_time(path, content_handler)
                 except HandlerException as e:
