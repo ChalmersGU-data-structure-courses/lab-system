@@ -15,6 +15,7 @@ dir_script = Path(__file__).parent
 path_extra = dir_script / 'node_modules' / '.bin'
 cache_dir_default = dir_script / 'cache'
 file_auth_token_default = dir_script / 'auth_token'
+timeout_default = 5
 
 p = argparse.ArgumentParser(add_help = False, description = '\n'.join([
     'Process student submissions to an assignment on Canvas.',
@@ -59,66 +60,70 @@ g.add_argument('--process', action = 'store_true', help = '\n'.join([
 
 g = p.add_argument_group('secondary arguments')
 g.add_argument('-h', '--help', action = 'help', help = '\n'.join([
-    'Show this help message and exit.',
+    f'Show this help message and exit.',
 ]))
 g.add_argument('-v', '--verbose', action = 'store_true', help = '\n'.join([
-    'Print INFO level logging.',
-    'This includes accesses to Canvas API endpoints.',
+    f'Print INFO level logging.',
+    f'This includes accesses to Canvas API endpoints.',
 ]))
 g.add_argument('--auth-token-file', type = str, default = file_auth_token_default, help = '\n'.join([
-    'Path to a file storing the Canvas authentication token.',
+    f'Path to a file storing the Canvas authentication token.',
     f'This defaults to {shlex.quote(str(file_auth_token_default))}.',
 ]))
 g.add_argument('--cache-dir', type = str, default = cache_dir_default, help = '\n'.join([
-    'The cache directory to use.',
-    'If it does not exist, it will be created.',
+    f'The cache directory to use.',
+    f'If it does not exist, it will be created.',
     f'This defaults to {shlex.quote(str(cache_dir_default))}.',
 ]))
 g.add_argument('--refresh-submissions', action = 'store_true', help = '\n'.join([
-    'Collect submissions from Canvas instead of the cache.',
-    'Use this at the beginning of a submission procession workflow to make sure the cached submissions are up to date.',
-    'It is recommended to use this option only then for collecting the submission from Canvas is an expensive operation (on the order of 5 minutes).'
+    f'Collect submissions from Canvas instead of the cache.',
+    f'Use this at the beginning of a submission procession workflow to make sure the cached submissions are up to date.',
+    f'It is recommended to use this option only then for collecting the submission from Canvas is an expensive operation (on the order of 5 minutes).'
 ]))
 g.add_argument('--refresh-group-set', action = 'store_true', help = '\n'.join([
-    'Collect group membership information from Canvas instead of the cache.',
-    'Use this at the beginning of a submission procession workflow to make sure the cached group memberships are up to date.',
-    'Collecting group membership information from Canvas is an expensive operation (on the order of 1 minute).'
+    f'Collect group membership information from Canvas instead of the cache.',
+    f'Use this at the beginning of a submission procession workflow to make sure the cached group memberships are up to date.',
+    f'Collecting group membership information from Canvas is an expensive operation (on the order of 1 minute).'
 ]))
 g.add_argument('--recreate-swd', action = 'store_true', help = '\n'.join([
-    'Recreate the entire submission wording directory.'
+    f'Recreate the entire submission wording directory.'
+]))
+g.add_argument('--timeout', type = float, default = timeout_default, help = '\n'.join([
+    f'Timeout in seconds to use for individual tests.',
+    f'Defaults to {timeout_default}',
 ]))
 g.add_argument('--deadline', type = int, choices = [0, 1, 2], help = '\n'.join([
-    'Deadline to use for the overview index file.',
+    f'Deadline to use for the overview index file.',
     f'These are specified in \'{LabAssignment.rel_file_deadlines}\' in the lab folder.',
-    'If unspecified, information is late submissions will not be recorded in the overview file.'
+    f'If unspecified, information is late submissions will not be recorded in the overview file.'
 ]))
 g.add_argument('--groups', nargs = '+', type = str, help = '\n'.join([
-    'Restrict submission processing to these groups.',
-    'If omitted, all currently ungraded submissions will be processed.',
+    f'Restrict submission processing to these groups.',
+    f'If omitted, all currently ungraded submissions will be processed.',
 ]))
 g.add_argument('--write-ids', action = 'store_true', help = '\n'.join([
-    'Together with each submitted file \'<file>\' written in the \'{LabAssignment.rel_dir_current}\' and \'{LabAssignment.rel_dir_previous}\' subdirectories of each lab group, store a file \'.<file>\' containing its Canvas id.',
-    'This can be used for easy Canvas id lookup when writing \'content_handlers\' to fix compilation errors.'
+    f'Together with each submitted file \'<file>\' written in the \'{LabAssignment.rel_dir_current}\' and \'{LabAssignment.rel_dir_previous}\' subdirectories of each lab group, store a file \'.<file>\' containing its Canvas id.',
+    f'This can be used for easy Canvas id lookup when writing \'content_handlers\' to fix compilation errors.'
 ]))
 g.add_argument('--allow-compilation-errors', action = 'store_true', help = '\n'.join([
-    'Continue the submission procession workflow if there were errors in the compilation stage.',
-    'Compilation errors will be listed in the overview document.',
+    f'Continue the submission procession workflow if there were errors in the compilation stage.',
+    f'Compilation errors will be listed in the overview document.',
 ]))
 g.add_argument('--no-compilation', action = 'store_true', help = '\n'.join([
-    'Skip the compilation phase of the submission procession workflow.',
+    f'Skip the compilation phase of the submission procession workflow.',
 ]))
 g.add_argument('--no-testing', action = 'store_true', help = '\n'.join([
-    'Skip the testing phase of the submission procession workflow.',
+    f'Skip the testing phase of the submission procession workflow.',
 ]))
 g.add_argument('--no-pregrading', action = 'store_true', help = '\n'.join([
-    'Skip the pregrading phase of the submission procession workflow.',
+    f'Skip the pregrading phase of the submission procession workflow.',
 ]))
 g.add_argument('--no-overview', action = 'store_true', help = '\n'.join([
-    'Skip creaton of an overview index file at the end of the submission procession workflow.',
+    f'Skip creaton of an overview index file at the end of the submission procession workflow.',
 ]))
 g.add_argument('--remove-class-files', action = 'store_true', help = '\n'.join([
-    'After finishing processing, remove all compiled java files from the submission working directory.',
-    'Use this option if you plan to share this folder with people who may be running different versions of the Java Development Kit.',
+    f'After finishing processing, remove all compiled java files from the submission working directory.',
+    f'Use this option if you plan to share this folder with people who may be running different versions of the Java Development Kit.',
 ]))
 
 args = p.parse_args()
@@ -161,7 +166,7 @@ if args.process:
     if not args.no_compilation:
         lab_assignment.submissions_compile(strict = not(args.allow_compilation_errors), **extra)
     if not args.no_testing:
-        lab_assignment.submissions_test(**extra)
+        lab_assignment.submissions_test(timeout = args.timeout, **extra)
     if not args.no_pregrading:
         lab_assignment.submissions_pregrade(strict = True, **extra)
     if args.remove_class_files:

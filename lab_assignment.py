@@ -396,19 +396,23 @@ class LabAssignment(Assignment):
             self.remove_class_files(self.group_dir(dir, group))
 
     @staticmethod
-    def parse_number_from_file(file):
+    def parse_int_from_file(file):
         return int(file.read_text()) if file.exists() else None
+
+    @staticmethod
+    def parse_float_from_file(file):
+        return float(file.read_text()) if file.exists() else None
     
     @staticmethod
     def is_test_successful(dir):
-        return not LabAssignment.parse_number_from_file(dir / 'timeout') and LabAssignment.parse_number_from_file(dir / 'ret') == 0
+        return not LabAssignment.parse_float_from_file(dir / 'timeout') and LabAssignment.parse_int_from_file(dir / 'ret') == 0
 
     @staticmethod
     def write_test_report(dir, test_name, file_out):
         dir_test = dir / test_name
 
-        ret = LabAssignment.parse_number_from_file(dir_test / 'ret')
-        timeout = LabAssignment.parse_number_from_file(dir_test / 'timeout')
+        ret = LabAssignment.parse_int_from_file(dir_test / 'ret')
+        timeout = LabAssignment.parse_float_from_file(dir_test / 'timeout')
         out = (dir_test / 'out').read_text()
         err = (dir_test / 'err').read_text()
 
@@ -432,7 +436,7 @@ pre { margin: 0px; white-space: pre-wrap; }
                 pre(err, Class = 'error')
         file_out.write_text(doc.render())
 
-    def test(self, dir, strict = False):
+    def test(self, dir, timeout = 5, strict = False):
         logger.log(logging.INFO, 'testing: {}'.format(shlex.quote(str(dir))))
         dir_build = dir / LabAssignment.rel_dir_build
 
@@ -442,14 +446,12 @@ pre { margin: 0px; white-space: pre-wrap; }
         for test_name, test_cmd in self.tests:
             dir_test = dir_build_test / test_name
             dir_test.mkdir()
-            timeout = 5
             (dir_test / 'cmd').write_text(test_cmd)
             try:
                 process = subprocess.run(shlex.split(test_cmd), cwd = dir_build, timeout = timeout, stdout = (dir_test / 'out').open('wb'), stderr = (dir_test / 'err').open('wb'))
+                (dir_test / 'ret').write_text(str(process.returncode))
             except subprocess.TimeoutExpired:
                 (dir_test / 'timeout').write_text(str(timeout))
-                continue
-            (dir_test / 'ret').write_text(str(process.returncode))
 
             # This does not strictly belong here.
             # It should be called only in build_index.
@@ -460,14 +462,14 @@ pre { margin: 0px; white-space: pre-wrap; }
                 assert(is_test_successful(dir))
 
     # Only tests submissions that do not have compilation errors.
-    def submissions_test(self, dir, strict = False, groups = None):
+    def submissions_test(self, dir, timeout = 5, strict = False, groups = None):
         logger.log(25, 'Testing...')
         assert(dir.exists())
         self.test(dir)
         for group in self.parse_groups(groups):
             dir_group = self.group_dir(dir, group)
             if not (dir_group / LabAssignment.rel_file_compilation_errors).exists():
-                self.test(dir_group, strict = strict)
+                self.test(dir_group, timeout = timeout, strict = strict)
 
     def pregrade(self, dir, dir_test, rel_dir_submission, strict = True):
         logger.log(logging.INFO, 'Pregrading: {}'.format(shlex.quote(str(dir))))
