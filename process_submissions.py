@@ -169,19 +169,23 @@ add_to_path(path_extra)
 # Check that all the necessary programs are installed.
 if args.process and not args.no_overview and not (shutil.which('diff2html') and shutil.which('highlights')):
     print_error('Cannot find \'diff2html\' and \'highlights\'.')
+    print_error('They are needed for producing the overview file.')
     print_error('To fix, make sure npm is installed and run \'npm install diff2html-cli highlights\' in the directory of this script.')
     exit(1)
 if args.process and (not args.no_overview) and not (shutil.which('diff')):
     print_error('Cannot find \'diff\'.')
     print_error('It is needed for producing the overview file.')
+    print_error('To fix, make sure diffutils is installed.')
     exit(1)
 if args.process and (not args.no_compilation) and not (shutil.which('javac')):
     print_error('Cannot find \'javac\'.')
     print_error('It is needed for compilation.')
+    print_error('To fix, make sure a Java Development Kit (JDK) is installed.')
     exit(1)
 if args.process and (not args.no_testing or not args.no_pregrading) and not (shutil.which('java')):
     print_error('Cannot find \'java\'.')
     print_error('It is needed for testing and pregrading.')
+    print_error('To fix, make sure a Java Development Kit (JDK) is installed.')
     exit(1)
 
 logging.basicConfig()
