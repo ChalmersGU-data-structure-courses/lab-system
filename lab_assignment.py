@@ -424,10 +424,12 @@ pre { margin: 0px; white-space: pre-wrap; }
                 p('Timed out after {} seconds.'.format(timeout), Class = 'error')
             elif ret != 0:
                 p('Failed with return code {}.'.format(ret), Class = 'error')
-            h2('Output')
-            pre(out)
-            h2('Errors')
-            pre(err, Class = 'error')
+            if out:
+                h2('Output')
+                pre(out)
+            if err:
+                h2('Errors')
+                pre(err, Class = 'error')
         file_out.write_text(doc.render())
 
     def test(self, dir, strict = False):
