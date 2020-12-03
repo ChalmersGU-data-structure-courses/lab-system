@@ -14,6 +14,7 @@ import config
 dir_script = Path(__file__).parent
 path_extra = dir_script / 'node_modules' / '.bin'
 cache_dir_default = dir_script / 'cache'
+file_auth_token_default = dir_script / 'auth_token'
 
 p = argparse.ArgumentParser(add_help = False, description = '\n'.join([
     'Process student submissions to an assignment on Canvas.',
@@ -64,10 +65,14 @@ g.add_argument('-v', '--verbose', action = 'store_true', help = '\n'.join([
     'Print INFO level logging.',
     'This includes accesses to Canvas API endpoints.',
 ]))
+g.add_argument('--auth-token-file', type = str, default = file_auth_token_default, help = '\n'.join([
+    'Path to a file storing the Canvas authentication token.',
+    f'This defaults to {shlex.quote(str(file_auth_token_default))}.',
+]))
 g.add_argument('--cache-dir', type = str, default = cache_dir_default, help = '\n'.join([
     'The cache directory to use.',
     'If it does not exist, it will be created.',
-    f'This defaults to {format(shlex.quote(str(cache_dir_default)))}.',
+    f'This defaults to {shlex.quote(str(cache_dir_default))}.',
 ]))
 g.add_argument('--refresh-submissions', action = 'store_true', help = '\n'.join([
     'Collect submissions from Canvas instead of the cache.',
