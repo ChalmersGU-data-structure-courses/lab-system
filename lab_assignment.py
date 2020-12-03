@@ -1,6 +1,5 @@
 from collections import namedtuple, OrderedDict
 from datetime import datetime, timedelta
-from itertools import chain
 import logging
 import os.path
 from pathlib import Path
@@ -9,6 +8,7 @@ import shutil
 import subprocess
 import tempfile
 from types import SimpleNamespace
+import webbrowser
 
 from dominate import document
 from dominate.tags import *
@@ -683,4 +683,4 @@ pre { margin: 0px; white-space: pre-wrap; }
         file_index = dir / 'index.html'
         file_index.write_text(doc.render())
         if preview:
-            subprocess.run(['firefox', file_index])
+            webbrowser.open(file_index.resolve().as_uri())
