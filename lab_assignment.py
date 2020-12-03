@@ -18,7 +18,7 @@ from general import compose_many, from_singleton, print_error, print_json, mkdir
 from canvas import Canvas, Course, Assignment
 import submission_fix_lib
 
-logger = logging.getLogger("canvas")
+logger = logging.getLogger("lab_assignment")
 
 def diff_cmd(file_0, file_1):
     return ['diff', '--text', '--ignore-blank-lines', '--ignore-space-change', '--strip-trailing-cr', '-U', '1000000', '--'] + [file_0, file_1]
