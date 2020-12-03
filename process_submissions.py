@@ -131,7 +131,7 @@ g.add_argument('--remove-class-files', action = 'store_true', help = '\n'.join([
     f'Use this option if you plan to share this folder with people who may be running different versions of the Java Development Kit.',
 ]))
 g.add_argument('--no-overview', action = 'store_true', help = '\n'.join([
-    f'Skip creaton of an overview index file at the end of the submission processing workflow.',
+    f'Skip creation of an overview index file at the end of the submission processing workflow.',
 ]))
 g.add_argument('--deadline', type = int, choices = [0, 1, 2], help = '\n'.join([
     f'Optional deadline to use for recording of late submissions in the overview index file.',
