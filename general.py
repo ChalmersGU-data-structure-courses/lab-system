@@ -1,5 +1,6 @@
 from collections import defaultdict
 import decimal
+import functools
 import json
 from types import SimpleNamespace
 import re
@@ -8,6 +9,21 @@ from pathlib import Path
 import os
 import shutil
 import sys
+
+def identity(x):
+    return x
+
+def compose(f, g):
+    return lambda x: g(f(x))
+
+def compose_many(*fs):
+    return functools.reduce(compose, fs, identity)
+
+def add_one(n):
+    return n + 1
+
+def times_two(n):
+    return 2 * n
 
 def from_singleton(xs):
     ys = list(xs)
@@ -76,6 +92,9 @@ def with_stem(path, stem):
 def add_suffix(path, suffix):
     return path.parent / (path.name + suffix)
 
+def sorted_directory_list(dir, filter = None):
+   return dict(sorted(((f.name, f) for f in dir.iterdir() if not filter or filter(f)), key = lambda x: x[0]))
+
 class OpenWithModificationTime:
     def __init__(self, path, date):
         self.path = path
@@ -104,13 +123,15 @@ class OpenWithNoModificationTime(OpenWithModificationTime):
 
 def modify(path, callback):
     content = path.read_text()
+    content = callback(content)
     with path.open('w') as file:
-       file.write(callback(content))
+       file.write(content)
 
 def modify_no_modification_time(path, callback):
     content = path.read_text()
+    content = callback(content)
     with OpenWithNoModificationTime(path) as file:
-       file.write(callback(content))
+       file.write(content)
 
 def mkdir_fresh(path):
     if path.exists():
@@ -183,3 +204,8 @@ def format_timespan_using(delta, time_unit, precision = 2):
 
 def format_timespan(delta, precision = 2):
     return format_timespan_using(delta, appropriate_time_unit(delta), precision)
+
+def add_to_path(dir):
+    path = str(dir.resolve())
+    assert(not (':' in path))
+    os.environ['PATH'] = path + ':' + os.environ['PATH']

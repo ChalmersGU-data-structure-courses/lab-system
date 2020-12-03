@@ -79,7 +79,7 @@ def autograde(group, cfg):
 
     # Copy template files to outfilder
     for f in cfg.templates:
-        shutil.copy(cfg.skeleton / f, staging / f)
+        shutil.copyfile(cfg.skeleton / f, staging / f)
     for f in cfg.datadirs:
         os.symlink((cfg.skeleton / f).relative_to(staging), staging / f)
 

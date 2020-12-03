@@ -3,21 +3,22 @@
 
 answers = 'answers.txt'
 
-# This is a dictionary from file ids to name handlers.
+# This is a dictionary from file ids to (a chained lists of) name handlers.
 # A name handler takes a filename and returns the intended filename, or 'None' if the file is to be ignored.
 # This is used for the following purposes:
 # * Correct wrongly named files such as , 'answers-3.txt', 'answers-revised.txt', 'answers.TXT', 'Group 88 answers.txt'.
 #   Use:
 #   - remove_windows_copy [example: 'answers (2).txt']
 #   - remove_dash_copy [example: 'answers-3.txt']
-#   - normalize_suffix('answers.txt') [examples: 'answers-revised.txt', 'answers.TXT']
+#   - fix_capitalization('answers.txt') [examples: 'Answers.txt', 'answers.TXT']
+#   - normalize_suffix('answers.txt') [examples: 'answers-revised.txt']
 #   - rename('answers.txt') [if necessary, example: 'Group 88 answers.txt']
-# * Ignore copies of template files not part of the solution.
+# * Ignore copies of problem files not part of the solution.
 #   Use:
-#   - is_template_file
-# * Rename modified template files not part of the solution so that they don't collide with the ones copied in by us.
+#   - is_problem_file
+# * Keep modified copies of problem files.
 #   Use:
-#   - suffix
+#   - is_modified_problem_file
 # * Ignore irrelevant extraneous files:
 #   Use:
 #   - ignore

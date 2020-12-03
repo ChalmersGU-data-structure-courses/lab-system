@@ -1,7 +1,9 @@
 from collections import namedtuple, OrderedDict
 from datetime import datetime, timedelta
-from pathlib import Path
+from itertools import chain
+import logging
 import os.path
+from pathlib import Path
 import shlex
 import shutil
 import subprocess
@@ -12,12 +14,11 @@ from dominate import document
 from dominate.tags import *
 from dominate.util import raw, text
 
-from general import print_error, print_json, mkdir_fresh, exec_simple, link_dir_contents, add_suffix, modify, format_timespan
+from general import compose_many, from_singleton, print_error, print_json, mkdir_fresh, exec_simple, link_dir_contents, add_suffix, modify, format_timespan, sorted_directory_list
 from canvas import Canvas, Course, Assignment
-from submission_fix_lib import load_submission_fixes
+import submission_fix_lib
 
-def sorted_filenames(dir):
-    return sorted(list(file.name for file in dir.iterdir() if file.is_file()))
+logger = logging.getLogger("canvas")
 
 def diff_cmd(file_0, file_1):
     return ['diff', '--text', '--ignore-blank-lines', '--ignore-space-change', '--strip-trailing-cr', '-U', '1000000', '--'] + [file_0, file_1]
@@ -74,6 +75,7 @@ def compile_java(dir, files, force_recompile = False, strict = False):
         cmd = javac_cmd(file.relative_to(dir) for file in files)
         process = subprocess.run(cmd, cwd = dir, stderr = subprocess.PIPE, encoding = 'utf-8')
         if process.returncode != 0:
+            print_error('Encountered compilation errors in {}:'.format(shlex.quote(str(dir))))
             print_error(process.stderr)
             assert(not strict)
             return process.stderr
@@ -130,15 +132,20 @@ class LabAssignment(Assignment):
     rel_dir_problem = 'problem'
     rel_dir_solution = 'solution'
     rel_dir_test = 'test'
+    rel_file_tests = 'tests.py'
+    rel_file_tests_java = 'tests_java.py'
+    rel_file_deadlines = 'deadlines.txt'
 
     # static
     rel_dir_current = 'current'
     rel_dir_previous = 'previous'
     rel_dir_build = 'build'
     rel_dir_build_test = 'build-test'
+    rel_dir_analysis = 'analysis'
 
     # static
-    rel_dir_compilation_errors = 'complication-errors.txt'
+    rel_file_compilation_errors = 'complication-errors.txt'
+    rel_file_pregrading = 'pregrading.txt'
 
     @staticmethod
     def parse_tests(file):
@@ -155,21 +162,22 @@ class LabAssignment(Assignment):
         self.dir_problem = dir / LabAssignment.rel_dir_problem
         self.dir_solution = dir / LabAssignment.rel_dir_solution
         self.dir_test = dir / LabAssignment.rel_dir_test
-        self.file_submission_fixes = dir / 'submission_fixes.py'
 
-        if self.file_submission_fixes.is_file():
-            r = load_submission_fixes(self.file_submission_fixes)
-            self.name_handlers = r.name_handlers
-            self.content_handlers = r.content_handlers
+        script_submission_fixes = dir / submission_fix_lib.script_submission_fixes
+        if script_submission_fixes.is_file():
+            r = submission_fix_lib.load_submission_fixes(script_submission_fixes)
+            self.name_handlers = submission_fix_lib.package_handlers(r.name_handlers)
+            self.content_handlers = submission_fix_lib.package_handlers(r.content_handlers)
         else:
             self.name_handlers = None
             self.content_handlers = None
 
-        self.solution_files = dict((f.name, f) for f in self.dir_solution.iterdir() if f.is_file())
-        self.deadlines = [datetime.fromisoformat(line) for line in (dir / 'deadlines.txt').read_text().splitlines()]
+        self.files_solution = sorted_directory_list(self.dir_solution, filter = lambda f: f.is_file())
+        self.files_problem = sorted_directory_list(self.dir_problem, filter = lambda f: f.is_file())
+        self.deadlines = [datetime.fromisoformat(line) for line in (dir / LabAssignment.rel_file_deadlines).read_text().splitlines()]
 
-        self.tests = LabAssignment.parse_tests(self.dir_test / 'tests.py')
-        self.tests_java = LabAssignment.parse_tests(self.dir_test / 'tests_java.py')
+        self.tests = LabAssignment.parse_tests(self.dir_test / LabAssignment.rel_file_tests)
+        self.tests_java = LabAssignment.parse_tests(self.dir_test / LabAssignment.rel_file_tests_java)
 
     # Only works if groups follow a uniform naming scheme with varying number at end of string.
     def group_from_number(self, group_number):
@@ -200,8 +208,11 @@ class LabAssignment(Assignment):
             x = self.group_set.group_prefix + x
         return self.group_set.group_name_to_id[x]
 
+    def get_ungraded_submissions(self):
+        return [group for group, s in self.submissions.items() if LabAssignment.is_to_be_graded(s)]
+
     def parse_groups(self, groups = None):
-        return map(self.parse_group, groups) if groups != None else self.submissions.keys()
+        return map(self.parse_group, groups) if groups != None else self.get_ungraded_submissions()
 
     @staticmethod
     def is_to_be_graded(s):
@@ -211,28 +222,20 @@ class LabAssignment(Assignment):
 
         return Assignment.current_submission(s).workflow_state == 'submitted'
 
-    def get_ungraded_submissions(self):
-        return [group for group, s in self.submissions.items() if LabAssignment.is_to_be_graded(s)]
-
-    def unpack(self, dir, submissions, write_ids = False):
-        print('unpacking {}...'.format(dir))
+    def unpack(self, dir, submissions, unhandled = None, write_ids = False):
+        logger.log(logging.INFO, 'unpacking: {}'.format(shlex.quote(str(dir))))
         unhandled_any = False
         dir.mkdir()
 
         def unhandled_warn(id, name):
-            nonlocal unhandled_any
-            unhandled_any = True
-            template_file = self.dir_problem / name
+            nonlocal unhandled
             name_unhandled = name + '.unhandled'
-            suggestion = '???'
-            if template_file.is_file():
-                suggestion = 'is_template_file' if template_file.read_text() == submitted_file.read_text() else 'is_modified_template_file';
-            print_error('    {}: {}, # {}'.format(id, suggestion, dir / name))
+            if unhandled != None:
+                unhandled.append((id, name, dir / name_unhandled))
             return name_unhandled
 
-        files = Assignment.get_files(submissions, Assignment.name_handler(self.solution_files, self.name_handlers, unhandled_warn))
+        files = Assignment.get_files(submissions, Assignment.name_handler(self.files_solution, self.name_handlers, unhandled_warn))
         file_mapping = self.create_submission_dir(dir, submissions[-1], files, write_ids = write_ids, content_handlers = self.content_handlers)
-        return unhandled_any
 
     # static
     stages = {
@@ -240,27 +243,75 @@ class LabAssignment(Assignment):
         True: rel_dir_previous,
     }
 
-    def submissions_unpack(self, dir, write_ids = False, groups = None):
-        mkdir_fresh(dir)
+    def name_handler_suggestion(self, name, file):
+        suggestions = list()
 
-        unhandled_any = False
+        # Remove copy suffices
+        repeat = ['remove_windows_copy', 'remove_dash_copy']
+        while(True):
+            progress = False
+            for handler_name in repeat:
+                try:
+                    name = getattr(submission_fix_lib, handler_name)(name)
+                    suggestions.append(handler_name)
+                    progress = True
+                except submission_fix_lib.HandlerException:
+                    pass
+            if not progress:
+                break
+
+        # Fix capitalization.
+        # Known files are assumed unique up to capitalization.
+        names_known_lower = dict((n.lower(), n) for n in chain(self.files_solution, self.files_problem))
+        x = names_known_lower.get(name.lower())
+        if x and name != x:
+            suggestions.append('fix_capitalization({})'.format(repr(x)))
+            name = x
+
+        # Recognition stage
+        file_problem = self.files_problem.get(name)
+        if name in self.files_solution:
+            pass
+        elif file_problem:
+            suggestions.append('is_problem_file' if file_problem.read_bytes() == file.read_bytes() else 'is_modified_problem_file')
+        else:
+            suggestions.append('???')
+
+        if len(suggestions) == 1:
+            return from_singleton(suggestions)
+        return '[{}]'.format(', '.join(suggestions))
+
+    def submissions_unpack(self, dir, write_ids = False, groups = None):
+        logger.log(25, 'Unpacking submissions...')
+        dir.mkdir(exist_ok = True)
+
+        unhandled = list()
         for group in self.parse_groups(groups):
             dir_group = self.group_dir(dir, group)
-            dir_group.mkdir()
+            mkdir_fresh(dir_group)
             for previous, rel_dir in LabAssignment.stages.items():
                 submissions = Assignment.get_submissions(self.submissions[group], previous)
                 dir_group_submission = dir_group / rel_dir
                 if submissions:
-                    unhandled_any |= self.unpack(dir_group_submission, submissions, write_ids = write_ids)
+                    self.unpack(dir_group_submission, submissions, unhandled = unhandled if not previous else None, write_ids = write_ids)
 
             with (dir / 'members.txt').open('w') as file:
                 for user in self.group_set.group_users[group]:
                     print(self.group_set.user_str(user), file = file)
 
-        assert not unhandled_any, 'There were unhandled files.'
+        if unhandled:
+            print_error('There were unhandled files.')
+            print_error('You can find them by running: find {}/*/{} -name \'*.unhandled\''.format(shlex.quote(str(dir)), shlex.quote(LabAssignment.rel_dir_current)))
+            print_error('Add (without comments) and complete the below \'name_handlers\' in \'{}\' in the lab directory.'.format(submission_fix_lib.script_submission_fixes))
+            print_error('Remember to push your changes so that your colleagues benefit from your fixes.')
+            for id, name, file in unhandled:
+                suggestion = self.name_handler_suggestion(name, file)
+                print_error('    # {}'.format(shlex.quote(str(file))))
+                print_error('    {}: {},'.format(id, suggestion))
+            exit(1)
 
     def prepare_build(self, dir, dir_problem, rel_dir_submission):
-        print('preparing build directory {}...'.format(dir))
+        logger.log(logging.INFO, 'preparing build directory: {}'.format(shlex.quote(str(dir))))
         dir_build = dir / LabAssignment.rel_dir_build
         dir_submission = dir / rel_dir_submission
 
@@ -268,16 +319,19 @@ class LabAssignment(Assignment):
         mkdir_fresh(dir_build)
         link_dir_contents(dir_problem, dir_build)
 
-        # Copy the submitted files.
+        # Link the submitted files.
         for file in dir_submission.iterdir():
             if not file.name.startswith('.'):
                 target = dir_build / file.name
                 assert(not(target.is_dir()))
                 if target.is_file():
                     target.unlink()
-                shutil.copy(file, target)
+                target.symlink_to(os.path.relpath(file, dir_build))
 
     def submissions_prepare_build(self, dir, groups = None):
+        logger.log(25, 'Preparing build directories...')
+        assert(dir.exists())
+
         # make output directory self-contained
         if not dir.samefile(self.dir):
             shutil.copytree(self.dir_problem, dir / LabAssignment.rel_dir_problem, dirs_exist_ok = True)
@@ -289,21 +343,24 @@ class LabAssignment(Assignment):
 
     # Return value indicates success.
     def compile(self, dir, dir_problem, rel_dir_submission, strict = True):
-        print('compiling {}...'.format(dir))
+        logger.log(logging.INFO, 'compiling: {}'.format(shlex.quote(str(dir))))
         dir_build = dir / LabAssignment.rel_dir_build
         dir_submission = dir / rel_dir_submission
 
         # Compile java files.
         files_java = list(f for f in dir_build.iterdir() if f.suffix == '.java')
-        compilation_errors = compile_java(dir_build, files_java, strict = strict)
+        compilation_errors = compile_java(dir_build, files_java, strict = False)
         if compilation_errors != None:
-            (dir / LabAssignment.rel_dir_compilation_errors).write_text(compilation_errors)
+            (dir / LabAssignment.rel_file_compilation_errors).write_text(compilation_errors)
             return False
 
         return True
 
     # Return value indicates success.
     def submissions_compile(self, dir, strict = True, groups = None):
+        logger.log(25, 'Compiling...')
+        assert(dir.exists())
+
         # make output directory self-contained
         if not dir.samefile(self.dir):
             shutil.copytree(self.dir_problem, dir / LabAssignment.rel_dir_problem, dirs_exist_ok = True)
@@ -311,20 +368,32 @@ class LabAssignment(Assignment):
 
         r = self.compile(dir, dir / LabAssignment.rel_dir_problem, LabAssignment.rel_dir_solution, strict = True) # solution files must compile
         for group in self.parse_groups(groups):
-            r &= self.compile(self.group_dir(dir, group), dir / LabAssignment.rel_dir_problem, LabAssignment.rel_dir_current, strict = strict)
-        return True
+            r &= self.compile(self.group_dir(dir, group), dir / LabAssignment.rel_dir_problem, LabAssignment.rel_dir_current, strict = False)
+        if not r and strict:
+            print_error('There were compilation errors.')
+            print_error('Investigate if any of them are due to differences in the students\' compilation environment, for example: package declarations, unresolved imports.')
+            print_error('If so, add appropriate handlers to \'content_handlers\' in \'{}\' to fix them persistently.'.format(submission_fix_lib.script_submission_fixes))
+            print_error('For this, you must know the Canvas ids of the files to edit.')
+            print_error('These can be learned by activating the option to write ids.')
+            print_error('Remember to push your changes so that your colleagues benefit from your fixes.')
+            print_error('You need to unpack the submissions again for your fixes to take effect.')
+            print_error('If there are still unresolved compilation errors, you may allow them in this phase (they will be reported in the overview index).')
+            exit(1)
+        return r
 
     def remove_class_files(self, dir):
-        print('removing class files for {}...'.format(dir))
+        logger.log(logging.INFO, 'removing class files: {}'.format(shlex.quote(str(dir))))
         dir_build = dir / LabAssignment.rel_dir_build
         for file in dir_build.iterdir():
             if file.suffix == '.class':
                 file.unlink()
 
     def submissions_remove_class_files(self, dir, groups = None):
+        logger.log(25, 'Removing class files...')
+        assert(dir.exists())
         self.remove_class_files(dir)
         for group in self.parse_groups(groups):
-            self.build(self.group_dir(dir, group))
+            self.remove_class_files(self.group_dir(dir, group))
 
     @staticmethod
     def parse_number_from_file(file):
@@ -362,7 +431,7 @@ pre { margin: 0px; white-space: pre-wrap; }
         file_out.write_text(doc.render())
 
     def test(self, dir, strict = False):
-        print('testing {}...'.format(dir))
+        logger.log(logging.INFO, 'testing: {}'.format(shlex.quote(str(dir))))
         dir_build = dir / LabAssignment.rel_dir_build
 
         dir_build_test = dir / LabAssignment.rel_dir_build_test
@@ -372,9 +441,9 @@ pre { margin: 0px; white-space: pre-wrap; }
             dir_test = dir_build_test / test_name
             dir_test.mkdir()
             timeout = 5
-            (dir_test / 'cmd').write_text(shlex.join(test_cmd))
+            (dir_test / 'cmd').write_text(test_cmd)
             try:
-                process = subprocess.run(test_cmd, cwd = dir_build, timeout = timeout, stdout = (dir_test / 'out').open('wb'), stderr = (dir_test / 'err').open('wb'))
+                process = subprocess.run(shlex.split(test_cmd), cwd = dir_build, timeout = timeout, stdout = (dir_test / 'out').open('wb'), stderr = (dir_test / 'err').open('wb'))
             except subprocess.TimeoutExpired:
                 (dir_test / 'timeout').write_text(str(timeout))
                 continue
@@ -382,22 +451,24 @@ pre { margin: 0px; white-space: pre-wrap; }
 
             # This does not strictly belong here.
             # It should be called only in build_index.
-            # The report should be saved in the _view directory.
+            # The report should be saved in the analysis directory.
             LabAssignment.write_test_report(dir_build_test, test_name, dir_test / 'report.html')
 
             if strict:
                 assert(is_test_successful(dir))
 
+    # Only tests submissions that do not have compilation errors.
     def submissions_test(self, dir, strict = False, groups = None):
+        logger.log(25, 'Testing...')
+        assert(dir.exists())
         self.test(dir)
         for group in self.parse_groups(groups):
-            self.test(self.group_dir(dir, group), strict = strict)
+            dir_group = self.group_dir(dir, group)
+            if not (dir_group / LabAssignment.rel_file_compilation_errors).exists():
+                self.test(dir_group, strict = strict)
 
     def pregrade(self, dir, dir_test, rel_dir_submission, strict = True):
-        if not self.tests_java:
-            return
-
-        print('pregrading {}...'.format(dir))
+        logger.log(logging.INFO, 'Pregrading: {}'.format(shlex.quote(str(dir))))
         dir_build = dir / LabAssignment.rel_dir_build
         dir_submission = dir / rel_dir_submission
         dir_test_java = dir_test / 'java'
@@ -406,7 +477,7 @@ pre { margin: 0px; white-space: pre-wrap; }
         files_java = link_dir_contents(dir_test_java, dir_build)
 
         # Compile java files.
-        compile_java(dir_build, files_java, strict = strict)
+        compile_java(dir_build, files_java, strict = True)
 
         # Run them.
         def f(java_name):
@@ -418,21 +489,29 @@ pre { margin: 0px; white-space: pre-wrap; }
 
         (dir / 'pregrading.txt').write_text('\n'.join(f(java_name) for java_name in self.tests_java))
 
+    # Only tests submissions that do not have compilation errors.
     def submissions_pregrade(self, dir, strict = True, groups = None):
+        assert(dir.exists())
         if self.tests_java:
+            logger.log(25, 'Pregrading.')
+
             # make output directory self-contained
             if not dir.samefile(self.dir):
                 shutil.copytree(self.dir_test, dir / LabAssignment.rel_dir_test, dirs_exist_ok = True)
 
-            self.pregrade(dir, dir / LabAssignment.rel_dir_test, LabAssignment.rel_dir_solution, strict = True)
+            self.pregrade(dir, dir / LabAssignment.rel_dir_test, LabAssignment.rel_dir_solution, strict = strict)
             for group in self.parse_groups(groups):
-                self.pregrade(self.group_dir(dir, group), dir / LabAssignment.rel_dir_test, LabAssignment.rel_dir_current, strict = strict)
+                dir_group = self.group_dir(dir, group)
+                if not (dir_group / LabAssignment.rel_file_compilation_errors).exists():
+                    self.pregrade(dir_group, dir / LabAssignment.rel_dir_test, LabAssignment.rel_dir_current, strict = strict)
 
     def remove_class_files_submissions(self, dir, groups = None):
         for group in self.parse_groups(groups):
             self.remove_class_files(self.group_dir(dir, group))
 
     def build_index(self, dir, groups = None, deadline = None, preview = True):
+        logger.log(25, 'Writing overview index...')
+        assert(dir.exists())
         doc = document()
         doc.title = 'Grading Overview'
         with doc.head:
@@ -447,27 +526,25 @@ pre { margin: 0px; white-space: pre-wrap; }
 .error { color: #af0000; }
 """)
 
-        rel_view = '_view'
         file_syntax_highlight_css = Path('syntax-highlight.css')
-        shutil.copy(Path(__file__).parent / file_syntax_highlight_css, dir / file_syntax_highlight_css)
+        shutil.copyfile(Path(__file__).parent / file_syntax_highlight_css, dir / file_syntax_highlight_css)
 
         row_data_dict = dict()
         for group in self.parse_groups(groups):
-            print('Processing {}...'.format(self.group_set.group_str(group)))
+            logger.log(logging.INFO, 'processing {}...'.format(self.group_set.group_str(group)))
 
             row_data = SimpleNamespace()
             row_data_dict[group] = row_data
 
             rel_dir_group = self.group_dir(Path(), group)
-            rel_dir_view = rel_dir_group / rel_view
-            (dir / rel_dir_view).mkdir(exist_ok = True)
-            dir_view = dir / rel_dir_view
-            mkdir_fresh(dir_view)
+            rel_dir_group_analysis = rel_dir_group / LabAssignment.rel_dir_analysis
+            (dir / rel_dir_group_analysis).mkdir(exist_ok = True)
+            dir_analysis = dir / rel_dir_group_analysis
+            mkdir_fresh(dir_analysis)
 
             dir_group = self.group_dir(dir, group)
-            filenames_current = sorted_filenames(dir_group / LabAssignment.rel_dir_current)
-            filenames_solution = sorted_filenames(self.dir_solution)
-            filenames = filenames_current + list(set(filenames_solution) - set(filenames_current))
+            filenames_current = sorted_directory_list(dir_group / LabAssignment.rel_dir_current, filter = lambda f: f.is_file() and not f.name.startswith('.')).keys()
+            filenames = list(filenames_current) + list(set(self.files_solution) - set(filenames_current))
 
             current_submission = Assignment.current_submission(self.submissions[group])
 
@@ -496,7 +573,7 @@ pre { margin: 0px; white-space: pre-wrap; }
             row_data.files = td()
             files_table_body = row_data.files.add(table(Class = 'files')).add(tbody())
             for filename in filenames:
-                files_table_body.add(tr()).add(format_file(dir, filename, rel_dir_group / LabAssignment.rel_dir_current, rel_dir_view / LabAssignment.rel_dir_current, file_syntax_highlight_css))
+                files_table_body.add(tr()).add(format_file(dir, filename, rel_dir_group / LabAssignment.rel_dir_current, rel_dir_group_analysis / LabAssignment.rel_dir_current, file_syntax_highlight_css))
 
             # Diffs to other files
             def build_diff_table(rel_base_dir, folder_name):
@@ -505,7 +582,7 @@ pre { margin: 0px; white-space: pre-wrap; }
                     filename,
                     rel_base_dir / folder_name,
                     rel_dir_group / LabAssignment.rel_dir_current,
-                    rel_dir_view / folder_name,
+                    rel_dir_group_analysis / folder_name,
                     '{}: compared to {}'.format(filename, folder_name)
                 ))
 
@@ -514,11 +591,11 @@ pre { margin: 0px; white-space: pre-wrap; }
             row_data.files_vs_solution = build_diff_table(Path(), LabAssignment.rel_dir_solution)
 
             # Compilation errors
-            file_compilation_errors = dir_group / LabAssignment.rel_dir_compilation_errors
+            file_compilation_errors = dir_group / LabAssignment.rel_file_compilation_errors
             row_data.compilation_errors = td(pre(file_compilation_errors.read_text(), Class = 'error')) if file_compilation_errors.exists() else None
 
             # Tests
-            (dir_view / LabAssignment.rel_dir_build_test).mkdir()
+            (dir_analysis / LabAssignment.rel_dir_build_test).mkdir()
 
             def handle_test(test_name):
                 rel_test_dir = rel_dir_group / Path(LabAssignment.rel_dir_build_test) / test_name
@@ -534,13 +611,13 @@ pre { margin: 0px; white-space: pre-wrap; }
                 'out',
                 Path(LabAssignment.rel_dir_build_test) / test_name,
                 rel_dir_group / LabAssignment.rel_dir_build_test / test_name,
-                rel_dir_view / LabAssignment.rel_dir_build_test / test_name,
-                'test {} output: compared to {}'.format(test_name, LabAssignment.rel_dir_solution)
+                rel_dir_group_analysis / LabAssignment.rel_dir_build_test / test_name,
+                'Test {} output: compared to {}'.format(test_name, LabAssignment.rel_dir_solution)
             ))
             row_data.tests_errors = None
 
             # Pregrading
-            file_pregrading = dir_group / 'pregrading.txt'
+            file_pregrading = dir_group / LabAssignment.rel_file_pregrading
             row_data.pregrading = td(pre(file_pregrading.read_text())) if file_pregrading.exists() else None
 
             # Comments
@@ -552,8 +629,10 @@ pre { margin: 0px; white-space: pre-wrap; }
 
         T = namedtuple('KeyData', ['title', 'style'], defaults = [None])
 
+        # This took me more than 2 hours.
         def with_after(title, title_after):
-            return T(th(title, span(title_after, style = 'float: right; white-space: pre;')))
+            return T(th(div(title + title_after, style = 'white-space: pre; max-height: 0; visibility: hidden;'), title, span(title_after, style = 'float: right; white-space: pre;')))
+
         def following(title):
             return T(title, style = 'border-left-color: lightgrey;')
 

@@ -1,6 +1,27 @@
 import re
 from pathlib import PurePath
-from types import SimpleNamespace
+from types import FunctionType, SimpleNamespace
+
+from general import compose_many
+
+################################################################################
+# General tools
+
+class HandlerException(Exception):
+    pass
+
+class NoMatch(HandlerException):
+    pass
+
+# Construct a handler performing a single replacement.
+def replace(pattern, replacement):
+    regex = re.compile(pattern)
+    def f(s):
+        match = regex.search(s)
+        if not match:
+            raise NoMatch('replace({}, {})({})'.format(repr(pattern), repr(replacement), repr(s)))
+        return s[:match.start()] + match.expand(replacement) + s[match.end():]
+    return f
 
 ################################################################################
 # Name handlers
@@ -9,46 +30,49 @@ from types import SimpleNamespace
 def keep(name):
     return name
 
-# Do not consider this file.
+# Do not keep this file.
 def ignore(name):
     return None
 
-# Use only if submitted file is unmodified template file.
-is_template_file = ignore
+# Use only if submitted file is unmodified problem file.
+is_problem_file = ignore
 
-# Use if submitted file is modified template file.
-is_modified_template_file = keep
+# Use if submitted file is modified problem file.
+is_modified_problem_file = keep
 
 # Use if a student has submitted a filename already part of the problem files
-def suffix(name):
-    return name + '.submitted'
+#def suffix(name):
+#    return name + '.submitted'
 
-# Rename to another file.
+# Ensure capitalization matches that of 'target'.
+def fix_capitalization(target):
+    def f(name):
+        if name.lower() != target.lower():
+            raise NoMatch()
+        return target
+    return f
+
+# Rename file.
 def rename(name):
     return lambda _: name
 
 # Removes copy suffices like ' (1)' introduced by Windows.
-def remove_windows_copy(name):
-    return re.sub(r'^([^.]+) \(\d+\)\.(.+)$', r'\1.\2', name)
+remove_windows_copy = replace(r'^([^.]+) \(\d+\)(\.[^\s]+)$', r'\1\2')
 
 # Removes dash suffices like '-1' introduced by students to mirror Canvas.
-def remove_dash_copy(name):
-    return re.sub(r'^([^.]+)-\d+\.(.+)$', r'\1.\2', name)
+remove_dash_copy = replace(r'^([^.]+)-\d+\.(.+)$', r'\1.\2')
 
 # Takes care of most variants of a given filename.
 def normalize_suffix(target):
     stem = PurePath(target).stem
     def f(name):
-        assert(name.lower().startswith(stem))
+        if not name.lower().startswith(stem):
+            raise HandlerException('normalize_suffix({})({})'.format(repr(target), repr(name)))
         return target
     return f
 
 ################################################################################
 # Content handlers
-
-# Search and replace.
-def replace(pattern, replacement):
-    return lambda content: re.sub(pattern, replacement, content)
 
 # TODO: fix issues /* ^@ SUBMISSION_EDIT */
 def uncomment(pattern):
@@ -61,8 +85,22 @@ remove_package_declaration = uncomment(r'^package[^;]*;')
 ################################################################################
 # Loading a submission fixes file.
 
+script_submission_fixes = 'submission_fixes.py'
+
 def load_submission_fixes(file):
     e = file.read_text()
     r = dict()
     exec(e, globals(), r)
     return SimpleNamespace(**r)
+
+# Turn handler dictionary into a function from ids to endofunctions on data.
+def package_handlers(dict_handlers):
+    def f(id):
+        a = dict_handlers.get(id)
+        if a:
+            if isinstance(a, FunctionType):
+                return a
+            if isinstance(a, list):
+                return compose_many(*a)
+        return None
+    return f

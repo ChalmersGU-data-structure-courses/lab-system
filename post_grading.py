@@ -1,7 +1,8 @@
 import csv
 from collections import namedtuple
-from pathlib import Path
 import logging
+from pathlib import Path
+import shlex
 
 from general import print_error
 from canvas import Canvas, Course, Groups, Assignment
@@ -106,7 +107,7 @@ if check_run:
     check_dir.mkdir()
 else:
     print(check_dir.is_dir())
-    assert check_dir.is_dir(), 'The check directory \'{}\' does not exist: run with check_run=False first.'.format(str(check_dir))
+    assert check_dir.is_dir(), 'The check directory {} does not exist: run with check_run=False first.'.format(shlex.quote(str(check_dir)))
 
 # Also submit grades for users who have not submitted as part of their group.
 print('Submitting grades (and comments)...')

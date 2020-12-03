@@ -1,16 +1,19 @@
+from collections import defaultdict, namedtuple
+from datetime import datetime, timedelta, timezone
+import logging
+import http_logging
 import json
+import os.path
+from pathlib import PurePath, Path
 import requests
+import shlex
+import shutil
 import types
 import urllib.parse
-from pathlib import PurePath, Path
-from datetime import datetime, timedelta, timezone
-from collections import defaultdict, namedtuple
-import os.path
-import http_logging
-import logging
 
 from general import from_singleton, unique_by, group_by, JSONObject, print_json, print_error, write_lines, set_modification_time, OpenWithModificationTime, OpenWithNoModificationTime, modify_no_modification_time, guess_encoding
 import simple_cache
+from submission_fix_lib import HandlerException
 
 logger = logging.getLogger("canvas")
 
@@ -27,7 +30,7 @@ class Canvas:
                 self.auth_token = Path(auth_token).open().read().strip()
             except FileNotFoundError:
                 print_error('No Canvas authorization token found.')
-                print_error('Expected Canvas authorization token in file {}.'.format(auth_token))
+                print_error('Expected Canvas authorization token in file {}.'.format(shlex.quote(str(auth_token))))
                 assert(False)
         else:
             self.auth_token = auth_token
@@ -142,8 +145,7 @@ class Canvas:
     # 'file' is a file description object retrieved from Canvas.
     # The file modification time is set to the modification time of the file on Canvas.
     def place_file(self, target, file_descr, use_cache = True):
-        source = self.get_file(file_descr, use_cache)
-        target.write_bytes(source.read_bytes())
+        shutil.copyfile(self.get_file(file_descr, use_cache), target)
         set_modification_time(target, file_descr.modified_at_date)
 
     # Perform a PUT request to the designated endpoint.
@@ -397,29 +399,32 @@ class Assignment:
         def f(id, name):
             if name in whitelist:
                 return name;
-            handler = handlers.get(id)
+            handler = handlers(id) if handlers else None
             if handler:
-                if isinstance(handler, types.FunctionType):
-                    handler = [handler]
-                for h in handler:
-                    name = h(name)
-                return name
+                return handler(name)
             if unhandled:
                 return unhandled(id, name)
             return None
         return f
 
+    # We treat submissions as cumulative: later files replace earlier files.
+    # We do this because students sometimes only resubmit the updated files.
     @staticmethod
     def get_files(submissions, name_handler = None):
         files = dict()
         for submission in submissions:
+            submission_files = dict()
             for attachment in submission.attachments:
                 name = Assignment.get_file_name(attachment)
                 if name_handler:
                     name = name_handler(attachment.id, name)
                 if name:
-                    files[name] = attachment
-
+                    prev_attachment = submission_files.get(name)
+                    if prev_attachment:
+                        print_error('duplicate filename {} in submission {}: files ids {} and {}'.format(name, submission.id, prev_attachment.id, attachment.id))
+                        raise Exception()
+                    submission_files[name] = attachment
+            files.update(submission_files)
         return files
 
     @staticmethod
@@ -473,13 +478,14 @@ class Assignment:
             if write_ids:
                 with (dir / ('.' + filename)).open('w') as file:
                     file.write(str(attachment.id))
-            if content_handlers:
-                content_handler = content_handlers.get(attachment.id)
-                if content_handler:
-                    if isinstance(content_handler, types.FunctionType):
-                        content_handler = [content_handler]
-                    for handler in content_handler:
-                        modify_no_modification_time(path, handler)
+            content_handler = content_handlers(attachment.id) if content_handlers else None
+            if content_handler:
+                print(attachment.id, path)
+                try:
+                    modify_no_modification_time(path, content_handler)
+                except HandlerException as e:
+                    print_error('Content handler failed on file id {}: {}'.format(attachment.id, shlex.quote(str(path))))
+                    raise e
         set_modification_time(dir, submission.submitted_at_date)
         return file_mapping
 
