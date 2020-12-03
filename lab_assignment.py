@@ -16,7 +16,9 @@ from dominate.util import raw, text
 
 from general import compose_many, from_singleton, print_error, print_json, mkdir_fresh, exec_simple, link_dir_contents, add_suffix, modify, format_timespan, sorted_directory_list
 from canvas import Canvas, Course, Assignment
+import lab_assignment_constants
 import submission_fix_lib
+import submission_fix_lib_constants
 
 logger = logging.getLogger("lab_assignment")
 
@@ -128,25 +130,6 @@ def format_diff(root, name, rel_dir_0, rel_dir_1, rel_dir_formatting, diff_title
     return cell
 
 class LabAssignment(Assignment):
-    # static
-    rel_dir_problem = 'problem'
-    rel_dir_solution = 'solution'
-    rel_dir_test = 'test'
-    rel_file_tests = 'tests.py'
-    rel_file_tests_java = 'tests_java.py'
-    rel_file_deadlines = 'deadlines.txt'
-
-    # static
-    rel_dir_current = 'current'
-    rel_dir_previous = 'previous'
-    rel_dir_build = 'build'
-    rel_dir_build_test = 'build-test'
-    rel_dir_analysis = 'analysis'
-
-    # static
-    rel_file_compilation_errors = 'complication-errors.txt'
-    rel_file_pregrading = 'pregrading.txt'
-
     @staticmethod
     def parse_tests(file):
         return exec_simple(file).tests if file.exists() else []
@@ -159,11 +142,11 @@ class LabAssignment(Assignment):
         self.name = (dir / 'name').read_text()
         super().__init__(canvas, course_id, self.name)
 
-        self.dir_problem = dir / LabAssignment.rel_dir_problem
-        self.dir_solution = dir / LabAssignment.rel_dir_solution
-        self.dir_test = dir / LabAssignment.rel_dir_test
+        self.dir_problem = dir / lab_assignment_constants.rel_dir_problem
+        self.dir_solution = dir / lab_assignment_constants.rel_dir_solution
+        self.dir_test = dir / lab_assignment_constants.rel_dir_test
 
-        script_submission_fixes = dir / submission_fix_lib.script_submission_fixes
+        script_submission_fixes = dir / submission_fix_lib_constants.script_submission_fixes
         if script_submission_fixes.is_file():
             r = submission_fix_lib.load_submission_fixes(script_submission_fixes)
             self.name_handlers = submission_fix_lib.package_handlers(r.name_handlers)
@@ -174,10 +157,10 @@ class LabAssignment(Assignment):
 
         self.files_solution = sorted_directory_list(self.dir_solution, filter = lambda f: f.is_file())
         self.files_problem = sorted_directory_list(self.dir_problem, filter = lambda f: f.is_file())
-        self.deadlines = [datetime.fromisoformat(line) for line in (dir / LabAssignment.rel_file_deadlines).read_text().splitlines()]
+        self.deadlines = [datetime.fromisoformat(line) for line in (dir / lab_assignment_constants.rel_file_deadlines).read_text().splitlines()]
 
-        self.tests = LabAssignment.parse_tests(self.dir_test / LabAssignment.rel_file_tests)
-        self.tests_java = LabAssignment.parse_tests(self.dir_test / LabAssignment.rel_file_tests_java)
+        self.tests = LabAssignment.parse_tests(self.dir_test / lab_assignment_constants.rel_file_tests)
+        self.tests_java = LabAssignment.parse_tests(self.dir_test / lab_assignment_constants.rel_file_tests_java)
 
     # Only works if groups follow a uniform naming scheme with varying number at end of string.
     def group_from_number(self, group_number):
@@ -239,8 +222,8 @@ class LabAssignment(Assignment):
 
     # static
     stages = {
-        False: rel_dir_current,
-        True: rel_dir_previous,
+        False: lab_assignment_constants.rel_dir_current,
+        True: lab_assignment_constants.rel_dir_previous,
     }
 
     def name_handler_suggestion(self, name, file):
@@ -301,8 +284,8 @@ class LabAssignment(Assignment):
 
         if unhandled:
             print_error('There were unhandled files.')
-            print_error('You can find them by running: find {}/*/{} -name \'*.unhandled\''.format(shlex.quote(str(dir)), shlex.quote(LabAssignment.rel_dir_current)))
-            print_error('Add (without comments) and complete the below \'name_handlers\' in \'{}\' in the lab directory.'.format(submission_fix_lib.script_submission_fixes))
+            print_error('You can find them by running: find {}/*/{} -name \'*.unhandled\''.format(shlex.quote(str(dir)), shlex.quote(lab_assignment_constants.rel_dir_current)))
+            print_error('Add (without comments) and complete the below \'name_handlers\' in \'{}\' in the lab directory.'.format(submission_fix_lib_constants.script_submission_fixes))
             print_error('Remember to push your changes so that your colleagues benefit from your fixes.')
             for id, name, file in unhandled:
                 suggestion = self.name_handler_suggestion(name, file)
@@ -312,7 +295,7 @@ class LabAssignment(Assignment):
 
     def prepare_build(self, dir, dir_problem, rel_dir_submission):
         logger.log(logging.INFO, 'preparing build directory: {}'.format(shlex.quote(str(dir))))
-        dir_build = dir / LabAssignment.rel_dir_build
+        dir_build = dir / lab_assignment_constants.rel_dir_build
         dir_submission = dir / rel_dir_submission
 
         # Link the problem files.
@@ -334,24 +317,24 @@ class LabAssignment(Assignment):
 
         # make output directory self-contained
         if not dir.samefile(self.dir):
-            shutil.copytree(self.dir_problem, dir / LabAssignment.rel_dir_problem, dirs_exist_ok = True)
-            shutil.copytree(self.dir_solution, dir / LabAssignment.rel_dir_solution, dirs_exist_ok = True)
+            shutil.copytree(self.dir_problem, dir / lab_assignment_constants.rel_dir_problem, dirs_exist_ok = True)
+            shutil.copytree(self.dir_solution, dir / lab_assignment_constants.rel_dir_solution, dirs_exist_ok = True)
 
-        self.prepare_build(dir, dir / LabAssignment.rel_dir_problem, LabAssignment.rel_dir_solution)
+        self.prepare_build(dir, dir / lab_assignment_constants.rel_dir_problem, lab_assignment_constants.rel_dir_solution)
         for group in self.parse_groups(groups):
-            self.prepare_build(self.group_dir(dir, group), dir / LabAssignment.rel_dir_problem, LabAssignment.rel_dir_current)
+            self.prepare_build(self.group_dir(dir, group), dir / lab_assignment_constants.rel_dir_problem, lab_assignment_constants.rel_dir_current)
 
     # Return value indicates success.
     def compile(self, dir, dir_problem, rel_dir_submission, strict = True):
         logger.log(logging.INFO, 'compiling: {}'.format(shlex.quote(str(dir))))
-        dir_build = dir / LabAssignment.rel_dir_build
+        dir_build = dir / lab_assignment_constants.rel_dir_build
         dir_submission = dir / rel_dir_submission
 
         # Compile java files.
         files_java = list(f for f in dir_build.iterdir() if f.suffix == '.java')
         compilation_errors = compile_java(dir_build, files_java, strict = False)
         if compilation_errors != None:
-            (dir / LabAssignment.rel_file_compilation_errors).write_text(compilation_errors)
+            (dir / lab_assignment_constants.rel_file_compilation_errors).write_text(compilation_errors)
             return False
 
         return True
@@ -363,16 +346,16 @@ class LabAssignment(Assignment):
 
         # make output directory self-contained
         if not dir.samefile(self.dir):
-            shutil.copytree(self.dir_problem, dir / LabAssignment.rel_dir_problem, dirs_exist_ok = True)
-            shutil.copytree(self.dir_solution, dir / LabAssignment.rel_dir_solution, dirs_exist_ok = True)
+            shutil.copytree(self.dir_problem, dir / lab_assignment_constants.rel_dir_problem, dirs_exist_ok = True)
+            shutil.copytree(self.dir_solution, dir / lab_assignment_constants.rel_dir_solution, dirs_exist_ok = True)
 
-        r = self.compile(dir, dir / LabAssignment.rel_dir_problem, LabAssignment.rel_dir_solution, strict = True) # solution files must compile
+        r = self.compile(dir, dir / lab_assignment_constants.rel_dir_problem, lab_assignment_constants.rel_dir_solution, strict = True) # solution files must compile
         for group in self.parse_groups(groups):
-            r &= self.compile(self.group_dir(dir, group), dir / LabAssignment.rel_dir_problem, LabAssignment.rel_dir_current, strict = False)
+            r &= self.compile(self.group_dir(dir, group), dir / lab_assignment_constants.rel_dir_problem, lab_assignment_constants.rel_dir_current, strict = False)
         if not r and strict:
             print_error('There were compilation errors.')
             print_error('Investigate if any of them are due to differences in the students\' compilation environment, for example: package declarations, unresolved imports.')
-            print_error('If so, add appropriate handlers to \'content_handlers\' in \'{}\' to fix them persistently.'.format(submission_fix_lib.script_submission_fixes))
+            print_error('If so, add appropriate handlers to \'content_handlers\' in \'{}\' to fix them persistently.'.format(submission_fix_lib_constants.script_submission_fixes))
             print_error('For this, you must know the Canvas ids of the files to edit.')
             print_error('These can be learned by activating the option to write ids.')
             print_error('Remember to push your changes so that your colleagues benefit from your fixes.')
@@ -383,7 +366,7 @@ class LabAssignment(Assignment):
 
     def remove_class_files(self, dir):
         logger.log(logging.INFO, 'removing class files: {}'.format(shlex.quote(str(dir))))
-        dir_build = dir / LabAssignment.rel_dir_build
+        dir_build = dir / lab_assignment_constants.rel_dir_build
         for file in dir_build.iterdir():
             if file.suffix == '.class':
                 file.unlink()
@@ -438,9 +421,9 @@ pre { margin: 0px; white-space: pre-wrap; }
 
     def test(self, dir, timeout = 5, strict = False):
         logger.log(logging.INFO, 'testing: {}'.format(shlex.quote(str(dir))))
-        dir_build = dir / LabAssignment.rel_dir_build
+        dir_build = dir / lab_assignment_constants.rel_dir_build
 
-        dir_build_test = dir / LabAssignment.rel_dir_build_test
+        dir_build_test = dir / lab_assignment_constants.rel_dir_build_test
         mkdir_fresh(dir_build_test)
 
         for test_name, test_cmd in self.tests:
@@ -468,12 +451,12 @@ pre { margin: 0px; white-space: pre-wrap; }
         self.test(dir)
         for group in self.parse_groups(groups):
             dir_group = self.group_dir(dir, group)
-            if not (dir_group / LabAssignment.rel_file_compilation_errors).exists():
+            if not (dir_group / lab_assignment_constants.rel_file_compilation_errors).exists():
                 self.test(dir_group, timeout = timeout, strict = strict)
 
     def pregrade(self, dir, dir_test, rel_dir_submission, strict = True):
         logger.log(logging.INFO, 'Pregrading: {}'.format(shlex.quote(str(dir))))
-        dir_build = dir / LabAssignment.rel_dir_build
+        dir_build = dir / lab_assignment_constants.rel_dir_build
         dir_submission = dir / rel_dir_submission
         dir_test_java = dir_test / 'java'
 
@@ -501,13 +484,13 @@ pre { margin: 0px; white-space: pre-wrap; }
 
             # make output directory self-contained
             if not dir.samefile(self.dir):
-                shutil.copytree(self.dir_test, dir / LabAssignment.rel_dir_test, dirs_exist_ok = True)
+                shutil.copytree(self.dir_test, dir / lab_assignment_constants.rel_dir_test, dirs_exist_ok = True)
 
-            self.pregrade(dir, dir / LabAssignment.rel_dir_test, LabAssignment.rel_dir_solution, strict = strict)
+            self.pregrade(dir, dir / lab_assignment_constants.rel_dir_test, lab_assignment_constants.rel_dir_solution, strict = strict)
             for group in self.parse_groups(groups):
                 dir_group = self.group_dir(dir, group)
-                if not (dir_group / LabAssignment.rel_file_compilation_errors).exists():
-                    self.pregrade(dir_group, dir / LabAssignment.rel_dir_test, LabAssignment.rel_dir_current, strict = strict)
+                if not (dir_group / lab_assignment_constants.rel_file_compilation_errors).exists():
+                    self.pregrade(dir_group, dir / lab_assignment_constants.rel_dir_test, lab_assignment_constants.rel_dir_current, strict = strict)
 
     def remove_class_files_submissions(self, dir, groups = None):
         for group in self.parse_groups(groups):
@@ -541,13 +524,13 @@ pre { margin: 0px; white-space: pre-wrap; }
             row_data_dict[group] = row_data
 
             rel_dir_group = self.group_dir(Path(), group)
-            rel_dir_group_analysis = rel_dir_group / LabAssignment.rel_dir_analysis
+            rel_dir_group_analysis = rel_dir_group / lab_assignment_constants.rel_dir_analysis
             (dir / rel_dir_group_analysis).mkdir(exist_ok = True)
             dir_analysis = dir / rel_dir_group_analysis
             mkdir_fresh(dir_analysis)
 
             dir_group = self.group_dir(dir, group)
-            filenames_current = sorted_directory_list(dir_group / LabAssignment.rel_dir_current, filter = lambda f: f.is_file() and not f.name.startswith('.')).keys()
+            filenames_current = sorted_directory_list(dir_group / lab_assignment_constants.rel_dir_current, filter = lambda f: f.is_file() and not f.name.startswith('.')).keys()
             filenames = list(filenames_current) + list(set(self.files_solution) - set(filenames_current))
 
             current_submission = Assignment.current_submission(self.submissions[group])
@@ -577,7 +560,7 @@ pre { margin: 0px; white-space: pre-wrap; }
             row_data.files = td()
             files_table_body = row_data.files.add(table(Class = 'files')).add(tbody())
             for filename in filenames:
-                files_table_body.add(tr()).add(format_file(dir, filename, rel_dir_group / LabAssignment.rel_dir_current, rel_dir_group_analysis / LabAssignment.rel_dir_current, file_syntax_highlight_css))
+                files_table_body.add(tr()).add(format_file(dir, filename, rel_dir_group / lab_assignment_constants.rel_dir_current, rel_dir_group_analysis / lab_assignment_constants.rel_dir_current, file_syntax_highlight_css))
 
             # Diffs to other files
             def build_diff_table(rel_base_dir, folder_name):
@@ -585,25 +568,25 @@ pre { margin: 0px; white-space: pre-wrap; }
                     dir,
                     filename,
                     rel_base_dir / folder_name,
-                    rel_dir_group / LabAssignment.rel_dir_current,
+                    rel_dir_group / lab_assignment_constants.rel_dir_current,
                     rel_dir_group_analysis / folder_name,
                     '{}: compared to {}'.format(filename, folder_name)
                 ))
 
-            row_data.files_vs_previous = build_diff_table(rel_dir_group, LabAssignment.rel_dir_previous) if (dir_group / LabAssignment.rel_dir_previous).exists() else None
-            row_data.files_vs_problem = build_diff_table(Path(), LabAssignment.rel_dir_problem)
-            row_data.files_vs_solution = build_diff_table(Path(), LabAssignment.rel_dir_solution)
+            row_data.files_vs_previous = build_diff_table(rel_dir_group, lab_assignment_constants.rel_dir_previous) if (dir_group / lab_assignment_constants.rel_dir_previous).exists() else None
+            row_data.files_vs_problem = build_diff_table(Path(), lab_assignment_constants.rel_dir_problem)
+            row_data.files_vs_solution = build_diff_table(Path(), lab_assignment_constants.rel_dir_solution)
 
             # Compilation errors
-            file_compilation_errors = dir_group / LabAssignment.rel_file_compilation_errors
+            file_compilation_errors = dir_group / lab_assignment_constants.rel_file_compilation_errors
             row_data.compilation_errors = td(pre(file_compilation_errors.read_text(), Class = 'error')) if file_compilation_errors.exists() else None
 
             # Tests
-            (dir_analysis / LabAssignment.rel_dir_build_test).mkdir()
+            (dir_analysis / lab_assignment_constants.rel_dir_build_test).mkdir()
 
             def handle_test(test_name):
-                rel_test_dir = rel_dir_group / Path(LabAssignment.rel_dir_build_test) / test_name
-                r = a(test_name, href = rel_test_dir / 'report.html')
+                rel_test_dir = rel_dir_group / Path(lab_assignment_constants.rel_dir_build_test) / test_name
+                r = a(test_name, href = rel_test_dir / lab_assignment_constants.rel_file_report)
                 if not LabAssignment.is_test_successful(dir / rel_test_dir):
                     r.set_attribute('class', 'error')
                 return td(r)
@@ -613,15 +596,15 @@ pre { margin: 0px; white-space: pre-wrap; }
             row_data.tests_vs_solution = build_files_table(test_names, lambda test_name: format_diff(
                 dir,
                 'out',
-                Path(LabAssignment.rel_dir_build_test) / test_name,
-                rel_dir_group / LabAssignment.rel_dir_build_test / test_name,
-                rel_dir_group_analysis / LabAssignment.rel_dir_build_test / test_name,
-                'Test {} output: compared to {}'.format(test_name, LabAssignment.rel_dir_solution)
+                Path(lab_assignment_constants.rel_dir_build_test) / test_name,
+                rel_dir_group / lab_assignment_constants.rel_dir_build_test / test_name,
+                rel_dir_group_analysis / lab_assignment_constants.rel_dir_build_test / test_name,
+                'Test {} output: compared to {}'.format(test_name, lab_assignment_constants.rel_dir_solution)
             ))
             row_data.tests_errors = None
 
             # Pregrading
-            file_pregrading = dir_group / LabAssignment.rel_file_pregrading
+            file_pregrading = dir_group / lab_assignment_constants.rel_file_pregrading
             row_data.pregrading = td(pre(file_pregrading.read_text())) if file_pregrading.exists() else None
 
             # Comments
@@ -644,12 +627,12 @@ pre { margin: 0px; white-space: pre-wrap; }
             'group': T('Group', style = 'text-align: center;'),
             'late': T('Late'),
             'files': with_after('Files', ' vs:'),
-            'files_vs_previous': following(LabAssignment.rel_dir_previous),
-            'files_vs_problem': following(LabAssignment.rel_dir_problem),
-            'files_vs_solution': following(LabAssignment.rel_dir_solution),
+            'files_vs_previous': following(lab_assignment_constants.rel_dir_previous),
+            'files_vs_problem': following(lab_assignment_constants.rel_dir_problem),
+            'files_vs_solution': following(lab_assignment_constants.rel_dir_solution),
             'compilation_errors': T('Compilation errors'),
             'tests': with_after('Tests', ' vs:'),
-            'tests_vs_solution': following(LabAssignment.rel_dir_solution),
+            'tests_vs_solution': following(lab_assignment_constants.rel_dir_solution),
             'pregrading': T('Pregrading'),
             'new_comments': T('New comments'),
         })
