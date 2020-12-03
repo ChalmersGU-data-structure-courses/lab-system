@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
 
-# We defer expensive initialization to after argcomplete is done.
+# We defer expensive initialization to after argument parsing is done.
+# This makes bash completion more responsive.
 import argparse
 from pathlib import Path
 import shlex
@@ -97,6 +98,12 @@ g.add_argument('--refresh-submissions', action = 'store_true', help = '\n'.join(
     f'Use this at the beginning of a submission processing workflow to make sure the cached submissions are up to date.',
     f'It is recommended to use this option only then for collecting the submission from Canvas is an expensive operation (on the order of 5 minutes).'
 ]))
+g.add_argument('--no-name-handlers', action = 'store_true', help = '\n'.join([
+    f'Do not fix submitted file names using the name handlers in \'{submission_fix_lib_constants.script_submission_fixes}\' in the lab directory.'
+]))
+g.add_argument('--no-content-handlers', action = 'store_true', help = '\n'.join([
+    f'Do not fix submitted file contents using the content handlers in \'{submission_fix_lib_constants.script_submission_fixes}\' in the lab directory.'
+]))
 g.add_argument('--write-ids', action = 'store_true', help = '\n'.join([
     f'Together with each submitted file \'<file>\' written in the \'{lab_assignment_constants.rel_dir_current}\' and \'{lab_assignment_constants.rel_dir_previous}\' subdirectories of each lab group, store its Canvas id in \'.<file>\'.',
     f'This can be used for easy Canvas id lookup when writing \'content_handlers\' to fix compilation errors.'
@@ -147,7 +154,9 @@ try:
     argcomplete.autocomplete(p)
 except ModuleNotFoundError:
     pass
-# argcomplete is done: expensive initialization can start now.
+
+args = p.parse_args()
+# Argument parsing is done: expensive initialization can start now.
 
 import logging
 import os
@@ -157,8 +166,6 @@ from general import print_error, add_to_path
 from canvas import Canvas, GroupSet, Course
 from lab_assignment import LabAssignment
 import config
-
-args = p.parse_args()
 
 if not (args.unpack or args.dir.exists()):
     print_error('The submission working directory {} does not exist (and no --unpack option given).'.format(shlex.quote(str(args.dir))))
@@ -196,7 +203,7 @@ else:
 
 canvas = Canvas(config.canvas_url, cache_dir = Path(args.cache_dir))
 group_set = GroupSet(canvas, config.course_id, config.group_set, use_cache = not args.refresh_group_set)
-lab_assignment = LabAssignment(canvas, config.course_id, args.lab)
+lab_assignment = LabAssignment(canvas, config.course_id, args.lab, use_name_handlers = not args.no_name_handlers, use_content_handlers = not args.no_content_handlers)
 lab_assignment.collect_submissions(use_cache = not args.refresh_submissions)
 
 extra = dict()
