@@ -26,7 +26,7 @@ g.add_argument('lab', type = int, choices = [1, 2, 3, 4], help = 'The lab to pro
 g.add_argument('dir', type = Path, help = '\n'.join([
     f'The submission working directory.',
     f'This is the base of the hierarchy in which the submissions are collected and processed.',
-    f'If it does not exist and the submission procession workflow includes unpacking, it will be created.',
+    f'If it does not exist and the submission processing workflow includes unpacking, it will be created.',
     f'This directory will be self-contained: it will contain lots of symlinks to reduce file duplication, but they will never point outside the directory.',
     f'Thus, you can safely share the directory with users whose filesystems support symlinks.',
     f'For the others, copy the directory with the option for resolving symlinks.'
@@ -85,12 +85,12 @@ g.add_argument('--recreate-swd', action = 'store_true', help = '\n'.join([
 ]))
 g.add_argument('--refresh-group-set', action = 'store_true', help = '\n'.join([
     f'Collect group membership information from Canvas instead of the cache.',
-    f'Use this at the beginning of a submission procession workflow to make sure the cached group memberships are up to date.',
+    f'Use this at the beginning of a submission processing workflow to make sure the cached group memberships are up to date.',
     f'Collecting group membership information from Canvas is an expensive operation (on the order of 1 minute).'
 ]))
 g.add_argument('--refresh-submissions', action = 'store_true', help = '\n'.join([
     f'Collect submissions from Canvas instead of the cache.',
-    f'Use this at the beginning of a submission procession workflow to make sure the cached submissions are up to date.',
+    f'Use this at the beginning of a submission processing workflow to make sure the cached submissions are up to date.',
     f'It is recommended to use this option only then for collecting the submission from Canvas is an expensive operation (on the order of 5 minutes).'
 ]))
 g.add_argument('--write-ids', action = 'store_true', help = '\n'.join([
@@ -100,16 +100,16 @@ g.add_argument('--write-ids', action = 'store_true', help = '\n'.join([
 
 g = p.add_argument_group('compilation options')
 g.add_argument('--no-compilation', action = 'store_true', help = '\n'.join([
-    f'Skip the compilation phase of the submission procession workflow.',
+    f'Skip the compilation phase of the submission processing workflow.',
 ]))
 g.add_argument('--allow-compilation-errors', action = 'store_true', help = '\n'.join([
-    f'Continue the submission procession workflow if there were errors in the compilation stage.',
+    f'Continue the submission processing workflow if there were errors in the compilation stage.',
     f'Compilation errors will be listed in the overview document.',
 ]))
 
 g = p.add_argument_group('testing options')
 g.add_argument('--no-testing', action = 'store_true', help = '\n'.join([
-    f'Skip the testing phase of the submission procession workflow.',
+    f'Skip the testing phase of the submission processing workflow.',
 ]))
 g.add_argument('--timeout', type = float, default = timeout_default, help = '\n'.join([
     f'Timeout in seconds to use for individual tests.',
@@ -118,7 +118,7 @@ g.add_argument('--timeout', type = float, default = timeout_default, help = '\n'
 
 g = p.add_argument_group('pregrading options')
 g.add_argument('--no-pregrading', action = 'store_true', help = '\n'.join([
-    f'Skip the pregrading phase of the submission procession workflow.',
+    f'Skip the pregrading phase of the submission processing workflow.',
 ]))
 
 
@@ -128,7 +128,7 @@ g.add_argument('--remove-class-files', action = 'store_true', help = '\n'.join([
     f'Use this option if you plan to share this folder with people who may be running different versions of the Java Development Kit.',
 ]))
 g.add_argument('--no-overview', action = 'store_true', help = '\n'.join([
-    f'Skip creaton of an overview index file at the end of the submission procession workflow.',
+    f'Skip creaton of an overview index file at the end of the submission processing workflow.',
 ]))
 g.add_argument('--deadline', type = int, choices = [0, 1, 2], help = '\n'.join([
     f'Optional deadline to use for recording of late submissions in the overview index file.',
