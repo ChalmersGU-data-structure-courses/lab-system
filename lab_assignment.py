@@ -134,7 +134,7 @@ class LabAssignment(Assignment):
     def parse_tests(file):
         return exec_simple(file).tests if file.exists() else []
 
-    def __init__(self, canvas, course_id, dir):
+    def __init__(self, canvas, course_id, dir, use_name_handlers = True, use_content_handlers = True):
         if isinstance(dir, int):
             dir = Path(__file__).parent.parent / 'lab{}'.format(dir)
 
@@ -146,14 +146,15 @@ class LabAssignment(Assignment):
         self.dir_solution = dir / lab_assignment_constants.rel_dir_solution
         self.dir_test = dir / lab_assignment_constants.rel_dir_test
 
+        self.name_handlers = None
+        self.content_handlers = None
         script_submission_fixes = dir / submission_fix_lib_constants.script_submission_fixes
         if script_submission_fixes.is_file():
             r = submission_fix_lib.load_submission_fixes(script_submission_fixes)
-            self.name_handlers = submission_fix_lib.package_handlers(r.name_handlers)
-            self.content_handlers = submission_fix_lib.package_handlers(r.content_handlers)
-        else:
-            self.name_handlers = None
-            self.content_handlers = None
+            if use_name_handlers:
+                self.name_handlers = submission_fix_lib.package_handlers(r.name_handlers)
+            if use_content_handlers:
+                self.content_handlers = submission_fix_lib.package_handlers(r.content_handlers)
 
         self.files_solution = sorted_directory_list(self.dir_solution, filter = lambda f: f.is_file())
         self.files_problem = sorted_directory_list(self.dir_problem, filter = lambda f: f.is_file())
@@ -496,7 +497,7 @@ pre { margin: 0px; white-space: pre-wrap; }
         for group in self.parse_groups(groups):
             self.remove_class_files(self.group_dir(dir, group))
 
-    def build_index(self, dir, groups = None, deadline = None, preview = True):
+    def build_index(self, dir, groups = None, deadline = None, goodwill_period = timedelta(5), preview = True):
         logger.log(25, 'Writing overview index...')
         assert(dir.exists())
         doc = document()
@@ -553,7 +554,7 @@ pre { margin: 0px; white-space: pre-wrap; }
             parsed_deadline = self.parse_deadline(deadline)
             if parsed_deadline:
                 time_diff = current_submission.submitted_at_date - parsed_deadline
-                if time_diff >= timedelta(minutes = 5):
+                if time_diff >= goodwill_period:
                     row_data.late = td(format_timespan(time_diff))
 
             # Submitted files
