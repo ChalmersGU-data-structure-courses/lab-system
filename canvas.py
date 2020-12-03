@@ -31,7 +31,7 @@ class Canvas:
             except FileNotFoundError:
                 print_error('No Canvas authorization token found.')
                 print_error('Expected Canvas authorization token in file {}.'.format(shlex.quote(str(auth_token))))
-                assert(False)
+                exit(1)
         else:
             self.auth_token = auth_token
 
