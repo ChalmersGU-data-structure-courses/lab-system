@@ -85,8 +85,6 @@ remove_package_declaration = uncomment(r'^package[^;]*;')
 ################################################################################
 # Loading a submission fixes file.
 
-script_submission_fixes = 'submission_fixes.py'
-
 def load_submission_fixes(file):
     e = file.read_text()
     r = dict()

@@ -1,15 +1,13 @@
+#!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
+
+# We defer expensive initialization to after argcomplete is done.
 import argparse
-import logging
-import os
 from pathlib import Path
 import shlex
-import shutil
 
-from general import print_error, add_to_path
-from canvas import Canvas, GroupSet, Course
-from lab_assignment import LabAssignment
-import submission_fix_lib
-import config
+import lab_assignment_constants
+import submission_fix_lib_constants
 
 dir_script = Path(__file__).parent
 path_extra = dir_script / 'node_modules' / '.bin'
@@ -36,25 +34,25 @@ g.add_argument('dir', type = Path, help = '\n'.join([
 g.add_argument('--unpack', action = 'store_true', help = '\n'.join([
     f'Collect the submissions and unpack them in the submission working directory.',
     f'This will create the submission working directory if it did not exist.',
-    f'It will (re)create subfolders for each lab group containing \'{LabAssignment.rel_dir_current}\' and \'{LabAssignment.rel_dir_previous}\' subdirectories for the submission of the respective kind.',
-    f'It will also as create a \'{LabAssignment.rel_dir_build}\' subdirectory with the current submission overlayed on top of the problem files.',
+    f'It will (re)create subfolders for each lab group containing \'{lab_assignment_constants.rel_dir_current}\' and \'{lab_assignment_constants.rel_dir_previous}\' subdirectories for the submission of the respective kind.',
+    f'It will also as create a \'{lab_assignment_constants.rel_dir_build}\' subdirectory with the current submission overlayed on top of the problem files.',
     f'If any submitted files have name not conforming to the expected solution files, an error is raised.',
-    f'In that case, the user is provided with information on all such files and a skeleton with which to extend \'name_handlers\' in \'{submission_fix_lib.script_submission_fixes}\' in the lab directory (see documentation in that file).',
+    f'In that case, the user is provided with information on all such files and a skeleton with which to extend \'name_handlers\' in \'{submission_fix_lib_constants.script_submission_fixes}\' in the lab directory (see documentation in that file).',
 ]))
 g.add_argument('--process', action = 'store_true', help = '\n'.join([
     f'Assuming the submissions have been unpacked, process them.',
     f'This involves the following phases, in order: compilation, testing, pregrading, creating overview index.',
     f'Unless changed using --allow-compilation-errors, the workflow will stop after the compilation stage if there where any errors.',
     f'This is useful to detect fixable errors such as package declarations and non-existing imports.',
-    f'You should then extend \'content_handlers\' in \'{submission_fix_lib.script_submission_fixes}\' in the lab directory to persistently fix theses errors (see documentation in that file).',
+    f'You should then extend \'content_handlers\' in \'{submission_fix_lib_constants.script_submission_fixes}\' in the lab directory to persistently fix theses errors (see documentation in that file).',
     f'The option --write-ids is useful here.',
     f'Afterwards, you will need to run --unpack again for these fixes to take effect; to save time, restrict its effect via the --group option to those lab groups impacted by the new content handlers.',
     f'In any case, the following phases run only for those lab groups passing compilation.'
-    f'Testing uses the tests specified in \'{Path(LabAssignment.rel_dir_test) / LabAssignment.rel_file_tests}\' in the lab directory.',
-    f'It produces output files in the \'{LabAssignment.rel_dir_build_test}\' subdirectory of each lab group folder.',
-    f'Pregrading links the java files in \'{Path(LabAssignment.rel_dir_test) / "tests_java"}\' into the build directory and gets its output from the main classes specified in \'{Path(LabAssignment.rel_dir_test) / LabAssignment.rel_file_tests_java}\'.',
-    f'It produces a text file \'{LabAssignment.rel_file_pregrading}\' in each lab group folder.',
-    f'Creation of the overview index outputs files in the \'{LabAssignment.rel_dir_analysis}\' subdirectory of each lab group folder and references these in a top-level file \'index.html\' that provides an overview over the processed submissions.',
+    f'Testing uses the tests specified in \'{Path(lab_assignment_constants.rel_dir_test) / lab_assignment_constants.rel_file_tests}\' in the lab directory.',
+    f'It produces output files in the \'{lab_assignment_constants.rel_dir_build_test}\' subdirectory of each lab group folder.',
+    f'Pregrading links the java files in \'{Path(lab_assignment_constants.rel_dir_test) / "tests_java"}\' into the build directory and gets its output from the main classes specified in \'{Path(lab_assignment_constants.rel_dir_test) / lab_assignment_constants.rel_file_tests_java}\'.',
+    f'It produces a text file \'{lab_assignment_constants.rel_file_pregrading}\' in each lab group folder.',
+    f'Creation of the overview index outputs files in the \'{lab_assignment_constants.rel_dir_analysis}\' subdirectory of each lab group folder and references these in a top-level file \'index.html\' that provides an overview over the processed submissions.',
     f'For this phase, the npm programs \'diff2html-cli\' and \'highlights\' need to be in PATH or {path_extra}.',
     f'If npm is installed, this may be achieved by executing \'npm install diff2html-cli highlights\' in the directory of this script.',
 ]))
@@ -95,7 +93,7 @@ g.add_argument('--groups', nargs = '+', type = str, help = '\n'.join([
 ]))
 g.add_argument('--deadline', type = int, choices = [0, 1, 2], help = '\n'.join([
     f'Deadline to use for the overview index file.',
-    f'These are specified in \'{LabAssignment.rel_file_deadlines}\' in the lab folder.',
+    f'These are specified in \'{lab_assignment_constants.rel_file_deadlines}\' in the lab folder.',
     f'If unspecified, information is late submissions will not be recorded in the overview file.'
 ]))
 g.add_argument('--timeout', type = float, default = timeout_default, help = '\n'.join([
@@ -103,7 +101,7 @@ g.add_argument('--timeout', type = float, default = timeout_default, help = '\n'
     f'Defaults to {timeout_default}',
 ]))
 g.add_argument('--write-ids', action = 'store_true', help = '\n'.join([
-    f'Together with each submitted file \'<file>\' written in the \'{LabAssignment.rel_dir_current}\' and \'{LabAssignment.rel_dir_previous}\' subdirectories of each lab group, store a file \'.<file>\' containing its Canvas id.',
+    f'Together with each submitted file \'<file>\' written in the \'{lab_assignment_constants.rel_dir_current}\' and \'{lab_assignment_constants.rel_dir_previous}\' subdirectories of each lab group, store a file \'.<file>\' containing its Canvas id.',
     f'This can be used for easy Canvas id lookup when writing \'content_handlers\' to fix compilation errors.'
 ]))
 g.add_argument('--no-preview', action = 'store_true', help = '\n'.join([
@@ -129,6 +127,23 @@ g.add_argument('--remove-class-files', action = 'store_true', help = '\n'.join([
     f'After finishing processing, remove all compiled java files from the submission working directory.',
     f'Use this option if you plan to share this folder with people who may be running different versions of the Java Development Kit.',
 ]))
+
+#Support for argcomplete.
+try:
+    import argcomplete
+    argcomplete.autocomplete(p)
+except ModuleNotFoundError:
+    pass
+# argcomplete is done: expensive initialization operations can start now.
+
+import logging
+import os
+import shutil
+
+from general import print_error, add_to_path
+from canvas import Canvas, GroupSet, Course
+from lab_assignment import LabAssignment
+import config
 
 args = p.parse_args()
 
