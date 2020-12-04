@@ -369,7 +369,7 @@ class LabAssignment(Assignment):
         if not r and strict:
             print_error('There were compilation errors.')
             print_error('Investigate if any of them are due to differences in the students\' compilation environment, for example: package declarations, unresolved imports.')
-            print_error('If so, add appropriate handlers to \'content_handlers\' in \'{}\' to fix them persistently.'.format(submission_fix_lib_constants.script_submission_fixes))
+            print_error('If so, add appropriate handlers to \'content_handlers\' in \'{}\' to fix them persistently.'.format(submission_fix_lib_constants.rel_file_submission_fixes))
             print_error('For this, you must know the Canvas ids of the files to edit.')
             print_error('These can be learned by activating the option to write ids.')
             print_error('Remember to push your changes so that your colleagues benefit from your fixes.')
