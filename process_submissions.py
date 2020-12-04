@@ -8,7 +8,6 @@ from pathlib import Path
 import shlex
 
 import lab_assignment_constants
-import submission_fix_lib_constants
 
 dir_script = Path(__file__).parent
 path_extra = dir_script / 'node_modules' / '.bin'
@@ -42,14 +41,14 @@ g.add_argument('--unpack', action = 'store_true', help = '\n'.join([
     f'It will (re)create subfolders for each lab group containing \'{lab_assignment_constants.rel_dir_current}\' and \'{lab_assignment_constants.rel_dir_previous}\' subdirectories for the submission of the respective kind.',
     f'It will also as create a \'{lab_assignment_constants.rel_dir_build}\' subdirectory with the current submission overlayed on top of the problem files.',
     f'If any submitted files have name not conforming to the expected solution files, an error is raised.',
-    f'In that case, the user is provided with information on all such files and a skeleton with which to extend \'name_handlers\' in \'{submission_fix_lib_constants.script_submission_fixes}\' in the lab directory (see documentation in that file).',
+    f'In that case, the user is provided with information on all such files and a skeleton with which to extend \'name_handlers\' in \'{lab_assignment_constants.rel_file_submission_fixes}\' in the lab directory (see documentation in that file).',
 ]))
 g.add_argument('--process', action = 'store_true', help = '\n'.join([
     f'Assuming the submissions have been unpacked, process them.',
     f'This involves the following phases, in order: compilation, testing, pregrading, creating overview index.',
     f'Unless changed using --allow-compilation-errors, the workflow will stop after the compilation stage if there where any errors.',
     f'This is useful to detect fixable errors such as package declarations and non-existing imports.',
-    f'You should then extend \'content_handlers\' in \'{submission_fix_lib_constants.script_submission_fixes}\' in the lab directory to persistently fix theses errors (see documentation in that file).',
+    f'You should then extend \'content_handlers\' in \'{lab_assignment_constants.rel_file_submission_fixes}\' in the lab directory to persistently fix theses errors (see documentation in that file).',
     f'The option --write-ids is useful here.',
     f'Afterwards, you will need to run --unpack again for these fixes to take effect; to save time, restrict its effect via the --group option to those lab groups impacted by the new content handlers.',
     f'In any case, the following phases run only for those lab groups passing compilation.'
@@ -99,10 +98,10 @@ g.add_argument('--refresh-submissions', action = 'store_true', help = '\n'.join(
     f'It is recommended to use this option only then for collecting the submission from Canvas is an expensive operation (on the order of 5 minutes).'
 ]))
 g.add_argument('--no-name-handlers', action = 'store_true', help = '\n'.join([
-    f'Do not fix submitted file names using the name handlers in \'{submission_fix_lib_constants.script_submission_fixes}\' in the lab directory.'
+    f'Do not fix submitted file names using the name handlers in \'{lab_assignment_constants.rel_file_submission_fixes}\' in the lab directory.'
 ]))
 g.add_argument('--no-content-handlers', action = 'store_true', help = '\n'.join([
-    f'Do not fix submitted file contents using the content handlers in \'{submission_fix_lib_constants.script_submission_fixes}\' in the lab directory.'
+    f'Do not fix submitted file contents using the content handlers in \'{lab_assignment_constants.rel_file_submission_fixes}\' in the lab directory.'
 ]))
 g.add_argument('--write-ids', action = 'store_true', help = '\n'.join([
     f'Together with each submitted file \'<file>\' written in the \'{lab_assignment_constants.rel_dir_current}\' and \'{lab_assignment_constants.rel_dir_previous}\' subdirectories of each lab group, store its Canvas id in \'.<file>\'.',

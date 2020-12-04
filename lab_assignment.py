@@ -19,6 +19,7 @@ from canvas import Canvas, Course, Assignment
 import lab_assignment_constants
 import submission_fix_lib
 import submission_fix_lib_constants
+import test_lib
 
 logger = logging.getLogger("lab_assignment")
 
@@ -64,6 +65,16 @@ def highlight_file(dir_source, dir_target, name, css):
 
 def javac_cmd(files):
     return ['javac', '-d', '.'] + list(files)
+
+def java_cmd(file_security_policy, enable_assertions, class_name, args):
+    cmd = ['java']
+    if file_security_policy:
+        cmd += ['-D' + 'java.security.manager', '-D' + 'java.security.policy' + '==' + shlex.quote(str(file_security_policy))]
+    if enable_assertions:
+        cmd += ['-ea']
+    cmd.append(class_name)
+    cmd.extend(args)
+    return cmd
 
 # Unless forced, only recompiles if necessary: missing or outdated class-files.
 # On success, returns None.
@@ -148,7 +159,7 @@ class LabAssignment(Assignment):
 
         self.name_handlers = None
         self.content_handlers = None
-        script_submission_fixes = dir / submission_fix_lib_constants.script_submission_fixes
+        script_submission_fixes = dir / lab_assignment_constants.rel_file_submission_fixes
         if script_submission_fixes.is_file():
             r = submission_fix_lib.load_submission_fixes(script_submission_fixes)
             if use_name_handlers:
@@ -160,7 +171,10 @@ class LabAssignment(Assignment):
         self.files_problem = sorted_directory_list(self.dir_problem, filter = lambda f: f.is_file())
         self.deadlines = [datetime.fromisoformat(line) for line in (dir / lab_assignment_constants.rel_file_deadlines).read_text().splitlines()]
 
-        self.tests = LabAssignment.parse_tests(self.dir_test / lab_assignment_constants.rel_file_tests)
+        #self.tests = LabAssignment.parse_tests()
+        # new-style tests
+        self.tests = test_lib.parse_tests(self.dir_test / lab_assignment_constants.rel_file_tests)
+
         self.tests_java = LabAssignment.parse_tests(self.dir_test / lab_assignment_constants.rel_file_tests_java)
 
     # Only works if groups follow a uniform naming scheme with varying number at end of string.
@@ -427,12 +441,24 @@ pre { margin: 0px; white-space: pre-wrap; }
         dir_build_test = dir / lab_assignment_constants.rel_dir_build_test
         mkdir_fresh(dir_build_test)
 
-        for test_name, test_cmd in self.tests:
+        for test_name, test_spec in self.tests.items():
             dir_test = dir_build_test / test_name
             dir_test.mkdir()
-            (dir_test / 'cmd').write_text(test_cmd)
+
+            cmd = java_cmd(Path(__file__).parent / lab_assignment_constants.rel_file_java_policy, test_spec.enable_assertions, test_spec.class_name, test_spec.args)
+            (dir_test / 'cmd').write_text(shlex.join(cmd))
+            if test_spec.input != None:
+                (dir_test / 'in').write_text(test_spec.input)
+
             try:
-                process = subprocess.run(shlex.split(test_cmd), cwd = dir_build, timeout = timeout, stdout = (dir_test / 'out').open('wb'), stderr = (dir_test / 'err').open('wb'))
+                process = subprocess.run(
+                    cmd,
+                    cwd = dir_build,
+                    timeout = timeout,
+                    input = test_spec.input.encode() if test_spec.input != None else None,
+                    stdout = (dir_test / 'out').open('wb'),
+                    stderr = (dir_test / 'err').open('wb')
+                )
                 (dir_test / 'ret').write_text(str(process.returncode))
             except subprocess.TimeoutExpired:
                 (dir_test / 'timeout').write_text(str(timeout))
@@ -592,7 +618,7 @@ pre { margin: 0px; white-space: pre-wrap; }
                     r.set_attribute('class', 'error')
                 return td(r)
 
-            test_names = [test_name for (test_name, _) in self.tests]
+            test_names = self.tests.keys()
             row_data.tests = build_files_table(test_names, handle_test)
             row_data.tests_vs_solution = build_files_table(test_names, lambda test_name: format_diff(
                 dir,
