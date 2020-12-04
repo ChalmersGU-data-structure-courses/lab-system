@@ -18,7 +18,6 @@ from general import compose_many, from_singleton, print_error, print_json, mkdir
 from canvas import Canvas, Course, Assignment
 import lab_assignment_constants
 import submission_fix_lib
-import submission_fix_lib_constants
 import test_lib
 
 logger = logging.getLogger("lab_assignment")
