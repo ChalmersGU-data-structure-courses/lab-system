@@ -205,6 +205,9 @@ class LabAssignment(Assignment):
             x = self.group_set.group_prefix + x
         return self.group_set.group_name_to_id[x]
 
+    def parse_groups(self, xs):
+        return map(self.parse_group, xs)
+
     def get_ungraded_submissions(self):
         return [group for group, s in self.submissions.items() if LabAssignment.is_to_be_graded(s)]
 
@@ -278,12 +281,12 @@ class LabAssignment(Assignment):
             return from_singleton(suggestions)
         return '[{}]'.format(', '.join(suggestions))
 
-    def submissions_unpack(self, dir, write_ids = False, groups = None):
+    def submissions_unpack(self, dir, groups, write_ids = False):
         logger.log(25, 'Unpacking submissions...')
         dir.mkdir(exist_ok = True)
 
         unhandled = list()
-        for group in self.parse_groups(groups):
+        for group in groups:
             dir_group = self.group_dir(dir, group)
             mkdir_fresh(dir_group)
             for previous, rel_dir in LabAssignment.stages.items():
@@ -325,7 +328,7 @@ class LabAssignment(Assignment):
                     target.unlink()
                 target.symlink_to(os.path.relpath(file, dir_build))
 
-    def submissions_prepare_build(self, dir, groups = None):
+    def submissions_prepare_build(self, dir, groups):
         logger.log(25, 'Preparing build directories...')
         assert(dir.exists())
 
@@ -335,7 +338,7 @@ class LabAssignment(Assignment):
             shutil.copytree(self.dir_solution, dir / lab_assignment_constants.rel_dir_solution, dirs_exist_ok = True)
 
         self.prepare_build(dir, dir / lab_assignment_constants.rel_dir_problem, lab_assignment_constants.rel_dir_solution)
-        for group in self.parse_groups(groups):
+        for group in groups:
             self.prepare_build(self.group_dir(dir, group), dir / lab_assignment_constants.rel_dir_problem, lab_assignment_constants.rel_dir_current)
 
     # Return value indicates success.
@@ -354,7 +357,7 @@ class LabAssignment(Assignment):
         return True
 
     # Return value indicates success.
-    def submissions_compile(self, dir, strict = True, groups = None):
+    def submissions_compile(self, dir, groups, strict = True):
         logger.log(25, 'Compiling...')
         assert(dir.exists())
 
@@ -364,7 +367,7 @@ class LabAssignment(Assignment):
             shutil.copytree(self.dir_solution, dir / lab_assignment_constants.rel_dir_solution, dirs_exist_ok = True)
 
         r = self.compile(dir, dir / lab_assignment_constants.rel_dir_problem, lab_assignment_constants.rel_dir_solution, strict = True) # solution files must compile
-        for group in self.parse_groups(groups):
+        for group in groups:
             r &= self.compile(self.group_dir(dir, group), dir / lab_assignment_constants.rel_dir_problem, lab_assignment_constants.rel_dir_current, strict = False)
         if not r and strict:
             print_error('There were compilation errors.')
@@ -385,11 +388,11 @@ class LabAssignment(Assignment):
             if file.suffix == '.class':
                 file.unlink()
 
-    def submissions_remove_class_files(self, dir, groups = None):
+    def submissions_remove_class_files(self, dir, groups):
         logger.log(25, 'Removing class files...')
         assert(dir.exists())
         self.remove_class_files(dir)
-        for group in self.parse_groups(groups):
+        for group in groups:
             self.remove_class_files(self.group_dir(dir, group))
 
     @staticmethod
@@ -448,7 +451,6 @@ pre { margin: 0px; white-space: pre-wrap; }
             (dir_test / 'cmd').write_text(shlex.join(cmd))
             if test_spec.input != None:
                 (dir_test / 'in').write_text(test_spec.input)
-
             try:
                 process = subprocess.run(
                     cmd,
@@ -471,11 +473,11 @@ pre { margin: 0px; white-space: pre-wrap; }
                 assert(is_test_successful(dir))
 
     # Only tests submissions that do not have compilation errors.
-    def submissions_test(self, dir, timeout = 5, strict = False, groups = None):
+    def submissions_test(self, dir, groups, timeout = 5, strict = False):
         logger.log(25, 'Testing...')
         assert(dir.exists())
         self.test(dir)
-        for group in self.parse_groups(groups):
+        for group in groups:
             dir_group = self.group_dir(dir, group)
             if not (dir_group / lab_assignment_constants.rel_file_compilation_errors).exists():
                 self.test(dir_group, timeout = timeout, strict = strict)
@@ -503,7 +505,7 @@ pre { margin: 0px; white-space: pre-wrap; }
         (dir / 'pregrading.txt').write_text('\n'.join(f(java_name) for java_name in self.tests_java))
 
     # Only tests submissions that do not have compilation errors.
-    def submissions_pregrade(self, dir, strict = True, groups = None):
+    def submissions_pregrade(self, dir, groups, strict = True):
         assert(dir.exists())
         if self.tests_java:
             logger.log(25, 'Pregrading.')
@@ -513,16 +515,16 @@ pre { margin: 0px; white-space: pre-wrap; }
                 shutil.copytree(self.dir_test, dir / lab_assignment_constants.rel_dir_test, dirs_exist_ok = True)
 
             self.pregrade(dir, dir / lab_assignment_constants.rel_dir_test, lab_assignment_constants.rel_dir_solution, strict = strict)
-            for group in self.parse_groups(groups):
+            for group in groups:
                 dir_group = self.group_dir(dir, group)
                 if not (dir_group / lab_assignment_constants.rel_file_compilation_errors).exists():
                     self.pregrade(dir_group, dir / lab_assignment_constants.rel_dir_test, lab_assignment_constants.rel_dir_current, strict = strict)
 
-    def remove_class_files_submissions(self, dir, groups = None):
-        for group in self.parse_groups(groups):
+    def remove_class_files_submissions(self, dir, groups):
+        for group in groups:
             self.remove_class_files(self.group_dir(dir, group))
 
-    def build_index(self, dir, groups = None, deadline = None, goodwill_period = timedelta(5), preview = True):
+    def build_index(self, dir, groups, deadline = None, goodwill_period = timedelta(5), preview = True):
         logger.log(25, 'Writing overview index...')
         assert(dir.exists())
         doc = document()
@@ -543,7 +545,7 @@ pre { margin: 0px; white-space: pre-wrap; }
         shutil.copyfile(Path(__file__).parent / file_syntax_highlight_css, dir / file_syntax_highlight_css)
 
         row_data_dict = dict()
-        for group in self.parse_groups(groups):
+        for group in groups:
             logger.log(logging.INFO, 'processing {}...'.format(self.group_set.group_str(group)))
 
             row_data = SimpleNamespace()
