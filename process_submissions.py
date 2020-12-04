@@ -207,8 +207,7 @@ lab_assignment.collect_submissions(use_cache = not args.refresh_submissions)
 
 extra = dict()
 extra['dir'] = args.dir
-if args.groups:
-    extra['groups'] = args.groups
+extra['groups'] = lab_assignment.parse_groups(args.groups) if args.groups else lab_assignment.get_ungraded_submissions()
 
 if args.unpack:
     if args.recreate_swd and args.dir.exists():
