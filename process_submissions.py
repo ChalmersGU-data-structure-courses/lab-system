@@ -13,7 +13,6 @@ dir_script = Path(__file__).parent
 path_extra = dir_script / 'node_modules' / '.bin'
 cache_dir_default = dir_script / 'cache'
 file_auth_token_default = dir_script / 'auth_token'
-timeout_default = 5
 
 p = argparse.ArgumentParser(add_help = False, description = '\n'.join([
     f'Process student submissions to an assignment on Canvas.',
@@ -121,10 +120,6 @@ g = p.add_argument_group('testing options')
 g.add_argument('--no-testing', action = 'store_true', help = '\n'.join([
     f'Skip the testing phase of the submission processing workflow.',
 ]))
-g.add_argument('--timeout', type = float, default = timeout_default, help = '\n'.join([
-    f'Timeout in seconds to use for individual tests.',
-    f'Defaults to {timeout_default}',
-]))
 
 g = p.add_argument_group('pregrading options')
 g.add_argument('--no-pregrading', action = 'store_true', help = '\n'.join([
@@ -219,7 +214,7 @@ if args.process:
     if not args.no_compilation:
         lab_assignment.submissions_compile(strict = not(args.allow_compilation_errors), **extra)
     if not args.no_testing:
-        lab_assignment.submissions_test(timeout = args.timeout, **extra)
+        lab_assignment.submissions_test(**extra)
     if not args.no_pregrading:
         lab_assignment.submissions_pregrade(strict = True, **extra)
     if args.remove_class_files:

@@ -436,7 +436,7 @@ pre { margin: 0px; white-space: pre-wrap; }
                 pre(err, Class = 'error')
         file_out.write_text(doc.render())
 
-    def test(self, dir, timeout = 5, strict = False):
+    def test(self, dir, strict = False):
         logger.log(logging.INFO, 'testing: {}'.format(shlex.quote(str(dir))))
         dir_build = dir / lab_assignment_constants.rel_dir_build
 
@@ -455,14 +455,14 @@ pre { margin: 0px; white-space: pre-wrap; }
                 process = subprocess.run(
                     cmd,
                     cwd = dir_build,
-                    timeout = timeout,
+                    timeout = test_spec.timeout,
                     input = test_spec.input.encode() if test_spec.input != None else None,
                     stdout = (dir_test / 'out').open('wb'),
                     stderr = (dir_test / 'err').open('wb')
                 )
                 (dir_test / 'ret').write_text(str(process.returncode))
             except subprocess.TimeoutExpired:
-                (dir_test / 'timeout').write_text(str(timeout))
+                (dir_test / 'timeout').write_text(str(test_spec.timeout))
 
             # This does not strictly belong here.
             # It should be called only in build_index.
@@ -473,14 +473,14 @@ pre { margin: 0px; white-space: pre-wrap; }
                 assert(is_test_successful(dir))
 
     # Only tests submissions that do not have compilation errors.
-    def submissions_test(self, dir, groups, timeout = 5, strict = False):
+    def submissions_test(self, dir, groups, strict = False):
         logger.log(25, 'Testing...')
         assert(dir.exists())
         self.test(dir)
         for group in groups:
             dir_group = self.group_dir(dir, group)
             if not (dir_group / lab_assignment_constants.rel_file_compilation_errors).exists():
-                self.test(dir_group, timeout = timeout, strict = strict)
+                self.test(dir_group, strict = strict)
 
     def pregrade(self, dir, dir_test, rel_dir_submission, strict = True):
         logger.log(logging.INFO, 'Pregrading: {}'.format(shlex.quote(str(dir))))
