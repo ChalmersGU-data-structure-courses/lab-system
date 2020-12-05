@@ -1,8 +1,6 @@
 from collections import namedtuple
 from pathlib import Path
 
-from general import exec_simple
-
 # A test specification.
 # A test is an invocation of a Java class with a main method.
 # The Java program is run with restrictive permissions.
