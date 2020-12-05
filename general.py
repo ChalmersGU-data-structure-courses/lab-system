@@ -55,6 +55,9 @@ def group_by(f, xs):
 def join_lines(lines):
     return ''.join(line + '\n' for line in lines)
 
+def doublequote(s):
+    return '"' + s.replace('\\', '\\\\').replace('"', '\\"') + '"'
+
 class Timer:
     def __enter__(self):
         self.start = time.monotonic()

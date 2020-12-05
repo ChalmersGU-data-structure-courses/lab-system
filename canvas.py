@@ -5,13 +5,15 @@ import http_logging
 import json
 import os.path
 from pathlib import PurePath, Path
+import re
 import requests
 import shlex
 import shutil
+import subprocess
 import types
 import urllib.parse
 
-from general import from_singleton, unique_by, group_by, JSONObject, print_json, print_error, write_lines, set_modification_time, OpenWithModificationTime, OpenWithNoModificationTime, modify_no_modification_time, guess_encoding
+from general import from_singleton, unique_by, group_by, doublequote, JSONObject, json_encoder, print_json, print_error, write_lines, set_modification_time, OpenWithModificationTime, OpenWithNoModificationTime, modify_no_modification_time, guess_encoding
 import simple_cache
 from submission_fix_lib import HandlerException
 
@@ -40,8 +42,11 @@ class Canvas:
 
         self.base_url = 'https://' + self.domain
         self.base_url_api = self.base_url + '/api/v1'
+
         self.session = requests.Session()
-        self.session.headers.update({ 'Authorization': 'Bearer {}'.format(self.auth_token) })
+        self.session.headers.update({'Authorization': 'Bearer {}'.format(self.auth_token)})
+
+        self.session_file = requests.Session()
 
     # internal
     @staticmethod
@@ -63,8 +68,13 @@ class Canvas:
 
     # internal
     @staticmethod
+    def load_json_objectified(x):
+        return json.loads(x, object_hook = lambda x: JSONObject(**x))
+
+    # internal
+    @staticmethod
     def objectify_json(x):
-        return json.loads(json.dumps(x), object_hook = lambda x: JSONObject(**x))
+        return Canvas.load_json_objectified(json.dumps(x))
 
     # internal
     @staticmethod
@@ -153,34 +163,73 @@ class Canvas:
     # The starting elements 'api' and 'v1' are omitted.
     def put(self, endpoint, params):
         logger.log(logging.INFO, 'PUT with endpoint ' + self.get_url(Canvas.with_api(endpoint)))
-        response = self.session.put(self.get_url(Canvas.with_api(endpoint)), params = params)
-        response.raise_for_status()
+        return Canvas.objectify_json(Canvas.get_response_json(self.session.put(self.get_url(Canvas.with_api(endpoint)), params = params)))
+
+    # Perform a POST request to the designated endpoint.
+    # 'endpoint' is a list of strings and integers constituting the path component of the url.
+    # The starting elements 'api' and 'v1' are omitted.
+    def post(self, endpoint, data, params = dict()):
+        logger.log(logging.INFO, 'POST with endpoint ' + self.get_url(Canvas.with_api(endpoint)))
+        return Canvas.objectify_json(Canvas.get_response_json(self.session.post(self.get_url(Canvas.with_api(endpoint)), params = params, data = data)))
 
     # Perform a DELETE request to the designated endpoint.
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
     # The starting elements 'api' and 'v1' are omitted.
     def delete(self, endpoint, params = dict()):
         logger.log(logging.INFO, 'DELETE with endpoint ' + self.get_url(Canvas.with_api(endpoint)))
-        response = self.session.delete(self.get_url(Canvas.with_api(endpoint)), params = params)
-        response.raise_for_status()
+        return Canvas.objectify_json(Canvas.get_response_json(self.session.delete(self.get_url(Canvas.with_api(endpoint)), params = params)))
+
+    # Returns the id of the posted file.
+    def post_file(self, endpoint, file, folder_id, name, use_curl = False):
+        file = file.resolve()
+        size = file.stat().st_size
+
+        r = self.post(endpoint, {
+            'name': name,
+            'size': size,
+            'locked': True,
+            'lock': True,
+            'parent_folder_id': folder_id,
+            'on_duplicate': 'overwrite', # There should be an 'error' option
+        })
+        upload_params = json.loads(json_encoder.encode(r.upload_params))
+
+        if use_curl:
+            print(r.upload_url)
+            cmd = ['curl', r.upload_url]
+            for upload_param, value in upload_params.items():
+                assert(re.fullmatch('\w+', upload_param))
+                cmd += ['-F', upload_param + '=' + doublequote(value if isinstance(value, str) else json.dumps(value))]
+            cmd += ['-F', 'file=@' + doublequote(str(file))]
+            process = subprocess.run(cmd, check = True, stdout = subprocess.PIPE, encoding = 'utf-8')
+            location = json.loads(process.stdout)['location']
+        else:
+            location = self.session_file.post(r.upload_url, upload_params, files = {'file': file.read_bytes()}).headers['Location']
+
+        return Canvas.objectify_json(Canvas.get_response_json(self.session.get(location))).id
 
     # Retrieve the list of courses that the current user is a member of.
     def courses(self):
         return self.get_list(['courses'])
 
+    def file_set_locked(self, file_id, locked):
+        self.put(['files', file_id], params = {'locked': locked})
+
 class Course:
-    def __init__(self, canvas, course_id):
+    def __init__(self, canvas, course_id, use_cache = True):
         self.canvas = canvas
         self.course_id = course_id
+        self.endpoint = ['courses', self.course_id]
 
         self.assignments_name_to_id = dict()
         self.assignment_details = dict()
-        for assignment in self.get_assignments():
+        for assignment in self.get_assignments(use_cache = use_cache):
             self.assignment_details[assignment.id] = assignment
             self.assignments_name_to_id[assignment.name] = assignment.id
 
-    def get_assignments(self):
-        return self.canvas.get_list(['courses', self.course_id, 'assignments'])
+
+    def get_assignments(self, use_cache = True):
+        return self.canvas.get_list(self.endpoint + ['assignments'], use_cache = use_cache)
 
     def select_assignment(self, assignment_name):
         id = self.assignments_name_to_id.get(assignment_name)
@@ -201,6 +250,13 @@ class Course:
 
     def assignment_str(self, id):
         return '{} (id {})'.format(self.assignment_details[id].name, id)
+
+    # Returns the id of the posted file.
+    def post_file(self, file, folder_id, name, locked = False, use_curl = False):
+        file_id = self.canvas.post_file(self.endpoint + ['files'], file, folder_id, name, use_curl = use_curl)
+        if locked:
+            self.canvas.file_set_locked(file_id, True)
+        return file_id
 
 class GroupSet:
     def __init__(self, canvas, course_id, group_set, use_cache = True):
