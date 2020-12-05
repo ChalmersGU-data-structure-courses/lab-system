@@ -527,7 +527,7 @@ pre { margin: 0px; white-space: pre-wrap; }
         for group in groups:
             self.remove_class_files(self.group_dir(dir, group))
 
-    def build_index(self, dir, groups, deadline = None, goodwill_period = timedelta(minutes=5), preview = True):
+    def build_index(self, dir, groups, deadline = None, goodwill_period = timedelta(minutes = 5), preview = True):
         logger.log(25, 'Writing overview index...')
         assert(dir.exists())
         doc = document()
@@ -582,12 +582,8 @@ pre { margin: 0px; white-space: pre-wrap; }
             # Late submission
             row_data.late = None
             parsed_deadline = self.parse_deadline(deadline)
-            print(parsed_deadline)
-            print(current_submission.submitted_at_date)
             if parsed_deadline:
                 time_diff = current_submission.submitted_at_date - parsed_deadline
-                print(time_diff)
-                print(goodwill_period)
                 if time_diff >= goodwill_period:
                     row_data.late = td(format_timespan(time_diff))
 
