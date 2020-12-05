@@ -1,5 +1,6 @@
 from collections import namedtuple, OrderedDict
 from datetime import datetime, timedelta
+import itertools
 import logging
 import os.path
 from pathlib import Path
@@ -206,13 +207,10 @@ class LabAssignment(Assignment):
         return self.group_set.group_name_to_id[x]
 
     def parse_groups(self, xs):
-        return map(self.parse_group, xs)
+        return list(map(self.parse_group, xs))
 
     def get_ungraded_submissions(self):
         return [group for group, s in self.submissions.items() if LabAssignment.is_to_be_graded(s)]
-
-    def parse_groups(self, groups = None):
-        return map(self.parse_group, groups) if groups != None else self.get_ungraded_submissions()
 
     @staticmethod
     def is_to_be_graded(s):
@@ -262,7 +260,7 @@ class LabAssignment(Assignment):
 
         # Fix capitalization.
         # Known files are assumed unique up to capitalization.
-        names_known_lower = dict((n.lower(), n) for n in chain(self.files_solution, self.files_problem))
+        names_known_lower = dict((n.lower(), n) for n in itertools.chain(self.files_solution, self.files_problem))
         x = names_known_lower.get(name.lower())
         if x and name != x:
             suggestions.append('fix_capitalization({})'.format(repr(x)))
@@ -316,6 +314,7 @@ class LabAssignment(Assignment):
         dir_submission = dir / rel_dir_submission
 
         # Link the problem files.
+        print(dir_build)
         mkdir_fresh(dir_build)
         link_dir_contents(dir_problem, dir_build)
 
@@ -330,6 +329,7 @@ class LabAssignment(Assignment):
 
     def submissions_prepare_build(self, dir, groups):
         logger.log(25, 'Preparing build directories...')
+        print(groups)
         assert(dir.exists())
 
         # make output directory self-contained

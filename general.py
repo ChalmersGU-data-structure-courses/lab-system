@@ -48,6 +48,9 @@ def multidict(xs):
 def group_by(f, xs):
     return multidict([(f(x), x) for x in xs])
 
+def join_lines(lines):
+    return ''.join(line + '\n' for line in lines)
+
 class JSONObject(SimpleNamespace):
     DATE_PATTERN = re.compile("[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z")
 

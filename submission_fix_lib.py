@@ -2,7 +2,7 @@ import re
 from pathlib import PurePath
 from types import FunctionType, SimpleNamespace
 
-from general import compose_many
+from general import compose_many, join_lines
 
 ################################################################################
 # General tools
@@ -59,6 +59,9 @@ def rename(name):
 # Removes copy suffices like ' (1)' introduced by Windows.
 remove_windows_copy = replace(r'^([^.]+) \(\d+\)(\.[^\s]+)$', r'\1\2')
 
+# Removes copy suffices like '(1)'. Introduced by what?
+remove_no_space_windows_copy = replace(r'^([^.]+)\(\d+\)(\.[^\s]+)$', r'\1\2')
+
 # Removes dash suffices like '-1' introduced by students to mirror Canvas.
 remove_dash_copy = replace(r'^([^.]+)-\d+\.(.+)$', r'\1.\2')
 
@@ -66,7 +69,8 @@ remove_dash_copy = replace(r'^([^.]+)-\d+\.(.+)$', r'\1.\2')
 def normalize_suffix(target):
     stem = PurePath(target).stem
     def f(name):
-        if not name.lower().startswith(stem):
+        if not name.lower().startswith(stem.lower()):
+            print(stem)
             raise HandlerException('normalize_suffix({})({})'.format(repr(target), repr(name)))
         return target
     return f
@@ -77,6 +81,16 @@ def normalize_suffix(target):
 # TODO: fix issues /* ^@ SUBMISSION_EDIT */
 def uncomment(pattern):
     return replace(pattern, r'/* \g<0> SUBMISSION_EDIT */')
+
+def uncomment_raw(pattern_raw):
+    return uncomment(re.escape(pattern_raw))
+
+def uncomment_last(n):
+    def f(lines):
+        for i in range(len(lines) - n, len(lines)):
+            lines[i] = '// SUBMISSION_EDIT ' + lines[i]
+        return lines
+    return compose_many(str.splitlines, f, join_lines)
 
 # Uncomment a package declaration.
 # All submitted classes are supposed to be in the default package.
