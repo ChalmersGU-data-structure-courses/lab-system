@@ -577,7 +577,7 @@ pre { margin: 0px; white-space: pre-wrap; }
                 return cell
 
             # Group number
-            row_data.group = td(str(self.group_number(group)))
+            row_data.group = td(a(self.group_number(group), href = self.submission_speedgrader_url(current_submission)))
 
             # Late submission
             row_data.late = None
