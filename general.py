@@ -1,11 +1,12 @@
 from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 import decimal
 import functools
 import json
-from types import SimpleNamespace
-import re
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import  time
+import re
+from types import SimpleNamespace
 import os
 import shutil
 import sys
@@ -31,6 +32,9 @@ def from_singleton(xs):
     assert(len(ys) <= 1)
     return ys[0]
 
+def choose_unique(f, xs):
+    return from_singleton(filter(f, xs))
+
 def unique_by(f, xs):
     rs = list()
     for x in xs:
@@ -50,6 +54,15 @@ def group_by(f, xs):
 
 def join_lines(lines):
     return ''.join(line + '\n' for line in lines)
+
+class Timer:
+    def __enter__(self):
+        self.start = time.monotonic()
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.end = time.monotonic()
+        self.time = self.end - self.start
 
 class JSONObject(SimpleNamespace):
     DATE_PATTERN = re.compile("[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z")
@@ -184,6 +197,10 @@ def guess_encoding(b):
 
     return b.decode()
 
+def format_with_rel_prec(x, precision = 3):
+    context = decimal.Context(prec = precision, rounding = decimal.ROUND_DOWN)
+    return str(context.create_decimal_from_float(x))
+
 def appropriate_time_unit(delta):
     time_units_min = {
         'microseconds': timedelta(microseconds = 1),
@@ -201,9 +218,7 @@ def appropriate_time_unit(delta):
     return time_unit
 
 def format_timespan_using(delta, time_unit, precision = 2):
-    num = delta / timedelta(**{time_unit: 1})
-    context = decimal.Context(prec = precision, rounding = decimal.ROUND_DOWN)
-    return '{} {}'.format(context.create_decimal_from_float(num), time_unit)
+    return '{} {}'.format(format_with_rel_prec(delta / timedelta(**{time_unit: 1})), time_unit)
 
 def format_timespan(delta, precision = 2):
     return format_timespan_using(delta, appropriate_time_unit(delta), precision)

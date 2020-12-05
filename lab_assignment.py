@@ -15,7 +15,7 @@ from dominate import document
 from dominate.tags import *
 from dominate.util import raw, text
 
-from general import compose_many, from_singleton, print_error, print_json, mkdir_fresh, exec_simple, link_dir_contents, add_suffix, modify, format_timespan, sorted_directory_list
+from general import compose_many, from_singleton, Timer, print_error, print_json, mkdir_fresh, exec_simple, link_dir_contents, add_suffix, modify, format_with_rel_prec, format_timespan, sorted_directory_list
 from canvas import Canvas, Course, Assignment
 import lab_assignment_constants
 import submission_fix_lib
@@ -452,17 +452,20 @@ pre { margin: 0px; white-space: pre-wrap; }
             if test_spec.input != None:
                 (dir_test / 'in').write_text(test_spec.input)
             try:
-                process = subprocess.run(
-                    cmd,
-                    cwd = dir_build,
-                    timeout = test_spec.timeout,
-                    input = test_spec.input.encode() if test_spec.input != None else None,
-                    stdout = (dir_test / 'out').open('wb'),
-                    stderr = (dir_test / 'err').open('wb')
-                )
+                with Timer() as t:
+                    process = subprocess.run(
+                        cmd,
+                        cwd = dir_build,
+                        timeout = test_spec.timeout,
+                        input = test_spec.input.encode() if test_spec.input != None else None,
+                        stdout = (dir_test / 'out').open('wb'),
+                        stderr = (dir_test / 'err').open('wb')
+                    )
                 (dir_test / 'ret').write_text(str(process.returncode))
+                logger.log(logging.INFO, 'test {} took {}s'.format(test_name, format_with_rel_prec(t.time, 3)))
             except subprocess.TimeoutExpired:
                 (dir_test / 'timeout').write_text(str(test_spec.timeout))
+                logger.log(logging.INFO, 'test {} timed out after {}s'.format(test_name, format_with_rel_prec(test_spec.timeout, 3)))
 
             # This does not strictly belong here.
             # It should be called only in build_index.
