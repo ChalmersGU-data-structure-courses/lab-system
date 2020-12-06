@@ -294,7 +294,7 @@ class LabAssignment(Assignment):
             return from_singleton(suggestions)
         return '[{}]'.format(', '.join(suggestions))
 
-    def submissions_unpack(self, dir, groups, write_ids = False):
+    def submissions_unpack(self, dir, groups):
         logger.log(25, 'Unpacking submissions...')
         dir.mkdir(exist_ok = True)
 

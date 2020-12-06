@@ -207,7 +207,7 @@ extra['groups'] = lab_assignment.parse_groups(args.groups) if args.groups else l
 if args.unpack:
     if args.recreate_swd and args.dir.exists():
         shutil.rmtree(args.dir)
-    lab_assignment.submissions_unpack(write_ids = args.write_ids, **extra)
+    lab_assignment.submissions_unpack(**extra)
     lab_assignment.submissions_prepare_build(**extra)
 
 if args.process:
