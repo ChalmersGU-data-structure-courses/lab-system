@@ -204,18 +204,22 @@ extra = dict()
 extra['dir'] = args.dir
 extra['groups'] = lab_assignment.parse_groups(args.groups) if args.groups else lab_assignment.get_ungraded_submissions()
 
+root = Path('/')
+
 if args.unpack:
     if args.recreate_swd and args.dir.exists():
         shutil.rmtree(args.dir)
     lab_assignment.submissions_unpack(**extra)
     lab_assignment.submissions_prepare_build(**extra)
 
+    def write_ignore_file(name, paths):
+        (args.dir / name).write_text(join_lines(map(str, paths)))
+
     file_ignore = '.ignore'
-    file_ignore_no_symlinks = '.ignore_no_symlinks'
-    to_abs = lambda s: str(Path('/') / s)
-    ignore = list(map(to_abs, [file_ignore, file_ignore_no_symlinks]))
-    (args.dir / file_ignore).write_text(join_lines(ignore + ['*.class']))
-    (args.dir / file_ignore_no_symlinks).write_text(join_lines(ignore + ['*.class', to_abs(lab_assignment_constants.rel_dir_files)]))
+    file_ignore_symlinks = '.ignore-symlinks'
+    ignore = list(map(lambda path: root / path, [file_ignore, file_ignore_symlinks])) + [Path('*.class')]
+    write_ignore_file(file_ignore_symlinks, ignore)
+    write_ignore_file(file_ignore, ignore + [root / lab_assignment_constants.rel_dir_files])
 
 if args.process:
     if not args.no_compilation:
