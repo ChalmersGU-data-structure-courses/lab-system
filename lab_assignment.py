@@ -635,26 +635,29 @@ pre { margin: 0px; white-space: pre-wrap; }
             row_data.compilation_errors = td(pre(file_compilation_errors.read_text(), Class = 'error')) if file_compilation_errors.exists() else None
 
             # Tests
-            (dir_analysis / lab_assignment_constants.rel_dir_build_test).mkdir()
+            if (dir_group / lab_assignment_constants.rel_dir_build_test).exists():
+                (dir_analysis / lab_assignment_constants.rel_dir_build_test).mkdir()
 
-            def handle_test(test_name):
-                rel_test_dir = rel_dir_group / Path(lab_assignment_constants.rel_dir_build_test) / test_name
-                r = a(test_name, href = rel_test_dir / lab_assignment_constants.rel_file_report)
-                if not LabAssignment.is_test_successful(dir / rel_test_dir):
-                    r.set_attribute('class', 'error')
-                return td(r)
+                def handle_test(test_name):
+                    rel_test_dir = rel_dir_group / Path(lab_assignment_constants.rel_dir_build_test) / test_name
+                    r = a(test_name, href = rel_test_dir / lab_assignment_constants.rel_file_report)
+                    if not LabAssignment.is_test_successful(dir / rel_test_dir):
+                        r.set_attribute('class', 'error')
+                    return td(r)
 
-            test_names = self.tests.keys()
-            row_data.tests = build_files_table(test_names, handle_test)
-            row_data.tests_vs_solution = build_files_table(test_names, lambda test_name: format_diff(
-                dir,
-                'out',
-                Path(lab_assignment_constants.rel_dir_build_test) / test_name,
-                rel_dir_group / lab_assignment_constants.rel_dir_build_test / test_name,
-                rel_dir_group_analysis / lab_assignment_constants.rel_dir_build_test / test_name,
-                'Test {} output: compared to {}'.format(test_name, lab_assignment_constants.rel_dir_solution)
-            ))
-            row_data.tests_errors = None
+                test_names = self.tests.keys()
+                row_data.tests = build_files_table(test_names, handle_test)
+                row_data.tests_vs_solution = build_files_table(test_names, lambda test_name: format_diff(
+                    dir,
+                    'out',
+                    Path(lab_assignment_constants.rel_dir_build_test) / test_name,
+                    rel_dir_group / lab_assignment_constants.rel_dir_build_test / test_name,
+                    rel_dir_group_analysis / lab_assignment_constants.rel_dir_build_test / test_name,
+                    'Test {} output: compared to {}'.format(test_name, lab_assignment_constants.rel_dir_solution)
+                ))
+            else:
+                row_data.tests = None
+                row_data.tests_vs_solution = None
 
             # Pregrading
             file_pregrading = dir_group / lab_assignment_constants.rel_file_pregrading
