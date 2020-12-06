@@ -200,6 +200,11 @@ def guess_encoding(b):
 
     return b.decode()
 
+def fix_encoding(path):
+    content = guess_encoding(path.read_bytes())
+    with OpenWithNoModificationTime(path) as file:
+        file.write(content)
+
 def format_with_rel_prec(x, precision = 3):
     context = decimal.Context(prec = precision, rounding = decimal.ROUND_DOWN)
     return str(context.create_decimal_from_float(x))

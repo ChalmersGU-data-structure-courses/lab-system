@@ -220,7 +220,22 @@ class LabAssignment(Assignment):
 
         return Assignment.current_submission(s).workflow_state == 'submitted'
 
-    def unpack(self, dir, submissions, unhandled = None, write_ids = False):
+    # def unpack(self, dir, submissions, unhandled = None, write_ids = False):
+    #     logger.log(logging.INFO, 'unpacking: {}'.format(shlex.quote(str(dir))))
+    #     unhandled_any = False
+    #     dir.mkdir()
+    #
+    #     def unhandled_warn(id, name):
+    #         nonlocal unhandled
+    #         name_unhandled = name + '.unhandled'
+    #         if unhandled != None:
+    #             unhandled.append((id, name, dir / name_unhandled))
+    #         return name_unhandled
+    #
+    #     files = Assignment.get_files(submissions, Assignment.name_handler(self.files_solution, self.name_handlers, unhandled_warn))
+    #     file_mapping = self.create_submission_dir(dir, submissions[-1], files, write_ids = write_ids, content_handlers = self.content_handlers)
+
+    def unpack_linked(self, dir_files, dir, rel_dir_files, submissions, unhandled = None):
         logger.log(logging.INFO, 'unpacking: {}'.format(shlex.quote(str(dir))))
         unhandled_any = False
         dir.mkdir()
@@ -233,7 +248,7 @@ class LabAssignment(Assignment):
             return name_unhandled
 
         files = Assignment.get_files(submissions, Assignment.name_handler(self.files_solution, self.name_handlers, unhandled_warn))
-        file_mapping = self.create_submission_dir(dir, submissions[-1], files, write_ids = write_ids, content_handlers = self.content_handlers)
+        file_mapping = self.create_submission_dir_linked(dir_files, dir, rel_dir_files, submissions[-1], files, content_handlers = self.content_handlers)
 
     # static
     stages = {
@@ -291,7 +306,14 @@ class LabAssignment(Assignment):
                 submissions = Assignment.get_submissions(self.submissions[group], previous)
                 dir_group_submission = dir_group / rel_dir
                 if submissions:
-                    self.unpack(dir_group_submission, submissions, unhandled = unhandled if not previous else None, write_ids = write_ids)
+                    #self.unpack(dir_group_submission, submissions, unhandled = unhandled if not previous else None, write_ids = write_ids)
+                    self.unpack_linked(
+                        dir / lab_assignment_constants.rel_dir_files,
+                        dir_group / rel_dir,
+                        Path('..') / '..' / lab_assignment_constants.rel_dir_files,
+                        submissions,
+                        unhandled = unhandled if not previous else None
+                    )
 
             with (dir / 'members.txt').open('w') as file:
                 for user in self.group_set.group_users[group]:

@@ -48,7 +48,7 @@ g.add_argument('--process', action = 'store_true', help = '\n'.join([
     f'Unless changed using --allow-compilation-errors, the workflow will stop after the compilation stage if there where any errors.',
     f'This is useful to detect fixable errors such as package declarations and non-existing imports.',
     f'You should then extend \'content_handlers\' in \'{lab_assignment_constants.rel_file_submission_fixes}\' in the lab directory to persistently fix theses errors (see documentation in that file).',
-    f'The option --write-ids is useful here.',
+    f'The file ids can be found by inspecting the symlink targets.',
     f'Afterwards, you will need to run --unpack again for these fixes to take effect; to save time, restrict its effect via the --group option to those lab groups impacted by the new content handlers.',
     f'In any case, the following phases run only for those lab groups passing compilation.'
     f'Testing uses the tests specified in \'{Path(lab_assignment_constants.rel_dir_test) / lab_assignment_constants.rel_file_tests}\' in the lab directory.',
@@ -102,10 +102,10 @@ g.add_argument('--no-name-handlers', action = 'store_true', help = '\n'.join([
 g.add_argument('--no-content-handlers', action = 'store_true', help = '\n'.join([
     f'Do not fix submitted file contents using the content handlers in \'{lab_assignment_constants.rel_file_submission_fixes}\' in the lab directory.'
 ]))
-g.add_argument('--write-ids', action = 'store_true', help = '\n'.join([
-    f'Together with each submitted file \'<file>\' written in the \'{lab_assignment_constants.rel_dir_current}\' and \'{lab_assignment_constants.rel_dir_previous}\' subdirectories of each lab group, store its Canvas id in \'.<file>\'.',
-    f'This can be used for easy Canvas id lookup when writing \'content_handlers\' to fix compilation errors.'
-]))
+# g.add_argument('--write-ids', action = 'store_true', help = '\n'.join([
+#     f'Together with each submitted file \'<file>\' written in the \'{lab_assignment_constants.rel_dir_current}\' and \'{lab_assignment_constants.rel_dir_previous}\' subdirectories of each lab group, store its Canvas id in \'.<file>\'.',
+#     f'This can be used for easy Canvas id lookup when writing \'content_handlers\' to fix compilation errors.'
+# ]))
 
 g = p.add_argument_group('compilation options')
 g.add_argument('--no-compilation', action = 'store_true', help = '\n'.join([
@@ -156,7 +156,7 @@ import logging
 import os
 import shutil
 
-from general import print_error, add_to_path
+from general import print_error, add_to_path, join_lines
 from canvas import Canvas, GroupSet, Course
 from lab_assignment import LabAssignment
 import config
@@ -221,3 +221,9 @@ if args.process:
         lab_assignment.submissions_remove_class_files(**extra)
     if not args.no_overview:
         lab_assignment.build_index(deadline = args.deadline, preview = not(args.no_preview), **extra)
+
+    file_ignore = '.ignore'
+    file_ignore_no_symlinks = '.ignore_no_symlinks'
+    ignore = [file_ignore, file_ignore_no_symlinks]
+    (args.dir / file_ignore).write_text(join_lines(ignore + ['*.class']))
+    (args.dir / file_ignore_no_symlinks).write_text(join_lines(ignore + ['*.class', '/files']))
