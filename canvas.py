@@ -13,7 +13,7 @@ import subprocess
 import types
 import urllib.parse
 
-from general import from_singleton, unique_by, group_by, doublequote, JSONObject, json_encoder, print_json, print_error, write_lines, set_modification_time, OpenWithModificationTime, OpenWithNoModificationTime, modify_no_modification_time, guess_encoding
+from general import from_singleton, unique_by, group_by, doublequote, JSONObject, json_encoder, print_json, print_error, add_suffix, write_lines, set_modification_time, OpenWithModificationTime, OpenWithNoModificationTime, modify_no_modification_time, fix_encoding
 import simple_cache
 from submission_fix_lib import HandlerException
 
@@ -152,11 +152,15 @@ class Canvas:
         return self.get_file_bare(file_descr.id, Canvas.parse_verifier(file_descr.url), use_cache)
 
     # Store a file from canvas in a designated location.
-    # 'file' is a file description object retrieved from Canvas.
+    # 'file_descr' is a file description object retrieved from Canvas.
     # The file modification time is set to the modification time of the file on Canvas.
-    def place_file(self, target, file_descr, use_cache = True):
-        shutil.copyfile(self.get_file(file_descr, use_cache), target)
-        set_modification_time(target, file_descr.modified_at_date)
+    def place_file(self, target, file_descr, temp_target = None, if_already_there = True, use_cache = True):
+        if not (if_already_there and target.is_file()):
+            t = temp_target if temp_target else target
+            shutil.copyfile(self.get_file(file_descr, use_cache), t)
+            set_modification_time(t, file_descr.modified_at_date)
+            if temp_target:
+                t.rename(target)
 
     # Perform a PUT request to the designated endpoint.
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
@@ -518,29 +522,53 @@ class Assignment:
         return lines
 
     # Returns a mapping from file ids to paths.
-    def create_submission_dir(self, dir, submission, files, write_ids = False, content_handlers = None):
-        dir.mkdir(exist_ok = True) # useful if unpacking on top of template files
+    # def create_submission_dir(self, dir, submission, files, write_ids = False, content_handlers = None):
+    #     dir.mkdir(exist_ok = True) # useful if unpacking on top of template files
+    #     file_mapping = dict()
+    #     for filename, attachment in files.items():
+    #         path = dir / filename
+    #         self.canvas.place_file(path, attachment)
+    #         fix_encoding(path)
+    #
+    #         file_mapping[attachment.id] = path
+    #         if write_ids:
+    #             with (dir / ('.' + filename)).open('w') as file:
+    #                 file.write(str(attachment.id))
+    #
+    #         content_handler = content_handlers(attachment.id) if content_handlers else None
+    #         if content_handler:
+    #             try:
+    #                 modify_no_modification_time(path, content_handler)
+    #             except HandlerException as e:
+    #                 print_error('Content handler failed on file id {}: {}'.format(attachment.id, shlex.quote(str(path))))
+    #                 raise e
+    #     set_modification_time(dir, submission.submitted_at_date)
+    #     return file_mapping
+
+    # Returns a mapping from file ids to paths.
+    def create_submission_dir_linked(self, dir_files, dir, rel_dir_files, submission, files, content_handlers = None):
+        dir_files.mkdir(exist_ok = True)
+        dir.mkdir(exist_ok = True)
+
         file_mapping = dict()
         for filename, attachment in files.items():
-            path = dir / filename
-            self.canvas.place_file(path, attachment)
+            source = dir_files / str(attachment.id)
+            if not source.is_file():
+                self.canvas.place_file(source, attachment, temp_target = add_suffix(source, '.temp'))
+                fix_encoding(source)
 
-            # make sure encoding is utf-8
-            content = guess_encoding(path.read_bytes())
-            with OpenWithNoModificationTime(path) as file:
-                file.write(content)
+                content_handler = content_handlers(attachment.id) if content_handlers else None
+                if content_handler:
+                    try:
+                        modify_no_modification_time(source, content_handler)
+                    except HandlerException as e:
+                        print_error('Content handler failed on {}'.format(shlex.quote(str(source))))
+                        raise e
 
-            file_mapping[attachment.id] = path
-            if write_ids:
-                with (dir / ('.' + filename)).open('w') as file:
-                    file.write(str(attachment.id))
-            content_handler = content_handlers(attachment.id) if content_handlers else None
-            if content_handler:
-                try:
-                    modify_no_modification_time(path, content_handler)
-                except HandlerException as e:
-                    print_error('Content handler failed on file id {}: {}'.format(attachment.id, shlex.quote(str(path))))
-                    raise e
+            target = dir / filename
+            target.symlink_to(rel_dir_files / str(attachment.id))
+            file_mapping[attachment.id] = target
+
         set_modification_time(dir, submission.submitted_at_date)
         return file_mapping
 

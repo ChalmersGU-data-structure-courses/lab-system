@@ -1,6 +1,7 @@
 # These are constants used by the lab_assignment module.
 # They have been outsourced here so that argcomplete doesn't get slowed down by loading that module.
 
+rel_dir_files = '_files'
 rel_dir_problem = 'problem'
 rel_dir_solution = 'solution'
 rel_dir_test = 'test'
