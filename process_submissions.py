@@ -212,9 +212,10 @@ if args.unpack:
 
     file_ignore = '.ignore'
     file_ignore_no_symlinks = '.ignore_no_symlinks'
-    ignore = list(map(lambda s: '/' + s, [file_ignore, file_ignore_no_symlinks]))
+    to_abs = lambda s: str(Path('/') / s)
+    ignore = list(map(to_abs, [file_ignore, file_ignore_no_symlinks]))
     (args.dir / file_ignore).write_text(join_lines(ignore + ['*.class']))
-    (args.dir / file_ignore_no_symlinks).write_text(join_lines(ignore + ['*.class', '/files']))
+    (args.dir / file_ignore_no_symlinks).write_text(join_lines(ignore + ['*.class', to_abs(lab_assignment_constants.rel_dir_files)]))
 
 if args.process:
     if not args.no_compilation:
