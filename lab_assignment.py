@@ -553,7 +553,7 @@ pre { margin: 0px; white-space: pre-wrap; }
         logger.log(25, 'Writing overview index...')
         assert(dir.exists())
         doc = document()
-        doc.title = 'Grading Overview'
+        doc.title = 'Grading Over It'
         with doc.head:
             meta(charset = 'utf-8')
             style("""\
