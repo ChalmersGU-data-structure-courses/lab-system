@@ -210,6 +210,12 @@ if args.unpack:
     lab_assignment.submissions_unpack(**extra)
     lab_assignment.submissions_prepare_build(**extra)
 
+    file_ignore = '.ignore'
+    file_ignore_no_symlinks = '.ignore_no_symlinks'
+    ignore = list(map(lambda s: '/' + s, [file_ignore, file_ignore_no_symlinks]))
+    (args.dir / file_ignore).write_text(join_lines(ignore + ['*.class']))
+    (args.dir / file_ignore_no_symlinks).write_text(join_lines(ignore + ['*.class', '/files']))
+
 if args.process:
     if not args.no_compilation:
         lab_assignment.submissions_compile(strict = not(args.allow_compilation_errors), **extra)
@@ -221,9 +227,3 @@ if args.process:
         lab_assignment.submissions_remove_class_files(**extra)
     if not args.no_overview:
         lab_assignment.build_index(deadline = args.deadline, preview = not(args.no_preview), **extra)
-
-    file_ignore = '.ignore'
-    file_ignore_no_symlinks = '.ignore_no_symlinks'
-    ignore = [file_ignore, file_ignore_no_symlinks]
-    (args.dir / file_ignore).write_text(join_lines(ignore + ['*.class']))
-    (args.dir / file_ignore_no_symlinks).write_text(join_lines(ignore + ['*.class', '/files']))
