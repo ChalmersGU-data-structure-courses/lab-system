@@ -457,11 +457,11 @@ class Assignment:
     @staticmethod
     def name_handler(whitelist, handlers, unhandled = None):
         def f(id, name):
-            if name in whitelist:
-                return name;
             handler = handlers(id) if handlers else None
             if handler:
                 return handler(name)
+            if name in whitelist:
+                return name;
             if unhandled:
                 return unhandled(id, name)
             return None
@@ -481,7 +481,7 @@ class Assignment:
                 if name:
                     prev_attachment = submission_files.get(name)
                     if prev_attachment:
-                        print_error('duplicate filename {} in submission {}: files ids {} and {}'.format(name, submission.id, prev_attachment.id, attachment.id))
+                        print_error('Duplicate filename {} in submission {}: files ids {} and {}.'.format(name, submission.id, prev_attachment.id, attachment.id))
                         raise Exception()
                     submission_files[name] = attachment
             files.update(submission_files)
