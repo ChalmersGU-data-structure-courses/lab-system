@@ -68,16 +68,16 @@ g.add_argument('-v', '--verbose', action = 'store_true', help = '\n'.join([
     f'Print INFO level logging.',
     f'This includes accesses to Canvas API endpoints.',
 ]))
-g.add_argument('--auth-token-file', type = str, default = file_auth_token_default, help = '\n'.join([
+g.add_argument('--auth-file', type = str, metavar = 'AUTH', default = file_auth_token_default, help = '\n'.join([
     f'Path to a file storing the Canvas authentication token.',
     f'Defaults to {shlex.quote(str(file_auth_token_default))}.',
 ]))
-g.add_argument('--cache-dir', type = str, default = cache_dir_default, help = '\n'.join([
+g.add_argument('--cache-dir', type = str, metavar = 'CACHE', default = cache_dir_default, help = '\n'.join([
     f'The cache directory to use.',
     f'If it does not exist, it will be created.',
     f'Defaults to {shlex.quote(str(cache_dir_default))}.',
 ]))
-g.add_argument('--groups', nargs = '+', type = str, help = '\n'.join([
+g.add_argument('--groups', nargs = '+', type = str, metavar = 'GROUP', help = '\n'.join([
     f'Restrict submission processing to these groups.',
     f'If omitted, all currently ungraded submissions will be processed.',
 ]))

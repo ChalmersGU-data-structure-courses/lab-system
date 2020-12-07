@@ -14,8 +14,7 @@ cache_dir_default = dir_script / 'cache'
 file_auth_token_default = dir_script / 'auth_token'
 
 p = argparse.ArgumentParser(add_help = False, description = '\n'.join([
-    f'Zip a directory in several ways and upload the result to Canvas.',
-    f'The directory may contain relative symlinks resolving within the directory.',
+    f'Compress a directory for systems with/without symlink support and upload the result to Canvas.',
 ]), epilog = '\n'.join([
     f'This Python script supports bash completion.',
     f'For this, python-argparse needs to be installed and configured.',
@@ -24,26 +23,34 @@ p = argparse.ArgumentParser(add_help = False, description = '\n'.join([
 
 g = p.add_argument_group('primary arguments')
 g.add_argument('dir', type = Path, help = '\n'.join([
-    f'The directory to zip and upload to Canvas.',
+    f'The directory to compress and upload to Canvas.',
+    f'The directory may only contain relative symlinks resolving within the directory.',
 ]))
 g.add_argument('--zip', action = 'store_true', help = '\n'.join([
-    f'Zip the directory in two different ways.',
-    f'One using zip, preserving the symlinks.',
-    f'One using 7z (with large dictionary size) with symlinks resolved.',
-    f'The zip files have their named derived from the given directory and are stored in its parent directory.'
-    f'Pre-existing zip files of the same name are deleted.'
+    f'Zip the directory using xz in two different ways, one preserving symlinks and one resolving symlinks.',
+    f'The zipped files have their named derived from the given directory and are stored in its parent directory.'
+    f'Pre-existing files of the same name are deleted.'
 ]))
 g.add_argument('--share', action = 'store_true', help = '\n'.join([
-    f'Upload the zip files to Canvas.',
+    f'Upload the zipped files to Canvas.',
 ]))
 
 g = p.add_argument_group('secondary arguments')
-g.add_argument('--canvas-folder', type = str, default = 'temp', help = '\n'.join([
-    f'The Canvas folder to store the zip files in.'
+g.add_argument('--canvas-dir', type = str, metavar = 'NAME', default = 'temp', help = '\n'.join([
+    f'The Canvas folder to store the zipped files in.',
     f'Defaults to \'temp\' in the course root directory.',
 ]))
 g.add_argument('--delete-zips', action = 'store_true', help = '\n'.join([
-    f'Delete the produced zip files after they have been uploaded to Canvas.',
+    f'Delete the zipped files after they have been uploaded to Canvas.',
+]))
+g.add_argument('--no-symlink-zip', action = 'store_true', help = '\n'.join([
+    f'Do not produce the zipped file with symlinks preserved.',
+]))
+g.add_argument('--no-nonsymlink-zip', action = 'store_true', help = '\n'.join([
+    f'Do not produce the zipped file with symlinks resolved.',
+]))
+g.add_argument('--compression', choices = list(map(str, range(0,10))), metavar = '{0..9}', default = 0, help = '\n'.join([
+    f'Compression level to use with xz',
 ]))
 
 g = p.add_argument_group('general arguments')
@@ -54,11 +61,11 @@ g.add_argument('-v', '--verbose', action = 'store_true', help = '\n'.join([
     f'Print INFO level logging.',
     f'This includes accesses to Canvas API endpoints.',
 ]))
-g.add_argument('--auth-token-file', type = str, default = file_auth_token_default, help = '\n'.join([
+g.add_argument('--auth-file', type = str, metavar = 'AUTH', default = file_auth_token_default, help = '\n'.join([
     f'Path to a file storing the Canvas authentication token.',
     f'Defaults to {shlex.quote(str(file_auth_token_default))}.',
 ]))
-g.add_argument('--cache-dir', type = str, default = cache_dir_default, help = '\n'.join([
+g.add_argument('--cache-dir', type = str, metavar = 'CACHE', default = cache_dir_default, help = '\n'.join([
     f'The cache directory to use.',
     f'If it does not exist, it will be created.',
     f'Defaults to {shlex.quote(str(cache_dir_default))}.',
@@ -109,32 +116,18 @@ else:
 canvas = Canvas(config.canvas_url, cache_dir = Path(args.cache_dir))
 course = Course(canvas, config.course_id)
 
-root = Path('/')
-
-# Does not compress well with 'preverse_symlinks = False'.
-def cmd_zip(output, paths, preserve_symlinks = False, ignore = []):
-    return ['zip'] + (['--symlinks'] if preverse_symlinks else []) + ['-r', str(output), '--'] + list(map(str, paths))
-
-def cmd_7z(output, paths, preserve_symlinks = True, ignore = []):
-    format_ignore = lambda path: '-x' + ('' if path.is_absolute() else 'r') + '!' + str(path.relative_to(root) if path.is_absolute() else path)
-    return ['7z', 'a'] + ([] if preserve_symlinks else ['-l', '-md=26']) + list(map(format_ignore, ignore)) + [str(output), '--'] + list(map(str, paths))
-
-zippers = {
-    'zip': cmd_zip,
-    '7z': cmd_7z,
-}
-
 preserve_symlink_suffix = {
     True: '-symlinks',
     False: '',
 }
 
-Config = namedtuple('Config', field_names = ['compressor', 'suffix', 'preserve_symlinks'])
+Config = namedtuple('Config', field_names = ['compressor', 'suffix', 'preserve_symlinks', 'skip'])
 
 configs = [
-    Config(compressor = compression.xz, suffix = '.txz', preserve_symlinks = True),
-    Config(compressor = compression.xz, suffix = '.txz', preserve_symlinks = False),
+    Config(compressor = compression.get_xz(args.compression), suffix = '.txz', preserve_symlinks = True , skip = args.no_symlink_zip   ),
+    Config(compressor = compression.get_xz(args.compression), suffix = '.txz', preserve_symlinks = False, skip = args.no_nonsymlink_zip),
 ]
+configs = list(filter(lambda config: not config.skip, configs))
 
 def output(c):
     return args.dir.with_name(args.dir.name + preserve_symlink_suffix[c.preserve_symlinks] + c.suffix)
@@ -144,34 +137,43 @@ def output_quoted_name(c):
 
 if args.zip:
     print_error('Zipping...')
+
     for c in configs:
         if output(c).exists():
-            print_error('Deleting pre-existing zip file {}.'.format(output_quoted_name(c)))
+            print_error('Deleting pre-existing file {}.'.format(output_quoted_name(c)))
             output(c).unlink()
+
+        print_error('Zipping file {}.'.format(output_quoted_name(c)))
+        file_ignore = args.dir / ('.ignore' + preserve_symlink_suffix[c.preserve_symlinks])
+        if not file_ignore.exists():
+            print_error('Warning: file {} is missing.'.format(shlex.quote(str(file_ignore))))
+            file_ignore = None
 
         compression.compress_dir(
             output(c),
             args.dir,
-            exclude = args.dir / ('.ignore' + preserve_symlink_suffix[c.preserve_symlinks]),
+            exclude = file_ignore,
             move_up = True,
             sort_by_name = True,
             preserve_symlinks = c.preserve_symlinks,
             compressor = c.compressor)
 
 if args.share:
+    print_error('Uploading...')
+
     # Sanity check.
     for c in configs:
         if not output(c).is_file():
-            print_error('The zip file {} is missing.'.format(output_quoted_name(c)))
+            print_error('File {} is missing.'.format(output_quoted_name(c)))
             exit(1)
 
-    folder_id = canvas.get_list(course.endpoint + ['folders', 'by_path', args.canvas_folder], use_cache = False)[-1].id
+    folder_id = canvas.get_list(course.endpoint + ['folders', 'by_path', args.canvas_dir], use_cache = False)[-1].id
  
     for c in configs:
-        print_error('Uploading {}.'.format(output_quoted_name(c)))
+        print_error('Uploading file {}.'.format(output_quoted_name(c)))
         file_id = course.post_file(output(c), folder_id, output(c).name, locked = True, use_curl = True)
         if args.delete_zips:
-            print_error('Deleting zip file {}.'.format(output_quoted_name(c)))
+            print_error('Deleting file {}.'.format(output_quoted_name(c)))
             output(c).unlink()
 
-        print('{}: {}'.format(output(c), course.get_file_descr(file_id).url))
+        print('{}: {}'.format(output_quoted_name(c), course.get_file_descr(file_id).url))
