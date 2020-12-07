@@ -254,6 +254,9 @@ class Course:
     def assignment_str(self, id):
         return '{} (id {})'.format(self.assignment_details[id].name, id)
 
+    def get_file_descr(self, id):
+        return self.canvas.get(self.endpoint + ['files', id])
+
     # Returns the id of the posted file.
     def post_file(self, file, folder_id, name, locked = False, use_curl = False):
         file_id = self.canvas.post_file(self.endpoint + ['files'], file, folder_id, name, use_curl = use_curl)
