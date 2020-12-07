@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 import shlex
 import subprocess
@@ -6,13 +7,15 @@ import sys
 import dir_glob
 from general import flatten, join_null, print_error
 
+logger = logging.getLogger("compression")
+
 def close_unless_special(fd):
     if not (fd == subprocess.PIPE or fd == subprocess.DEVNULL or fd == sys.stderr):
         fd.close()
 
 class Process(subprocess.Popen):
     def __init__(self, cmd, fd_in = subprocess.PIPE, fd_out = subprocess.PIPE):
-        print_error(shlex.join(cmd))
+        logger.log(logging.INFO, shlex.join(cmd))
         super().__init__(cmd, stdin = fd_in, stdout = fd_out)
         close_unless_special(fd_in)
         close_unless_special(fd_out)
@@ -40,8 +43,8 @@ def tar_write_paths(fd_out, paths):
         fd_out.write(b'\0')
     fd_out.close()
 
-def xz(output, fd_input):
-    return Process(['xz', '-0'], fd_input, output.open('wb'))
+def get_xz(level = 0):
+    return lambda output, fd_input: Process(['xz', '-' + str(level)], fd_input, output.open('wb'))
 
 def id(output, fd_input):
     return Process(['cat'], fd_input, output.open('wb'))
@@ -50,7 +53,7 @@ def id(output, fd_input):
 def p7z(output, fd_input):
     return Process(['7z', 'a', '-t7z', '-si', str(output)], fd_input, sys.stderr)
 
-def compress(output, dir, input_paths, preserve_symlinks = True, compressor = xz):
+def compress(output, dir, input_paths, preserve_symlinks = True, compressor = get_xz()):
     p1 = Process(cmd_tar(dir, preserve_symlinks = preserve_symlinks))
     p2 = compressor(output, p1.stdout)
     tar_write_paths(p1.stdin, input_paths)
@@ -63,7 +66,7 @@ def descendants(dir, preserve_symlinks = True):
         for path in dir.iterdir():
             yield from descendants(path)
 
-def compress_dir(output, dir, exclude = [], move_up = False, sort_by_name = False, preserve_symlinks = True, compressor = xz):
+def compress_dir(output, dir, exclude = [], move_up = False, sort_by_name = False, preserve_symlinks = True, compressor = get_xz()):
     base_dir = dir.parent if move_up else dir
 
     if isinstance(exclude, Path):
