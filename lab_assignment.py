@@ -336,7 +336,6 @@ class LabAssignment(Assignment):
         dir_submission = dir / rel_dir_submission
 
         # Link the problem files.
-        print(dir_build)
         mkdir_fresh(dir_build)
         link_dir_contents(dir_problem, dir_build)
 
@@ -351,7 +350,6 @@ class LabAssignment(Assignment):
 
     def submissions_prepare_build(self, dir, groups):
         logger.log(25, 'Preparing build directories...')
-        print(groups)
         assert(dir.exists())
 
         # make output directory self-contained
@@ -458,7 +456,7 @@ pre { margin: 0px; white-space: pre-wrap; }
                 pre(err, Class = 'error')
         file_out.write_text(doc.render())
 
-    def test(self, dir, strict = False):
+    def test(self, dir, policy = None, strict = False):
         logger.log(logging.INFO, 'testing: {}'.format(shlex.quote(str(dir))))
         dir_build = dir / lab_assignment_constants.rel_dir_build
 
@@ -469,7 +467,12 @@ pre { margin: 0px; white-space: pre-wrap; }
             dir_test = dir_build_test / test_name
             dir_test.mkdir()
 
-            cmd = java_cmd(Path(__file__).parent / lab_assignment_constants.rel_file_java_policy, test_spec.enable_assertions, test_spec.class_name, test_spec.args)
+            cmd = java_cmd(
+                Path('..') / policy if policy else None,
+                test_spec.enable_assertions,
+                test_spec.class_name,
+                test_spec.args
+            )
             (dir_test / 'cmd').write_text(shlex.join(cmd))
             if test_spec.input != None:
                 (dir_test / 'in').write_text(test_spec.input)
@@ -495,17 +498,20 @@ pre { margin: 0px; white-space: pre-wrap; }
             LabAssignment.write_test_report(dir_build_test, test_name, dir_test / 'report.html')
 
             if strict:
-                assert(is_test_successful(dir))
+                assert(LabAssignment.is_test_successful(dir_test))
 
     # Only tests submissions that do not have compilation errors.
     def submissions_test(self, dir, groups, strict = False):
         logger.log(25, 'Testing...')
         assert(dir.exists())
-        self.test(dir)
+
+        policy = dir / lab_assignment_constants.rel_file_java_policy
+        shutil.copyfile(Path(__file__).parent / lab_assignment_constants.rel_file_java_policy, policy)
+        self.test(dir, policy, strict = True)
         for group in groups:
             dir_group = self.group_dir(dir, group)
             if not (dir_group / lab_assignment_constants.rel_file_compilation_errors).exists():
-                self.test(dir_group, strict = strict)
+                self.test(dir_group, policy = Path('..') / policy, strict = strict)
 
     def pregrade(self, dir, dir_test, rel_dir_submission, strict = True):
         logger.log(logging.INFO, 'Pregrading: {}'.format(shlex.quote(str(dir))))
