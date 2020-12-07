@@ -173,3 +173,5 @@ if args.share:
         if args.delete_zips:
             print_error('Deleting zip file {}.'.format(output_quoted_name(c)))
             output(c).unlink()
+
+        print('{}: {}'.format(output(c), course.get_file_descr(file_id).url))
