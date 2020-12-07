@@ -82,8 +82,9 @@ import subprocess
 
 from general import print_error, add_to_path
 from canvas import Canvas, GroupSet, Course
-from lab_assignment import LabAssignment
+import compression
 import config
+from lab_assignment import LabAssignment
 
 # Check directory exists.
 if not args.dir.is_dir():
@@ -108,32 +109,35 @@ else:
 canvas = Canvas(config.canvas_url, cache_dir = Path(args.cache_dir))
 course = Course(canvas, config.course_id)
 
-# Does not compress well with 'resolve_symlinks = True'.
-def cmd_zip(output, paths, resolve_symlinks = False):
-    return ['zip'] + ([] if resolve_symlinks else ['--symlinks']) + ['-r', str(output), '--'] + list(map(str, paths))
+root = Path('/')
 
-def cmd_7z(output, paths, resolve_symlinks = True):
-    return ['7z', 'a'] + (['-l', '-md=26'] if resolve_symlinks else []) + [str(output), '--'] + list(map(str, paths))
+# Does not compress well with 'preverse_symlinks = False'.
+def cmd_zip(output, paths, preserve_symlinks = False, ignore = []):
+    return ['zip'] + (['--symlinks'] if preverse_symlinks else []) + ['-r', str(output), '--'] + list(map(str, paths))
+
+def cmd_7z(output, paths, preserve_symlinks = True, ignore = []):
+    format_ignore = lambda path: '-x' + ('' if path.is_absolute() else 'r') + '!' + str(path.relative_to(root) if path.is_absolute() else path)
+    return ['7z', 'a'] + ([] if preserve_symlinks else ['-l', '-md=26']) + list(map(format_ignore, ignore)) + [str(output), '--'] + list(map(str, paths))
 
 zippers = {
     'zip': cmd_zip,
     '7z': cmd_7z,
 }
 
-resolve_symlink_suffix = {
-    True: '',
-    False: '-symlinks',
+preserve_symlink_suffix = {
+    True: '-symlinks',
+    False: '',
 }
 
-Config = namedtuple('Config', field_names = ['command', 'resolve_symlinks'])
+Config = namedtuple('Config', field_names = ['compressor', 'suffix', 'preserve_symlinks'])
 
 configs = [
-    Config(command = 'zip', resolve_symlinks = False),
-    Config(command = '7z', resolve_symlinks = True),
+    Config(compressor = compression.xz, suffix = '.txz', preserve_symlinks = True),
+    Config(compressor = compression.xz, suffix = '.txz', preserve_symlinks = False),
 ]
 
 def output(c):
-    return args.dir.with_name(args.dir.name + resolve_symlink_suffix[c.resolve_symlinks] + '.' + c.command)
+    return args.dir.with_name(args.dir.name + preserve_symlink_suffix[c.preserve_symlinks] + c.suffix)
 
 def output_quoted_name(c):
     return shlex.quote(str(output(c)))
@@ -144,10 +148,15 @@ if args.zip:
         if output(c).exists():
             print_error('Deleting pre-existing zip file {}.'.format(output_quoted_name(c)))
             output(c).unlink()
-        cmd = zippers[c.command](output(c), [args.dir], c.resolve_symlinks)
-        print(cmd)
-        print_error(shlex.join(cmd))
-        subprocess.run(cmd, check = True)
+
+        compression.compress_dir(
+            output(c),
+            args.dir,
+            exclude = args.dir / ('.ignore' + preserve_symlink_suffix[c.preserve_symlinks]),
+            move_up = True,
+            sort_by_name = True,
+            preserve_symlinks = c.preserve_symlinks,
+            compressor = c.compressor)
 
 if args.share:
     # Sanity check.

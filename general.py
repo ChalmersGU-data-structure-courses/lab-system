@@ -2,6 +2,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 import decimal
 import functools
+import itertools
 import json
 from pathlib import Path
 import  time
@@ -20,11 +21,8 @@ def compose(f, g):
 def compose_many(*fs):
     return functools.reduce(compose, fs, identity)
 
-def add_one(n):
-    return n + 1
-
-def times_two(n):
-    return 2 * n
+def flatten(*xss):
+    return list(itertools.chain(*xss))
 
 def from_singleton(xs):
     ys = list(xs)
@@ -54,6 +52,9 @@ def group_by(f, xs):
 
 def join_lines(lines):
     return ''.join(line + '\n' for line in lines)
+
+def join_null(lines):
+    return ''.join(line + '\0' for line in lines)
 
 def doublequote(s):
     return '"' + s.replace('\\', '\\\\').replace('"', '\\"') + '"'

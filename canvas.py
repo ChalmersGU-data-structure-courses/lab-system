@@ -199,7 +199,6 @@ class Canvas:
         upload_params = json.loads(json_encoder.encode(r.upload_params))
 
         if use_curl:
-            print(r.upload_url)
             cmd = ['curl', r.upload_url]
             for upload_param, value in upload_params.items():
                 assert(re.fullmatch('\w+', upload_param))
