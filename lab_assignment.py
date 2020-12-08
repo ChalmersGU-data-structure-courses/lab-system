@@ -315,7 +315,7 @@ class LabAssignment(Assignment):
                         unhandled = unhandled if not previous else None
                     )
 
-            with (dir / 'members.txt').open('w') as file:
+            with (dir_group / 'members.txt').open('w') as file:
                 for user in self.group_set.group_users[group]:
                     print(self.group_set.user_str(user), file = file)
 
