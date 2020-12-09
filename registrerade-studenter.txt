@@ -1,0 +1,370 @@
+19801017-8302 	Putrym, Magdalena	TDA417	Omreg, lab G	TKELT
+19860529-4910 	Forslund, Magnus	DAT038	Ej påbörjad	TKDAT
+19860814-3999 	Andersson, Magnus	TDA417	Registrerad	TKELT
+19871019-6836 	Alhennawi, Hasan	DAT038	Registrerad	TKDAT
+19880721-4815 	Ali Doosti, Alan	TDA417	Registrerad	TKAUT
+19880831-2790 	Gibanica, Mladen	DAT038	Registrerad	MPENM
+19890201-5034 	Fält Ferreira, Daniel	DAT038	Registrerad	TKDAT
+19891222-7512 	Ndaw Berbres, Jibbril	DAT038	Registrerad	TKTEM
+19900228-2474 	Ceder, Kristian	TDA417	Registrerad	TKAUT
+19900324-3350 	Engström, Viktor	TDA417	Registrerad	TKITE
+19900808-6135 	Esmaeili, Seyed Reza	DAT038	Registrerad	MPCSN
+19910308-7558 	Kousoulidis, Konstantinos	TDA417	Registrerad	MPSYS
+19910323-5652 	Spook, Hugo	TDA417	Registrerad	TKAUT
+19910510-4815 	Persson, Johan	DAT038	Registrerad	MPAME
+19910825-3437 	Berg, Arvid	TDA417	Registrerad	TKAUT
+19911217-5816 	Lindohf, Marcus Erik Oskar	TDA417	Registrerad	TKAUT
+19920422-4514 	Grandén, Anton	DAT038	Registrerad	MPAME
+19920424-4512 	Magnusson, Yngve Dante	DAT038	Registrerad	TKDAT
+19921208-5154 	Julin, Marcus	DAT038	Registrerad	TKDAT
+19930110-5236 	Frykler, Alexander	TDA417	Registrerad	TKAUT
+19930118-5253 	Olin, Hilda	TDA417	Registrerad	TKAUT
+19930118-9404 	Mohamad, Narin	DAT038	Registrerad	TKDAT
+19930131-3491 	Svensson, Adam	DAT038	Registrerad	TKTEM
+19930420-5017 	Sharineh, Hasan	TDA417	Registrerad	TKAUT
+19930614-5344 	Segerlind, Veronica	DAT038	Registrerad	TKTEM
+19930712-8125 	Kruse, Josefin	DAT038	Registrerad	TIDSL
+19930825-3591 	Akbari, Sattar	TDA417	Registrerad	TKELT
+19930917-2378 	Durgé, Rasmus	DAT038	Registrerad	TKTEM
+19931110-5739 	Hjalmarsson, Tobias	DAT038	Registrerad	TKDAT
+19931202-6769 	Amanzadeh, Pegah	TDA417	Registrerad	TKITE
+19931219-6257 	Bergquist, Jesper	TDA417	Registrerad	TKITE
+19940301-3726 	Janhäll, Jenny	DAT038	Ej påbörjad	TKTEM
+19940405-8217 	Alhaffar, Badr Aldeen	TDA417	Registrerad	TKAUT
+19940522-7472 	Sanner, Oscar	TDA417	Registrerad	TKITE
+19940605-4875 	Johansson, Viktor	TDA417	Registrerad	TKELT
+19940710-5932 	Aldiwani, Jamal	DAT038	Registrerad	TKDAT
+19940805-6092 	Björklund Hultman, Martin	DAT038	Registrerad	TKDAT
+19940812-2712 	Dahlberg, Samuel	TDA417	Registrerad	TKITE
+19940820-4353 	Nyrén, William	TDA417	Omreg, lab G	TKTFY
+19940828-6798 	Al Masarwa, Mohammad	DAT038	Registrerad	TKDAT
+19941219-4293 	Nordlander Hurtig, Oskar	TDA417	Registrerad	TKAUT
+19950103-6157 	Hedén, William	DAT038	Omreg, lab G	TKDAT
+19950114-3953 	Odengard, Anthon	DAT038	Registrerad	TKTEM
+19950117-0915 	Levén, Emil	DAT038	Ej påbörjad	TKTEM
+19950213-5172 	Nguyen, Daniel	DAT038	Registrerad	TKDAT
+19950324-2472 	Zhang, Zeyang	DAT038	Ej påbörjad	MPIDE
+19950423-6812 	Brattgård, Gabriel	TDA417	Registrerad	TKITE
+19950425-3072 	Ohlsson, Joakim	TDA417	Registrerad	TKITE
+19950512-2946 	Hultén, Louise	TDA417	Registrerad	TKITE
+19950525-7742 	Arvidsson, Izabell	TDA417	Registrerad	TKITE
+19950711-1368 	Hult, Karin	TDA417	Registrerad	TKTFY
+19950718-4738 	Wennerström, Karl	DAT038	Registrerad	TKTEM
+19950729-4511 	Blosse, Titus	DAT038	Registrerad	TKDAT
+19950803-4551 	Khoshnam, Pajam	TDA417	Registrerad	TKITE
+19950809-7533 	Phomthong, Saharat	DAT038	Ej påbörjad	TKDAT
+19951016-1749 	Ringström, Emma	DAT038	Registrerad	TKTEM
+19951106-0171 	Spetz, Johan	TDA417	Registrerad	TKELT
+19960113-3136 	Darin Nordqvist, Filip	TDA417	Registrerad	TKITE
+19960119-1357 	Berisha, Naron	TDA417	Registrerad	TKAUT
+19960128-3972 	Johnsson, David	TDA417	Registrerad	TKAUT
+19960215-9619 	Andersson, Simon	TDA417	Registrerad	TKITE
+19960324-4519 	Aas, Rickard	TDA417	Registrerad	MPSYS
+19960408-4138 	Olausson, Karl	DAT038	Registrerad	TKDAT
+19960424-5978 	Wallin, Oscar	TDA417	Registrerad	TKITE
+19960510-7912 	Moldan, Petr	TDA417	Registrerad	TKAUT
+19960521-0237 	Faleberg Nilsson, Zacharias	DAT038	Registrerad	TIELL
+19960728-8058 	Lindén, Fredrik	TDA417	Registrerad	TKAUT
+19960806-4359 	Bergman, Carl	TDA417	Registrerad	TKITE
+19960919-9675 	Anttila Ryderup, Erik	TDA417	Registrerad	TKITE
+19961028-7196 	Holmsten, Emil	TDA417	Registrerad	TKITE
+19961029-4515 	Carlson, Vincent	DAT038	Registrerad	TKDAT
+19961118-8526 	Ekener, Felicia	TDA417	Registrerad	TKAUT
+19961129-4357 	Westerlund, Oskar	TDA417	Registrerad	TKAUT
+19961214-8719 	Jalal, Didar Kevin	TDA417	Registrerad	MPSCM
+19970104-3417 	Johansson, Holger	DAT038	Registrerad	TKSAM
+19970110-6073 	Hedquist, Vilhelm	TDA417	Registrerad	TKITE
+19970113-9256 	Wagner, Samuel	DAT038	Registrerad	TKTEM
+19970301-4853 	Hosseini, Hamid	DAT038	Registrerad	TKDAT
+19970306-4833 	Alhaskir, Tarek	TDA417	Registrerad	TKTFY
+19970325-0028 	Huynh, Pernilla	TDA417	Registrerad	TKTFY
+19970403-1732 	Ivers Ohlsson, Philip	DAT038	Registrerad	TKDAT
+19970404-4073 	Gard, Philip	TDA417	Registrerad	TKTFY
+19970407-1928 	Eikeland, Aline	TDA417	Registrerad	TKITE
+19970420-2267 	Nguyen, Anna	DAT038	Registrerad	TKTEM
+19970430-9013 	Eliasson, Adam	DAT038	Registrerad	TKDAT
+19970509-4952 	Nätterdal, Fredrik	DAT038	Registrerad	TKDAT
+19970519-0370 	Johansson Leskinen, Björn Vidar Juhani	DAT038	Registrerad	TKDAT
+19970601-7333 	Olsson, Oskar	TDA417	Registrerad	TKAUT
+19970605-4617 	Palak, Michal	DAT038	Registrerad	TKTEM
+19970615-8673 	Molin, Oskar	DAT038	Registrerad	TKTEM
+19970623-9036 	Bengtsson, Erik	TDA417	Registrerad	TKITE
+19970629-7133 	Jinton, Thomas	TDA417	Omreg, TDA416 lab G	TKITE
+19970703-6712 	Börjesson Lindgren, Aron	TDA417	Registrerad	TKAUT
+19970704-7677 	Wilhelm, Jona	TDA417	Ej påbörjad	TKAUT
+19970706-8616 	Otterlind, Rasmus	TDA417	Registrerad	TKITE
+19970707-5132 	Sjögren, Olof	TDA417	Registrerad	TKITE
+19970710-3637 	Rohdin, Jacob	TDA417	Registrerad	TKITE
+19970715-8797 	Sundberg, Daniel	TDA417	Omreg, lab G	TKELT
+19970722-3179 	Dahlén, Filip	TDA417	Registrerad	TKTFY
+19970804-6694 	Bengtsson, Julius	TDA417	Registrerad	TKAUT
+19970810-8890 	Johansson, Philip	TDA417	Registrerad	TKAUT
+19970823-6782 	Persson, Sanna	DAT038	Registrerad	TKTEM
+19970906-4159 	Forsberg, Joar	DAT038	Registrerad	TKDAT
+19970917-1871 	Zetterlund, Andreas	TDA417	Registrerad	TKAUT
+19970918-7471 	Blidberg, Axel	TDA417	Registrerad	TKELT
+19970923-8696 	Brundin, Isak	TDA417	Registrerad	TKTFY
+19970924-7812 	Andersson, Simon	TDA417	Ej påbörjad	TKELT
+19971001-6297 	Petre, Andru Mihail	TDA417	Omreg, lab G	TKELT
+19971019-6826 	Willig, Rebecka	DAT038	Registrerad	TKDAT
+19971022-1186 	Isaac Galán, Edenia	TDA417	Registrerad	TKITE
+19971030-3679 	Häggström, Henrik	DAT038	Registrerad	TKTEM
+19971108-1068 	Ingemarsson, Ingrid	DAT038	Registrerad	MPENM
+19971125-8179 	Friedrichsen, Albin	TDA417	Registrerad	TKAUT
+19971210-0438 	Palenius, Isak	TDA417	Registrerad	TKAUT
+19971216-1893 	Pettersson, Henrik	DAT038	Ej påbörjad	TKTEM
+19980102-8854 	Krstic, Stefan	TDA417	Registrerad	TKITE
+19980103-7913 	Jakobsson, Ludvig	DAT038	Registrerad	TKTEM
+19980110-8359 	Johansson, Lukas	DAT038	Registrerad	TKTEM
+19980112-4117 	Imark, Simon	TDA417	Registrerad	TKELT
+19980116-6019 	Holmqvist, Arvid	TDA417	Registrerad	TKITE
+19980117-5994 	Richardson, Mats	DAT038	Registrerad	TKTEM
+19980118-6637 	Lamm, Johan	TDA417	Registrerad	TKAUT
+19980127-2932 	Blom Rydell, Joel	DAT038	Registrerad	TKDAT
+19980210-5578 	Brusewitz, Erik	TDA417	Registrerad	TKTFY
+19980213-1996 	Karlsson, Albin	DAT038	Registrerad	TKDAT
+19980226-5554 	Sahlqvist, Robert	TDA417	Registrerad	TKITE
+19980228-5321 	Nord, Josefine	TDA417	Registrerad	TKITE
+19980308-5555 	Samuelsson, Alexander	DAT038	Registrerad	TKTEM
+19980312-4271 	Truvé, William	TDA417	Registrerad	TKELT
+19980323-0516 	Meding, Isak	TDA417	Registrerad	TKAUT
+19980325-6578 	Hedlund, Jonas	DAT038	Registrerad	TKDAT
+19980325-9366 	Dahlin, Matilda	TDA417	Registrerad	TKAUT
+19980326-6338 	Gunnarsson, Karl	TDA417	Registrerad	TKITE
+19980403-1350 	Norizadeh, Nick	TDA417	Registrerad	TKAUT
+19980414-6935 	Thim, Lukas	DAT038	Registrerad	TKDAT
+19980417-0836 	Pettersson, Andreas	TDA417	Ej påbörjad	TKITE
+19980429-6151 	Hugo, William	TDA417	Registrerad	TKITE
+19980509-3995 	Johansson, Elias	TDA417	Registrerad	TKITE
+19980517-9174 	Johnsson, Dipa	DAT038	Registrerad	TKDAT
+19980519-5444 	Lundblad, Ellinor	TDA417	Registrerad	TKAUT
+19980520-8874 	Nilsson, Elias	DAT038	Registrerad	TKTEM
+19980523-0159 	Widerberg, Simon	DAT038	Registrerad	TKDAT
+19980603-1655 	Persson, Jonas	TDA417	Registrerad	TKAUT
+19980607-8250 	Imsirovic, Anes	TDA417	Registrerad	TKTFY
+19980612-2975 	Klang, Arvid	TDA417	Registrerad	TKELT
+19980617-0016 	Zandhoff Westerlund, Viking	TDA417	Registrerad	TKAUT
+19980622-4169 	Tranborg, Louise	TDA417	Registrerad	TKITE
+19980626-2193 	Olsson, William	TDA417	Registrerad	TKTFY
+19980701-1516 	Kontola, Samuel	DAT038	Registrerad	TKDAT
+19980702-2273 	Bodin, Alexander	TDA417	Registrerad	TKAUT
+19980708-2996 	Husmark, Anton	TDA417	Registrerad	TKAUT
+19980717-1351 	Rochard, Lucas Olof	TDA417	Registrerad	TKAUT
+19980730-2915 	Cuskic, Marco	TDA417	Registrerad	TKTFY
+19980807-6468 	Malki, Lenia	TDA417	Registrerad	TKITE
+19980831-6617 	Körner, Alexander	TDA417	Registrerad	TKTFY
+19980901-8949 	Eskilson, Lisa	DAT038	Registrerad	TKDAT
+19980912-4861 	Blade Andersen, Emelie	DAT038	Registrerad	TKDAT
+19980918-9195 	Gorskiy, Alexey	TDA417	Registrerad	TKAUT
+19980924-2358 	Orava Kilberg, Oscar	TDA417	Registrerad	TKITE
+19980925-7497 	Johansson, Hannes	TDA417	Registrerad	TKTFY
+19980926-2356 	Jäghagen, Jesper	DAT038	Registrerad	TKTEM
+19981011-9223 	Löfgren, Viktoria	DAT038	Registrerad	TKTEM
+19981102-4430 	Gole, Anton	DAT038	Registrerad	TKDAT
+19981103-7994 	Bodin, Gustaf	DAT038	Registrerad	TKDAT
+19981115-6661 	Ekenstam, Felicia	TDA417	Registrerad	TKAUT
+19981118-8359 	Gönczi, Johan	DAT038	Registrerad	TKTEM
+19981208-8236 	Jarnestål, Eric	TDA417	Registrerad	TKAUT
+19981217-4135 	Hammaräng Grip, Nils	DAT038	Registrerad	TKTEM
+19981223-2552 	Söderholm, Adam	TDA417	Registrerad	TKAUT
+19981227-1527 	Schönbeck Kylander, Soleil	TDA417	Registrerad	TKAUT
+19990108-8634 	Svahn, Hannes	TDA417	Registrerad	TKITE
+19990113-4339 	Jendle, Theodor	DAT038	Registrerad	TKTEM
+19990118-3732 	Hjermstad, Øyvind	TDA417	Registrerad	TKTFY
+19990122-6515 	Löfving, Joseph	TDA417	Registrerad	TKTFY
+19990125-4137 	Abiri, Artin	TDA417	Registrerad	TKITE
+19990130-2365 	Lantto, Katri	DAT038	Registrerad	TKDAT
+19990131-5151 	Kinderby, Tim	DAT038	Omreg, lab G	TKDAT
+19990203-1856 	Bivrin, Erik	TDA417	Registrerad	TKTFY
+19990205-9030 	Hanberg, Filip	TDA417	Registrerad	TKITE
+19990208-2750 	Frideen, Viktor	DAT038	Registrerad	TKDAT
+19990208-8617 	Nordin, Isac	TDA417	Registrerad	TKTFY
+19990212-1913 	Forsyth, Oscar Bror	TDA417	Registrerad	TKITE
+19990214-6357 	Bruhn, Johan	DAT038	Registrerad	TKTEM
+19990215-2496 	Mannerskog, Daniel	TDA417	Registrerad	TKTFY
+19990218-9027 	Rosén, Malin	TDA417	Registrerad	TKITE
+19990219-2377 	Vokshi, Arber	TDA417	Registrerad	TKAUT
+19990221-0138 	Åkesson, Jonathan	TDA417	Registrerad	TKAUT
+19990221-1417 	Eriksson, Ludvig	TDA417	Registrerad	TKAUT
+19990222-0954 	Brun, Victor	DAT038	Registrerad	TKTEM
+19990305-0715 	Johansson, Axel	TDA417	Registrerad	TKTFY
+19990314-9210 	Olausson, Joel	TDA417	Registrerad	TKITE
+19990317-7310 	Zeidan, Zeidan	DAT038	Registrerad	TKTEM
+19990317-9670 	Gustavsson, Erik	TDA417	Registrerad	TKAUT
+19990328-0718 	Linde, Filip	TDA417	Registrerad	TKITE
+19990331-9037 	Johansson, Oscar	TDA417	Registrerad	TKITE
+19990401-8976 	Jansson, Erik	TDA417	Registrerad	TKTFY
+19990402-4792 	Norén, Max	DAT038	Registrerad	TKDAT
+19990422-2776 	Trinh, Thomas	DAT038	Registrerad	TKTEM
+19990427-6848 	Nilsson, Anna	TDA417	Omreg, lab G	TKITE
+19990429-2910 	Lauri, Jonas	DAT038	Registrerad	TKTEM
+19990502-6192 	Hertzberg, Axel	TDA417	Registrerad	TKITE
+19990505-1257 	Henriksson, Jakob	TDA417	Registrerad	TKITE
+19990508-0058 	Rosengren Svensson, Vilhelm	TDA417	Registrerad	TKAUT
+19990509-8639 	Larsson, Christopher	DAT038	Registrerad	TKDAT
+19990516-7574 	Svensson, Kevin	TDA417	Registrerad	TKITE
+19990522-1298 	Emilsson, Jon	TDA417	Registrerad	TKITE
+19990524-0132 	Nilsson, William	DAT038	Registrerad	TKDAT
+19990528-6622 	Rikardsson, Anna	TDA417	Registrerad	TKITE
+19990529-3396 	Grönbäck, Henrik	TDA417	Registrerad	TKAUT
+19990531-7302 	Danielsson, Elsa	TDA417	Registrerad	TKTFY
+19990608-8118 	Hvid-Hansen, Max	DAT038	Omreg, lab G	TKDAT
+19990613-0167 	Jönmark, Julia	TDA417	Registrerad	TKITE
+19990614-4366 	Hallin, Linnea	DAT038	Registrerad	TKTEM
+19990614-6213 	Johannesson, Viktor	TDA417	Registrerad	TKITE
+19990617-8737 	Holmesten, Felix	TDA417	Registrerad	TKITE
+19990623-6477 	Styrefors Sparby, Anton	TDA417	Registrerad	TKTFY
+19990624-0990 	Elehed, Sixten	TDA417	Registrerad	TKTFY
+19990628-3750 	Ben-Shabat, Arik	DAT038	Registrerad	TKDAT
+19990703-2255 	Eriksson, Wilmer	DAT038	Registrerad	TKDAT
+19990714-6097 	Lund, Albert	TDA417	Registrerad	TKITE
+19990718-7059 	Hult Berényi, Theodor	TDA417	Registrerad	TKELT
+19990725-9510 	Le, Viet	TDA417	Registrerad	TKAUT
+19990730-8127 	Wahlgren, Linnea	DAT038	Registrerad	TKDAT
+19990731-7110 	Hersi, Zakaria	DAT038	Registrerad	TKDAT
+19990731-7219 	Hambraeus, David	TDA417	Registrerad	TKTFY
+19990801-1423 	Biander, Henny	DAT038	Registrerad	TKDAT
+19990803-6131 	Josefsson, Måns	TDA417	Registrerad	TKITE
+19990811-6073 	Forsman, Axel	DAT038	Registrerad	TKTEM
+19990811-8731 	Wallström, Anders	TDA417	Registrerad	TKAUT
+19990815-3019 	Berg, Erik	TDA417	Registrerad	TKITE
+19990815-6632 	Carlson, Elias	TDA417	Registrerad	TKITE
+19990816-2218 	Johansson, Edvin	TDA417	Registrerad	TKTFY
+19990818-5565 	Pettersson, Hedy	TDA417	Registrerad	TKITE
+19990823-8331 	Widerstrand, Axel	DAT038	Registrerad	TKDAT
+19990902-2791 	Sandberg, Jack	DAT038	Registrerad	TKTEM
+19990905-0057 	Johansson, Jakob	TDA417	Registrerad	TKTFY
+19990908-5194 	Razaq, Behroz	TDA417	Registrerad	TKITE
+19990909-4378 	Eckerstig, Johan	DAT038	Registrerad	TKDAT
+19990919-8831 	Waldener, Isak	TDA417	Registrerad	TKAUT
+19990922-2227 	Ferm, Anna	TDA417	Registrerad	TKAUT
+19990923-9015 	Österström, Fredrik	DAT038	Registrerad	TKDAT
+19990930-8513 	Sundkvist, Linus	DAT038	Registrerad	TKDAT
+19991004-4099 	Petrov, Darko	TDA417	Registrerad	TKELT
+19991007-1811 	Gülec, Ismail	TDA417	Registrerad	TKTFY
+19991013-5038 	Reichel Erikmats, Emil	TDA417	Registrerad	TKAUT
+19991014-0558 	Wiberg, Mattias	TDA417	Registrerad	TKAUT
+19991015-0813 	Lundqvist, Emil	TDA417	Registrerad	TKITE
+19991023-8170 	Pansell, Albin	DAT038	Registrerad	TKDAT
+19991027-3615 	Andersson, Ludvig	TDA417	Registrerad	TKTFY
+19991101-9058 	Nielsen, Sebastian Tomas	DAT038	Registrerad	TKDAT
+19991110-3613 	Mellberg, Edvin	TDA417	Registrerad	TKAUT
+19991116-3179 	Mårdby, Gustav	DAT038	Registrerad	TKTEM
+19991121-3263 	Pau, Wendy	TDA417	Registrerad	TKITE
+19991125-3699 	Sjöcrona, Oscar	DAT038	Registrerad	TKDAT
+19991130-2611 	Lemner, Ludvig	DAT038	Registrerad	TKDAT
+19991203-4221 	Welzel, Viktoria	TDA417	Registrerad	TKITE
+19991205-4658 	Täng, Simon	DAT038	Registrerad	TKDAT
+19991206-7130 	Quach, Daniel	TDA417	Registrerad	TKELT
+19991212-9534 	Ridderstolpe, Carl	DAT038	Registrerad	TKDAT
+19991216-6858 	Eriksson, Simon	TDA417	Ej påbörjad	TKITE
+19991217-3193 	Wessman, Erik	TDA417	Registrerad	TKITE
+19991220-6043 	Asp, Agnes	DAT038	Registrerad	TKDAT
+20000103-9163 	Söderström, Hanna	TDA417	Registrerad	TKITE
+20000104-0534 	Jyborn, Alexander	TDA417	Registrerad	TKITE
+20000106-0425 	Ma, Kelly	TDA417	Registrerad	TKTFY
+20000115-6231 	Lager Carvalho, Alexander	DAT038	Registrerad	TKDAT
+20000117-7211 	Alestig, Edvin	DAT038	Registrerad	TKDAT
+20000120-7711 	Malm, Timmy	TDA417	Registrerad	TKITE
+20000120-9675 	Giljegård, Oskar	TDA417	Registrerad	TKITE
+20000123-7395 	Phu, Alex	TDA417	Registrerad	TKITE
+20000128-6392 	Perlkvist, Daniel	DAT038	Registrerad	TKDAT
+20000205-4039 	Ljung, Oliver	TDA417	Registrerad	TKITE
+20000209-1635 	Kadiroglu, Nazif	DAT038	Registrerad	TKDAT
+20000210-5898 	Seyer, Ruben	DAT038	Registrerad	TKTEM
+20000211-9485 	Berglund, Moa	TDA417	Registrerad	TKITE
+20000213-0318 	Wetter, Erik	TDA417	Registrerad	TKITE
+20000213-7107 	Schaff, Hanna	TDA417	Registrerad	TKITE
+20000214-8419 	Grahn, Markus	TDA417	Registrerad	TKITE
+20000307-3558 	Ekroth, Elias	DAT038	Registrerad	TKDAT
+20000308-0355 	Alladin, Ali	TDA417	Registrerad	TKITE
+20000310-0278 	Windisch, Axel	DAT038	Registrerad	TKDAT
+20000313-0630 	Arvidson, Oscar	TDA417	Registrerad	TKITE
+20000317-1832 	Larsson, Simon	TDA417	Registrerad	TKITE
+20000319-6714 	Hamrefors, Fredrik	DAT038	Registrerad	TKDAT
+20000321-1778 	Johansson, Sebastian	TDA417	Registrerad	TKITE
+20000323-4515 	Blomberg, Erik	TDA417	Registrerad	TKITE
+20000325-2822 	Molinder, Ebba	DAT038	Registrerad	TKDAT
+20000401-0047 	Samuelsson, Lisa	TDA417	Registrerad	TKITE
+20000404-5233 	Due, Martin	TDA417	Registrerad	TKTFY
+20000405-1066 	Stråhle, Sara	DAT038	Registrerad	TKDAT
+20000411-1654 	Johansson, Henrik	TDA417	Registrerad	TKITE
+20000422-5496 	Adolfsson, Max	DAT038	Registrerad	TKDAT
+20000424-5957 	Ngo, Josef	TDA417	Ej påbörjad	TKITE
+20000429-5390 	Lind, Christian	TDA417	Registrerad	TKITE
+20000430-9696 	Larsson, Hampus	DAT038	Registrerad	TKDAT
+20000505-2899 	Jiremalm, Johan	DAT038	Registrerad	TKDAT
+20000511-9672 	Nordin, Jonas	TDA417	Registrerad	TKITE
+20000512-4516 	Karlsson Landgren, Albin	TDA417	Registrerad	TKITE
+20000517-8199 	Andersson, William	TDA417	Registrerad	TKITE
+20000525-8538 	Andersson, Calle	DAT038	Registrerad	TKDAT
+20000526-3918 	Henriksson, Wilhelm	DAT038	Registrerad	TKDAT
+20000529-0630 	Dahlqvist, Oscar	DAT038	Registrerad	TKDAT
+20000601-2454 	Shiervani, Anwarr	TDA417	Registrerad	TKITE
+20000601-3593 	Andersson, Oliver	TDA417	Registrerad	TKITE
+20000605-1528 	Andersson, Isabell	DAT038	Registrerad	TKDAT
+20000611-8657 	Eriksson, Erik	TDA417	Registrerad	TKITE
+20000612-3939 	Bäckstäde, Kevin	DAT038	Registrerad	TKDAT
+20000616-9155 	Nordmark, Filip	DAT038	Registrerad	TKDAT
+20000621-8150 	Porobic, Tarik	TDA417	Registrerad	TKITE
+20000627-0276 	Antonsson, Philip	DAT038	Registrerad	TKDAT
+20000627-7750 	Hermenius, Jesper	DAT038	Registrerad	TKDAT
+20000707-0972 	Lindahl, Emrik	DAT038	Registrerad	TKDAT
+20000708-7919 	Berggren, Viktor	TDA417	Registrerad	TKITE
+20000711-6478 	Lindström, Tobias	TDA417	Ej påbörjad	TKITE
+20000711-7310 	Andreasson, David	TDA417	Registrerad	TKITE
+20000711-8094 	Hermansson, Sebastian	DAT038	Registrerad	TKDAT
+20000720-3797 	Anjou, Filip	DAT038	Registrerad	TKDAT
+20000723-8132 	Aspljung, Albin	DAT038	Registrerad	TKDAT
+20000727-8799 	Stenwreth, Andreas	DAT038	Registrerad	TKDAT
+20000731-4172 	Riis, Simon	DAT038	Registrerad	TKDAT
+20000804-1493 	Haraldsson, Linus	DAT038	Registrerad	TKDAT
+20000807-4130 	Dahlborg, Samuel	TDA417	Registrerad	TKITE
+20000809-7552 	Hedenäs Bennet, Oscar	TDA417	Registrerad	TKITE
+20000810-8938 	Lindset, Filip	DAT038	Registrerad	TKDAT
+20000813-3811 	Forssén, Björn	DAT038	Registrerad	TKDAT
+20000815-4098 	Cousin, Victor	TDA417	Registrerad	TKITE
+20000822-4115 	Nilsson, Markus	DAT038	Registrerad	TKDAT
+20000829-3714 	Andersson, Anton	DAT038	Registrerad	TKDAT
+20000829-8390 	Wang, Yenan	TDA417	Registrerad	TKITE
+20000830-5534 	Hermansson, Theo	DAT038	Registrerad	TKDAT
+20000904-6897 	Sjögren, Sebastian	DAT038	Registrerad	TKDAT
+20000905-6664 	Sand Engberg, Selina	DAT038	Registrerad	TKDAT
+20000906-6655 	Folkesson, Filip	DAT038	Registrerad	TKDAT
+20000917-8393 	Johansson, Simon	DAT038	Registrerad	TKDAT
+20000920-9115 	Nilsson, Erik	DAT038	Registrerad	TKDAT
+20000924-0276 	Stigson, Jonathan	TDA417	Registrerad	TKITE
+20000925-6694 	Ekroth, Emil	TDA417	Registrerad	TKITE
+20000926-0613 	Nilsson, Felix	TDA417	Registrerad	TKITE
+20000926-0753 	Vadström, Gustav	TDA417	Registrerad	TKITE
+20000926-8293 	Heinmetz, Edvard	DAT038	Registrerad	TKDAT
+20000929-1758 	Salek Maghsoudi, Sam	TDA417	Registrerad	TKITE
+20001001-2979 	Oliv, Felix	TDA417	Registrerad	TKITE
+20001001-7952 	Moen, Markus	DAT038	Registrerad	TKDAT
+20001016-2329 	Xia, Madeleine	TDA417	Registrerad	TKITE
+20001019-5451 	Osolian, Dylan	TDA417	Registrerad	TKITE
+20001019-6392 	Åkvist, Malte	TDA417	Registrerad	TKITE
+20001022-1109 	Zelvyte, Salvija	TDA417	Registrerad	TKITE
+20001022-2131 	Landgren, Malte	DAT038	Registrerad	TKDAT
+20001024-3384 	Svensson, Vera	DAT038	Registrerad	TKDAT
+20001027-6533 	Åkesson, Leo	DAT038	Ej påbörjad	TKDAT
+20001027-9396 	Torphage, Filip	DAT038	Registrerad	TKDAT
+20001031-7980 	Hashemi Karmostaji, Rojan	DAT038	Registrerad	TKDAT
+20001114-0738 	Johnsson, Nils	TDA417	Registrerad	TKITE
+20001121-2651 	Schiavone, Lukas	DAT038	Registrerad	TKDAT
+20001122-7055 	Felldin, William	DAT038	Registrerad	TKDAT
+20001126-7978 	Lindström Rabia, Philip	TDA417	Registrerad	TKITE
+20001202-3651 	Hallberg, Elias	TDA417	Registrerad	TKITE
+20001208-4356 	Liman, Max	DAT038	Registrerad	TKDAT
+20001215-7350 	Karlsson, Lucas	TDA417	Registrerad	TKITE
+20001217-6350 	Ohlsson, Ludvig	DAT038	Registrerad	TKDAT
+20001220-1513 	Käll, Gabriel	DAT038	Registrerad	TKDAT
+20001223-4258 	Einarsson, Kári	DAT038	Registrerad	TKDAT
+20010112-7793 	Jakobson Mo, Nils	DAT038	Registrerad	TKDAT
+20010131-7071 	Martinsson, Viggo	DAT038	Registrerad	TKDAT
+20010316-0743 	Dahl, Ida	TDA417	Registrerad	TKITE
+20010326-0436 	Ristner, Jakob	TDA417	Registrerad	TKITE
+19930415-3357 	Ögnelod, Lukas	DAT037	Omreg	MPEES
+19930409-1235 	Spilg, Jacob	DAT038	Registrerad	TKDAT
+19841014-4979 	Ibrahimoglu Oscarsson, Yunus	DAT038	Registrerad	TKDAT
+19910804-0479	Beck, Mansoor	TDA417	Omreg	TKITE
