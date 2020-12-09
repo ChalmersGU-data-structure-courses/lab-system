@@ -110,7 +110,7 @@ with file_registered_students.open() as file:
 
     print('{} students registered in Ladok.'.format(num_in_ladok))
     print('{} students registered in Ladok also found registered in Canvas.'.format(len(user_map)))
-    print('Restricting to those {} students have a group.'.format(len(list(filter(lambda u: u.user.id in group_set.user_to_group, user_map.values())))))
+    print('Restricting to those {} students that have a group.'.format(len(list(filter(lambda u: u.user.id in group_set.user_to_group, user_map.values())))))
     print()
 
     for u in list(user_map.values()):
