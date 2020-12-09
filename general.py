@@ -33,6 +33,22 @@ def from_singleton(xs):
 def choose_unique(f, xs):
     return from_singleton(filter(f, xs))
 
+def last(xs, default = None, strict = False):
+    for x in xs:
+        good = True
+
+    if good:
+        return x
+
+    assert(not strict)
+    return default
+
+def with_default(f, x, default):
+    return f(x) if x != None else default
+
+def with_none(f, x):
+    return with_default(f, x, None)
+
 def unique_by(f, xs):
     rs = list()
     for x in xs:
@@ -40,6 +56,9 @@ def unique_by(f, xs):
             rs.append(x)
 
     return rs
+
+def ilen(it):
+    return sum(1 for _ in it)
 
 def multidict(xs):
     r = defaultdict(list)
