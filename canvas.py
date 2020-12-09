@@ -372,8 +372,8 @@ class Assignment:
                     user_groupings.add(tuple(user_grouping))
 
             if not user_groupings:
-                print_error('Info: {} did not submit:'.format(self.group_set.group_str(group)))
-                print_error('- {}'.format(self.group_set.users_str(group_users)))
+                logger.log(logging.INFO, 'Info: {} did not submit:'.format(self.group_set.group_str(group)))
+                logger.log(logging.INFO, '- {}'.format(self.group_set.users_str(group_users)))
                 continue
 
             # TODO: handle this somehow if it ever happens (assuming students can change groups).
@@ -389,15 +389,15 @@ class Assignment:
 
             did_not_submit = set(group_users).difference(set(user_grouping))
             if did_not_submit:
-                print_error('The following members have not submitted with {}:'.format(self.group_set.group_str(group)))
+                logger.log(logging.INFO, 'The following members have not submitted with {}:'.format(self.group_set.group_str(group)))
                 for user_id in did_not_submit:
-                    print_error('- {}'.format(self.group_set.user_str(user_id)))
+                    logger.log(logging.INFO, '- {}'.format(self.group_set.user_str(user_id)))
 
             not_part_of_group = set(user_grouping).difference(set(group_users))
             if not_part_of_group:
-                print_error('The following non-members have submitted with {}:'.format(self.group_set.group_str(group)))
+                logger.log(logging.INFO, 'The following non-members have submitted with {}:'.format(self.group_set.group_str(group)))
                 for user_id in not_part_of_group:
-                    print_error('- {}'.format(self.group_set.user_str(user_id)))
+                    logger.log(logging.INFO, '- {}'.format(self.group_set.user_str(user_id)))
 
             result[group] = lookup[tuple(user_grouping)]
         return result
