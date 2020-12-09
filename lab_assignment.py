@@ -171,11 +171,12 @@ class LabAssignment(Assignment):
         self.files_problem = sorted_directory_list(self.dir_problem, filter = lambda f: f.is_file())
         self.deadlines = [datetime.fromisoformat(line) for line in (dir / lab_assignment_constants.rel_file_deadlines).read_text().splitlines()]
 
-        #self.tests = LabAssignment.parse_tests()
         # new-style tests
-        self.tests = test_lib.parse_tests(self.dir_test / lab_assignment_constants.rel_file_tests)
+        file_tests = self.dir_test / lab_assignment_constants.rel_file_tests
+        self.tests = test_lib.parse_tests(file_tests) if file_tests.exists() else None
 
-        self.tests_java = LabAssignment.parse_tests(self.dir_test / lab_assignment_constants.rel_file_tests_java)
+        file_tests = self.dir_test / lab_assignment_constants.rel_file_tests_java
+        self.tests_java = LabAssignment.parse_tests(file_tests) if file_tests.exists() else None
 
     # Only works if groups follow a uniform naming scheme with varying number at end of string.
     def group_from_number(self, group_number):
