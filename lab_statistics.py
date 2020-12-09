@@ -28,7 +28,7 @@ g = p.add_argument_group('primary arguments')
 g.add_argument('labs', nargs = '*', type = int, help = 'List of labs to process (1-4).')
 
 g = p.add_argument_group('secondary arguments')
-g.add_argument('--ladok-file', nargs = '+', type = Path, metavar = 'FILE', default = file_registered_students, help = '\n'.join([
+g.add_argument('--ladok-file', type = Path, metavar = 'REG', default = file_registered_students, help = '\n'.join([
     f'The file from ladok with the registered students.',
     f'Defaults to {shlex.quote(str(file_registered_students))}.',
 ]))
@@ -74,13 +74,14 @@ args = p.parse_args()
 from collections import defaultdict
 import csv
 from datetime import datetime, timezone
+import itertools
 import logging
 from pathlib import Path
 from types import SimpleNamespace
 
 from canvas import Canvas, Course, GroupSet
 import config
-from general import from_singleton
+from general import from_singleton, ilen, with_default
 from lab_assignment import LabAssignment
 
 logging.basicConfig()
@@ -92,10 +93,7 @@ else:
 canvas = Canvas(config.canvas_url, cache_dir = Path(args.cache_dir))
 group_set = GroupSet(canvas, config.course_id, config.group_set, use_cache = not args.refresh_group_set)
 
-# Parameters
-file_registered_students = Path(args.ladok_file)
-
-with file_registered_students.open() as file:
+with args.ladok_file.open() as file:
     csv_reader = csv.DictReader(file, dialect = csv.excel_tab, fieldnames = ['personnummer', 'name', 'course', 'status', 'program'])
     user_map = dict()
     num_in_ladok = 0
@@ -104,68 +102,70 @@ with file_registered_students.open() as file:
         r = SimpleNamespace(**row)
         users = [user for user in group_set.user_details.values() if str(user.sis_user_id) == str(r.personnummer.replace('-', '').strip())]
         if len(users) >= 1:
-            user = from_singleton(users)
-            r.user = user
+            r.user = from_singleton(users)
             user_map[r.user.id] = r
 
     print('{} students registered in Ladok.'.format(num_in_ladok))
-    print('{} students registered in Ladok also found registered in Canvas.'.format(len(user_map)))
-    print('Restricting to those {} students that have a group.'.format(len(list(filter(lambda u: u.user.id in group_set.user_to_group, user_map.values())))))
+    print('{} of those registered in Canvas.'.format(len(user_map)))
     print()
-
-    for u in list(user_map.values()):
-        if u.user.id in group_set.user_to_group:
-            u.group = group_set.user_to_group[u.user.id]
-        else:
-            del user_map[u.user.id]
 
     ass = dict()
     for lab in args.labs:
         ass[lab] = LabAssignment(canvas, config.course_id, lab)
         ass[lab].collect_submissions(use_cache = not args.refresh_submissions)
+        ass[lab].past_deadlines = list(filter(lambda deadline: deadline <= datetime.now(tz = timezone.utc), ass[lab].deadlines))
 
     for u in user_map.values():
-        u.lab_attempts = dict()
-        for lab in args.labs:
-            a = ass[lab]
-            submission = None
-            s = a.submissions.get(u.group)
-            if s:
-                for i in range(len(s.submissions)):
-                    submission = s.submissions[i]
-                    if submission.entered_grade == 'complete':
-                        break
-                    submission = None
+        u.group = group_set.user_to_group.get(u.user.id)
+        if u.group:
+            u.labs_attempts = dict()
+            for lab in args.labs:
+                a = ass[lab]
+                s = a.submissions.get(u.group)
+                lab_attempts = list(itertools.repeat(None, len(a.past_deadlines)))
+                u.labs_attempts[lab] = lab_attempts
+                for submission in s.submissions if s else []:
+                    if submission.grade:
+                        d = max(0, ilen(filter(lambda d: d <= submission.graded_at_date, a.past_deadlines)) - 1)
+                        lab_attempts[d] = lab_attempts[d] or {'complete': True, 'incomplete': False}[submission.entered_grade]
 
-            if not submission:
-                u.lab_attempts[lab] = -1
-            else:
-                ds = [i for i in range(len(a.deadlines)) if a.deadlines[i] <= submission.graded_at_date]
-                u.lab_attempts[lab] = ds[-1]
+    pass_ = 'pass'
+    fail = 'fail'
+    missing = 'missing'
+
+    print('Notations: [{}]/[{}]/[{}], #[grading]'.format(pass_, fail, missing))
+    print()
+
+    def format_stats_attempt(stats_attempt):
+        return '{:3}/{:3}/{:3}'.format(stats_attempt[pass_], stats_attempt[fail], stats_attempt[missing])
 
     def print_lab_statistics(users, lab):
-        when_passed = dict()
-        when_passed[-1] = 0
-        for i in range(len(ass[lab].deadlines)):
-            when_passed[i] = 0
+        stats_attempts = [defaultdict(lambda: 0) for _ in ass[lab].deadlines]
+        stats_total = defaultdict(lambda: 0)
 
         for user in users:
-            u = user_map[user]
-            when_passed[u.lab_attempts[lab]] += 1
+            lab_attempts = user_map[user].labs_attempts[lab]
+            passed = False
+            not_missing = False
+            for stats_attempt, lab_attempt in zip(stats_attempts, lab_attempts):
+                if not passed:
+                    stats_attempt[{True: pass_, False: fail, None: missing}[lab_attempt]] += 1
+                passed = lab_attempt or passed
+                not_missing = lab_attempt != None or not_missing
+            stats_total[pass_ if passed else fail if not_missing else missing] += 1
 
-        s = '* Lab {}: {:3} did not yet pass'.format(lab, when_passed[-1])
-        for i in range(len(ass[lab].deadlines)):
-            if ass[lab].deadlines[i] <= datetime.now(tz = timezone.utc):
-                s += ', {:3} passed at attempt {}'.format(when_passed[i], i)
-        s += '.'
-        print(s)
+        print('* Lab {}: total {} | {}'.format(
+            lab,
+            format_stats_attempt(stats_total),
+            ' | '.join(map(lambda x: '#{} {}'.format(x[0], format_stats_attempt(x[1])), list(enumerate(stats_attempts))))))
 
     def print_labs_statistics(description, users):
-        print('{} ({} students):'.format(description, len(users)))
+        group = lambda user: user_map[user].group
+        print('{} ({} students, {} not in a group):'.format(description, len(users), ilen(itertools.filterfalse(group, users))))
         for lab in args.labs:
-            print_lab_statistics(users, lab)
+            print_lab_statistics(filter(group, users), lab)
 
-    print_labs_statistics('Global statistics', user_map.keys())
+    print_labs_statistics('Globally', user_map.keys())
     print()
 
     programs = defaultdict(list)
