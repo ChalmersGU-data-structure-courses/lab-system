@@ -190,10 +190,7 @@ if args.process and (not args.no_testing or not args.no_pregrading) and not (shu
     exit(1)
 
 logging.basicConfig()
-if args.verbose:
-    logging.getLogger().setLevel(logging.INFO)
-else:
-    logging.getLogger().setLevel(25)
+logging.getLogger().setLevel(logging.INFO if args.verbose else 25)
 
 canvas = Canvas(config.canvas_url, cache_dir = Path(args.cache_dir))
 group_set = GroupSet(canvas, config.course_id, config.group_set, use_cache = not args.refresh_group_set)
