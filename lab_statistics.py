@@ -42,6 +42,9 @@ g.add_argument('--refresh-submissions', action = 'store_true', help = '\n'.join(
     f'Use this at the beginning of a submission processing workflow to make sure the cached submissions are up to date.',
     f'It is recommended to use this option only then for collecting the submission from Canvas is an expensive operation (on the order of 5 minutes).'
 ]))
+g.add_argument('--cutoff', type = int, metavar = 'CUTOFF', help = '\n'.join([
+    f'Show programs with less students than these as \'others\'.',
+]))
 
 g = p.add_argument_group('standard arguments')
 g.add_argument('-h', '--help', action = 'help', help = '\n'.join([
@@ -137,7 +140,7 @@ with args.ladok_file.open() as file:
         return '{:3}/{:3}/{:3}'.format(stats_attempt[pass_], stats_attempt[fail], stats_attempt[missing])
 
     def print_lab_statistics(users, lab):
-        stats_attempts = [defaultdict(lambda: 0) for _ in ass[lab].deadlines]
+        stats_attempts = [defaultdict(lambda: 0) for _ in ass[lab].past_deadlines]
         stats_total = defaultdict(lambda: 0)
 
         for user in users:
@@ -161,14 +164,21 @@ with args.ladok_file.open() as file:
         print('{} ({} students, {} not in a group):'.format(description, len(users), ilen(itertools.filterfalse(group, users))))
         for lab in args.labs:
             print_lab_statistics(filter(group, users), lab)
-
-    print_labs_statistics('Globally', user_map.keys())
-    print()
+        print()
 
     programs = defaultdict(list)
     for u in user_map.values():
         programs[u.program].append(u.user.id)
 
+    if args.cutoff:
+        others = list()
+        for program, users in list(programs.items()):
+            if len(users) < args.cutoff:
+                programs.pop(program)
+                others.extend(users)
+
+    print_labs_statistics('Globally', user_map.keys())
     for program, users in sorted(programs.items(), key = lambda x: (- len(x[1]), x[0])):
         print_labs_statistics('For program {}'.format(program), users)
-        print()
+    if args.cutoff:
+        print_labs_statistics('Others', others)
