@@ -166,7 +166,7 @@ def statistics_lab(users_in_group, assignment):
         attempts = list(map(lambda i : h(lambda x: list_get(x.attempts, i)), range(len(assignment.past_deadlines)))),
     )
 
-# Statistics (indexed by lab numbers) for a given list of users
+# Statistics for all labs for a given list of users
 def statistics(users):
     in_group, in_no_group = partition(lambda u: u.group, users)
     return SimpleNamespace(
