@@ -16,7 +16,7 @@ def identity(x):
     return x
 
 def compose(f, g):
-    return lambda x: g(f(x))
+    return lambda *x: g(f(*x))
 
 def compose_many(*fs):
     return functools.reduce(compose, fs, identity)
@@ -57,8 +57,30 @@ def unique_by(f, xs):
 
     return rs
 
+def equal_by(f, x, y):
+    return f(x) == f(y)
+
 def ilen(it):
     return sum(1 for _ in it)
+
+def list_get(xs, i):
+    return xs[i] if i < len(xs) else None
+
+def map_maybe(f, xs):
+    return filter(lambda x: x != None, map(f, xs))
+
+# missing in itertools.
+def starfilter(f, xs):
+    for x in xs:
+        if f(*x):
+            yield x
+
+def sdict(xs):
+    r = dict()
+    for k, v in xs:
+        assert not k in r
+        r[k] = v
+    return r
 
 def multidict(xs):
     r = defaultdict(list)
@@ -66,8 +88,84 @@ def multidict(xs):
         r[k].append(v)
     return r
 
+def ignore_none_keys(xs):
+    return starfilter(lambda k, _: k != None, xs)
+
+dict_ = compose(ignore_none_keys, dict)
+sdict_ = compose(ignore_none_keys, sdict)
+sdict_ = compose(ignore_none_keys, sdict)
+
+def with_key(f):
+    return lambda x: (f(x), x)
+
+def with_val(f):
+    return lambda x: (x, f(x))
+
+def map_with_key(f, xs):
+    return map(with_key(f), xs)
+
+def map_with_val(f, xs):
+    return map(with_val(f), xs)
+
+map_with_key_ = compose(map_with_key, ignore_none_keys)
+
+dict_from_fun = compose(map_with_val, dict)
+sdict_from_fun = compose(map_with_val, sdict)
+multidict_from_fun = compose(map_with_val, multidict)
+
+def component(i):
+    return lambda x: x[i]
+
+first  = component(0)
+second = component(1)
+third  = component(2)
+fourth = component(3)
+
+def on_component(i, f):
+    def h(xs):
+        ys = copy(xs)
+        ys[i] = f(xs[i])
+        return ys
+    return h
+
+on_first  = functools.partial(on_component, 0)
+on_second = functools.partial(on_component, 1)
+on_third  = functools.partial(on_component, 2)
+on_fourth = functools.partial(on_component, 3)
+
+def ev(*x):
+    return lambda f: f(*x)
+
+def tuple(*fs):
+    return lambda *x: tuple(map(ev(*x), fs))
+
+def zip_dicts_with(f, us, vs):
+    for k, u in us.items():
+        v = vs.get(k)
+        if v:
+            yield (k, f(u, vs[k]))
+
+def group_by_unique(f, xs):
+    return sdict(map_with_key(f, xs))
+
 def group_by(f, xs):
-    return multidict([(f(x), x) for x in xs])
+    return multidict(map_with_key(f, xs))
+
+def group_by_(f, xs):
+    return multidict(map_with_key_(f, xs))
+
+def namespaced(reader):
+    for row in reader:
+        yield SimpleNamespace(**row)
+
+def get_attr(name):
+    return lambda x: getattr(x, name)
+
+def partition(f, xs):
+    us, vs = list(), list()
+    for x in xs:
+        (us if f(x) else vs).append(x)
+    return (us, vs)
 
 def join_lines(lines):
     return ''.join(line + '\n' for line in lines)

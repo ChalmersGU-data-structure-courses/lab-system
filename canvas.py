@@ -348,8 +348,7 @@ class Assignment:
     @staticmethod
     def group_identical_submissions(raw_submissions):
         grouping = group_by(lambda raw_submission: tuple(sorted([(s.attempt, tuple(sorted(file.id for file in s.attachments))) for s in raw_submission.submission_history])), raw_submissions)
-        submission_data_type = namedtuple('submission_data', ['members', 'submissions', 'comments']) # TODO: make static
-        return [submission_data_type(
+        return [types.SimpleNamespace(
             members = [submission.user_id for submission in grouped_submissions],
             submissions = grouped_submissions[0].submission_history,
             comments = Assignment.merge_comments([c for s in grouped_submissions for c in s.submission_comments]),
