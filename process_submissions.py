@@ -94,7 +94,7 @@ g.add_argument('--refresh-group-set', action = 'store_true', help = '\n'.join([
 g.add_argument('--refresh-submissions', action = 'store_true', help = '\n'.join([
     f'Collect submissions from Canvas instead of the cache.',
     f'Use this at the beginning of a submission processing workflow to make sure the cached submissions are up to date.',
-    f'It is recommended to use this option only then for collecting the submission from Canvas is an expensive operation (on the order of 5 minutes).'
+    f'It is recommended to use this option only then for fetching the submission info from Canvas is an expensive operation (on the order of 30 seconds).'
 ]))
 g.add_argument('--no-name-handlers', action = 'store_true', help = '\n'.join([
     f'Do not fix submitted file names using the name handlers in \'{lab_assignment_constants.rel_file_submission_fixes}\' in the lab directory.'
