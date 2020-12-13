@@ -155,7 +155,7 @@ class Canvas:
     # 'file_descr' is a file description object retrieved from Canvas.
     # The file modification time is set to the modification time of the file on Canvas.
     def place_file(self, target, file_descr, temp_target = None, if_already_there = True, use_cache = True):
-        if not (if_already_there and target.is_file()):
+        if if_already_there or not target.is_file():
             t = temp_target if temp_target else target
             shutil.copyfile(self.get_file(file_descr, use_cache), t)
             set_modification_time(t, file_descr.modified_at_date)
@@ -554,17 +554,16 @@ class Assignment:
         file_mapping = dict()
         for filename, attachment in files.items():
             source = dir_files / str(attachment.id)
-            if not source.is_file():
-                self.canvas.place_file(source, attachment, temp_target = add_suffix(source, '.temp'))
-                fix_encoding(source)
+            self.canvas.place_file(source, attachment, temp_target = add_suffix(source, '.temp'))
+            fix_encoding(source)
 
-                content_handler = content_handlers(attachment.id) if content_handlers else None
-                if content_handler:
-                    try:
-                        modify_no_modification_time(source, content_handler)
-                    except HandlerException as e:
-                        print_error('Content handler failed on {}'.format(shlex.quote(str(source))))
-                        raise e
+            content_handler = content_handlers(attachment.id) if content_handlers else None
+            if content_handler:
+                try:
+                    modify_no_modification_time(source, content_handler)
+                except HandlerException as e:
+                    print_error('Content handler failed on {}'.format(shlex.quote(str(source))))
+                    raise e
 
             target = dir / filename
             target.symlink_to(rel_dir_files / str(attachment.id))
