@@ -379,7 +379,7 @@ class Assignment:
             if len(user_groupings) > 1:
                 print_error('Incongruous submissions for members of {}.'.format(self.group_set.group_str(group)))
                 print_error('The group consists of: {}.'.format(self.group_set.group_members_str(group)))
-                print_error('But only the groups of users have submitted identically:')
+                print_error('But only the following groups of users have submitted identically:')
                 for user_grouping in user_groupings:
                     print_error('- {}'.format(self.group_set.users_str(user_grouping)))
                 assert(False)
