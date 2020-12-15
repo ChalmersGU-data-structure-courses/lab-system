@@ -49,6 +49,15 @@ def with_default(f, x, default):
 def with_none(f, x):
     return with_default(f, x, None)
 
+def without_adjacent_dups(eq, xs):
+    has_last = False
+    for x in xs:
+        if has_last and eq(last, x):
+            continue
+        yield x
+        has_last = True
+        last = x
+
 def unique_by(f, xs):
     rs = list()
     for x in xs:
@@ -56,6 +65,12 @@ def unique_by(f, xs):
             rs.append(x)
 
     return rs
+
+def on(f, key):
+    return lambda x, y: f(key(x), key(y))
+
+def eq(x, y):
+    return x == y
 
 def equal_by(f, x, y):
     return f(x) == f(y)
