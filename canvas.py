@@ -365,10 +365,10 @@ class Assignment:
 
     # Get the web browser URL for a submission.
     def submission_interactive_url(self, submission):
-        return self.canvas.interactive_url(['courses', self.course_id, 'assignments', self.assignment_id, 'submissions', submission.user_id])
+        return self.canvas.interactive_url(['courses', self.course.course_id, 'assignments', self.assignment_id, 'submissions', submission.user_id])
 
     def submission_speedgrader_url(self, submission):
-        return self.canvas.interactive_url(['courses', self.course_id, 'gradebook', 'speed_grader']) + '?' + urllib.parse.urlencode({'assignment_id' : self.assignment_id, 'student_id' : submission.user_id})
+        return self.canvas.interactive_url(['courses', self.course.course_id, 'gradebook', 'speed_grader']) + '?' + urllib.parse.urlencode({'assignment_id' : self.assignment_id, 'student_id' : submission.user_id})
 
     # Keep only the real submissions.
     @staticmethod
@@ -644,7 +644,7 @@ class Assignment:
     def grade(self, user, comment = None, grade = None):
         assert(grade in [None, 'complete', 'incomplete', 'fail'])
 
-        endpoint = ['courses', self.course_id, 'assignments', self.assignment_id, 'submissions', user]
+        endpoint = ['courses', self.course.course_id, 'assignments', self.assignment_id, 'submissions', user]
         params = {'comment[group_comment]' : 'false'}
         if comment:
             params['comment[text_comment]'] = comment
