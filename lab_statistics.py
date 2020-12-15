@@ -42,6 +42,13 @@ g.add_argument('--refresh-submissions', action = 'store_true', help = '\n'.join(
     f'Use this at the beginning of a submission processing workflow to make sure the cached submissions are up to date.',
     f'It is recommended to use this option only then for fetching the submission info from Canvas is an expensive operation (on the order of 30 seconds).'
 ]))
+g.add_argument('--submitted-date', action = 'store_true', help = '\n'.join([
+    f'By default, the date of grading is to determine which deadline (submission round) a submission belongs to.',
+    f'The date of submission is used instead.',
+]))
+g.add_argument('--submitted-grace', type = int, metavar = 'GRACE', default = 0, help = '\n'.join([
+    f'Grace period in minutes to use for the submission date.'
+]))
 g.add_argument('--cutoff', type = int, metavar = 'CUTOFF', help = '\n'.join([
     f'Show programs with less students than these as \'others\'.',
 ]))
@@ -79,7 +86,7 @@ args = p.parse_args()
 
 from collections import defaultdict, namedtuple
 import csv
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import itertools
 from functools import partial
 import logging
@@ -130,10 +137,14 @@ print_error('Considering {} users registered in Canvas.'.format(len(users)))
 def assignment(lab):
     a = LabAssignment(course, lab)
 
-    # Given a list of submission deadlines, finds the index of the deadline for which the submission was graded (the 'attempt').
+    # Given a list of submission deadlines, finds the index of the deadline for which the submission was graded or submitted (the 'attempt').
     # If it was graded before the first deadline, it is treated as being the first deadline.
+    # If it was submitted after the last deadline, it is treated as being the last deadline.
     def get_submission_attempt(assignment, submission):
-        return max(0, assignment.get_deadline_index(submission.graded_at_date) - 1)
+        if args.submitted_date:
+            return assignment.get_deadline_index(submission.submitted_at_date - timedelta(minutes = args.submitted_grace))
+        if not args.submitted_date:
+            return max(0, assignment.get_deadline_index(submission.graded_at_date) - 1)
 
     a.collect_submissions(use_cache = not args.refresh_submissions)
     for group in a.group_set.group_details:
