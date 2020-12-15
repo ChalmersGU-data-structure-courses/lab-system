@@ -13,7 +13,7 @@ import subprocess
 import types
 import urllib.parse
 
-from general import from_singleton, unique_by, group_by, doublequote, JSONObject, json_encoder, print_json, print_error, add_suffix, write_lines, set_modification_time, OpenWithModificationTime, OpenWithNoModificationTime, modify_no_modification_time, fix_encoding
+from general import from_singleton, unique_by, group_by, doublequote, JSONObject, json_encoder, print_json, print_error, add_suffix, write_lines, set_modification_time, OpenWithModificationTime, OpenWithNoModificationTime, modify_no_modification_time, fix_encoding, on, eq, without_adjacent_dups
 import simple_cache
 from submission_fix_lib import HandlerException
 
@@ -321,12 +321,47 @@ class Assignment:
         self.group_set = GroupSet(canvas, course_id, self.assignment.group_category_id)
 
     @staticmethod
+    def could_be_same_date(a, b):
+        return abs(a - b) < timedelta(minutes = 1)
+
+    @staticmethod
+    def submission_file_signature(s):
+        return tuple(sorted(file.id for file in s.attachments))
+
+    # Canvas bug: some submissions have null posted_at
+    # Work around that by looking at date of submission files.
+    # What does posted_at mean? Using submitted_at.
+    @staticmethod
+    def submission_date(s):
+        return s.submitted_at_date #if s.submitted_at else max(a.updated_at_date for a in s.attachments)
+
+    @staticmethod
     def is_duplicate_comment(a, b):
-        return a.author_id == b.author_id and a.comment == b.comment and abs(a.created_at_date - b.created_at_date) < timedelta(minutes = 1)
+        checks = [
+            on(eq, lambda c: c.author_id),
+            on(eq, lambda c: c.comment),
+            on(Assignment.could_be_same_date, lambda c: c.created_at_date),
+        ]
+        return all(map(lambda check: check(a, b), checks))
+
+    @staticmethod
+    def is_duplicate_submission(a, b):
+        checks = [
+            on(eq, Assignment.submission_file_signature),
+            on(eq, lambda s: s.submission_type),
+            on(eq, lambda s: s.workflow_state),
+            on(eq, lambda s: s.body),
+            on(Assignment.could_be_same_date, Assignment.submission_date),
+        ]
+        return all(map(lambda check: check(a, b), checks))
 
     @staticmethod
     def merge_comments(comments):
-        return unique_by(Assignment.is_duplicate_comment, comments)
+        return without_adjacent_dups(Assignment.is_duplicate_comment, sorted(comments, key = lambda c: c.created_at_date))
+
+    @staticmethod
+    def merge_submissions(submissions):
+        return without_adjacent_dups(Assignment.is_duplicate_submission, sorted(submissions, key = Assignment.submission_date))
 
     # Get the web browser URL for a submission.
     def submission_interactive_url(self, submission):
@@ -347,11 +382,11 @@ class Assignment:
     # TODO: Revisit implementation of this method when there is a conflict of the produced grouping with groupset.
     @staticmethod
     def group_identical_submissions(raw_submissions):
-        grouping = group_by(lambda raw_submission: tuple(sorted([(s.attempt, tuple(sorted(file.id for file in s.attachments))) for s in raw_submission.submission_history])), raw_submissions)
+        grouping = group_by(lambda raw_submission: tuple(sorted(file.id for file in raw_submission.attachments)), raw_submissions)
         return [types.SimpleNamespace(
             members = [submission.user_id for submission in grouped_submissions],
-            submissions = grouped_submissions[0].submission_history,
-            comments = Assignment.merge_comments([c for s in grouped_submissions for c in s.submission_comments]),
+            submissions = list(Assignment.merge_submissions(submission for s in grouped_submissions for submission in s.submission_history)),
+            comments = list(Assignment.merge_comments([comment for s in grouped_submissions for comment in s.submission_comments])),
         ) for _, grouped_submissions in grouping.items()]
 
     def align_with_groups(self, user_grouped_submissions):
