@@ -318,7 +318,7 @@ class LabAssignment(Assignment):
 
             with (dir_group / 'members.txt').open('w') as file:
                 for user in self.group_set.group_users[group]:
-                    print(self.group_set.user_str(user), file = file)
+                    print(self.course.user_str(user), file = file)
 
         if unhandled:
             print_error('There were unhandled files.')
