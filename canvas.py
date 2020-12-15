@@ -326,7 +326,7 @@ class Assignment:
 
     @staticmethod
     def submission_file_signature(s):
-        return tuple(sorted(file.id for file in s.attachments))
+        return tuple(sorted(file.id for file in (s.attachments if 'attachments' in s.__dict__ else [])))
 
     # Canvas bug: some submissions have null posted_at
     # Work around that by looking at date of submission files.
