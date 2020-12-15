@@ -224,12 +224,24 @@ class Course:
         self.course_id = course_id
         self.endpoint = ['courses', self.course_id]
 
+        self.user_details = dict()
+        self.user_name_to_id = dict()
+        for user in self.canvas.get_list(['courses', course_id, 'users'], params = {'include[]': ['enrollments']}, use_cache = use_cache):
+            if list(map(lambda e: e.role == 'StudentEnrollment', user.enrollments)):
+                self.user_details[user.id] = user
+                self.user_name_to_id[user.name] = user.id
+
         self.assignments_name_to_id = dict()
         self.assignment_details = dict()
         for assignment in self.get_assignments(use_cache = use_cache):
             self.assignment_details[assignment.id] = assignment
             self.assignments_name_to_id[assignment.name] = assignment.id
 
+    def user_str(self, id):
+        return '{} (id {})'.format(self.user_details[id].name, id)
+
+    def users_str(self, ids):
+        return ', '.join(self.user_str(id) for id in ids) if ids else '[no users]'
 
     def get_assignments(self, use_cache = True):
         return self.canvas.get_list(self.endpoint + ['assignments'], use_cache = use_cache)
@@ -265,18 +277,12 @@ class Course:
         return file_id
 
 class GroupSet:
-    def __init__(self, canvas, course_id, group_set, use_cache = True):
-        self.canvas = canvas
-        self.course_id = course_id
+    def __init__(self, course, group_set, use_cache = True):
+        self.canvas = course.canvas
+        self.course = course
 
-        group_sets = self.canvas.get_list(['courses', self.course_id, 'group_categories'])
+        group_sets = self.canvas.get_list(['courses', self.course.course_id, 'group_categories'])
         self.group_set = from_singleton(filter(lambda x: (isinstance(group_set, str) and x.name == group_set) or x.id == group_set, group_sets))
-
-        self.user_details = dict()
-        self.user_name_to_id = dict()
-        for user in self.canvas.get_list(['courses', course_id, 'users'], use_cache = use_cache):
-            self.user_details[user.id] = user
-            self.user_name_to_id[user.name] = user.id
 
         self.group_details = dict()
         self.group_name_to_id = dict()
@@ -284,41 +290,35 @@ class GroupSet:
         self.group_users = dict()
         self.user_to_group = dict()
 
-        for group in canvas.get_list(['group_categories', self.group_set.id, 'groups'], use_cache = use_cache):
+        for group in self.canvas.get_list(['group_categories', self.group_set.id, 'groups'], use_cache = use_cache):
             self.group_details[group.id] = group;
             self.group_name_to_id[group.name] = group.id
             users = set()
-            for user in canvas.get_list(['groups', group.id, 'users'], use_cache = use_cache):
+            for user in self.canvas.get_list(['groups', group.id, 'users'], use_cache = use_cache):
                 users.add(user.id)
                 self.user_to_group[user.id] = group.id
             self.group_users[group.id] = users
 
         self.group_prefix = os.path.commonprefix([group.name for (_, group) in self.group_details.items()])
 
-    def user_str(self, id):
-        return '{} (id {})'.format(self.user_details[id].name, id)
-
-    def users_str(self, ids):
-        return ', '.join(self.user_str(id) for id in ids) if ids else '[no users]'
-
     def group_str(self, id):
         return '{} (id {})'.format(self.group_details[id].name, id)
 
     def group_members_str(self, id):
-        return self.users_str(self.group_users[id])
+        return course.users_str(self.group_users[id])
 
 class Assignment:
-    def __init__(self, canvas, course_id, assignment_id):
-        self.canvas = canvas
-        self.course_id = course_id
+    def __init__(self, course, assignment_id):
+        self.canvas = course.canvas
+        self.course = course
 
         if isinstance(assignment_id, str):
-            self.assignment_id = Course(canvas, course_id).select_assignment(assignment_id).id
+            self.assignment_id = course.select_assignment(assignment_id).id
         else:
             self.assignment_id = assignment_id
 
-        self.assignment = self.canvas.get(['courses', course_id, 'assignments', self.assignment_id])
-        self.group_set = GroupSet(canvas, course_id, self.assignment.group_category_id)
+        self.assignment = self.canvas.get(['courses', course.course_id, 'assignments', self.assignment_id])
+        self.group_set = GroupSet(course, self.assignment.group_category_id)
 
     @staticmethod
     def could_be_same_date(a, b):
@@ -407,7 +407,7 @@ class Assignment:
 
             if not user_groupings:
                 logger.log(logging.INFO, 'Info: {} did not submit:'.format(self.group_set.group_str(group)))
-                logger.log(logging.INFO, '- {}'.format(self.group_set.users_str(group_users)))
+                logger.log(logging.INFO, '- {}'.format(self.course.users_str(group_users)))
                 continue
 
             # TODO: handle this somehow if it ever happens (assuming students can change groups).
@@ -425,19 +425,19 @@ class Assignment:
             if did_not_submit:
                 logger.log(logging.INFO, 'The following members have not submitted with {}:'.format(self.group_set.group_str(group)))
                 for user_id in did_not_submit:
-                    logger.log(logging.INFO, '- {}'.format(self.group_set.user_str(user_id)))
+                    logger.log(logging.INFO, '- {}'.format(self.course.user_str(user_id)))
 
             not_part_of_group = set(user_grouping).difference(set(group_users))
             if not_part_of_group:
                 logger.log(logging.INFO, 'The following non-members have submitted with {}:'.format(self.group_set.group_str(group)))
                 for user_id in not_part_of_group:
-                    logger.log(logging.INFO, '- {}'.format(self.group_set.user_str(user_id)))
+                    logger.log(logging.INFO, '- {}'.format(self.course.user_str(user_id)))
 
             result[group] = lookup[tuple(user_grouping)]
         return result
 
     def collect_submissions(self, use_cache = True):
-        raw_submissions = self.canvas.get_list(['courses', self.course_id, 'assignments', self.assignment_id, 'submissions'], params = {'include[]': ['submission_comments', 'submission_history']}, use_cache = use_cache)
+        raw_submissions = self.canvas.get_list(['courses', self.course.course_id, 'assignments', self.assignment_id, 'submissions'], params = {'include[]': ['submission_comments', 'submission_history']}, use_cache = use_cache)
         grouped_submission = Assignment.group_identical_submissions(Assignment.filter_submissions(raw_submissions))
         self.submissions = self.align_with_groups(grouped_submission)
 

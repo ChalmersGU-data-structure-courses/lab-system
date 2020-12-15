@@ -12,7 +12,7 @@ import lab_assignment_constants
 default_labs = [1, 2, 3, 4]
 
 dir_script = Path(__file__).parent
-file_registered_students = dir_script / 'registrerade-studenter.txt'
+#file_registered_students = dir_script / 'registrerade-studenter.txt'
 cache_dir_default = dir_script / 'cache'
 file_auth_token_default = dir_script / 'auth_token'
 
@@ -28,9 +28,9 @@ g = p.add_argument_group('primary arguments')
 g.add_argument('labs', nargs = '*', type = int, help = 'List of labs to process (1-4).')
 
 g = p.add_argument_group('secondary arguments')
-g.add_argument('--ladok-file', type = Path, metavar = 'REG', default = file_registered_students, help = '\n'.join([
+g.add_argument('--ladok-file', type = Path, metavar = 'REG', help = '\n'.join([
     f'The file from ladok with the registered students.',
-    f'Defaults to {shlex.quote(str(file_registered_students))}.',
+    f'If provided, the statistics is broken down into individual programs.'
 ]))
 g.add_argument('--refresh-group-set', action = 'store_true', help = '\n'.join([
     f'Collect group membership information from Canvas instead of the cache.',
@@ -87,7 +87,7 @@ from pathlib import Path
 import sys
 from types import SimpleNamespace
 
-from canvas import Canvas, Course, GroupSet
+from canvas import Canvas, Course, Assignment
 import config
 from general import *
 from lab_assignment import LabAssignment
@@ -96,29 +96,35 @@ logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO if args.verbose else 25)
 
 canvas = Canvas(config.canvas_url, cache_dir = Path(args.cache_dir))
-group_set = GroupSet(canvas, config.course_id, config.group_set, use_cache = not args.refresh_group_set)
+course = Course(canvas, config.course_id)
 
-# Read the Ladok student data.
-with args.ladok_file.open() as file:
-    csv_reader = csv.DictReader(file, dialect = csv.excel_tab, fieldnames = ['personnummer', 'name', 'course', 'status', 'program'])
-    rows = list(namespaced(csv_reader))
+users = course.user_details.values()
 
 def normalize_personnummer(p):
     return p.replace('-', '').strip()
 
-def merge(user, row):
-    user.group = group_set.user_to_group.get(user.id)
-    user.program = row.program
-    return user
+# Read program data from the Ladok file.
+if args.ladok_file:
+    with args.ladok_file.open() as file:
+        csv_reader = csv.DictReader(file, dialect = csv.excel_tab, fieldnames = ['personnummer', 'name', 'course', 'status', 'program'])
+        rows = list(namespaced(csv_reader))
+    print_error('{} students registered in Ladok.'.format(len(rows)))
 
-# Canvas users that are also Ladok users, with an additional 'program' attribute.
-users = list(map(second, zip_dicts_with(merge,
-    group_by_unique(get_attr('sis_user_id'), group_set.user_details.values()),
-    group_by_unique(compose(get_attr('personnummer'), normalize_personnummer), rows),
-)))
+    us = group_by_unique(get_attr('sis_user_id'), group_set.user_details.values())
+    vs = group_by_unique(compose(get_attr('personnummer'), normalize_personnummer), rows)
 
-print_error('{} students registered in Ladok.'.format(len(rows)))
-print_error('{} of those registered in Canvas.'.format(len(users)))
+    def check(x, us_name, vs, vs_name):
+        if x:
+            print_error('{} {} users not found {}.')
+
+    check(len(vs - us), 'Ladok', 'Canvas')
+    check(len(us - vs), 'Canvas', 'Ladok')
+
+    for u in users:
+        v = vs.get(u)
+        u.program = v.program if v else None
+
+print_error('Considering {} users registered in Canvas.'.format(len(users)))
 
 # Given a list of submission deadlines, finds the index of the deadline for which the submission was graded (the 'attempt').
 # If it was graded before the first deadline, it is treated as being the first deadline.
@@ -127,10 +133,10 @@ def get_submission_attempt(deadlines, submission):
 
 # Enhance assignment with performance analysis.
 def assignment(lab):
-    a = LabAssignment(canvas, config.course_id, lab)
+    a = LabAssignment(course, lab)
     a.past_deadlines = list(filter(lambda deadline: deadline <= datetime.now(tz = timezone.utc), a.deadlines))
     a.collect_submissions(use_cache = not args.refresh_submissions)
-    for group in group_set.group_details:
+    for group in a.group_set.group_details:
         s = a.submissions.setdefault(group, SimpleNamespace(submissions = []))
 
         grades_by_attempt = multidict(
@@ -157,40 +163,44 @@ def assignment(lab):
 assignments = dict(map_with_val(assignment, args.labs))
 
 # A lab statistics for a given list of users, which must be in groups.
-def statistics_lab(users_in_group, assignment):
+def statistics_lab(users, assignment):
+    to_group = assignment.group_set.user_to_group
+    in_group, in_no_group = partition(lambda u: u.id in to_group, users)
+
     def h(f):
-        return group_by_(lambda u: f(assignment.submissions[u.group]), users_in_group)
+        return group_by_(lambda u: f(assignment.submissions[to_group[u.id]]), in_group)
 
     return SimpleNamespace(
+        in_group = in_group,
+        in_no_group = in_no_group,
         total = h(lambda x: x.total),
         attempts = list(map(lambda i : h(lambda x: list_get(x.attempts, i)), range(len(assignment.past_deadlines)))),
     )
 
 # Statistics for all labs for a given list of users
 def statistics(users):
-    in_group, in_no_group = partition(lambda u: u.group, users)
-    return SimpleNamespace(
-        in_group = in_group,
-        in_no_group = in_no_group,
-        labs = dict_from_fun(lambda lab: statistics_lab(in_group, assignments[lab]), args.labs),
-    )
+    return dict_from_fun(lambda lab: statistics_lab(users, assignments[lab]), args.labs)
 
 Program = namedtuple('Program', field_names = ['symbol', 'description', 'users'])
 
 def generate_programs():
-    programs = group_by(lambda u: u.program, users)
-    if args.cutoff:
-        others = list()
-        for program, program_users in list(programs.items()):
-            if len(users) < args.cutoff:
-                programs.pop(program)
-                others.extend(program_users)
-
     yield Program('Σ', 'Total', users)
-    for program, program_users in sorted(programs.items(), key = lambda x: (- len(x[1]), x[0])):
-        yield Program(program, 'Program {}'.format(program), program_users)
-    if args.cutoff:
-        yield Program('Other', 'Other programs', others)
+    if args.ladok_file:
+        programs = group_by(lambda u: u.program, users)
+        unknown = programs.pop(None, [])
+        if args.cutoff:
+            others = list()
+            for program, program_users in list(programs.items()):
+                if len(users) < args.cutoff:
+                    programs.pop(program)
+                    others.extend(program_users)
+
+        for program, program_users in sorted(programs.items(), key = lambda x: (- len(x[1]), x[0])):
+            yield Program(program, 'Program {}'.format(program), program_users)
+        if args.cutoff:
+            yield Program('Other', 'Other programs', others)
+        if unknown:
+            yield Program('Unknown', 'Unknown program', unknown)
 
 programs = list(generate_programs())
 
@@ -203,12 +213,14 @@ def print_readable(file):
 
     for program in programs:
         stats = statistics(program.users)
-        print(f'{program.description} ({len(stats.in_group)} student(s) in groups, {len(stats.in_no_group)} not in groups):', file = file)
+        print(f'{program.description} ({len(program.users)} student(s)):', file = file)
         for lab in args.labs:
-            stats_lab = stats.labs[lab]
+            stats_lab = stats[lab]
             assignment = assignments[lab]
-            print('* Lab {}: total {} | {}'.format(
+            print('* Lab {}: {:3} in groups, {:2} not | total {} | {}'.format(
                 lab,
+                len(stats_lab.in_group),
+                len(stats_lab.in_no_group),
                 format_stats_attempt(stats_lab.total),
                 ' | '.join('#{} {}'.format(i, format_stats_attempt(stats_attempt)) for i, stats_attempt in enumerate(stats_lab.attempts)),
             ), file = file)
@@ -238,7 +250,7 @@ def print_csv(file):
     for program in programs:
         stats = statistics(program.users)
         for lab in args.labs:
-            stats_lab = stats.labs[lab]
+            stats_lab = stats[lab]
             assignment = assignments[lab]
 
             def generate_attempt(stats):
@@ -246,7 +258,7 @@ def print_csv(file):
                     yield len(stats[v])
 
             def generate():
-                yield from [program.symbol, len(stats.in_group), len(stats.in_no_group)]
+                yield from [program.symbol, len(stats_lab.in_group), len(stats_lab.in_no_group)]
                 yield from generate_attempt(stats_lab.total)
                 for stats_attempt in stats_lab.attempts:
                     yield from generate_attempt(stats_attempt)

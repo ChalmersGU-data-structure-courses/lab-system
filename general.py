@@ -160,6 +160,9 @@ def zip_dicts_with(f, us, vs):
         if v:
             yield (k, f(u, vs[k]))
 
+def zip_dicts(us, vs):
+    return zip_dicts_with(tuple, us, vs)
+
 def group_by_unique(f, xs):
     return sdict(map_with_key(f, xs))
 

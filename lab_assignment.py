@@ -145,13 +145,13 @@ class LabAssignment(Assignment):
     def parse_tests(file):
         return exec_simple(file).tests if file.exists() else []
 
-    def __init__(self, canvas, course_id, dir, use_name_handlers = True, use_content_handlers = True):
+    def __init__(self, course, dir, use_name_handlers = True, use_content_handlers = True):
         if isinstance(dir, int):
             dir = Path(__file__).parent.parent / 'lab{}'.format(dir)
 
         self.dir = dir
         self.name = (dir / 'name').read_text()
-        super().__init__(canvas, course_id, self.name)
+        super().__init__(course, self.name)
 
         self.dir_problem = dir / lab_assignment_constants.rel_dir_problem
         self.dir_solution = dir / lab_assignment_constants.rel_dir_solution
