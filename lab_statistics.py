@@ -126,27 +126,27 @@ if args.ladok_file:
 
 print_error('Considering {} users registered in Canvas.'.format(len(users)))
 
-# Given a list of submission deadlines, finds the index of the deadline for which the submission was graded (the 'attempt').
-# If it was graded before the first deadline, it is treated as being the first deadline.
-def get_submission_attempt(deadlines, submission):
-    return max(0, ilen(filter(lambda d: d <= submission.graded_at_date, deadlines)) - 1)
-
 # Enhance assignment with performance analysis.
 def assignment(lab):
     a = LabAssignment(course, lab)
-    a.past_deadlines = list(filter(lambda deadline: deadline <= datetime.now(tz = timezone.utc), a.deadlines))
+
+    # Given a list of submission deadlines, finds the index of the deadline for which the submission was graded (the 'attempt').
+    # If it was graded before the first deadline, it is treated as being the first deadline.
+    def get_submission_attempt(assignment, submission):
+        return max(0, assignment.get_deadline_index(submission.graded_at_date) - 1)
+
     a.collect_submissions(use_cache = not args.refresh_submissions)
     for group in a.group_set.group_details:
         s = a.submissions.setdefault(group, SimpleNamespace(submissions = []))
 
         grades_by_attempt = multidict(
-            (get_submission_attempt(a.past_deadlines, submission), submission.entered_grade)
+            (get_submission_attempt(a, submission), submission.entered_grade)
             for submission in s.submissions if submission.grade
         )
 
         attempts = [
             (lambda xs: ('pass' if 'complete' in xs else 'fail') if xs else 'missing')(grades_by_attempt[i])
-            for i in range(len(a.past_deadlines))
+            for i in range(len(a.deadlines))
         ]
 
         try:
@@ -174,7 +174,7 @@ def statistics_lab(users, assignment):
         in_group = in_group,
         in_no_group = in_no_group,
         total = h(lambda x: x.total),
-        attempts = list(map(lambda i : h(lambda x: list_get(x.attempts, i)), range(len(assignment.past_deadlines)))),
+        attempts = list(map(lambda i : h(lambda x: list_get(x.attempts, i)), range(len(assignment.deadlines)))),
     )
 
 # Statistics for all labs for a given list of users

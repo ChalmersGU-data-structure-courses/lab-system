@@ -15,7 +15,7 @@ from dominate import document
 from dominate.tags import *
 from dominate.util import raw, text
 
-from general import compose_many, from_singleton, Timer, print_error, print_json, mkdir_fresh, exec_simple, link_dir_contents, add_suffix, modify, format_with_rel_prec, format_timespan, sorted_directory_list
+from general import compose_many, from_singleton, ilen, Timer, print_error, print_json, mkdir_fresh, exec_simple, link_dir_contents, add_suffix, modify, format_with_rel_prec, format_timespan, sorted_directory_list
 from canvas import Canvas, Course, Assignment
 import lab_assignment_constants
 import submission_fix_lib
@@ -198,6 +198,11 @@ class LabAssignment(Assignment):
             return self.deadlines[deadline]
         assert(deadline == None)
         return deadline
+
+    # Returns the index of the deadline under which this date falls.
+    # If there is none, returns the number of deadlines.
+    def get_deadline_index(self, x):
+        return ilen(filter(lambda d: d < x, self.deadlines))
 
     def parse_group(self, x):
         if isinstance(x, int):
