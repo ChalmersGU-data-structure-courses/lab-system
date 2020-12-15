@@ -193,8 +193,8 @@ logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO if args.verbose else 25)
 
 canvas = Canvas(config.canvas_url, cache_dir = Path(args.cache_dir))
-group_set = GroupSet(canvas, config.course_id, config.group_set, use_cache = not args.refresh_group_set)
-lab_assignment = LabAssignment(canvas, config.course_id, args.lab, use_name_handlers = not args.no_name_handlers, use_content_handlers = not args.no_content_handlers)
+course = Course(canvas, config.course_id)
+lab_assignment = LabAssignment(course, args.lab, use_name_handlers = not args.no_name_handlers, use_content_handlers = not args.no_content_handlers)
 lab_assignment.collect_submissions(use_cache = not args.refresh_submissions)
 
 extra = dict()
