@@ -19,6 +19,7 @@ p = argparse.ArgumentParser(add_help = False, description = '\n'.join([
     f'This involves two stages.',
     f'First run with --dry-run DIR and check that everything is alright.',
     f'Then run with --real-run DIR to perform the actual posting.',
+    f'Warning: This will always (re)grade the most recent submission of each student.',
     f'Possible grade values are hard-coded for the time being.',
 ]), epilog = '\n'.join([
     f'This Python script supports bash completion.',
