@@ -308,7 +308,7 @@ class GroupSet:
         return course.users_str(self.group_users[id])
 
 class Assignment:
-    def __init__(self, course, assignment_id):
+    def __init__(self, course, assignment_id, use_cache = True):
         self.canvas = course.canvas
         self.course = course
 
@@ -318,7 +318,7 @@ class Assignment:
             self.assignment_id = assignment_id
 
         self.assignment = self.canvas.get(['courses', course.course_id, 'assignments', self.assignment_id])
-        self.group_set = GroupSet(course, self.assignment.group_category_id)
+        self.group_set = GroupSet(course, self.assignment.group_category_id, use_cache = True)
 
     @staticmethod
     def could_be_same_date(a, b):
