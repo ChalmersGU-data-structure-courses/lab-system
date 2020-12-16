@@ -24,6 +24,9 @@ def compose_many(*fs):
 def flatten(*xss):
     return list(itertools.chain(*xss))
 
+def singleton(x):
+    return [x]
+
 def from_singleton(xs):
     ys = list(xs)
     assert(len(ys) >= 1)
