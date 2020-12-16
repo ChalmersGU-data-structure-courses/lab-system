@@ -25,8 +25,8 @@ p = argparse.ArgumentParser(add_help = False, description = '\n'.join([
 ]))
 
 g = p.add_argument_group('primary arguments')
-g.add_argument('lab', type = int, choices = [1, 2, 3, 4], help = 'The lab to process.')
-g.add_argument('dir', type = Path, help = '\n'.join([
+g.add_argument('lab', type = int, choices = [1, 2, 3, 4], metavar = 'LAB', help = 'The lab to process.')
+g.add_argument('dir', type = Path, metavar = 'SUB_WORKING_DIR', help = '\n'.join([
     f'The submission working directory.',
     f'This is the base of the hierarchy in which the submissions are collected and processed.',
     f'If it does not exist and the submission processing workflow includes unpacking, it will be created.',
@@ -193,8 +193,8 @@ logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO if args.verbose else 25)
 
 canvas = Canvas(config.canvas_url, cache_dir = Path(args.cache_dir))
-course = Course(canvas, config.course_id)
-lab_assignment = LabAssignment(course, args.lab, use_name_handlers = not args.no_name_handlers, use_content_handlers = not args.no_content_handlers)
+course = Course(canvas, config.course_id, use_cache = not args.refresh_group_set)
+lab_assignment = LabAssignment(course, args.lab, use_name_handlers = not args.no_name_handlers, use_content_handlers = not args.no_content_handlers, use_cache = not args.refresh_group_set)
 lab_assignment.collect_submissions(use_cache = not args.refresh_submissions)
 
 extra = dict()

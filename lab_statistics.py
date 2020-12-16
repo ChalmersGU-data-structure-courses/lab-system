@@ -25,7 +25,7 @@ p = argparse.ArgumentParser(add_help = False, description = '\n'.join([
 ]))
 
 g = p.add_argument_group('primary arguments')
-g.add_argument('labs', nargs = '*', type = int, help = 'List of labs to process (1-4).')
+g.add_argument('labs', nargs = '*', type = int, metavar = 'LAB', help = 'List of labs to process (1-4).')
 
 g = p.add_argument_group('secondary arguments')
 g.add_argument('--ladok-file', type = Path, metavar = 'REG', help = '\n'.join([
@@ -106,7 +106,7 @@ logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO if args.verbose else 25)
 
 canvas = Canvas(config.canvas_url, cache_dir = Path(args.cache_dir))
-course = Course(canvas, config.course_id)
+course = Course(canvas, config.course_id, use_cache = not args.refresh_group_set)
 
 users = course.user_details.values()
 
@@ -138,7 +138,7 @@ print_error('Considering {} users registered in Canvas.'.format(len(users)))
 
 # Enhance assignment with performance analysis.
 def assignment(lab):
-    a = LabAssignment(course, lab)
+    a = LabAssignment(course, lab, use_cache = not args.refresh_group_set)
 
     # Given a list of submission deadlines, finds the index of the deadline for which the submission was graded or submitted (the 'attempt').
     # If it was graded before the first deadline, it is treated as being the first deadline.
