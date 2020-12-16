@@ -49,6 +49,9 @@ g.add_argument('--submitted-date', action = 'store_true', help = '\n'.join([
 g.add_argument('--submitted-grace', type = int, metavar = 'GRACE', default = 0, help = '\n'.join([
     f'Grace period in minutes to use for the submission date.'
 ]))
+g.add_argument('--actual-attempts', action = 'store_true', help = '\n'.join([
+    f'Count the attempts sequentially rather than by deadline.',
+]))
 g.add_argument('--cutoff', type = int, metavar = 'CUTOFF', help = '\n'.join([
     f'Show programs with less students than these as \'others\'.',
 ]))
@@ -147,19 +150,32 @@ def assignment(lab):
             return max(0, assignment.get_deadline_index(submission.graded_at_date) - 1)
 
     a.collect_submissions(use_cache = not args.refresh_submissions)
+
+    # Consider only graded submissions.
+    for s in a.submissions.values():
+        s.submissions = list(filter(lambda submission: submission.workflow_state == 'graded', s.submissions))
+
+    if args.actual_attempts:
+        a.attempt_count = max(itertools.chain([0], (len(s.submissions) for s in a.submissions.values())))
+    else:
+        a.attempt_count = len(a.deadlines)
+
     for group in a.group_set.group_details:
         s = a.submissions.setdefault(group, SimpleNamespace(submissions = []))
 
-        grades_by_attempt = multidict(
-            (get_submission_attempt(a, submission), submission.entered_grade)
-            for submission in s.submissions if submission.grade
-        )
+        if args.actual_attempts:
+            grades_by_attempt = dict(enumerate(map(lambda submission: [submission.grade], s.submissions)))
+        else:
+            grades_by_attempt = multidict(
+                (get_submission_attempt(a, submission), submission.entered_grade)
+                for submission in s.submissions if submission.grade
+            )
 
         attempts = [
-            (lambda xs: ('pass' if 'complete' in xs else 'fail') if xs else 'missing')(grades_by_attempt[i])
-            for i in range(len(a.deadlines))
+            (lambda xs: ('pass' if 'complete' in xs else 'fail') if xs else 'missing')(grades_by_attempt.get(i))
+            for i in range(a.attempt_count)
         ]
-
+        
         try:
             passing = attempts.index('pass') + 1
             attempts = attempts[:passing]
@@ -185,7 +201,7 @@ def statistics_lab(users, assignment):
         in_group = in_group,
         in_no_group = in_no_group,
         total = h(lambda x: x.total),
-        attempts = list(map(lambda i : h(lambda x: list_get(x.attempts, i)), range(len(assignment.deadlines)))),
+        attempts = list(map(lambda i : h(lambda x: list_get(x.attempts, i)), range(assignment.attempt_count))),
     )
 
 # Statistics for all labs for a given list of users
@@ -238,7 +254,7 @@ def print_readable(file):
         print(file = file)
 
 def print_csv(file):
-    max_deadlines = max(len(a.deadlines) for a in assignments.values())
+    max_deadlines = max(a.attempt_count for a in assignments.values())
 
     attempt_fields = {
         '+': 'pass',
