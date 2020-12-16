@@ -77,7 +77,7 @@ g.add_argument('--cache-dir', type = str, metavar = 'CACHE', default = cache_dir
     f'If it does not exist, it will be created.',
     f'Defaults to {shlex.quote(str(cache_dir_default))}.',
 ]))
-g.add_argument('--groups', nargs = '+', type = str, metavar = 'GROUP', help = '\n'.join([
+g.add_argument('--groups', nargs = '*', type = str, metavar = 'GROUP', help = '\n'.join([
     f'Restrict submission processing to these groups.',
     f'If omitted, all currently ungraded submissions will be processed.',
 ]))
@@ -199,7 +199,7 @@ lab_assignment.collect_submissions(use_cache = not args.refresh_submissions)
 
 extra = dict()
 extra['dir'] = args.dir
-extra['groups'] = lab_assignment.parse_groups(args.groups) if args.groups else lab_assignment.get_ungraded_submissions()
+extra['groups'] = lab_assignment.parse_groups(args.groups) if args.groups != None else lab_assignment.get_ungraded_submissions()
 
 root = Path('/')
 
