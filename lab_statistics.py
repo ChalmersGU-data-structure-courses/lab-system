@@ -120,18 +120,18 @@ if args.ladok_file:
         rows = list(namespaced(csv_reader))
     print_error('{} students registered in Ladok.'.format(len(rows)))
 
-    us = group_by_unique(get_attr('sis_user_id'), group_set.user_details.values())
+    us = group_by_unique(get_attr('sis_user_id'), course.user_details.values())
     vs = group_by_unique(compose(get_attr('personnummer'), normalize_personnummer), rows)
 
-    def check(x, us_name, vs, vs_name):
+    def check(x, us_name, vs_name):
         if x:
-            print_error('{} {} users not found {}.')
+            print_error('{} {} users not found {}.'.format(x, us_name, vs_name))
 
-    check(len(vs - us), 'Ladok', 'Canvas')
-    check(len(us - vs), 'Canvas', 'Ladok')
+    check(len(vs.keys() - us.keys()), 'Ladok', 'Canvas')
+    check(len(us.keys() - vs.keys()), 'Canvas', 'Ladok')
 
     for u in users:
-        v = vs.get(u)
+        v = vs.get(u.sis_user_id)
         u.program = v.program if v else None
 
 print_error('Considering {} users registered in Canvas.'.format(len(users)))
@@ -227,6 +227,10 @@ def generate_programs():
         if args.cutoff:
             yield Program('Other', 'Other programs', others)
         if unknown:
+            for u in unknown:
+                print_error(u.name)
+                for e in u.enrollments:
+                    print(e.role)
             yield Program('Unknown', 'Unknown program', unknown)
 
 programs = list(generate_programs())

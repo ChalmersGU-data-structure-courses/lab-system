@@ -227,7 +227,7 @@ class Course:
         self.user_details = dict()
         self.user_name_to_id = dict()
         for user in self.canvas.get_list(['courses', course_id, 'users'], params = {'include[]': ['enrollments']}, use_cache = use_cache):
-            if list(map(lambda e: e.role == 'StudentEnrollment', user.enrollments)):
+            if any(e.role == 'StudentEnrollment' for e in user.enrollments):
                 self.user_details[user.id] = user
                 self.user_name_to_id[user.name] = user.id
 
@@ -305,7 +305,7 @@ class GroupSet:
         return '{} (id {})'.format(self.group_details[id].name, id)
 
     def group_members_str(self, id):
-        return course.users_str(self.group_users[id])
+        return self.course.users_str(self.group_users[id])
 
 class Assignment:
     def __init__(self, course, assignment_id, use_cache = True):
