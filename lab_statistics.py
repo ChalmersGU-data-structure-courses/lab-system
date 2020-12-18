@@ -47,7 +47,7 @@ g.add_argument('--submitted-date', action = 'store_true', help = '\n'.join([
     f'When this option is specified, the date of submission is used instead.',
 ]))
 g.add_argument('--submitted-grace', type = int, metavar = 'GRACE', default = 0, help = '\n'.join([
-    f'Grace period in minutes to use for the submission date.'
+    f'Grace period in minutes to use for the deadlines.'
 ]))
 g.add_argument('--actual-attempts', action = 'store_true', help = '\n'.join([
     f'Count the attempts sequentially rather than by deadline.',
