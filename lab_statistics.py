@@ -118,14 +118,14 @@ if args.ladok_file:
     with args.ladok_file.open() as file:
         csv_reader = csv.DictReader(file, dialect = csv.excel_tab, fieldnames = ['personnummer', 'name', 'course', 'status', 'program'])
         rows = list(namespaced(csv_reader))
-    print_error('{} students registered in Ladok.'.format(len(rows)))
+    print_error('{} student(s) registered in Ladok.'.format(len(rows)))
 
     us = group_by_unique(get_attr('sis_user_id'), course.user_details.values())
     vs = group_by_unique(compose(get_attr('personnummer'), normalize_personnummer), rows)
 
     def check(x, us_name, vs_name):
         if x:
-            print_error('{} {} users not found {}.'.format(x, us_name, vs_name))
+            print_error('{} {} student(s) not found {}.'.format(x, us_name, vs_name))
 
     check(len(vs.keys() - us.keys()), 'Ladok', 'Canvas')
     check(len(us.keys() - vs.keys()), 'Canvas', 'Ladok')
@@ -134,7 +134,7 @@ if args.ladok_file:
         v = vs.get(u.sis_user_id)
         u.program = v.program if v else None
 
-print_error('Considering {} users registered in Canvas.'.format(len(users)))
+print_error('Considering {} student(s) registered in Canvas.'.format(len(users)))
 
 # Enhance assignment with performance analysis.
 def assignment(lab):
