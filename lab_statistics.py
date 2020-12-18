@@ -218,7 +218,7 @@ def generate_programs():
         if args.cutoff:
             others = list()
             for program, program_users in list(programs.items()):
-                if len(users) < args.cutoff:
+                if len(program_users) < args.cutoff:
                     programs.pop(program)
                     others.extend(program_users)
 
@@ -227,10 +227,6 @@ def generate_programs():
         if args.cutoff:
             yield Program('Other', 'Other programs', others)
         if unknown:
-            for u in unknown:
-                print_error(u.name)
-                for e in u.enrollments:
-                    print(e.role)
             yield Program('Unknown', 'Unknown program', unknown)
 
 programs = list(generate_programs())
