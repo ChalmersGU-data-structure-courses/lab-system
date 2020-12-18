@@ -35,12 +35,12 @@ g.add_argument('--ladok-file', type = Path, metavar = 'REG', help = '\n'.join([
 g.add_argument('--refresh-group-set', action = 'store_true', help = '\n'.join([
     f'Collect group membership information from Canvas instead of the cache.',
     f'Use this at the beginning of a submission processing workflow to make sure the cached group memberships are up to date.',
-    f'Collecting group membership information from Canvas is an expensive operation (on the order of 1 minute).'
+    f'Collecting group membership information from Canvas is an expensive operation (on the order of 1 minute per group set).'
 ]))
 g.add_argument('--refresh-submissions', action = 'store_true', help = '\n'.join([
     f'Collect submissions from Canvas instead of the cache.',
     f'Use this at the beginning of a submission processing workflow to make sure the cached submissions are up to date.',
-    f'It is recommended to use this option only then for fetching the submission info from Canvas is an expensive operation (on the order of 30 seconds).'
+    f'It is recommended to use this option only then for fetching the submission info from Canvas is an expensive operation (on the order of 30 seconds per lab).'
 ]))
 g.add_argument('--submitted-date', action = 'store_true', help = '\n'.join([
     f'By default, the date of grading is to determine which deadline (submission round) a submission belongs to.',
@@ -189,7 +189,7 @@ def assignment(lab):
 
 assignments = dict(map_with_val(assignment, args.labs))
 
-# A lab statistics for a given list of users, which must be in groups.
+# lab statistics for a given list of users, which must be in groups.
 def statistics_lab(users, assignment):
     to_group = assignment.group_set.user_to_group
     in_group, in_no_group = partition(lambda u: u.id in to_group, users)
