@@ -43,8 +43,8 @@ g.add_argument('--refresh-submissions', action = 'store_true', help = '\n'.join(
     f'It is recommended to use this option only then for fetching the submission info from Canvas is an expensive operation (on the order of 30 seconds per lab).'
 ]))
 g.add_argument('--submitted-date', action = 'store_true', help = '\n'.join([
-    f'By default, the date of grading is to determine which deadline (submission round) a submission belongs to.',
-    f'The date of submission is used instead.',
+    f'By default, the date of grading is used to determine which deadline (submission round) a submission belongs to.',
+    f'When this option is specified, the date of submission is used instead.',
 ]))
 g.add_argument('--submitted-grace', type = int, metavar = 'GRACE', default = 0, help = '\n'.join([
     f'Grace period in minutes to use for the submission date.'
