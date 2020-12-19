@@ -318,7 +318,7 @@ class Assignment:
             self.assignment_id = assignment_id
 
         self.assignment = self.canvas.get(['courses', course.course_id, 'assignments', self.assignment_id])
-        self.group_set = GroupSet(course, self.assignment.group_category_id, use_cache = True)
+        self.group_set = GroupSet(course, self.assignment.group_category_id, use_cache = use_cache)
 
     @staticmethod
     def could_be_same_date(a, b):
@@ -416,7 +416,7 @@ class Assignment:
                 print_error('The group consists of: {}.'.format(self.group_set.group_members_str(group)))
                 print_error('But only the following groups of users have submitted identically:')
                 for user_grouping in user_groupings:
-                    print_error('- {}'.format(self.group_set.users_str(user_grouping)))
+                    print_error('- {}'.format(self.course.users_str(user_grouping)))
                 assert(False)
 
             user_grouping = next(iter(user_groupings))
