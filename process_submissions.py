@@ -64,8 +64,8 @@ g = p.add_argument_group('secondary arguments')
 g.add_argument('-h', '--help', action = 'help', help = '\n'.join([
     f'Show this help message and exit.',
 ]))
-g.add_argument('-v', '--verbose', action = 'store_true', help = '\n'.join([
-    f'Print INFO level logging.',
+g.add_argument('-v', '--verbose', action = 'count', default = 0, help = '\n'.join([
+    f'Print INFO level logging (once specified) or DEBUG level logging (twice specified).',
     f'This includes accesses to Canvas API endpoints.',
 ]))
 g.add_argument('--auth-file', type = str, metavar = 'AUTH', default = file_auth_token_default, help = '\n'.join([
@@ -190,7 +190,7 @@ if args.process and (not args.no_testing or not args.no_pregrading) and not (shu
     exit(1)
 
 logging.basicConfig()
-logging.getLogger().setLevel(logging.INFO if args.verbose else 25)
+logging.getLogger().setLevel(25 if args.verbose == 0 else logging.INFO if args.verbose == 1 else logging.DEBUG)
 
 canvas = Canvas(config.canvas_url, cache_dir = Path(args.cache_dir))
 course = Course(canvas, config.course_id, use_cache = not args.refresh_group_set)

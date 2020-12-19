@@ -537,7 +537,9 @@ pre { margin: 0px; white-space: pre-wrap; }
             process = subprocess.run(cmd, cwd = dir_build, stdout = subprocess.PIPE, encoding = 'utf-8')
             if strict:
                 assert(process.returncode == 0)
-            return process.stdout
+            r = str(process.stdout)
+            logger.log(logging.DEBUG, 'pregrading output of {}:\n'.format(java_name) + r)
+            return r
 
         (dir / 'pregrading.txt').write_text('\n'.join(f(java_name) for java_name in self.tests_java))
 
