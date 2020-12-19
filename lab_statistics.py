@@ -153,22 +153,22 @@ def assignment(lab):
 
     # Consider only graded submissions.
     for s in a.submissions.values():
-        s.submissions = list(filter(lambda submission: submission.workflow_state == 'graded', s.submissions))
+        s.submissions_graded = list(filter(lambda submission: submission.workflow_state == 'graded', s.submissions))
 
     if args.actual_attempts:
-        a.attempt_count = max(itertools.chain([0], (len(s.submissions) for s in a.submissions.values())))
+        a.attempt_count = max(itertools.chain([0], (len(s.submissions_graded) for s in a.submissions.values())))
     else:
         a.attempt_count = len(a.deadlines)
 
     for group in a.group_set.group_details:
-        s = a.submissions.setdefault(group, SimpleNamespace(submissions = []))
+        s = a.submissions.setdefault(group, SimpleNamespace(submissions = [], submissions_graded = []))
 
         if args.actual_attempts:
-            grades_by_attempt = dict(enumerate(map(lambda submission: [submission.grade], s.submissions)))
+            grades_by_attempt = dict(enumerate(map(lambda submission: [submission.grade], s.submissions_graded)))
         else:
             grades_by_attempt = multidict(
                 (get_submission_attempt(a, submission), submission.entered_grade)
-                for submission in s.submissions if submission.grade
+                for submission in s.submissions_graded if submission.grade
             )
 
         attempts = [
@@ -182,6 +182,7 @@ def assignment(lab):
         except ValueError:
             passing = None
 
+        s.ungraded = s.submissions and s.submissions[-1].workflow_state == 'submitted'
         s.attempts = attempts
         s.total = 'pass' if passing else 'fail' if 'fail' in attempts else 'missing'
 
@@ -200,6 +201,7 @@ def statistics_lab(users, assignment):
     return SimpleNamespace(
         in_group = in_group,
         in_no_group = in_no_group,
+        ungraded = [u for u in in_group if assignment.submissions[to_group[u.id]].ungraded],
         total = h(lambda x: x.total),
         attempts = list(map(lambda i : h(lambda x: list_get(x.attempts, i)), range(assignment.attempt_count))),
     )
@@ -244,10 +246,11 @@ def print_readable(file):
         for lab in args.labs:
             stats_lab = stats[lab]
             assignment = assignments[lab]
-            print('* Lab {}: {:3} in groups, {:2} not | total {} | {}'.format(
+            print('* Lab {}: {:3} in groups, {:2} not, {:3} ungraded | total {} | {}'.format(
                 lab,
                 len(stats_lab.in_group),
                 len(stats_lab.in_no_group),
+                len(stats_lab.ungraded),
                 format_stats_attempt(stats_lab.total),
                 ' | '.join('#{} {}'.format(i, format_stats_attempt(stats_attempt)) for i, stats_attempt in enumerate(stats_lab.attempts)),
             ), file = file)
@@ -266,7 +269,7 @@ def print_csv(file):
         yield from map(partial(str.format, fmt), attempt_fields.keys())
 
     def generate_fields():
-        yield from ['Program', 'In group', 'No group', 'Lab']
+        yield from ['Program', 'Lab', 'In group', 'No group', 'Ungraded']
         yield from generate_attempt_fields('{}')
         for i in range(max_deadlines):
             yield from generate_attempt_fields('#{} {{}}'.format(i))
@@ -285,7 +288,7 @@ def print_csv(file):
                     yield len(stats[v])
 
             def generate():
-                yield from [program.symbol, len(stats_lab.in_group), len(stats_lab.in_no_group)]
+                yield from [program.symbol, lab, len(stats_lab.in_group), len(stats_lab.in_no_group), len(stats_lab.ungraded)]
                 yield from generate_attempt(stats_lab.total)
                 for stats_attempt in stats_lab.attempts:
                     yield from generate_attempt(stats_attempt)
