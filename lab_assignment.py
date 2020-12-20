@@ -570,18 +570,100 @@ pre { margin: 0px; white-space: pre-wrap; }
         doc.title = 'Grading Over It'
         with doc.head:
             meta(charset = 'utf-8')
-            style("""\
-.results { border-collapse: collapse; border: 1px black solid;}
-.results th, .results td { border-top: 1px black solid; border-bottom: 1px black solid; border-left: 1px black solid; padding: 5px; vertical-align: top; }
-.results pre { font-size: smaller; margin: 0px; white-space: pre-wrap; }
-.files { border-collapse: collapse }
-.files td { border : 0px; padding: 0px; vertical-align: top; white-space: nowrap; }
-.same { opacity: 0.5; }
-.error { color: #af0000; }
+            style("""
+.controls {
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+#results {
+  border-collapse: collapse;
+  border: 1px black solid;
+}
+#results th, #results td {
+  border-top: 1px black solid;
+  border-bottom: 1px black solid;
+  border-left: 1px black solid;
+  padding: 5px;
+  vertical-align: top;
+}
+#results pre {
+  font-size: smaller;
+  margin: 0px;
+  white-space: pre-wrap;
+}
+#results .files {
+  border-collapse: collapse
+}
+#results .files td {
+  border: 0px;
+  padding: 0px;
+  vertical-align: top;
+  white-space: nowrap;
+}
+.same {
+  opacity: 0.5;
+}
+.error {
+  color: #af0000;
+}
+.hidden {
+  display: none;
+}
+.to-load {
+  background-color: #eeeeee;
+}
+""")
+            with script(type = 'text/javascript'):
+                raw("""
+
+  function listSet(classList, _class, value) {
+    classList[value ? 'add' : 'remove'](_class);
+  }
+
+  function getVisibility(row) {
+    return !row.firstElementChild.classList.contains('to-load');
+  }
+
+  function setVisibility(row, visibility) {
+    first = true;
+    for (cell of row.getElementsByTagName('TD')) {
+      listSet(cell.classList, 'to-load', !visibility);
+      if (!first)
+        listSet(cell.firstElementChild.classList, 'hidden', !visibility);
+      first = false;
+    }
+  }
+
+  function setVisibilityAll(visibility) {
+    for (row of document.getElementById('results').getElementsByTagName('TBODY')[0].getElementsByTagName('TR'))
+      setVisibility(row, visibility);
+  }
+
+  function handleClick(element, event) {
+    if (event.eventPhase === Event.AT_TARGET) {
+      while (element.nodeName !== 'TR')
+        element = element.parentElement;
+      setVisibility(element, !getVisibility(element));
+    }
+  }
 """)
 
         file_syntax_highlight_css = Path('syntax-highlight.css')
         shutil.copyfile(Path(__file__).parent / file_syntax_highlight_css, dir / file_syntax_highlight_css)
+
+        doc.body['onload'] = 'setVisibilityAll(false);'
+
+        with doc.body.add(div(Class = 'controls')):
+            button('Show all', onclick = 'setVisibilityAll(true);')
+            text(' / ')
+            button('Hide all', onclick = 'setVisibilityAll(false);')
+
+        js_params = {
+            'onclick': 'handleClick(this, event);'
+        }
+
+        def cell(*args, **kwargs):
+            return div(*args, **kwargs, **js_params)
 
         row_data_dict = dict()
         for group in groups:
@@ -606,14 +688,14 @@ pre { margin: 0px; white-space: pre-wrap; }
                 if not xs:
                     return None
 
-                cell = td()
-                table_body = cell.add(table(Class = 'files')).add(tbody())
+                c = cell()
+                table_body = c.add(table(Class = 'files')).add(tbody())
                 for x in xs:
                     table_body.add(tr()).add(f(x))
-                return cell
+                return c
 
             # Group number
-            row_data.group = td(a(self.group_number(group), href = self.submission_speedgrader_url(current_submission)))
+            row_data.group = cell(a(self.group_number(group), href = self.submission_speedgrader_url(current_submission)))
 
             # Late submission
             row_data.late = None
@@ -621,10 +703,10 @@ pre { margin: 0px; white-space: pre-wrap; }
             if parsed_deadline:
                 time_diff = current_submission.submitted_at_date - parsed_deadline
                 if time_diff >= goodwill_period:
-                    row_data.late = td(format_timespan(time_diff))
+                    row_data.late = cell(format_timespan(time_diff))
 
             # Submitted files
-            row_data.files = td()
+            row_data.files = cell()
             files_table_body = row_data.files.add(table(Class = 'files')).add(tbody())
             for filename in filenames:
                 files_table_body.add(tr()).add(format_file(dir, filename, rel_dir_group / lab_assignment_constants.rel_dir_current, rel_dir_group_analysis / lab_assignment_constants.rel_dir_current, file_syntax_highlight_css))
@@ -646,7 +728,7 @@ pre { margin: 0px; white-space: pre-wrap; }
 
             # Compilation errors
             file_compilation_errors = dir_group / lab_assignment_constants.rel_file_compilation_errors
-            row_data.compilation_errors = td(pre(file_compilation_errors.read_text(), Class = 'error')) if file_compilation_errors.exists() else None
+            row_data.compilation_errors = cell(pre(file_compilation_errors.read_text(), Class = 'error')) if file_compilation_errors.exists() else None
 
             # Tests
             if (dir_group / lab_assignment_constants.rel_dir_build_test).exists():
@@ -675,11 +757,11 @@ pre { margin: 0px; white-space: pre-wrap; }
 
             # Pregrading
             file_pregrading = dir_group / lab_assignment_constants.rel_file_pregrading
-            row_data.pregrading = td(pre(file_pregrading.read_text())) if file_pregrading.exists() else None
+            row_data.pregrading = cell(pre(file_pregrading.read_text())) if file_pregrading.exists() else None
 
             # Comments
             ungraded_comments = Assignment.ungraded_comments(self.submissions[group])
-            row_data.new_comments = td(pre('\n'.join(Assignment.format_comments(ungraded_comments)))) if ungraded_comments else None
+            row_data.new_comments = cell(pre('\n'.join(Assignment.format_comments(ungraded_comments)))) if ungraded_comments else None
 
         def build_index_files_entry(rel_base_dir, folder_name):
             return ('Vs. {}'.format(folder_name), lambda group: build_index_files(group, rel_base_dir(group), folder_name))
@@ -717,21 +799,21 @@ pre { margin: 0px; white-space: pre-wrap; }
             else:
                 for group, row_data in row_data_dict.items():
                     if row_data.__dict__[key] == None:
-                        row_data.__dict__[key] = td()
+                        row_data.__dict__[key] = cell()
 
         def handle(key_data, el):
             if key_data.style:
                 el.set_attribute('style', key_data.style)
 
-        results_table = doc.body.add(table(Class = 'results'))
+        results_table = doc.body.add(table(id = 'results'))
         header_row = results_table.add(thead()).add(tr())
         for key, key_data in keys.items():
             handle(key_data, header_row.add(th(key_data.title) if isinstance(key_data.title, str) else key_data.title))
         results_table_body = results_table.add(tbody())
         for group, row_data in row_data_dict.items():
-            row = results_table_body.add(tr())
+            row = results_table_body.add(tr(**js_params))
             for key, key_data in keys.items():
-                handle(key_data, row.add(row_data.__dict__[key]))
+                handle(key_data, row.add(td(row_data.__dict__[key], **js_params)))
 
         file_index = dir / 'index.html'
         file_index.write_text(doc.render())
