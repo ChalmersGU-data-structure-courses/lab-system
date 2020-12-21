@@ -214,8 +214,8 @@ group_grading = dict()
 with args.grade_sheet.open() as file:
     csv_reader = csv.DictReader(file)
     for rows in csv_reader:
-        group_name = group_set.group_prefix + str(rows[args.header_group])
-        group_id = group_set.group_name_to_id[group_name]
+        group_name = group_set.prefix + str(rows[args.header_group])
+        group_id = group_set.name_to_id[group_name]
         grade = grade_parser[rows[args.header_grade]]
         grader = parse_grader(rows[args.header_grader])
         comment = parse_comment(rows[args.header_comment])
@@ -242,7 +242,7 @@ print()
 print('Parsed grading for assignment {}.'.format(course.assignment_str(assignment.assignment_id)))
 for group in group_grading:
     grading = group_grading[group]
-    print('* {}: {}, graded by {}, {}'.format(group_set.group_str(group), grade_str(grading.grade), grading.grader, 'comments:' if grading.comment else comment_str(grading.comment)))
+    print('* {}: {}, graded by {}, {}'.format(group_set.str(group), grade_str(grading.grade), grading.grader, 'comments:' if grading.comment else comment_str(grading.comment)))
     if grading.comment:
         print(*map(lambda x: '  | ' + x, grading.comment.splitlines()), sep = '\n', end = '')
 print()
@@ -259,14 +259,14 @@ for user in course.user_details:
     if user in group_set.user_to_group:
         group = group_set.user_to_group[user]
         if filter_groups:
-            to_grade = group_set.group_details[group].name in map (lambda n: header_group_formatter.format(n), filter_groups)
+            to_grade = group_set.details[group].name in map (lambda n: header_group_formatter.format(n), filter_groups)
         else:
             to_grade = group in group_grading
         if to_grade:
             grading = group_grading[group]
             if grading.comment or grading.grade:
                 grading = group_grading[group]
-                print('  Grading {} in {} ({})...'.format(course.user_str(user), group_set.group_str(group), grade_str(grading.grade)))
+                print('  Grading {} in {} ({})...'.format(course.user_str(user), group_set.str(group), grade_str(grading.grade)))
                 check_file = args.check_dir / str(course.user_str(user))
                 if args.dry_run:
                     check_file.open('w').close()

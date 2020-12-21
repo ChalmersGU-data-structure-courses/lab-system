@@ -160,7 +160,7 @@ def assignment(lab):
     else:
         a.attempt_count = len(a.deadlines)
 
-    for group in a.group_set.group_details:
+    for group in a.group_set.details:
         s = a.submissions.setdefault(group, SimpleNamespace(submissions = [], submissions_graded = []))
 
         if args.actual_attempts:

@@ -63,8 +63,9 @@ def highlight_file(dir_source, dir_target, name, css):
     (dir_target / result_name).write_text(doc.render())
     return result_name
 
+# Apparently, '-g' is needed to make sure exceptions properly reference names.
 def javac_cmd(files):
-    return ['javac', '-d', '.'] + list(files)
+    return ['javac', '-d', '.', '-g'] + list(files)
 
 def java_cmd(file_security_policy, enable_assertions, class_name, args):
     cmd = ['java']
@@ -85,6 +86,7 @@ def compile_java(dir, files, force_recompile = False, strict = False):
         return file_class.exists() and os.path.getmtime(file_class) > os.path.getmtime(file_java)
 
     if not all(map(is_up_to_date, files)):
+        logger.log(logging.DEBUG, 'Not all class files existing or up to date; (re)compiling.')
         cmd = javac_cmd(file.relative_to(dir) for file in files)
         process = subprocess.run(cmd, cwd = dir, stderr = subprocess.PIPE, encoding = 'utf-8')
         if process.returncode != 0:
@@ -180,14 +182,14 @@ class LabAssignment(Assignment):
 
     # Only works if groups follow a uniform naming scheme with varying number at end of string.
     def group_from_number(self, group_number):
-        return self.group_set.group_name_to_id[self.group_set.group_prefix + str(group_number)]
+        return self.group_set.name_to_id[self.group_set.prefix + str(group_number)]
 
     def group_dir(self, dir_output, group):
-        group_name = self.group_set.group_details[group].name
+        group_name = self.group_set.details[group].name
         return Path(group_name) if dir_output == Path() else dir_output / group_name
 
     def group_number(self, group):
-        numbers = [s for s in self.group_set.group_str(group).split() if s.isdigit()]
+        numbers = [s for s in self.group_set.str(group).split() if s.isdigit()]
         assert(len(numbers) == 1)
         return int(numbers[0])
 
@@ -209,8 +211,8 @@ class LabAssignment(Assignment):
             return x
         assert(isinstance(x, str))
         if x.isdigit():
-            x = self.group_set.group_prefix + x
-        return self.group_set.group_name_to_id[x]
+            x = self.group_set.prefix + x
+        return self.group_set.name_to_id[x]
 
     def parse_groups(self, xs):
         return list(map(self.parse_group, xs))
@@ -374,7 +376,7 @@ class LabAssignment(Assignment):
         dir_submission = dir / rel_dir_submission
 
         # Compile java files.
-        files_java = list(f for f in dir_build.iterdir() if f.suffix == '.java')
+        files_java = [dir_build / f.name for d in [dir_problem, dir_submission] for f in d.iterdir() if f.suffix == '.java']
         compilation_errors = compile_java(dir_build, files_java, strict = False)
         if compilation_errors != None:
             (dir / lab_assignment_constants.rel_file_compilation_errors).write_text(compilation_errors)
@@ -651,7 +653,8 @@ pre { margin: 0px; white-space: pre-wrap; }
         file_syntax_highlight_css = Path('syntax-highlight.css')
         shutil.copyfile(Path(__file__).parent / file_syntax_highlight_css, dir / file_syntax_highlight_css)
 
-        doc.body['onload'] = 'setVisibilityAll(false);'
+        if not len(groups) < 10:
+            doc.body['onload'] = 'setVisibilityAll(false);'
 
         with doc.body.add(div(Class = 'controls')):
             button('Show all', onclick = 'setVisibilityAll(true);')
@@ -667,7 +670,7 @@ pre { margin: 0px; white-space: pre-wrap; }
 
         row_data_dict = dict()
         for group in groups:
-            logger.log(logging.INFO, 'processing {}...'.format(self.group_set.group_str(group)))
+            logger.log(logging.INFO, 'processing {}...'.format(self.group_set.str(group)))
 
             row_data = SimpleNamespace()
             row_data_dict[group] = row_data

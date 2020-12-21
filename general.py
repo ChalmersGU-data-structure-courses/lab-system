@@ -308,7 +308,7 @@ def link_dir_contents(dir_from, dir_to, rel = None):
         files.append(file)
         target = rel / path.name
         if file.exists():
-            assert(Path(os.readlink(file)) == target)
+            assert(file.is_symlink() and Path(os.readlink(file)) == target)
         else:
             file.symlink_to(target, path.is_dir())
     return files
