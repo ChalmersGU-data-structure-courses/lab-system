@@ -99,12 +99,10 @@ if not args.dir.is_dir():
     exit(1)
 
 # Check that all the necessary programs are installed.
-if not shutil.which('zip'):
-    print_error('Cannot find \'zip\'.')
-    exit(1)
-if not shutil.which('7z'):
-    print_error('Cannot find \'zip\'.')
-    exit(1)
+for program in ['tar', 'xz']:
+    if not shutil.which(program):
+        print_error('Cannot find the program {}.'.format(shlex.quote(program)))
+        exit(1)
 
 # Handle verbosity.
 logging.basicConfig()
