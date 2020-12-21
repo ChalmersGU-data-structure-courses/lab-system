@@ -513,13 +513,12 @@ pre { margin: 0px; white-space: pre-wrap; }
         logger.log(25, 'Testing...')
         assert(dir.exists())
 
-        policy = dir / lab_assignment_constants.rel_file_java_policy
-        shutil.copyfile(Path(__file__).parent / lab_assignment_constants.rel_file_java_policy, policy)
-        self.test(dir, policy, strict = True)
+        shutil.copyfile(Path(__file__).parent / lab_assignment_constants.rel_file_java_policy, dir / lab_assignment_constants.rel_file_java_policy)
+        self.test(dir, Path(lab_assignment_constants.rel_file_java_policy), strict = True)
         for group in groups:
             dir_group = self.group_dir(dir, group)
             if not (dir_group / lab_assignment_constants.rel_file_compilation_errors).exists():
-                self.test(dir_group, policy = Path('..') / policy, strict = strict)
+                self.test(dir_group, policy = Path('..') / lab_assignment_constants.rel_file_java_policy, strict = strict)
 
     def pregrade(self, dir, dir_test, rel_dir_submission, strict = True):
         logger.log(logging.INFO, 'Pregrading: {}'.format(shlex.quote(str(dir))))
