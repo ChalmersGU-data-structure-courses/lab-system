@@ -284,27 +284,27 @@ class GroupSet:
         group_sets = self.canvas.get_list(['courses', self.course.course_id, 'group_categories'])
         self.group_set = from_singleton(filter(lambda x: (isinstance(group_set, str) and x.name == group_set) or x.id == group_set, group_sets))
 
-        self.group_details = dict()
-        self.group_name_to_id = dict()
+        self.details = dict()
+        self.name_to_id = dict()
 
         self.group_users = dict()
         self.user_to_group = dict()
 
         for group in self.canvas.get_list(['group_categories', self.group_set.id, 'groups'], use_cache = use_cache):
-            self.group_details[group.id] = group;
-            self.group_name_to_id[group.name] = group.id
+            self.details[group.id] = group;
+            self.name_to_id[group.name] = group.id
             users = set()
             for user in self.canvas.get_list(['groups', group.id, 'users'], use_cache = use_cache):
                 users.add(user.id)
                 self.user_to_group[user.id] = group.id
             self.group_users[group.id] = users
 
-        self.group_prefix = os.path.commonprefix([group.name for (_, group) in self.group_details.items()])
+        self.prefix = os.path.commonprefix([group.name for (_, group) in self.details.items()])
 
-    def group_str(self, id):
-        return '{} (id {})'.format(self.group_details[id].name, id)
+    def str(self, id):
+        return '{} (id {})'.format(self.details[id].name, id)
 
-    def group_members_str(self, id):
+    def members_str(self, id):
         return self.course.users_str(self.group_users[id])
 
 class Assignment:
@@ -394,7 +394,7 @@ class Assignment:
         lookup = dict((tuple(user_grouped_submission.members), user_grouped_submission) for user_grouped_submission in user_grouped_submissions)
 
         result = dict()
-        for group in self.group_set.group_details:
+        for group in self.group_set.details:
             group_users = self.group_set.group_users[group]
             if not group_users:
                 continue
@@ -406,14 +406,14 @@ class Assignment:
                     user_groupings.add(tuple(user_grouping))
 
             if not user_groupings:
-                logger.log(logging.INFO, 'Info: {} did not submit:'.format(self.group_set.group_str(group)))
+                logger.log(logging.INFO, 'Info: {} did not submit:'.format(self.group_set.str(group)))
                 logger.log(logging.INFO, '- {}'.format(self.course.users_str(group_users)))
                 continue
 
             # TODO: handle this somehow if it ever happens (assuming students can change groups).
             if len(user_groupings) > 1:
-                print_error('Incongruous submissions for members of {}.'.format(self.group_set.group_str(group)))
-                print_error('The group consists of: {}.'.format(self.group_set.group_members_str(group)))
+                print_error('Incongruous submissions for members of {}.'.format(self.group_set.str(group)))
+                print_error('The group consists of: {}.'.format(self.group_set.members_str(group)))
                 print_error('But only the following groups of users have submitted identically:')
                 for user_grouping in user_groupings:
                     print_error('- {}'.format(self.course.users_str(user_grouping)))
@@ -423,13 +423,13 @@ class Assignment:
 
             did_not_submit = set(group_users).difference(set(user_grouping))
             if did_not_submit:
-                logger.log(logging.INFO, 'The following members have not submitted with {}:'.format(self.group_set.group_str(group)))
+                logger.log(logging.INFO, 'The following members have not submitted with {}:'.format(self.group_set.str(group)))
                 for user_id in did_not_submit:
                     logger.log(logging.INFO, '- {}'.format(self.course.user_str(user_id)))
 
             not_part_of_group = set(user_grouping).difference(set(group_users))
             if not_part_of_group:
-                logger.log(logging.INFO, 'The following non-members have submitted with {}:'.format(self.group_set.group_str(group)))
+                logger.log(logging.INFO, 'The following non-members have submitted with {}:'.format(self.group_set.str(group)))
                 for user_id in not_part_of_group:
                     logger.log(logging.INFO, '- {}'.format(self.course.user_str(user_id)))
 
@@ -639,7 +639,7 @@ class Assignment:
     #         s = self.submissions[group]
     #         current = Assignment.current_submission(s)
     #         if not (current.workflow_state == 'graded' and current.grade == 'complete') and (current.workflow_state == 'submitted' or Assignment.ungraded_comments(s)):
-    #             self.prepare_submission(deadline, group, dir / self.group_set.group_details[group].name, s)
+    #             self.prepare_submission(deadline, group, dir / self.group_set.details[group].name, s)
 
     def grade(self, user, comment = None, grade = None):
         assert(grade in [None, 'complete', 'incomplete', 'fail'])
