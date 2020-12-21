@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 import shlex
+import shutil
 import subprocess
 import sys
 
@@ -26,9 +27,20 @@ class Process(subprocess.Popen):
         if r != 0:
             raise subprocess.CalledProcessError(r, self.cmd)
 
-def cmd_tar(dir, preserve_symlinks = True):
+def is_gnu_tar(tar):
+    return shutil.which(tar) and 'GNU tar' in subprocess.run([tar, '--version'], capture_output = True, encoding = 'utf-8').stdout
+
+def find_gnu_tar():
+    candidates = ['tar', 'gtar']
+    for tar in candidates:
+        if is_gnu_tar(tar):
+            return tar
+
+    return None
+
+def cmd_tar(dir, tar = find_gnu_tar(), preserve_symlinks = True):
     return flatten(
-        ['tar', '--create'],
+        [tar, '--create'],
         ['--group=0', '--owner=0'],
         ['--no-recursion'],
         ['--directory', str(dir)],
@@ -53,7 +65,7 @@ def id(output, fd_input):
 def p7z(output, fd_input):
     return Process(['7z', 'a', '-t7z', '-si', str(output)], fd_input, sys.stderr)
 
-def compress(output, dir, input_paths, preserve_symlinks = True, compressor = get_xz()):
+def compress(output, dir, input_paths, preserve_symlinks = True, tar = find_gnu_tar(), compressor = get_xz()):
     p1 = Process(cmd_tar(dir, preserve_symlinks = preserve_symlinks))
     p2 = compressor(output, p1.stdout)
     tar_write_paths(p1.stdin, input_paths)
@@ -66,7 +78,7 @@ def descendants(dir, preserve_symlinks = True):
         for path in dir.iterdir():
             yield from descendants(path)
 
-def compress_dir(output, dir, exclude = [], move_up = False, sort_by_name = False, preserve_symlinks = True, compressor = get_xz()):
+def compress_dir(output, dir, exclude = [], move_up = False, sort_by_name = False, preserve_symlinks = True, tar = find_gnu_tar(), compressor = get_xz()):
     base_dir = dir.parent if move_up else dir
 
     if isinstance(exclude, Path):

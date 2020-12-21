@@ -93,16 +93,7 @@ import compression
 import config
 from lab_assignment import LabAssignment
 
-# Check directory exists.
-if not args.dir.is_dir():
-    print_error('The given path {} is not a valid directory.'.format(shlex.quote(str(args.dir))))
-    exit(1)
-
-# Check that all the necessary programs are installed.
-for program in ['tar', 'xz']:
-    if not shutil.which(program):
-        print_error('Cannot find the program {}.'.format(shlex.quote(program)))
-        exit(1)
+logger = logging.getLogger("zip_and_share")
 
 # Handle verbosity.
 logging.basicConfig()
@@ -110,6 +101,24 @@ if args.verbose:
     logging.getLogger().setLevel(logging.INFO)
 else:
     logging.getLogger().setLevel(25)
+
+# Check directory exists.
+if not args.dir.is_dir():
+    print_error('The given path {} is not a valid directory.'.format(shlex.quote(str(args.dir))))
+    exit(1)
+
+# Check for GNU tar.
+tar = compression.find_gnu_tar()
+if not tar:
+    print_error('Cannot find GNU tar.')
+    exit(1)
+logger.log(logging.INFO, 'Found GNU tar: {}'.format(shlex.quote(tar)))
+
+# Check that all the necessary programs are installed.
+for program in ['xz']:
+    if not shutil.which(program):
+        print_error('Cannot find the program {}.'.format(shlex.quote(program)))
+        exit(1)
 
 canvas = Canvas(config.canvas_url, cache_dir = Path(args.cache_dir))
 course = Course(canvas, config.course_id)
@@ -145,7 +154,7 @@ if args.zip:
         file_ignore = args.dir / ('.ignore' + preserve_symlink_suffix[c.preserve_symlinks])
         if not file_ignore.exists():
             print_error('Warning: file {} is missing.'.format(shlex.quote(str(file_ignore))))
-            file_ignore = None
+            file_ignore = []
 
         compression.compress_dir(
             output(c),
@@ -154,7 +163,9 @@ if args.zip:
             move_up = True,
             sort_by_name = True,
             preserve_symlinks = c.preserve_symlinks,
-            compressor = c.compressor)
+            tar = tar,
+            compressor = c.compressor,
+        )
 
 if args.share:
     print_error('Uploading...')
