@@ -120,6 +120,10 @@ g = p.add_argument_group('testing options')
 g.add_argument('--no-testing', action = 'store_true', help = '\n'.join([
     f'Skip the testing phase of the submission processing workflow.',
 ]))
+g.add_argument('--machine-speed', type = float, metavar = 'SPD', default = 1, help = '\n'.join([
+    f'Machine speed relative to which to interpret timeout values.',
+    f'Defaults to 1.',
+]))
 
 g = p.add_argument_group('pregrading options')
 g.add_argument('--no-pregrading', action = 'store_true', help = '\n'.join([
@@ -222,7 +226,7 @@ if args.process:
     if not args.no_compilation:
         lab_assignment.submissions_compile(strict = not(args.allow_compilation_errors), **extra)
     if not args.no_testing:
-        lab_assignment.submissions_test(**extra)
+        lab_assignment.submissions_test(**extra, machine_speed = args.machine_speed)
     if not args.no_pregrading:
         lab_assignment.submissions_pregrade(strict = True, **extra)
     if args.remove_class_files:

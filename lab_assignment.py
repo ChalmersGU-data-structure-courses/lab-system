@@ -464,7 +464,7 @@ pre { margin: 0px; white-space: pre-wrap; }
                 pre(err, Class = 'error')
         file_out.write_text(doc.render())
 
-    def test(self, dir, policy = None, strict = False):
+    def test(self, dir, policy = None, strict = False, machine_speed = 1):
         logger.log(logging.INFO, 'testing: {}'.format(shlex.quote(str(dir))))
         dir_build = dir / lab_assignment_constants.rel_dir_build
 
@@ -489,7 +489,7 @@ pre { margin: 0px; white-space: pre-wrap; }
                     process = subprocess.run(
                         cmd,
                         cwd = dir_build,
-                        timeout = test_spec.timeout,
+                        timeout = test_spec.timeout / machine_speed,
                         input = test_spec.input.encode() if test_spec.input != None else None,
                         stdout = (dir_test / 'out').open('wb'),
                         stderr = (dir_test / 'err').open('wb')
@@ -509,16 +509,16 @@ pre { margin: 0px; white-space: pre-wrap; }
                 assert(LabAssignment.is_test_successful(dir_test))
 
     # Only tests submissions that do not have compilation errors.
-    def submissions_test(self, dir, groups, strict = False):
+    def submissions_test(self, dir, groups, strict = False, machine_speed = 1):
         logger.log(25, 'Testing...')
         assert(dir.exists())
 
         shutil.copyfile(Path(__file__).parent / lab_assignment_constants.rel_file_java_policy, dir / lab_assignment_constants.rel_file_java_policy)
-        self.test(dir, Path(lab_assignment_constants.rel_file_java_policy), strict = True)
+        self.test(dir, Path(lab_assignment_constants.rel_file_java_policy), strict = True, machine_speed = machine_speed)
         for group in groups:
             dir_group = self.group_dir(dir, group)
             if not (dir_group / lab_assignment_constants.rel_file_compilation_errors).exists():
-                self.test(dir_group, policy = Path('..') / lab_assignment_constants.rel_file_java_policy, strict = strict)
+                self.test(dir_group, policy = Path('..') / lab_assignment_constants.rel_file_java_policy, strict = strict, machine_speed = machine_speed)
 
     def pregrade(self, dir, dir_test, rel_dir_submission, strict = True):
         logger.log(logging.INFO, 'Pregrading: {}'.format(shlex.quote(str(dir))))
