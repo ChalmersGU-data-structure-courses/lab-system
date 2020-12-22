@@ -15,7 +15,7 @@ from dominate import document
 from dominate.tags import *
 from dominate.util import raw, text
 
-from general import compose_many, from_singleton, ilen, Timer, print_error, print_json, mkdir_fresh, exec_simple, link_dir_contents, add_suffix, modify, format_with_rel_prec, format_timespan, sorted_directory_list
+from general import compose_many, from_singleton, ilen, Timer, print_error, print_json, mkdir_fresh, exec_simple, link_dir_contents, add_suffix, modify, format_with_rel_prec, format_timespan, sorted_directory_list, copy_tree_fresh
 from canvas import Canvas, Course, Assignment
 import lab_assignment_constants
 import submission_fix_lib
@@ -361,9 +361,17 @@ class LabAssignment(Assignment):
         assert(dir.exists())
 
         # make output directory self-contained
+        subdirs = [
+            (self.dir_problem, dir / lab_assignment_constants.rel_dir_problem),
+            (self.dir_solution, dir / lab_assignment_constants.rel_dir_solution)
+        ]
         if not dir.samefile(self.dir):
-            shutil.copytree(self.dir_problem, dir / lab_assignment_constants.rel_dir_problem, dirs_exist_ok = True)
-            shutil.copytree(self.dir_solution, dir / lab_assignment_constants.rel_dir_solution, dirs_exist_ok = True)
+            for source, target in subdirs:
+                copy_tree_fresh(source, target)
+
+        if [() for _, target in subdirs for f in target.iterdir() if f.suffix == '.class']:
+            print_error('I am refusing to work on a lab whose problem/solution folders contains class files.')
+            exit(1)
 
         self.prepare_build(dir, dir / lab_assignment_constants.rel_dir_problem, lab_assignment_constants.rel_dir_solution)
         for group in groups:
