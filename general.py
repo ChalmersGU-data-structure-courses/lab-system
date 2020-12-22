@@ -313,6 +313,14 @@ def link_dir_contents(dir_from, dir_to, rel = None):
             file.symlink_to(target, path.is_dir())
     return files
 
+def copy_tree_fresh(source, to, **flags):
+    if to.exists():
+        if to.isdir():
+            to.rmdir()
+        else:
+            to.unlink()
+    shutil.copytree(source, to, **flags)
+
 def exec_simple(file):
     r = dict()
     exec(file.read_text(), r)
