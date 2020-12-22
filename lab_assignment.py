@@ -542,7 +542,7 @@ pre { margin: 0px; white-space: pre-wrap; }
             logger.log(logging.DEBUG, 'pregrading output of {}:\n'.format(java_name) + r)
             return r
 
-        (dir / 'pregrading.txt').write_text('\n'.join(f(java_name) for java_name in self.tests_java))
+        (dir / lab_assignment_constants.rel_file_pregrading).write_text('\n'.join(f(java_name) for java_name in self.tests_java))
 
     # Only tests submissions that do not have compilation errors.
     def submissions_pregrade(self, dir, groups, strict = True):
