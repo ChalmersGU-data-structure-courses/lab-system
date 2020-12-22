@@ -642,9 +642,14 @@ pre { margin: 0px; white-space: pre-wrap; }
 
   function handleClick(element, event) {
     if (event.eventPhase === Event.AT_TARGET) {
-      while (element.nodeName !== 'TR')
+      while (element.nodeName !== 'TD')
         element = element.parentElement;
-      setVisibility(element, !getVisibility(element));
+      row = element.parentElement
+      if (getVisibility(row)) {
+        if (element.previousElementSibling === null)
+          setVisibility(row, false);
+      } else
+        setVisibility(row, true);
     }
   }
 """)
@@ -813,7 +818,7 @@ pre { margin: 0px; white-space: pre-wrap; }
             handle(key_data, header_row.add(th(key_data.title) if isinstance(key_data.title, str) else key_data.title))
         results_table_body = results_table.add(tbody())
         for group, row_data in row_data_dict.items():
-            row = results_table_body.add(tr(**js_params))
+            row = results_table_body.add(tr())
             for key, key_data in keys.items():
                 handle(key_data, row.add(td(row_data.__dict__[key], **js_params)))
 
