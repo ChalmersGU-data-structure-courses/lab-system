@@ -505,7 +505,7 @@ pre { margin: 0px; white-space: pre-wrap; }
                 (dir_test / 'ret').write_text(str(process.returncode))
                 logger.log(logging.INFO, 'test {} took {}s'.format(test_name, format_with_rel_prec(t.time, 3)))
             except subprocess.TimeoutExpired:
-                (dir_test / 'timeout').write_text(str(test_spec.timeout))
+                (dir_test / 'timeout').write_text(str(t.time))
                 logger.log(logging.INFO, 'test {} timed out after {}s'.format(test_name, format_with_rel_prec(t.time, 3)))
 
             # This does not strictly belong here.
