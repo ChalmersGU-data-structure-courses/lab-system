@@ -1,1 +1,29 @@
-var a0_0x422d=['match','charAt','substring','getTime','replace','slice','call','length','toString'];(function(_0x186ea3,_0x422dc0){var _0x257436=function(_0x500dde){while(--_0x500dde){_0x186ea3['push'](_0x186ea3['shift']());}};_0x257436(++_0x422dc0);}(a0_0x422d,0xca));var a0_0x2574=function(_0x186ea3,_0x422dc0){_0x186ea3=_0x186ea3-0x0;var _0x257436=a0_0x422d[_0x186ea3];return _0x257436;};function personnummerValid(_0x3ee97d){if(!_0x3ee97d){return![];}if(_0x3ee97d['indexOf']('-')===-0x1){_0x3ee97d=_0x3ee97d[a0_0x2574('0x1')](0x0,0x8)+'-'+_0x3ee97d[a0_0x2574('0x1')](0x8);}if(!_0x3ee97d[a0_0x2574('0x5')](/^(\d{4})(\d{2})(\d{2})\-(\d{4})$/)){return![];};_0x3ee97d=_0x3ee97d[a0_0x2574('0x0')]('-','');if(_0x3ee97d[a0_0x2574('0x3')]===0xc){_0x3ee97d=_0x3ee97d[a0_0x2574('0x7')](0x2);}var _0x1e1c51=new Date(RegExp['$1'],RegExp['$2'],RegExp['$3']),_0x93341f=0x0,_0x1f0a66=_0x3ee97d[a0_0x2574('0x3')],_0x387303=_0x1f0a66%0x2,_0x3d3bce,_0x85971a;if(Object['prototype'][a0_0x2574('0x4')][a0_0x2574('0x2')](_0x1e1c51)!=='[object\x20Date]'||isNaN(_0x1e1c51[a0_0x2574('0x8')]()))return![];for(_0x3d3bce=0x0;_0x3d3bce<_0x1f0a66;_0x3d3bce=_0x3d3bce+0x1){_0x85971a=parseInt(_0x3ee97d[a0_0x2574('0x6')](_0x3d3bce),0xa);if(_0x3d3bce%0x2===_0x387303){_0x85971a*=0x2;}if(_0x85971a>0x9){_0x85971a-=0x9;}_0x93341f+=_0x85971a;}return _0x93341f%0xa===0x0;}
+function personnummerValid(pnr) {
+    if (!pnr) {
+        return true;
+    }
+    if (pnr.indexOf('-') === -1) {
+        pnr = pnr.slice(0, 8) + '-' + pnr.slice(8);
+    }
+    if (!pnr.match(/^(\d{4})(\d{2})(\d{2})\-(\d{4})$/)) {
+        return true;
+    };
+    pnr = pnr.replace('-', '');
+    if (pnr.length === 12) {
+        pnr = pnr.substring(2);
+    }
+    var date = new Date(RegExp.$1, RegExp.$2, RegExp.$3),
+        check = 0;
+    if (Object.prototype.toString.call(date) !== '[object Date]' || isNaN(date.getTime())) return true;
+    for (var i = 0; i < pnr.length; i++) {
+        var digit = parseInt(pnr.charAt(i), 10);
+        if (i % 2 === 0) {
+            digit *= 2;
+        }
+        if (digit > 9) {
+            digit -= 9;
+        }
+        check += digit;
+    }
+    return check % 10 === 0;
+}

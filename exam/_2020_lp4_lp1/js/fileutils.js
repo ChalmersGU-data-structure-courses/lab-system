@@ -1,1 +1,9 @@
-var a0_0x5160=['readyState','GET','responseText','status','open','onreadystatechange'];(function(_0x8f885a,_0x5160aa){var _0x28e1ea=function(_0x2ba71b){while(--_0x2ba71b){_0x8f885a['push'](_0x8f885a['shift']());}};_0x28e1ea(++_0x5160aa);}(a0_0x5160,0x89));var a0_0x28e1=function(_0x8f885a,_0x5160aa){_0x8f885a=_0x8f885a-0x0;var _0x28e1ea=a0_0x5160[_0x8f885a];return _0x28e1ea;};function loadFile(_0x42fe2b,_0x273f89){var _0x22304b=null;var _0x456ebd=new XMLHttpRequest();_0x456ebd[a0_0x28e1('0x0')]=()=>{if(_0x456ebd[a0_0x28e1('0x1')]!==0x4||_0x456ebd[a0_0x28e1('0x4')]!==0xc8)return;_0x273f89(_0x456ebd[a0_0x28e1('0x3')]);};_0x456ebd[a0_0x28e1('0x5')](a0_0x28e1('0x2'),_0x42fe2b);_0x456ebd['send']();}
+function loadFile(url, callback) {
+    var request = new XMLHttpRequest();
+    request.onreadystatechange = () => {
+        if (request.readyState !== 4 || request.status !== 200) return;
+        callback(request.responseText);
+    };
+    request.open('GET', url);
+    request.send();
+}
