@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="249.07785pt"
+   height="371.34665pt"
+   viewBox="0 0 249.20116 371.19564"
+   version="1.1"
+   id="svg6207"
+   sodipodi:docname="chart (6).svg"
+   inkscape:version="0.92.4 (5da689c313, 2019-01-14)">
+  <metadata
+     id="metadata6213">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs6211" />
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="3840"
+     inkscape:window-height="2066"
+     id="namedview6209"
+     showgrid="false"
+     inkscape:zoom="2.6173752"
+     inkscape:cx="328.21184"
+     inkscape:cy="202.43183"
+     inkscape:window-x="1909"
+     inkscape:window-y="-11"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg6207"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0" />
+  <g
+     class="node"
+     id="node1"
+     transform="translate(17.548382,533.16809)">
+    <title
+       id="title5741">B_0</title>
+    <circle
+       style="fill:none;stroke:#000000"
+       r="22.7556"
+       id="ellipse5743"
+       cy="-510.1564"
+       cx="54.627399" />
+    <text
+       style="font-size:20px;text-anchor:middle;fill:#000000"
+       id="text5745"
+       font-size="20.00"
+       y="-504.1564"
+       x="54.627399">NODE_1</text>
+  </g>
+  <g
+     class="node"
+     id="node2"
+     transform="translate(17.548382,533.16809)">
+    <title
+       id="title5748">A_1</title>
+    <circle
+       style="fill:none;stroke:#000000"
+       r="22.7556"
+       id="ellipse5750"
+       cy="-428.90161"
+       cx="22.627399" />
+    <text
+       style="font-size:20px;text-anchor:middle;fill:#000000"
+       id="text5752"
+       font-size="20.00"
+       y="-422.90161"
+       x="22.627399">NODE_0</text>
+  </g>
+  <g
+     class="edge"
+     id="edge1"
+     transform="translate(17.548382,533.16809)">
+    <title
+       id="title5755">B_0-&gt;A_1</title>
+    <path
+       style="fill:none;stroke:#000000"
+       inkscape:connector-curvature="0"
+       id="path5757"
+       d="m 46.2198,-488.8077 c -3.5276,8.9574 -7.6962,19.5424 -11.5405,29.3038" />
+    <polygon
+       style="fill:#000000;stroke:#000000"
+       id="polygon5759"
+       points="30.9789,-450.1078 31.3867,-460.6947 37.8998,-458.1297 " />
+  </g>
+  <g
+     class="node"
+     id="node5"
+     transform="translate(17.548382,533.16809)">
+    <title
+       id="title5762">D_1</title>
+    <circle
+       style="fill:none;stroke:#000000"
+       r="22.7556"
+       id="ellipse5764"
+       cy="-428.90161"
+       cx="85.627403" />
+    <text
+       style="font-size:20px;text-anchor:middle;fill:#000000"
+       id="text5766"
+       font-size="20.00"
+       y="-422.90161"
+       x="85.627403">NODE_3</text>
+  </g>
+  <g
+     class="edge"
+     id="edge4"
+     transform="translate(17.548382,533.16809)">
+    <title
+       id="title5769">B_0-&gt;D_1</title>
+    <path
+       style="fill:none;stroke:#000000"
+       inkscape:connector-curvature="0"
+       id="path5771"
+       d="m 62.7723,-488.8077 c 3.4174,8.9574 7.4557,19.5424 11.1799,29.3038" />
+    <polygon
+       style="fill:#000000;stroke:#000000"
+       id="polygon5773"
+       points="77.5369,-450.1078 70.7022,-458.2033 77.2424,-460.6985 " />
+  </g>
+  <g
+     class="node"
+     id="node6"
+     transform="translate(17.548382,533.16809)">
+    <title
+       id="title5800">C_2</title>
+    <circle
+       style="fill:none;stroke:#000000"
+       r="22.7556"
+       id="ellipse5802"
+       cy="-347.64679"
+       cx="79.627403" />
+    <text
+       style="font-size:20px;text-anchor:middle;fill:#000000"
+       id="text5804"
+       font-size="20.00"
+       y="-341.64679"
+       x="79.627403">NODE_2</text>
+  </g>
+  <g
+     class="edge"
+     id="edge5"
+     transform="translate(17.548382,533.16809)">
+    <title
+       id="title5807">D_1-&gt;C_2</title>
+    <path
+       style="fill:none;stroke:#000000"
+       inkscape:connector-curvature="0"
+       id="path5809"
+       d="m 83.9561,-406.2676 c -0.5867,7.9455 -1.2584,17.0416 -1.8948,25.6601" />
+    <polygon
+       style="fill:#000000;stroke:#000000"
+       id="polygon5811"
+       points="81.3106,-370.4412 78.5566,-380.6718 85.5376,-380.1563 " />
+  </g>
+  <g
+     class="node"
+     id="node9"
+     transform="translate(17.548382,533.16809)">
+    <title
+       id="title5814">E_2</title>
+    <circle
+       style="fill:none;stroke:#000000"
+       r="22.7556"
+       id="ellipse5816"
+       cy="-347.64679"
+       cx="142.6274" />
+    <text
+       style="font-size:20px;text-anchor:middle;fill:#000000"
+       id="text5818"
+       font-size="20.00"
+       y="-341.64679"
+       x="142.6274">NODE_4</text>
+  </g>
+  <g
+     class="edge"
+     id="edge8"
+     transform="translate(17.548382,533.16809)">
+    <title
+       id="title5821">D_1-&gt;E_2</title>
+    <path
+       style="fill:none;stroke:#000000"
+       inkscape:connector-curvature="0"
+       id="path5823"
+       d="m 98.8476,-410.0559 c 7.338,10.4605 16.5948,23.6562 24.7043,35.2165" />
+    <polygon
+       style="fill:#000000;stroke:#000000"
+       id="polygon5825"
+       points="129.4789,-366.3903 120.8707,-372.5668 126.6013,-376.5869 " />
+  </g>
+  <g
+     class="node"
+     id="node11"
+     transform="translate(17.548382,533.16809)">
+    <title
+       id="title5864">F_3</title>
+    <circle
+       style="fill:none;stroke:#000000"
+       r="22.7556"
+       id="ellipse5866"
+       cy="-266.39191"
+       cx="169.6274" />
+    <text
+       style="font-size:20px;text-anchor:middle;fill:#000000"
+       id="text5868"
+       font-size="20.00"
+       y="-260.39191"
+       x="169.6274">NODE_5</text>
+  </g>
+  <g
+     class="edge"
+     id="edge10"
+     transform="translate(17.548382,533.16809)">
+    <title
+       id="title5871">E_2-&gt;F_3</title>
+    <path
+       style="fill:none;stroke:#000000"
+       inkscape:connector-curvature="0"
+       id="path5873"
+       d="m 149.8629,-325.8719 c 2.8984,8.7223 6.2917,18.9344 9.4406,28.4109" />
+    <polygon
+       style="fill:#000000;stroke:#000000"
+       id="polygon5875"
+       points="162.4656,-287.9451 155.9907,-296.3312 162.6336,-298.5386 " />
+  </g>
+  <g
+     class="node"
+     id="node13"
+     transform="translate(17.548382,533.16809)">
+    <title
+       id="title5890">G_4</title>
+    <circle
+       style="fill:none;stroke:#000000"
+       r="22.7556"
+       id="ellipse5892"
+       cy="-185.1371"
+       cx="190.6274" />
+    <text
+       style="font-size:20px;text-anchor:middle;fill:#000000"
+       id="text5894"
+       font-size="20.00"
+       y="-179.1371"
+       x="190.6274">NODE_6</text>
+  </g>
+  <g
+     class="edge"
+     id="edge12"
+     transform="translate(17.548382,533.16809)">
+    <title
+       id="title5897">F_3-&gt;G_4</title>
+    <path
+       style="fill:none;stroke:#000000"
+       inkscape:connector-curvature="0"
+       id="path5899"
+       d="m 175.3658,-244.1887 c 2.1529,8.3302 4.6446,17.9714 6.9824,27.0171" />
+    <polygon
+       style="fill:#000000;stroke:#000000"
+       id="polygon5901"
+       points="184.896,-207.3135 179.005,-216.1195 185.7824,-217.8712 " />
+  </g>
+</svg>

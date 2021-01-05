@@ -1,0 +1,52 @@
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 789.71 601.31">
+<defs>
+<style>
+.cls-1{fill:none;}.cls-1,.cls-2{stroke:#231f20;stroke-miterlimit:10;stroke-width:3px;}.cls-2{fill:#fff;}.cls-3{font-size:34px;fill:#231f20;font-family:MyriadPro-Regular, Myriad Pro;}</style>
+</defs>
+<line class="cls-1" x1="202.22" y1="171.54" x2="415.63" y2="42.01"/>
+<line class="cls-1" x1="89.99" y1="299.81" x2="202.22" y2="171.54"/>
+<line class="cls-1" x1="313.89" y1="299.81" x2="202.22" y2="171.54"/>
+<line class="cls-1" x1="89.99" y1="299.81" x2="42.01" y2="428.08"/>
+<line class="cls-1" x1="137.98" y1="430.19" x2="89.99" y2="299.81"/>
+<line class="cls-1" x1="313.89" y1="299.81" x2="218.19" y2="559.31"/>
+<line class="cls-1" x1="314.17" y1="559.31" x2="266.89" y2="427.25"/>
+<line class="cls-1" x1="362.43" y1="428.08" x2="313.89" y2="299.81"/>
+<line class="cls-1" x1="415.63" y1="42.01" x2="633.34" y2="174.18"/>
+<line class="cls-1" x1="483.88" y1="428.08" x2="531.87" y2="299.81"/>
+<line class="cls-1" x1="579.85" y1="428.08" x2="531.87" y2="299.81"/>
+<line class="cls-1" x1="699.72" y1="429.56" x2="747.7" y2="299.81"/>
+<line class="cls-1" x1="633.34" y1="174.18" x2="531.87" y2="299.81"/>
+<line class="cls-1" x1="747.7" y1="299.81" x2="633.34" y2="174.18"/>
+<circle class="cls-2" cx="415.63" cy="42.01" r="40.51"/>
+<circle class="cls-2" cx="202.22" cy="171.54" r="40.51"/>
+<circle class="cls-2" cx="633.34" cy="171.54" r="40.51"/>
+<circle class="cls-2" cx="89.99" cy="299.81" r="40.51"/>
+<circle class="cls-2" cx="313.89" cy="299.81" r="40.51"/>
+<circle class="cls-2" cx="42.01" cy="428.08" r="40.51"/>
+<circle class="cls-2" cx="137.98" cy="428.08" r="40.51"/>
+<circle class="cls-2" cx="265.35" cy="428.08" r="40.51"/>
+<circle class="cls-2" cx="362.43" cy="428.08" r="40.51"/>
+<circle class="cls-2" cx="218.19" cy="559.31" r="40.51"/>
+<circle class="cls-2" cx="314.17" cy="559.31" r="40.51"/>
+<circle class="cls-2" cx="747.7" cy="299.81" r="40.51"/>
+<circle class="cls-2" cx="531.87" cy="299.81" r="40.51"/>
+<circle class="cls-2" cx="483.88" cy="428.08" r="40.51"/>
+<circle class="cls-2" cx="579.85" cy="428.08" r="40.51"/>
+<circle class="cls-2" cx="699.72" cy="428.08" r="40.51"/>
+<text class="cls-3" transform="translate(402.12 51.3)">NODE_10</text>
+<text class="cls-3" transform="translate(24.68 436.58)">NODE_1</text>
+<text class="cls-3" transform="translate(73.56 310.05)">NODE_2</text>
+<text class="cls-3" transform="translate(120.9 436.58)">NODE_3</text>
+<text class="cls-3" transform="translate(250.54 436.58)">NODE_6</text>
+<text class="cls-3" transform="translate(341.15 436.58)">NODE_9</text>
+<text class="cls-3" transform="translate(467.44 436.58)">NODE_11</text>
+<text class="cls-3" transform="translate(558.97 436.58)">NODE_13</text>
+<text class="cls-3" transform="translate(680.78 436.58)">NODE_15</text>
+<text class="cls-3" transform="translate(202.61 566.09)">NODE_5</text>
+<text class="cls-3" transform="translate(295.96 566.09)">NODE_7</text>
+<text class="cls-3" transform="translate(295.86 310.05)">NODE_8</text>
+<text class="cls-3" transform="translate(516.62 310.05)">NODE_12</text>
+<text class="cls-3" transform="translate(731.44 310.05)">NODE_16</text>
+<text class="cls-3" transform="translate(183.68 180.71)">NODE_4</text>
+<text class="cls-3" transform="translate(614.94 180.71)">NODE_14</text>
+</svg>
