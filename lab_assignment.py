@@ -506,7 +506,7 @@ pre { margin: 0px; white-space: pre-wrap; }
                 logger.log(logging.INFO, 'test {} took {}s'.format(test_name, format_with_rel_prec(t.time, 3)))
             except subprocess.TimeoutExpired:
                 (dir_test / 'timeout').write_text(str(test_spec.timeout))
-                logger.log(logging.INFO, 'test {} timed out after {}s'.format(test_name, format_with_rel_prec(test_spec.timeout, 3)))
+                logger.log(logging.INFO, 'test {} timed out after {}s'.format(test_name, format_with_rel_prec(t.time, 3)))
 
             # This does not strictly belong here.
             # It should be called only in build_index.
