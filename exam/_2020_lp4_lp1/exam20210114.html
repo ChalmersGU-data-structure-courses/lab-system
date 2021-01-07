@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Individualised problem instances</title>
+    <style>
+      body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif }
+      label, input, span, button { font-size: 100% }
+      body { margin: 20px }
+      div { margin-top: 10px }
+      button { margin: 0 10px 10px 0; padding: 5px }
+      label ~ * { padding: 5px 10px; margin-left: 10px }
+      .invisible { display: none }
+      #statusIndicator { color: white; background-color: #f00; font-weight: bold }
+      #problemInstance { border: 2px solid #0a0; padding: 10px }
+    </style>
+    <script type="text/javascript" src="js/randutils.js"></script>
+    <script type="text/javascript" src="js/hashutils.js"></script>
+    <script type="text/javascript" src="js/graphutils.js"></script>
+    <script type="text/javascript" src="js/pq.js"></script>
+    <script type="text/javascript" src="js/sha1.js"></script>
+    <script type="text/javascript" src="js/exam20210114.js"></script>
+  </head>
+
+  <body>
+    <noscript>Du måste ha javascript påslaget i din browser för att kunna ta del av uppgifterna.</noscript>
+    <h2>Individualised problem instances for the exam 2021-01-14</h2>
+
+    <div>
+      <label>Enter your personnummer (YYYYMMDD-XXXX):</label>
+      <input id="personnummer" type="text" name="personnummer" size="13" onkeyup="validatePnr()" autofocus></input>
+      <span id="statusIndicator">Invalid personnummer!</span>
+    </div>
+
+    <div id="questionButtons" class="invisible">
+      <h3>Choose your problem:</h3>
+      <p>
+      <button onclick="q(1)">Q1: complexity</button>
+      <button onclick="q(2)">Q2: sorting</button>
+      <button onclick="q(3)">Q3: search trees</button>
+      <button onclick="q(4)">Q4: priority queues</button>
+      <button onclick="q(5)">Q5: hash tables</button>
+      <button onclick="q(6)">Q6: graphs</button>
+      <button onclick="q(7)">Q7: complexity II</button>
+      <button onclick="q(8)">Q8: mystery</button>
+      <button onclick="q(9)">Q9: anything else</button>
+      </p>
+
+      <h3 id="problemTitle"></h3>
+      <div id="problemInstance"></div>
+    </div>
+    
+
+  </body>
+</html>
