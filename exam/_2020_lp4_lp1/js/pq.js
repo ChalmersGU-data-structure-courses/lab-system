@@ -15,7 +15,7 @@ class PQ {
     removeNotMin() {
 	let a = this.removeMin();
 	if(this.v.length >= 1) {
-	    let b = this.v.splice(rng.nextInt(this.v.length), 1)[0];
+	    let b = this.v.splice(this.rng.nextInt(this.v.length), 1)[0];
 	    this.v.push(Math.min(a, b));
 	    if(b > a) {
 		this.o = 1;
@@ -63,7 +63,7 @@ class PQ {
 	let rl = 0;
 	let rt = 0;
 	for(let i = 0; i < l; i++) {
-	    let p = rng.nextDouble();
+	    let p = this.rng.nextDouble();
 	    let t = this.v.length / (e.length + this.v.length);
 	    if(e.length > 0 && (p > t || (rt == 1 && rl > 3))) {
 		this.v.push(e.splice(0, 1)[0]);
@@ -74,7 +74,7 @@ class PQ {
 		}
 		rt = 0;
 	    } else {
-		p = rng.nextDouble();
+		p = this.rng.nextDouble();
 		if(p > 1 / l || this.v.length == 1) {
 		    r.push(this.removeMin());
 		} else {
@@ -131,7 +131,7 @@ class PQ {
 	    a[r - 1] = this.rOrder();
 	} while(a[r - 1][0] == 1 || a[r-1] + "" == this.e + "" || (this.strictlyIncreasing(a[r - 1], 0) && false));
 	a[r - 1] = a[r - 1].slice(1);
-	rng.shuffle(a);
+	this.rng.shuffle(a);
 	return [this.e].concat(a);
     }
     

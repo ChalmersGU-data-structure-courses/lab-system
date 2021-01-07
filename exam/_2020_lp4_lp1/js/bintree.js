@@ -1,7 +1,8 @@
+
 function getTree(rng, size, callback) {
     let treeNum = rng.nextInt(2);
     loadFile("./trees/bintree" + treeNum + ".svg", (data) => {
-	problemText = data;
+	let problemText = data;
 	let lIdx = rng.relabelInts(rng.intList(size, 0), 0, 26);
 	lIdx.sort((a,b) => a-b);
 	for(let i = 0; i < size; i++) {
@@ -13,7 +14,7 @@ function getTree(rng, size, callback) {
 
 function getTree2(rng, callback) {
     loadFile("./trees/bintree2.svg", (data) => {
-	problemText = data;
+	let problemText = data;
 	let lIdx = rng.relabelInts(rng.intList(16, 0), 4, 33);
 	lIdx.sort((a,b) => a-b);
 	for(let i = 16; i > 0; i--) {
@@ -25,7 +26,7 @@ function getTree2(rng, callback) {
 
 function getGraph(rng, size, callback) {
     loadFile("./trees/UnweightedDAG.svg", (data) => {
-	problemText = data;
+	let problemText = data;
 	let lIdx = rng.relabelInts(rng.intList(size, 0), 0, 26);
 	lIdx.sort((a,b) => a-b);
 	for(let i = 0; i < size; i++) {
