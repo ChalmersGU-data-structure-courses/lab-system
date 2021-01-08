@@ -32,6 +32,7 @@ __pycache__/
 
 # Emacs
 *~
+\#*#
 
 # Mac files
 .DS_Store
