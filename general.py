@@ -1,6 +1,7 @@
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 import decimal
+import errno
 import functools
 import itertools
 import json
@@ -239,6 +240,13 @@ def write_lines(file, lines):
 def print_error(*objects, sep = ' ', end = '\n'):
     print(*objects, sep = sep, end = end, file = sys.stderr)
 
+def get_recursive_modification_time(path):
+    t = os.path.getmtime(path)
+    #print(t)
+    #if Path(path).islink():
+    #    t = max(t, get_recursive_modification_time(path.parent / path.readlink()))
+    return t
+
 def set_modification_time(path, date):
     t = date.timestamp()
     os.utime(path, (t, t))
@@ -296,9 +304,20 @@ def mkdir_fresh(path):
         shutil.rmtree(path)
     path.mkdir()
 
+def file_exists_error(path):
+    e = errno.EEXIST
+    raise FileExistsError(e, os.strerror(e), str(path))
+
+def safe_symlink(source, target, exists_ok = False):
+    if source.exists():
+        if not (exists_ok and source.is_symlink() and Path(os.readlink(source)) == target):
+            file_exists_error(source)
+    else:
+        source.symlink_to(target, target.is_dir())
+
 # 'rel' is the path to 'dir_from', taken relative to 'dir_to'.
 # Returns list of newly created files.
-def link_dir_contents(dir_from, dir_to, rel = None):
+def link_dir_contents(dir_from, dir_to, rel = None, exists_ok = False):
     if rel == None:
         rel = Path(os.path.relpath(dir_from, dir_to))
 
@@ -307,16 +326,13 @@ def link_dir_contents(dir_from, dir_to, rel = None):
         file = dir_to / path.name
         files.append(file)
         target = rel / path.name
-        if file.exists():
-            assert(file.is_symlink() and Path(os.readlink(file)) == target)
-        else:
-            file.symlink_to(target, path.is_dir())
+        safe_symlink(file, target, exists_ok = exists_ok)
     return files
 
 def copy_tree_fresh(source, to, **flags):
     if to.exists():
-        if to.isdir():
-            to.rmdir()
+        if to.is_dir():
+            shutil.rmtree(to)
         else:
             to.unlink()
     shutil.copytree(source, to, **flags)
@@ -336,6 +352,12 @@ def readfile(fil):
             return bstr.decode(encoding="latin1")
         except UnicodeDecodeError:
             return bstr.decode(errors="replace")
+
+def java_string_encode(x):
+    return json.dumps(x)
+
+def java_string_decode(y):
+    return json.loads(y)
 
 def guess_encoding(b):
     encodings = ['utf-8', 'latin1']
