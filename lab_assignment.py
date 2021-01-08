@@ -15,13 +15,19 @@ from dominate import document
 from dominate.tags import *
 from dominate.util import raw, text
 
-from general import compose_many, from_singleton, ilen, Timer, print_error, print_json, mkdir_fresh, exec_simple, link_dir_contents, add_suffix, modify, format_with_rel_prec, format_timespan, sorted_directory_list, copy_tree_fresh
+from general import compose_many, from_singleton, ilen, Timer, print_error, print_json, mkdir_fresh, exec_simple, link_dir_contents, add_suffix, modify, format_with_rel_prec, format_timespan, sorted_directory_list, copy_tree_fresh, java_string_encode, get_recursive_modification_time
 from canvas import Canvas, Course, Assignment
 import lab_assignment_constants
 import submission_fix_lib
 import test_lib
 
 logger = logging.getLogger("lab_assignment")
+
+def get_java_version():
+    p = subprocess.run(['java', '-version'], stdin = subprocess.DEVNULL, stdout = subprocess.DEVNULL, stderr = subprocess.PIPE, encoding = 'utf-8', check = True)
+    v = shlex.split(str(p.stderr).splitlines()[0])
+    assert(v[1] == 'version')
+    return [int(x) for x in v[2].split('.')]
 
 def diff_cmd(file_0, file_1):
     return ['diff', '--text', '--ignore-blank-lines', '--ignore-space-change', '--strip-trailing-cr', '-U', '1000000', '--'] + [file_0, file_1]
@@ -63,38 +69,95 @@ def highlight_file(dir_source, dir_target, name, css):
     (dir_target / result_name).write_text(doc.render())
     return result_name
 
-# Apparently, '-g' is needed to make sure exceptions properly reference names.
-def javac_cmd(files):
-    return ['javac', '-d', '.', '-g'] + list(files)
+def as_iterable_of_strings(xs):
+    return [str(xs)] if isinstance(xs, str) or not hasattr(xs, '__iter__') else [str(x) for x in xs]
 
-def java_cmd(file_security_policy, enable_assertions, class_name, args):
-    cmd = ['java']
-    if file_security_policy:
-        cmd += ['-D' + 'java.security.manager', '-D' + 'java.security.policy' + '==' + shlex.quote(str(file_security_policy))]
+def add_classpath(classpath):
+    if classpath != None:
+        yield from ['-classpath', ':'.join(as_iterable_of_strings(classpath))]
+
+def javac_cmd(files = None, destination = None, classpath = None, options = None):
+    yield 'javac'
+    if destination != None:
+        yield from ['-d', str(destination)]
+    yield from add_classpath(classpath)
+    if options != None:
+        for option in options:
+            yield str(option)
+    if files != None:
+        for file in files:
+            yield str(file)
+
+def java_cmd(name, args = [], classpath = None, security_policy = None, enable_assertions = False, options = None):
+    yield 'java'
+    if security_policy:
+        yield ''.join(['-D', 'java.security.manager'])
+        yield ''.join(['-D', 'java.security.policy', '==', str(security_policy)])
     if enable_assertions:
-        cmd += ['-ea']
-    cmd.append(class_name)
-    cmd.extend(args)
-    return cmd
+        yield '-ea'
+    yield from add_classpath(classpath)
+    if options != None:
+        for option in options:
+            yield str(option)
+    yield name
+    yield from args
+
+# Apparently, '-g' is needed to make sure exceptions properly reference names in some circumstances.
+javac_options = ['-g']
+
+def java_options(version):
+    if version[0] >= 14:
+        yield ''.join(['-XX', ':', '+', 'ShowCodeDetailsInExceptionMessages'])
+
+def log_command(cmd, working_dir = None):
+    logger.log(logging.DEBUG, 'running command{}:\n{}'.format(' in {}'.format(shlex.quote(str(working_dir))) if working_dir != None else '', shlex.join(cmd)))
 
 # Unless forced, only recompiles if necessary: missing or outdated class-files.
 # On success, returns None.
 # On failure, returns compile errors as string.
-def compile_java(dir, files, force_recompile = False, strict = False):
+def compile_java(files, force_recompile = False, strict = False, working_dir = None, **kwargs):
     def is_up_to_date(file_java):
-        file_class = file_java.with_suffix('.class')
-        return file_class.exists() and os.path.getmtime(file_class) > os.path.getmtime(file_java)
+        path_java = (working_dir if working_dir else Path()) / file_java
+        path_class = path_java.with_suffix('.class')
+        return path_class.exists() and os.path.getmtime(path_class) > get_recursive_modification_time(path_java)
 
-    if not all(map(is_up_to_date, files)):
+    if force_recompile:
+        recompile = True
+    elif not all(map(is_up_to_date, files)):
         logger.log(logging.DEBUG, 'Not all class files existing or up to date; (re)compiling.')
-        cmd = javac_cmd(file.relative_to(dir) for file in files)
-        process = subprocess.run(cmd, cwd = dir, stderr = subprocess.PIPE, encoding = 'utf-8')
+        recompile = True
+    else:
+        recompile = False
+
+    if recompile:
+        cmd = list(javac_cmd(files, **kwargs))
+        log_command(cmd, working_dir)
+        process = subprocess.run(cmd, cwd = working_dir, stderr = subprocess.PIPE, encoding = 'utf-8')
         if process.returncode != 0:
-            print_error('Encountered compilation errors in {}:'.format(shlex.quote(str(dir))))
+            print_error('Encountered compilation errors in {}:'.format(shlex.quote(str(working_dir))))
             print_error(process.stderr)
             assert(not strict)
             return process.stderr
     return None
+
+def policy_permission(type, args = []):
+    return 'permission {};'.format(' '.join([type] + ([', '.join(java_string_encode(str(arg)) for arg in args)] if args else [])))
+
+permission_all = ('java.security.AllPermission', [])
+
+def permission_file_descendants_read(dir):
+    return ('java.io.FilePermission', [Path(dir) / '-', 'read'])
+
+def policy_grant(path, permissions):
+    return '\n'.join([
+        ' '.join(['grant'] + (['codeBase', java_string_encode('file:' + str(path))] if path != None else [])) + ' {',
+        *('  ' + policy_permission(*permission) for permission in permissions),
+        '};',
+        ''
+    ])
+
+def policy(entries):
+    return '\n'.join(policy_grant(*entry) for entry in entries)
 
 def format_file(root, name, rel_dir, rel_dir_formatting, rel_css):
     (root / rel_dir_formatting).mkdir(exist_ok = True)
@@ -158,6 +221,7 @@ class LabAssignment(Assignment):
         self.dir_problem = dir / lab_assignment_constants.rel_dir_problem
         self.dir_solution = dir / lab_assignment_constants.rel_dir_solution
         self.dir_test = dir / lab_assignment_constants.rel_dir_test
+        self.dir_pregrade = dir / lab_assignment_constants.rel_dir_pregrade
 
         self.name_handlers = None
         self.content_handlers = None
@@ -173,12 +237,11 @@ class LabAssignment(Assignment):
         self.files_problem = sorted_directory_list(self.dir_problem, filter = lambda f: f.is_file())
         self.deadlines = [datetime.fromisoformat(line) for line in (dir / lab_assignment_constants.rel_file_deadlines).read_text().splitlines()]
 
-        # new-style tests
-        file_tests = self.dir_test / lab_assignment_constants.rel_file_tests
-        self.tests = test_lib.parse_tests(file_tests) if file_tests.exists() else None
+        load_if_exists = lambda f, path: f(path) if path.exists() else None
+        self.tests = load_if_exists(lambda x: test_lib.parse_tests(x), self.dir_test / lab_assignment_constants.rel_file_tests)
+        self.pregraders = load_if_exists(LabAssignment.parse_tests, self.dir_pregrade / lab_assignment_constants.rel_file_pregraders)
 
-        file_tests = self.dir_test / lab_assignment_constants.rel_file_tests_java
-        self.tests_java = LabAssignment.parse_tests(file_tests) if file_tests.exists() else None
+        self.java_version = get_java_version()
 
     # Only works if groups follow a uniform naming scheme with varying number at end of string.
     def group_from_number(self, group_number):
@@ -345,7 +408,7 @@ class LabAssignment(Assignment):
 
         # Link the problem files.
         mkdir_fresh(dir_build)
-        link_dir_contents(dir_problem, dir_build)
+        link_dir_contents(dir_problem, dir_build, exists_ok = True)
 
         # Link the submitted files.
         for file in dir_submission.iterdir():
@@ -380,12 +443,15 @@ class LabAssignment(Assignment):
     # Return value indicates success.
     def compile(self, dir, dir_problem, rel_dir_submission, strict = True):
         logger.log(logging.INFO, 'compiling: {}'.format(shlex.quote(str(dir))))
-        dir_build = dir / lab_assignment_constants.rel_dir_build
-        dir_submission = dir / rel_dir_submission
 
         # Compile java files.
-        files_java = [dir_build / f.name for d in [dir_problem, dir_submission] for f in d.iterdir() if f.suffix == '.java']
-        compilation_errors = compile_java(dir_build, files_java, strict = False)
+        compilation_errors = compile_java(
+            [Path(f.name) for d in [dir_problem, dir / rel_dir_submission] for f in d.iterdir() if f.suffix == '.java'],
+            strict = False,
+            working_dir = dir / lab_assignment_constants.rel_dir_build,
+            destination = Path(),
+            options = javac_options,
+        )
         if compilation_errors != None:
             (dir / lab_assignment_constants.rel_file_compilation_errors).write_text(compilation_errors)
             return False
@@ -472,23 +538,28 @@ pre { margin: 0px; white-space: pre-wrap; }
                 pre(err, Class = 'error')
         file_out.write_text(doc.render())
 
-    def test(self, dir, policy = None, strict = False, machine_speed = 1):
+    def test(self, dir, strict = False, machine_speed = 1):
         logger.log(logging.INFO, 'testing: {}'.format(shlex.quote(str(dir))))
         dir_build = dir / lab_assignment_constants.rel_dir_build
-
         dir_build_test = dir / lab_assignment_constants.rel_dir_build_test
         mkdir_fresh(dir_build_test)
+
+        # Create policy file.
+        policy_file = dir / 'policy-test'
+        policy_file.write_text(policy([
+        ]))
 
         for test_name, test_spec in self.tests.items():
             dir_test = dir_build_test / test_name
             dir_test.mkdir()
 
-            cmd = java_cmd(
-                Path('..') / policy if policy else None,
-                test_spec.enable_assertions,
+            cmd = list(java_cmd(
                 test_spec.class_name,
-                test_spec.args
-            )
+                test_spec.args,
+                security_policy = os.path.relpath(policy_file, dir_build),
+                enable_assertions = test_spec.enable_assertions,
+                options = java_options(self.java_version),
+            ))
             (dir_test / 'cmd').write_text(shlex.join(cmd))
             if test_spec.input != None:
                 (dir_test / 'in').write_text(test_spec.input)
@@ -521,52 +592,102 @@ pre { margin: 0px; white-space: pre-wrap; }
         logger.log(25, 'Testing...')
         assert(dir.exists())
 
-        shutil.copyfile(Path(__file__).parent / lab_assignment_constants.rel_file_java_policy, dir / lab_assignment_constants.rel_file_java_policy)
-        self.test(dir, Path(lab_assignment_constants.rel_file_java_policy), strict = True, machine_speed = machine_speed)
+        self.test(dir, strict = True, machine_speed = machine_speed)
         for group in groups:
             dir_group = self.group_dir(dir, group)
             if not (dir_group / lab_assignment_constants.rel_file_compilation_errors).exists():
-                self.test(dir_group, policy = Path('..') / lab_assignment_constants.rel_file_java_policy, strict = strict, machine_speed = machine_speed)
+                self.test(dir_group, strict = strict, machine_speed = machine_speed)
 
-    def pregrade(self, dir, dir_test, rel_dir_submission, strict = True):
+    def pregrade(self, dir, dir_pregrade, strict = False):
         logger.log(logging.INFO, 'Pregrading: {}'.format(shlex.quote(str(dir))))
+
+        file_pregrading = dir / lab_assignment_constants.rel_file_pregrading
+        file_pregrading_errors = dir / lab_assignment_constants.rel_file_pregrading_errors
+
+        file_pregrading.unlink(missing_ok = True)
+        file_pregrading_errors.unlink(missing_ok = True)
+
+        class PregradeException(Exception):
+            def __init__(self, msg):
+                self.msg = msg;
+
+        # Check for class name conflicts.
         dir_build = dir / lab_assignment_constants.rel_dir_build
-        dir_submission = dir / rel_dir_submission
-        dir_test_java = dir_test / 'java'
+        for file in dir_pregrade.iterdir():
+            if file.suffix == '.java':
+                if (dir_build / file.name).exists():
+                     raise PregradeException('The submission contains a top-level Java file with name {}, which is also used for pregrading.'.format(shlex.quote(file.name)))
 
-        # Link the testing files.
-        files_java = link_dir_contents(dir_test_java, dir_build)
-
-        # Compile java files.
-        compile_java(dir_build, files_java, strict = True)
+        # Create policy file.
+        policy_file = dir / 'policy-pregrade'
+        policy_file.write_text(policy([
+            (os.path.relpath(dir_pregrade, dir_build), [permission_all]),
+        ]))
 
         # Run them.
         def f(java_name):
-            cmd = ['java', java_name]
-            process = subprocess.run(cmd, cwd = dir_build, stdout = subprocess.PIPE, encoding = 'utf-8')
+            cmd = list(java_cmd(
+                java_name,
+                security_policy = os.path.relpath(policy_file, dir_build),
+                classpath = [os.path.relpath(dir_build, dir_build), os.path.relpath(dir_pregrade, dir_build)],
+                options = java_options(self.java_version),
+            ))
+            log_command(cmd, dir_build)
             if strict:
+                process = subprocess.run(cmd, cwd = dir_build, stdout = subprocess.PIPE, encoding = 'utf-8')
                 assert(process.returncode == 0)
+            else:
+                process = subprocess.run(cmd, cwd = dir_build, capture_output = True, encoding = 'utf-8')
+                if process.returncode != 0:
+                    raise PregradeException('\n'.join([
+                        'Running {} returned with {}.'.format(java_name, process.returncode),
+                        'The error output was as follows:',
+                        str(process.stderr),
+                ]))
+
             r = str(process.stdout)
             logger.log(logging.DEBUG, 'pregrading output of {}:\n'.format(java_name) + r)
             return r
 
-        (dir / lab_assignment_constants.rel_file_pregrading).write_text('\n'.join(f(java_name) for java_name in self.tests_java))
+        try:
+            pregrade_output = '\n'.join(f(java_name) for java_name in self.pregraders)
+            file_pregrading.write_text(pregrade_output)
+        except PregradeException as e:
+            pregrade_error = e.msg
+            file_pregrading_errors.write_text(pregrade_error)
 
     # Only tests submissions that do not have compilation errors.
-    def submissions_pregrade(self, dir, groups, strict = True):
+    def submissions_pregrade(self, dir, groups, pregrade_model_solution = False, strict = False):
         assert(dir.exists())
-        if self.tests_java:
+        if self.pregraders:
             logger.log(25, 'Pregrading.')
 
-            # make output directory self-contained
-            if not dir.samefile(self.dir):
-                shutil.copytree(self.dir_test, dir / lab_assignment_constants.rel_dir_test, dirs_exist_ok = True)
+            dir_build = dir / lab_assignment_constants.rel_dir_build
+            dir_pregrade = dir / lab_assignment_constants.rel_dir_pregrade
+            java_files = [file.name for file in self.dir_pregrade.iterdir() if file.suffix == '.java']
 
-            self.pregrade(dir, dir / lab_assignment_constants.rel_dir_test, lab_assignment_constants.rel_dir_solution, strict = strict)
+            # Make output directory self-contained and check it is non-conflicting.
+            dir_pregrade.mkdir(exist_ok = True)
+            for file in java_files:
+                shutil.copy2(self.dir_pregrade / file, dir_pregrade)
+                assert(not(dir_build / file).exists())
+
+            # Compile test files.
+            compile_java(
+                (dir_pregrade / file for file in java_files),
+                force_recompile = True,
+                strict = True,
+                destination = dir_pregrade,
+                classpath = [dir_build, dir_pregrade],
+                options = javac_options + ['-implicit:none'],
+            )
+
+            if pregrade_model_solution:
+                self.pregrade(dir, dir_pregrade, strict = True)
             for group in groups:
                 dir_group = self.group_dir(dir, group)
                 if not (dir_group / lab_assignment_constants.rel_file_compilation_errors).exists():
-                    self.pregrade(dir_group, dir / lab_assignment_constants.rel_dir_test, lab_assignment_constants.rel_dir_current, strict = strict)
+                    self.pregrade(dir_group, dir_pregrade, strict = strict)
 
     def remove_class_files_submissions(self, dir, groups):
         for group in groups:
@@ -771,8 +892,14 @@ pre { margin: 0px; white-space: pre-wrap; }
                 row_data.tests_vs_solution = None
 
             # Pregrading
-            file_pregrading = dir_group / lab_assignment_constants.rel_file_pregrading
-            row_data.pregrading = cell(pre(file_pregrading.read_text())) if file_pregrading.exists() else None
+            def f():
+                for (file, attributes) in [
+                    (dir_group / lab_assignment_constants.rel_file_pregrading_errors, {'Class': 'error'}),
+                    (dir_group / lab_assignment_constants.rel_file_pregrading, {}),
+                ]:
+                    if file.exists():
+                        return cell(pre(file.read_text(), **attributes))
+            row_data.pregrading = f()
 
             # Comments
             ungraded_comments = Assignment.ungraded_comments(self.submissions[group])

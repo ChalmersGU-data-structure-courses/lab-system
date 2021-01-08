@@ -53,8 +53,10 @@ g.add_argument('--process', action = 'store_true', help = '\n'.join([
     f'In any case, the following phases run only for those lab groups passing compilation.'
     f'Testing uses the tests specified in \'{Path(lab_assignment_constants.rel_dir_test) / lab_assignment_constants.rel_file_tests}\' in the lab directory.',
     f'It produces output files in the \'{lab_assignment_constants.rel_dir_build_test}\' subdirectory of each lab group folder.',
-    f'Pregrading links the java files in \'{Path(lab_assignment_constants.rel_dir_test) / "tests_java"}\' into the build directory and gets its output from the main classes specified in \'{Path(lab_assignment_constants.rel_dir_test) / lab_assignment_constants.rel_file_tests_java}\'.',
-    f'It produces a text file \'{lab_assignment_constants.rel_file_pregrading}\' in each lab group folder.',
+    f'Pregrading copies the java files in \'{Path(lab_assignment_constants.rel_dir_pregrade)}\' into the submission working directory, compiles them with the model solution, and runs them with each lab group submission.',
+    f'The executed Java classes are specified specified in \'{Path(lab_assignment_constants.rel_dir_pregrade) / lab_assignment_constants.rel_file_pregraders}\'.',
+    f'On successful execution, it produces a text file \'{lab_assignment_constants.rel_file_pregrading}\' in each lab group folder.',
+    f'On failure, it instead produces a text file \'{lab_assignment_constants.rel_file_pregrading_errors}\'.',
     f'Creation of the overview index outputs files in the \'{lab_assignment_constants.rel_dir_analysis}\' subdirectory of each lab group folder and references these in a top-level file \'index.html\' that provides an overview over the processed submissions.',
     f'For this phase, the npm programs \'diff2html-cli\' and \'highlights\' need to be in PATH or {path_extra}.',
     f'If npm is installed, this may be achieved by executing \'npm install diff2html-cli highlights\' in the directory of this script.',
@@ -128,6 +130,9 @@ g.add_argument('--machine-speed', type = float, metavar = 'SPD', default = 1, he
 g = p.add_argument_group('pregrading options')
 g.add_argument('--no-pregrading', action = 'store_true', help = '\n'.join([
     f'Skip the pregrading phase of the submission processing workflow.',
+]))
+g.add_argument('--pregrade-model-solution', action = 'store_true', help = '\n'.join([
+    f'Pregrade also the model solution.',
 ]))
 
 g = p.add_argument_group('overview options')
@@ -228,7 +233,7 @@ if args.process:
     if not args.no_testing:
         lab_assignment.submissions_test(**extra, machine_speed = args.machine_speed)
     if not args.no_pregrading:
-        lab_assignment.submissions_pregrade(strict = True, **extra)
+        lab_assignment.submissions_pregrade(**extra, pregrade_model_solution = args.pregrade_model_solution)
     if args.remove_class_files:
         lab_assignment.submissions_remove_class_files(**extra)
     if not args.no_overview:
