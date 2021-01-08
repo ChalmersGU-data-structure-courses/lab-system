@@ -244,7 +244,7 @@ for group in group_grading:
     grading = group_grading[group]
     print('* {}: {}, graded by {}, {}'.format(group_set.str(group), grade_str(grading.grade), grading.grader, 'comments:' if grading.comment else comment_str(grading.comment)))
     if grading.comment:
-        print(*map(lambda x: '  | ' + x, grading.comment.splitlines()), sep = '\n', end = '')
+        print(*map(lambda x: '  | ' + x, grading.comment.splitlines()), sep = '\n', end = '\n')
 print()
 
 # This trick makes this operation idempotent.
