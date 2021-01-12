@@ -1,12 +1,75 @@
-
-
 function q1(rng) {
-    // TODO
-    let sizeV = 6, skew = 0.5;
-    let s1 = rng.relabelInts(rng.intList(sizeV, skew), 10, 30);
-    let s2 = rng.relabelInts(rng.intList(sizeV, skew * 2), 10, 30);
-    return "S1: {" + s1.join(", ") + "}<br>" +
-	"S2: {" + s2.join(", ") + "}";
+    // name randomization
+    names_function = rng.shuffle(['f', 'g', 'h', 'prog', 'algo'])
+    names_array = rng.shuffle(['as', 'bs', 'cs', 'ds', 'xs', 'ys'])
+    names_index_or_value = rng.shuffle(['s', 't', 'u', 'v', 'm', 'n', 'i', 'j', 'p', 'q'])
+    names_result = rng.shuffle(['r'])
+
+    f = names_function[0]
+
+    xs = names_array[0]
+    ys = names_array[1]
+
+    i = names_index_or_value[0]
+    j = names_index_or_value[1]
+    m = names_index_or_value[2]
+    n = names_index_or_value[3]
+
+    r = names_result[0]
+
+    // irrelevant program code randomization
+    second_loop = rng.nextBool() ? `0 .. ${i}` : `${i} .. ${xs}.length-1`
+    first_sum = rng.nextBool() ? `${xs}[${i}] + ${xs}[${j}]` : `${xs}[${j}] + ${xs}[${i}]`
+    second_sum = rng.nextBool() ? `${m} + ${n}` : `${n} + ${m}`
+
+    c = rng.selectUniform([
+      {factor: 2, interval: 3},
+      {factor: 2, interval: 4},
+      {factor: 2, interval: 5},
+      {factor: 4, interval: 5},
+      {factor: 4, interval: 6},
+      {factor: 4, interval: 7},
+      {factor: 4, interval: 8},
+      {factor: 4, interval: 9},
+      {factor: 4, interval: 10},
+    ])
+
+    // make sure randomization doesn't impact answer
+    factor = c.factor
+    interval = c.interval
+    num_intervals = Math.round(12 * Math.log(2) / Math.log(factor))
+
+    size_new = 1000
+
+    time_new = 'one hour'
+    time_old = 'one hour'
+
+    year_new = 2021
+    year_old = year_new - num_intervals * interval
+
+return `
+<p class='part-header'>Algorithm:</p>
+<pre class='pseudocode'>
+boolean f(integer[] ${xs}):
+    ${ys} = new dynamic array of integers
+    for ${i} in 0 .. ${xs}.length-1:
+        for ${j} in ${second_loop}:
+            ${ys}.add(${first_sum})
+
+    boolean ${r} = false;
+    for ${m} in ${ys}:
+        for ${n} in ${ys}:
+            if ${second_sum} == 0:
+                ${r} = true;
+    return ${r};
+</pre>
+<p class='part-header'>Part B question:</p>
+<p>
+When you run the program on your computer in ${year_new} on an array of size ${size_new}, it takes ${time_old}.
+In the past, your computer got faster by a factor of ${factor} every ${interval} years.
+What is the largest array size you could have processed in ${time_new} in ${year_old}?
+</p>
+`
 }
 
 function q2(rng) {
