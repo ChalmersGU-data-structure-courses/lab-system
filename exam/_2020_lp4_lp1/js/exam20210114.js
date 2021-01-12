@@ -9,16 +9,14 @@ function q1(rng) {
 	"S2: {" + s2.join(", ") + "}";
 }
 
-
 function q2(rng) {
     // TODO
-    let size = 8;
-    let arr = [];
-    let baseChar = 'A'.charCodeAt(0);
-    for(let i = 0; i < size; i++) {
-	arr[i] = String.fromCharCode(baseChar + i);
-    }
-    rng.shuffle(arr);
+    let arr =
+        rng.nextBool() ?
+         [2, 3, 8, 9, 7, 4, 1, 6, 5] :
+         [8, 2, 6, 9, 5, 3, 1, 7, 4] ;
+    for (let i = 0; i < arr.length; i++)
+        arr[i] = arr[i] * 10 + rng.nextInt(10);
     return arr.join(", ");
 }
 

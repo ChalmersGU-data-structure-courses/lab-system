@@ -73,6 +73,10 @@ class RNG {
 	return r;
     }
 
+    nextBool() {
+        return this.nextInt(2) == 1;
+    }
+
     shuffle(a) {
 	for(let i = a.length - 1; i > 0; i--) {
 	    let r = this.nextInt(i + 1);
