@@ -67,8 +67,7 @@ class RNG {
 	if ((bound & m) == 0) {
 	    r &= m;
 	} else {
-	    for (let u = r >>> 1; u + m - (r = u % bound) < 0;
-		 u = this.next() >>> 1) ;
+	    for (let u = r; u + m - (r = u % bound) >= 0xF0000000; u = this.next() >>> 1);
 	}
 	return r;
     }
