@@ -152,7 +152,7 @@ for q , (question, _)in template_answers.items():
                 exit()
 
         all_answers = multidict((answers[q][1], group) for group, answers in submission_answers.items())
-        for empty_answer in [template_answers[q], '']:
+        for empty_answer in [template_answers[q][1], '']:
             all_answers.pop(empty_answer, None)
 
         for a in sorted(all_answers.keys(), key = len):
