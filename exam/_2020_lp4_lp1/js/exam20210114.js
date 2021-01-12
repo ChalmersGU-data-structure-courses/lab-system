@@ -48,7 +48,7 @@ function q1(rng) {
     year_old = year_new - num_intervals * interval
 
 return `
-<p class='part-header'>Algorithm:</p>
+<h4>Algorithm:</h4>
 <pre class='pseudocode'>
 boolean f(integer[] ${xs}):
     ${ys} = new dynamic array of integers
@@ -63,7 +63,7 @@ boolean f(integer[] ${xs}):
                 ${r} = true;
     return ${r};
 </pre>
-<p class='part-header'>Part B question:</p>
+<h4>Part B question:</h4>
 <p>
 When you run the program on your computer in ${year_new} on an array of size ${size_new}, it takes ${time_old}.
 In the past, your computer got faster by a factor of ${factor} every ${interval} years.
