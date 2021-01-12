@@ -116,6 +116,10 @@ class RNG {
 	}
     }
 
+    selectUniform(a) {
+        return a[this.nextInt(a.length)]
+    }
+
     expandSeed(seed, length) {
 	let seedClone;
 	if(seed.length < length) {
