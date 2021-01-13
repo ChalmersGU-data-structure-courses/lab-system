@@ -1,3 +1,6 @@
+
+////////////////////////////////////////////////////////////////////////////////
+// complexity
 function q1(rng) {
     // name randomization
     let names_function = rng.shuffle(['f', 'g', 'h', 'prog', 'algo']);
@@ -72,6 +75,9 @@ What is the largest array size you could have processed in ${time_new} in ${year
 `;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+// sorting
 function q2(rng) {
     let arr =
         rng.nextBool() ?
@@ -87,97 +93,53 @@ function q2(rng) {
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// search trees
 function q3(rng, elem) {
     let treeNum = rng.nextInt(10) + 1;
     return "<img src=\"trees/randavl" + treeNum + ".png\">";
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// not in this exam
 function q4(rng) {
-    // TODO
-    let sizeV = 6, skew = 0.5;
-    let pq = new PQ(rng, skew, sizeV);
-    let A = pq.ps(3);
-    return "Insättningsordning: " + A[0].join(", ") + "<br><br>" +
-        "a) " + A[1].join(", ") + "<br><br>" +
-        "b) " + A[2].join(", ") + "<br><br>" +
-        "c) " + A[3].join(", ") + "<br><br>";
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// hash tables
 function q5(rng) {
     // TODO
-    let capacityV = 5, sizeV = 6, skew = 0.5, minV = 10, maxV = 100;
-    let h = ht2(rng, capacityV, sizeV, skew, minV, maxV, 1.1, 1.3);
-    let m = h[1];
-    let k = h[0];
-    let hv = h[2].join(", ");
-    return "m = " + m + ", k = " + k + "<br>" + hv;
+    return "TODO";
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// graphs
 function q6(rng) {
     // TODO
-    let size = 12, disjoint = 1;
-    let w = getDigraphWeights(rng, size, 20, 30, 3, 20, disjoint);
-    w.sort((a,b) => a-b);
-    return w.join(", ");
+    return "TODO";
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// complexity
 function q7(rng, elem) {
     // TODO
-    loadFile("./trees/bintree2.svg", (data) => {
-        let problemSVG = data;
-        let lIdx = rng.relabelInts(rng.intList(16, 0), 4, 33);
-        lIdx.sort((a,b) => a-b);
-        for(let i = 16; i > 0; i--) {
-            problemSVG = problemSVG.replace("NODE_" + i, lIdx[i - 1] * 3);
-        }
-        elem.innerHTML = problemSVG;
-    });
+    return "TODO";
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// not in this exam
 function q8(rng, elem) {
-    // TODO
-    let pairs = ["AG", "AH", "AF", "BE", "BF", "CE", "DH", "DG", "EG", "EH"];
-    let pIdx = rng.nextInt(pairs.length);
-    let R = rng.nextInt(10) + 15;
-    let startNode = pairs[pIdx].substr(0, 1);
-    let endNode = pairs[pIdx].substr(1, 1);
-    return "R: " + R + "<br>" +
-        "START: " + startNode + "<br>" + 
-        "SLUT: " + endNode;
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// not in this exam
 function q9(rng, elem) {
-    // TODO
-    let size = 10;
-    loadFile("./trees/UnweightedDAG.svg", (data) => {
-        let problemSVG = data;
-        let lIdx = rng.relabelInts(rng.intList(size, 0), 0, 26);
-        lIdx.sort((a,b) => a-b);
-        for(let i = 0; i < size; i++) {
-            problemSVG = problemSVG.replace("NODE_" + i, String.fromCharCode(65 + lIdx[i]));
-        }
-        elem.innerHTML = problemSVG;
-    });
-}
-
-
-
-function getGraph(rng, size, callback) {
-    loadFile("./trees/UnweightedDAG.svg", (data) => {
-        let problemText = data;
-        let lIdx = rng.relabelInts(rng.intList(size, 0), 0, 26);
-        lIdx.sort((a,b) => a-b);
-        for(let i = 0; i < size; i++) {
-            problemText = problemText.replace("NODE_" + i, String.fromCharCode(65 + lIdx[i]));
-        }
-        callback(problemText);
-    });
 }
 
 
