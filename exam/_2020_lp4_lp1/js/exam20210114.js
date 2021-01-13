@@ -47,7 +47,7 @@ function q1(rng) {
 return `
 <h4>Algorithm:</h4>
 <pre class='pseudocode'>
-boolean f(integer[] ${xs}):
+boolean ${f}(integer[] ${xs}):
     ${ys} = new dynamic array of integers
     for ${i} in 0 .. ${xs}.length-1:
         for ${j} in ${second_loop}:
