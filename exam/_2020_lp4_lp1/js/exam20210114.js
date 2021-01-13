@@ -27,11 +27,8 @@ function q1(rng) {
       {factor: 2, interval: 4},
       {factor: 2, interval: 5},
       {factor: 4, interval: 5},
-      {factor: 4, interval: 6},
       {factor: 4, interval: 7},
-      {factor: 4, interval: 8},
       {factor: 4, interval: 9},
-      {factor: 4, interval: 10},
     ])
 
     // make sure randomization doesn't impact answer
