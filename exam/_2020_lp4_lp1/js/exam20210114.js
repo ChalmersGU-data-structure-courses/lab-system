@@ -38,8 +38,8 @@ function q1(rng) {
 
     size_new = 1000
 
-    time_new = 'one hour'
-    time_old = 'one hour'
+    time_new = rng.nextBool() ? 'one hour' : 'one day'
+    time_old = time_new
 
     year_new = 2021
     year_old = year_new - num_intervals * interval
