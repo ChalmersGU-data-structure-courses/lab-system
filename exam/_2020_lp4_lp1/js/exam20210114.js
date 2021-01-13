@@ -168,7 +168,7 @@ function q6(rng) {
     let edgelist = edges.map((e,i) => `${e}:${weights[i]}`).join(", ");
 
     return `
-<h4>Edge weights</h4>
+Edge weights:
 <ul><li>${edgelist}</li></ul>
 or equivalently, as a weighted graph:
 <pre>${graph}</pre>
