@@ -22,18 +22,8 @@ function q2(rng) {
 
 
 function q3(rng, elem) {
-    // TODO
-    let size = 10;
-    let treeNum = rng.nextInt(2);
-    loadFile("./trees/bintree" + treeNum + ".svg", (data) => {
-	let problemSVG = data;
-	let lIdx = rng.relabelInts(rng.intList(size, 0), 0, 26);
-	lIdx.sort((a,b) => a-b);
-	for(let i = 0; i < size; i++) {
-	    problemSVG = problemSVG.replace("NODE_" + i, String.fromCharCode(65 + lIdx[i]));
-	}
-	elem.innerHTML = problemSVG;
-    });
+    let treeNum = rng.nextInt(10) + 1;
+    return "<img src=\"trees/randavl" + treeNum + ".png\">";
 }
 
 
