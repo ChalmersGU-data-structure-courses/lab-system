@@ -1,39 +1,42 @@
 function q1(rng) {
     // name randomization
     let names_function = rng.shuffle(['f', 'g', 'h', 'prog', 'algo']);
-    let names_array = rng.shuffle(['as', 'bs', 'cs', 'ds', 'xs', 'ys']);
-    let names_index_or_value = rng.shuffle(['s', 't', 'u', 'v', 'm', 'n', 'i', 'j', 'p', 'q']);
-    let names_result = rng.shuffle(['r']);
-
     let f = names_function[0];
 
+    let names_array = rng.shuffle(['as', 'bs', 'cs', 'ds', 'xs', 'ys']);
     let xs = names_array[0];
     let ys = names_array[1];
+    
+    let {i, j} = rng.selectUniform([
+        {i: 'i', j: 'j'},
+        {i: 'j', j: 'k'},
+        {i: 'm', j: 'n'},
+    ]);
 
-    let i = names_index_or_value[0];
-    let j = names_index_or_value[1];
-    let m = names_index_or_value[2];
-    let n = names_index_or_value[3];
+    let {u, v} = rng.selectUniform([
+        {u: 'u', v: 'v'},
+        {u: 'p', v: 'q'},
+        {u: 's', v: 't'},
+    ]);
 
+    let names_result = rng.shuffle(['r']);
     let r = names_result[0];
 
     // irrelevant program code randomization
     let second_loop = rng.nextBool() ? `0 .. ${i}` : `${i} .. ${xs}.length-1`;
     let first_sum = rng.nextBool() ? `${xs}[${i}] + ${xs}[${j}]` : `${xs}[${j}] + ${xs}[${i}]`;
-    let second_sum = rng.nextBool() ? `${m} + ${n}` : `${n} + ${m}`;
+    let second_sum = rng.nextBool() ? `${u} + ${v}` : `${v} + ${u}`;
 
-    let c = rng.selectUniform([
-        {factor: 2, interval: 3},
-        {factor: 2, interval: 4},
-        {factor: 2, interval: 5},
-        {factor: 4, interval: 5},
-        {factor: 4, interval: 7},
-        {factor: 4, interval: 9},
+    let {factor, interval} = rng.selectUniform([
+      {factor: 2, interval: 3},
+      {factor: 2, interval: 4},
+      {factor: 2, interval: 5},
+      {factor: 4, interval: 5},
+      {factor: 4, interval: 7},
+      {factor: 4, interval: 9},
     ]);
 
     // make sure randomization doesn't impact answer
-    let factor = c.factor;
-    let interval = c.interval;
     let num_intervals = Math.round(12 * Math.log(2) / Math.log(factor));
 
     let size_new = 1000;
@@ -47,15 +50,15 @@ function q1(rng) {
     return `
 <h4>Algorithm:</h4>
 <pre class='pseudocode'>
-boolean ${f}(integer[] ${xs}):
-    ${ys} = new dynamic array of integers
+boolean ${f}(int[] ${xs}):
+    ${ys} = new dynamic array of int
     for ${i} in 0 .. ${xs}.length-1:
         for ${j} in ${second_loop}:
             ${ys}.add(${first_sum})
 
     boolean ${r} = false;
-    for ${m} in ${ys}:
-        for ${n} in ${ys}:
+    for ${u} in ${ys}:
+        for ${v} in ${ys}:
             if ${second_sum} == 0:
                 ${r} = true;
     return ${r};
@@ -63,7 +66,7 @@ boolean ${f}(integer[] ${xs}):
 <h4>Part B question:</h4>
 <p>
 When you run the program on your computer in ${year_new} on an array of size ${size_new}, it takes ${time_old}.
-In the past, your computer got faster by a factor of ${factor} every ${interval} years.
+Your computer has gotten faster by a factor of ${factor} every ${interval} years.
 What is the largest array size you could have processed in ${time_new} in ${year_old}?
 </p>
 `;
