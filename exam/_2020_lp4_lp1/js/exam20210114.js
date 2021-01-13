@@ -138,8 +138,41 @@ or, equivalently:
 ////////////////////////////////////////////////////////////////////////////////
 // graphs
 function q6(rng) {
-    // TODO
-    return "TODO";
+    let [sx, pt] = [1, 6],
+        [pz, sz] = rng.shuffle([3, 4]),
+        [ps, px] = rng.shuffle([5, 7]);
+    let qt, qx, ru, ry, rz, uy;
+    if (rng.nextBool()) {
+        [ru, uy] = rng.shuffle([8, 9]);
+        [qx, rz] = rng.shuffle([10, 11]);
+        [qt, ry] = rng.shuffle([12, 13]);
+    } else {
+        [ry, uy] = rng.shuffle([8, 9]);
+        [qt, rz] = rng.shuffle([10, 11]);
+        [qx, ru] = rng.shuffle([12, 13]);
+    }
+
+    let p2 = (n) => (n<10 ? ` ${n}` : n);
+    let graph = `
+   Q -- ${qx} -- X --- ${sx} --- S           R --- ${ry} --- Y
+    \\          \\         / \\         / \\         /
+     \\          \\       /   \\       /   \\       /
+     ${qt}          ${px}     ${ps}     ${sz}    ${rz}    ${p2(ru)}     ${uy}
+       \\          \\   /       \\   /       \\   /
+        \\          \\ /         \\ /         \\ /
+         T -- ${pt} --- P --- ${pz} --- Z           U
+`;
+
+    let edges   = "QT QX PT PX PS PZ SX SZ RZ RU RY UY".split(" ");
+    let weights = [qt,qx,pt,px,ps,pz,sx,sz,rz,ru,ry,uy];
+    let edgelist = edges.map((e,i) => `${e}:${weights[i]}`).join(", ");
+
+    return `
+<h4>Edge weights</h4>
+<ul><li>${edgelist}</li></ul>
+or equivalently, as a weighted graph:
+<pre>${graph}</pre>
+`;
 }
 
 
