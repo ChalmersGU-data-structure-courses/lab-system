@@ -1,19 +1,82 @@
-
-
 function q1(rng) {
-    // TODO
-    let sizeV = 6, skew = 0.5;
-    let s1 = rng.relabelInts(rng.intList(sizeV, skew), 10, 30);
-    let s2 = rng.relabelInts(rng.intList(sizeV, skew * 2), 10, 30);
-    return "S1: {" + s1.join(", ") + "}<br>" +
-	"S2: {" + s2.join(", ") + "}";
+    // name randomization
+    let names_function = rng.shuffle(['f', 'g', 'h', 'prog', 'algo']);
+    let f = names_function[0];
+
+    let names_array = rng.shuffle(['as', 'bs', 'cs', 'ds', 'xs', 'ys']);
+    let xs = names_array[0];
+    let ys = names_array[1];
+    
+    let {i, j} = rng.selectUniform([
+        {i: 'i', j: 'j'},
+        {i: 'j', j: 'k'},
+        {i: 'm', j: 'n'},
+    ]);
+
+    let {u, v} = rng.selectUniform([
+        {u: 'u', v: 'v'},
+        {u: 'p', v: 'q'},
+        {u: 's', v: 't'},
+    ]);
+
+    let names_result = rng.shuffle(['r']);
+    let r = names_result[0];
+
+    // irrelevant program code randomization
+    let second_loop = rng.nextBool() ? `0 .. ${i}` : `${i} .. ${xs}.length-1`;
+    let first_sum = rng.nextBool() ? `${xs}[${i}] + ${xs}[${j}]` : `${xs}[${j}] + ${xs}[${i}]`;
+    let second_sum = rng.nextBool() ? `${u} + ${v}` : `${v} + ${u}`;
+
+    let {factor, interval} = rng.selectUniform([
+      {factor: 2, interval: 3},
+      {factor: 2, interval: 4},
+      {factor: 2, interval: 5},
+      {factor: 4, interval: 5},
+      {factor: 4, interval: 7},
+      {factor: 4, interval: 9},
+    ]);
+
+    // make sure randomization doesn't impact answer
+    let num_intervals = Math.round(12 * Math.log(2) / Math.log(factor));
+
+    let size_new = 1000;
+
+    let time_new = rng.nextBool() ? 'one hour' : 'one day';
+    let time_old = time_new;
+
+    let year_new = 2021;
+    let year_old = year_new - num_intervals * interval;
+
+    return `
+<h4>Algorithm:</h4>
+<pre class='pseudocode'>
+boolean ${f}(int[] ${xs}):
+    ${ys} = new dynamic array of int
+    for ${i} in 0 .. ${xs}.length-1:
+        for ${j} in ${second_loop}:
+            ${ys}.add(${first_sum})
+
+    boolean ${r} = false;
+    for ${u} in ${ys}:
+        for ${v} in ${ys}:
+            if ${second_sum} == 0:
+                ${r} = true;
+    return ${r};
+</pre>
+<h4>Part B question:</h4>
+<p>
+When you run the program on your computer in ${year_new} on an array of size ${size_new}, it takes ${time_old}.
+Your computer has gotten faster by a factor of ${factor} every ${interval} years.
+What is the largest array size you could have processed in ${time_new} in ${year_old}?
+</p>
+`;
 }
 
 function q2(rng) {
     let arr =
         rng.nextBool() ?
-         [2, 3, 8, 9, 7, 4, 1, 6, 5] :
-         [8, 2, 6, 9, 5, 3, 1, 7, 4] ;
+        [2, 3, 8, 9, 7, 4, 1, 6, 5] :
+        [8, 2, 6, 9, 5, 3, 1, 7, 4] ;
     for (let i = 0; i < arr.length; i++) {
         let extra = rng.nextInt(8);
         if (extra >= 3) extra++; // Unlucky numbers avoidance
@@ -36,9 +99,9 @@ function q4(rng) {
     let pq = new PQ(rng, skew, sizeV);
     let A = pq.ps(3);
     return "Insättningsordning: " + A[0].join(", ") + "<br><br>" +
-	"a) " + A[1].join(", ") + "<br><br>" +
-	"b) " + A[2].join(", ") + "<br><br>" +
-	"c) " + A[3].join(", ") + "<br><br>";
+        "a) " + A[1].join(", ") + "<br><br>" +
+        "b) " + A[2].join(", ") + "<br><br>" +
+        "c) " + A[3].join(", ") + "<br><br>";
 }
 
 
@@ -65,13 +128,13 @@ function q6(rng) {
 function q7(rng, elem) {
     // TODO
     loadFile("./trees/bintree2.svg", (data) => {
-	let problemSVG = data;
-	let lIdx = rng.relabelInts(rng.intList(16, 0), 4, 33);
-	lIdx.sort((a,b) => a-b);
-	for(let i = 16; i > 0; i--) {
-	    problemSVG = problemSVG.replace("NODE_" + i, lIdx[i - 1] * 3);
-	}
-	elem.innerHTML = problemSVG;
+        let problemSVG = data;
+        let lIdx = rng.relabelInts(rng.intList(16, 0), 4, 33);
+        lIdx.sort((a,b) => a-b);
+        for(let i = 16; i > 0; i--) {
+            problemSVG = problemSVG.replace("NODE_" + i, lIdx[i - 1] * 3);
+        }
+        elem.innerHTML = problemSVG;
     });
 }
 
@@ -84,8 +147,8 @@ function q8(rng, elem) {
     let startNode = pairs[pIdx].substr(0, 1);
     let endNode = pairs[pIdx].substr(1, 1);
     return "R: " + R + "<br>" +
-	"START: " + startNode + "<br>" + 
-	"SLUT: " + endNode;
+        "START: " + startNode + "<br>" + 
+        "SLUT: " + endNode;
 }
 
 
@@ -93,13 +156,13 @@ function q9(rng, elem) {
     // TODO
     let size = 10;
     loadFile("./trees/UnweightedDAG.svg", (data) => {
-	let problemSVG = data;
-	let lIdx = rng.relabelInts(rng.intList(size, 0), 0, 26);
-	lIdx.sort((a,b) => a-b);
-	for(let i = 0; i < size; i++) {
-	    problemSVG = problemSVG.replace("NODE_" + i, String.fromCharCode(65 + lIdx[i]));
-	}
-	elem.innerHTML = problemSVG;
+        let problemSVG = data;
+        let lIdx = rng.relabelInts(rng.intList(size, 0), 0, 26);
+        lIdx.sort((a,b) => a-b);
+        for(let i = 0; i < size; i++) {
+            problemSVG = problemSVG.replace("NODE_" + i, String.fromCharCode(65 + lIdx[i]));
+        }
+        elem.innerHTML = problemSVG;
     });
 }
 
@@ -107,13 +170,13 @@ function q9(rng, elem) {
 
 function getGraph(rng, size, callback) {
     loadFile("./trees/UnweightedDAG.svg", (data) => {
-	let problemText = data;
-	let lIdx = rng.relabelInts(rng.intList(size, 0), 0, 26);
-	lIdx.sort((a,b) => a-b);
-	for(let i = 0; i < size; i++) {
-	    problemText = problemText.replace("NODE_" + i, String.fromCharCode(65 + lIdx[i]));
-	}
-	callback(problemText);
+        let problemText = data;
+        let lIdx = rng.relabelInts(rng.intList(size, 0), 0, 26);
+        lIdx.sort((a,b) => a-b);
+        for(let i = 0; i < size; i++) {
+            problemText = problemText.replace("NODE_" + i, String.fromCharCode(65 + lIdx[i]));
+        }
+        callback(problemText);
     });
 }
 
