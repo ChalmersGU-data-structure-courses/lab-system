@@ -110,8 +110,28 @@ function q4(rng) {
 ////////////////////////////////////////////////////////////////////////////////
 // hash tables
 function q5(rng) {
-    // TODO
-    return "TODO";
+    let varnames = rng.selectUniform(["D E F G H J K",
+                                      "J K L M N P Q",
+                                      "P Q R S T U V"]).split(" ");
+    let [a,b,c,d,e,f,g] = varnames;
+    let table = [a,d,'-',g,b,e,'-',c,f];
+    let tableitems = table.map((v,i) => `<li>${i}: ${v}</li>`).join("");
+
+    let [ha,hb] = rng.selectUniform([[9,13], [18,4]]),
+        [hc,hf] = rng.shuffle([7, 16]),
+        [he,hg] = rng.shuffle([3, 12]),
+        hd = 8;
+    let hashes = [ha, hb, hc, hd, he, hf, hg];
+    let hashvalues = varnames.map((v,i) => `hash(${v}) = ${hashes[i]}`).join("<br/>");
+
+    return `
+<h4>Hash table array</h4>
+<pre>  [${table.join(", ")}]</pre>
+or, equivalently:
+<ul>${tableitems}</ul>
+<h4>Hash values</h4>
+<pre>${hashvalues}</pre>
+`;
 }
 
 
