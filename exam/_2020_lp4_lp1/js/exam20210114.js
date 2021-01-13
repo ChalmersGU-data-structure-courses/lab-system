@@ -10,13 +10,16 @@ function q1(rng) {
 }
 
 function q2(rng) {
-    // TODO
     let arr =
         rng.nextBool() ?
          [2, 3, 8, 9, 7, 4, 1, 6, 5] :
          [8, 2, 6, 9, 5, 3, 1, 7, 4] ;
-    for (let i = 0; i < arr.length; i++)
-        arr[i] = arr[i] * 10 + rng.nextInt(10);
+    for (let i = 0; i < arr.length; i++) {
+        let extra = rng.nextInt(8);
+        if (extra >= 3) extra++; // Unlucky numbers avoidance
+        if (extra >= 8) extra++;
+        arr[i] = arr[i] * 10 + extra;
+    }
     return arr.join(", ");
 }
 
