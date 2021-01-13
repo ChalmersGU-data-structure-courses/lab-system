@@ -1,3 +1,6 @@
+
+////////////////////////////////////////////////////////////////////////////////
+// complexity
 function q1(rng) {
     // name randomization
     let names_function = rng.shuffle(['f', 'g', 'h', 'prog', 'algo']);
@@ -72,6 +75,9 @@ What is the largest array size you could have processed in ${time_new} in ${year
 `;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+// sorting
 function q2(rng) {
     let arr =
         rng.nextBool() ?
@@ -87,6 +93,8 @@ function q2(rng) {
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// search trees
 function q3(rng, elem) {
     let treeNum = rng.nextInt(10) + 1;
     let n = function(x, l, r) {
@@ -114,91 +122,98 @@ function q3(rng, elem) {
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// not in this exam
 function q4(rng) {
-    // TODO
-    let sizeV = 6, skew = 0.5;
-    let pq = new PQ(rng, skew, sizeV);
-    let A = pq.ps(3);
-    return "Insättningsordning: " + A[0].join(", ") + "<br><br>" +
-        "a) " + A[1].join(", ") + "<br><br>" +
-        "b) " + A[2].join(", ") + "<br><br>" +
-        "c) " + A[3].join(", ") + "<br><br>";
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// hash tables
 function q5(rng) {
-    // TODO
-    let capacityV = 5, sizeV = 6, skew = 0.5, minV = 10, maxV = 100;
-    let h = ht2(rng, capacityV, sizeV, skew, minV, maxV, 1.1, 1.3);
-    let m = h[1];
-    let k = h[0];
-    let hv = h[2].join(", ");
-    return "m = " + m + ", k = " + k + "<br>" + hv;
+    let varnames = rng.selectUniform(["D E F G H J K",
+                                      "J K L M N P Q",
+                                      "P Q R S T U V"]).split(" ");
+    let [a,b,c,d,e,f,g] = varnames;
+    let table = [a,d,'-',g,b,e,'-',c,f];
+    let tableitems = table.map((v,i) => `<li>${i}: ${v}</li>`).join("");
+
+    let [ha,hb] = rng.selectUniform([[9,13], [18,4]]),
+        [hc,hf] = rng.shuffle([7, 16]),
+        [he,hg] = rng.shuffle([3, 12]),
+        hd = 8;
+    let hashes = [ha, hb, hc, hd, he, hf, hg];
+    let hashvalues = varnames.map((v,i) => `hash(${v}) = ${hashes[i]}`).join("<br/>");
+
+    return `
+<h4>Hash table array</h4>
+<pre>  [${table.join(", ")}]</pre>
+or, equivalently:
+<ul>${tableitems}</ul>
+<h4>Hash values</h4>
+<pre>${hashvalues}</pre>
+`;
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// graphs
 function q6(rng) {
-    // TODO
-    let size = 12, disjoint = 1;
-    let w = getDigraphWeights(rng, size, 20, 30, 3, 20, disjoint);
-    w.sort((a,b) => a-b);
-    return w.join(", ");
+    let [sx, pt] = [1, 6],
+        [pz, sz] = rng.shuffle([3, 4]),
+        [ps, px] = rng.shuffle([5, 7]);
+    let qt, qx, ru, ry, rz, uy;
+    if (rng.nextBool()) {
+        [ru, uy] = rng.shuffle([8, 9]);
+        [qx, rz] = rng.shuffle([10, 11]);
+        [qt, ry] = rng.shuffle([12, 13]);
+    } else {
+        [ry, uy] = rng.shuffle([8, 9]);
+        [qt, rz] = rng.shuffle([10, 11]);
+        [qx, ru] = rng.shuffle([12, 13]);
+    }
+
+    let p2 = (n) => (n<10 ? ` ${n}` : n);
+    let graph = `
+   Q -- ${qx} -- X --- ${sx} --- S           R --- ${ry} --- Y
+    \\          \\         / \\         / \\         /
+     \\          \\       /   \\       /   \\       /
+     ${qt}          ${px}     ${ps}     ${sz}    ${rz}    ${p2(ru)}     ${uy}
+       \\          \\   /       \\   /       \\   /
+        \\          \\ /         \\ /         \\ /
+         T -- ${pt} --- P --- ${pz} --- Z           U
+`;
+
+    let edges   = "QT QX PT PX PS PZ SX SZ RZ RU RY UY".split(" ");
+    let weights = [qt,qx,pt,px,ps,pz,sx,sz,rz,ru,ry,uy];
+    let edgelist = edges.map((e,i) => `${e}:${weights[i]}`).join(", ");
+
+    return `
+Edge weights:
+<ul><li>${edgelist}</li></ul>
+or equivalently, as a weighted graph:
+<pre>${graph}</pre>
+`;
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// complexity
 function q7(rng, elem) {
     // TODO
-    loadFile("./trees/bintree2.svg", (data) => {
-        let problemSVG = data;
-        let lIdx = rng.relabelInts(rng.intList(16, 0), 4, 33);
-        lIdx.sort((a,b) => a-b);
-        for(let i = 16; i > 0; i--) {
-            problemSVG = problemSVG.replace("NODE_" + i, lIdx[i - 1] * 3);
-        }
-        elem.innerHTML = problemSVG;
-    });
+    return "TODO";
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// not in this exam
 function q8(rng, elem) {
-    // TODO
-    let pairs = ["AG", "AH", "AF", "BE", "BF", "CE", "DH", "DG", "EG", "EH"];
-    let pIdx = rng.nextInt(pairs.length);
-    let R = rng.nextInt(10) + 15;
-    let startNode = pairs[pIdx].substr(0, 1);
-    let endNode = pairs[pIdx].substr(1, 1);
-    return "R: " + R + "<br>" +
-        "START: " + startNode + "<br>" + 
-        "SLUT: " + endNode;
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// not in this exam
 function q9(rng, elem) {
-    // TODO
-    let size = 10;
-    loadFile("./trees/UnweightedDAG.svg", (data) => {
-        let problemSVG = data;
-        let lIdx = rng.relabelInts(rng.intList(size, 0), 0, 26);
-        lIdx.sort((a,b) => a-b);
-        for(let i = 0; i < size; i++) {
-            problemSVG = problemSVG.replace("NODE_" + i, String.fromCharCode(65 + lIdx[i]));
-        }
-        elem.innerHTML = problemSVG;
-    });
-}
-
-
-
-function getGraph(rng, size, callback) {
-    loadFile("./trees/UnweightedDAG.svg", (data) => {
-        let problemText = data;
-        let lIdx = rng.relabelInts(rng.intList(size, 0), 0, 26);
-        lIdx.sort((a,b) => a-b);
-        for(let i = 0; i < size; i++) {
-            problemText = problemText.replace("NODE_" + i, String.fromCharCode(65 + lIdx[i]));
-        }
-        callback(problemText);
-    });
 }
 
 
