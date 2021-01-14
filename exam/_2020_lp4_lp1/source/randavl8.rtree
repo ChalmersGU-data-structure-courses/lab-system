@@ -1,0 +1,21 @@
+1748936358
+digraph G {
+  node [shape=circle, fontsize=30];
+  L -> E;
+  L -> T;
+  E -> A;
+  E -> I;
+  T -> R;
+  T -> V;
+  I -> N;
+  I -> S;
+  A [label = "1X"];
+  E [label = "2X"];
+  N [label = "3X"];
+  I [label = "4X"];
+  S [label = "5X"];
+  L [label = "6X"];
+  R [label = "7X"];
+  T [label = "8X"];
+  V [label = "9X"];
+}
