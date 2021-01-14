@@ -221,8 +221,8 @@ A(n, k) = O((n + ${c} sqrt(n)) (1 + ${c} sqrt(k))).
 B(n, k) is the complexity of the below algorithm for <pre class='pseudocode' style='display: inline;'>${xs}</pre> of size n and <pre class='pseudocode' style='display: inline;'>${i}</pre> equal to 0:
 <pre class='pseudocode'>
 boolean has_sum(int[] ${xs}, int ${i}, int y):
-    if i == xs.length: return y == 0
-    return has_sum(${xs}, ${i} + 1, y) or has_sum(${xs}, ${i} + 1, y - ${xs}[i])
+    if ${i} == xs.length: return y == 0
+    return has_sum(${xs}, ${i} + 1, y) or has_sum(${xs}, ${i} + 1, y - ${xs}[${i}])
 </pre>
 </li>
 <li>
