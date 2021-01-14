@@ -239,12 +239,18 @@ function q(n) {
     }
 }
 
+function toggleClass(list, cls, bool) {
+    if (bool)
+        list.add(cls);
+    else
+        list.remove(cls);
+}
 
 function validatePnr() {
     let pnr = document.getElementById("personnummer").value;
     let valid = personnummerValid(pnr);
-    document.getElementById("statusIndicator").classList.toggle("invisible", valid);
-    document.getElementById('questionButtons').classList.toggle("invisible", !valid);
+    toggleClass(document.getElementById("statusIndicator").classList, "invisible", valid);
+    toggleClass(document.getElementById('questionButtons').classList, "invisible", !valid);
     q();
 }
 
