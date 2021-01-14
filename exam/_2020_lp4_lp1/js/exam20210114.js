@@ -214,7 +214,7 @@ function q7(rng, elem) {
 
     let c = rng.selectUniform([12, 14, 15, 16, 18]);
     let xs = rng.selectUniform(['as', 'bs', 'cs', 'xs']);
-    let i = rng.selectUniform(['i', 'j', 'k']);
+    let i = rng.selectUniform(['i', 'j', 'm']);
     let {vs, v} = rng.selectUniform([
         {vs: 'vs', v: 'v'},
         {vs: 'as', v: 'a'},
