@@ -99,7 +99,7 @@ function q3(rng, elem) {
     let treeNum = rng.nextInt(10);
     let n = function(x, l, r) {
         return "" + x + "<ul><li>" + l + "</li><li>" + r + "</li></ul>";
-    }
+    };
     let lists =
         [n(41, n(25, 10, 33), n(86, n(68, 59, 78), 96)),
          n(40, n(20, 15, 32), n(86, n(68, 50, 71), 92)),
@@ -110,15 +110,16 @@ function q3(rng, elem) {
          n(68, n(26, 11, n(41, 31, 53)), n(83, 75, 94)),
          n(67, n(28, 14, n(40, 32, 50)), n(82, 79, 95)),
          n(69, n(21, 18, n(40, 34, 59)), n(86, 77, 93)),
-         n(62, n(25, 17, n(49, 31, 59)), n(82, 73, 97))]
+         n(62, n(25, 17, n(49, 31, 59)), n(82, 73, 97))];
     return (
-      "<p><img src=\"" + trees[treeNum] + "\"></p>" +
-      "<p><b>If you have trouble scanning your answers,</b> " +
-      "you can instead write your tree as a nested list. " +
-      "For example, you could write the tree above as: " +
-      "<ul><li>" + lists[treeNum] + "</li></ul></p>" +
-      "<p>If you choose to do this, if a node has one child you should say if it's " +
-      "the left or right child.</p>")
+        "<p><img src=\"" + trees[treeNum] + "\"></p>" +
+            "<p><b>If you have trouble scanning your answers,</b> " +
+            "you can instead write your tree as a nested list. " +
+            "For example, you could write the tree above as: " +
+            "<ul><li>" + lists[treeNum] + "</li></ul></p>" +
+            "<p>If you choose to do this, if a node has one child you should say if it's " +
+            "the left or right child.</p>"
+    );
 }
 
 
@@ -191,7 +192,7 @@ function q6(rng) {
     return `
 Edge weights:
 <ul><li>${edgelist}</li></ul>
-or equivalently, as a weighted graph:
+or equivalently, inserted into the graph:
 <pre>${graph}</pre>
 `;
 }
