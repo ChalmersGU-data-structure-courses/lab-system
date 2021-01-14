@@ -96,11 +96,11 @@ function q2(rng) {
 ////////////////////////////////////////////////////////////////////////////////
 // search trees
 function q3(rng, elem) {
-    let treeNum = rng.nextInt(10) + 1;
+    let treeNum = rng.nextInt(10);
     let n = function(x, l, r) {
         return "" + x + "<ul><li>" + l + "</li><li>" + r + "</li></ul>";
     }
-    let trees =
+    let lists =
         [n(41, n(25, 10, 33), n(86, n(68, 59, 78), 96)),
          n(40, n(20, 15, 32), n(86, n(68, 50, 71), 92)),
          n(42, n(25, 14, 33), n(84, n(63, 50, 71), 98)),
@@ -112,11 +112,11 @@ function q3(rng, elem) {
          n(69, n(21, 18, n(40, 34, 59)), n(86, 77, 93)),
          n(62, n(25, 17, n(49, 31, 59)), n(82, 73, 97))]
     return (
-      "<p><img src=\"trees/randavl" + treeNum + ".png\"></p>" +
+      "<p><img src=\"" + trees[treeNum] + "\"></p>" +
       "<p><b>If you have trouble scanning your answers,</b> " +
       "you can instead write your tree as a nested list. " +
       "For example, you could write the tree above as: " +
-      "<ul><li>" + trees[treeNum-1] + "</li></ul></p>" +
+      "<ul><li>" + lists[treeNum] + "</li></ul></p>" +
       "<p>If you choose to do this, if a node has one child you should say if it's " +
       "the left or right child.</p>")
 }
