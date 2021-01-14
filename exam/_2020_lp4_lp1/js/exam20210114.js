@@ -129,6 +129,7 @@ function q4(rng) {
     let pq = rng.nextBool() ? "pq" : "heap";
     let result = rng.nextBool() ? "result" : "list";
     return (
+        "<p>Here is a partial implementation of the algorithm:</p>\n" +
         "<pre>\n" +
         "List&lt;Int&gt; mergePQs(PriorityQueue&lt;Int&gt; " + pq + "1, PriorityQueue&lt;Int&gt; " + pq + "2):\n" +
         "    List&lt;Int&gt; " + result + " = new DynamicArrayList&lt;Int&gt;()\n" +
