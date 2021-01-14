@@ -99,7 +99,7 @@ function q3(rng, elem) {
     let treeNum = rng.nextInt(10);
     let n = function(x, l, r) {
         return "" + x + "<ul><li>" + l + "</li><li>" + r + "</li></ul>";
-    }
+    };
     let lists =
         [n(41, n(25, 10, 33), n(86, n(68, 59, 78), 96)),
          n(40, n(20, 15, 32), n(86, n(68, 50, 71), 92)),
@@ -110,15 +110,16 @@ function q3(rng, elem) {
          n(68, n(26, 11, n(41, 31, 53)), n(83, 75, 94)),
          n(67, n(28, 14, n(40, 32, 50)), n(82, 79, 95)),
          n(69, n(21, 18, n(40, 34, 59)), n(86, 77, 93)),
-         n(62, n(25, 17, n(49, 31, 59)), n(82, 73, 97))]
+         n(62, n(25, 17, n(49, 31, 59)), n(82, 73, 97))];
     return (
-      "<p><img src=\"" + trees[treeNum] + "\"></p>" +
-      "<p><b>If you have trouble scanning your answers,</b> " +
-      "you can instead write your tree as a nested list. " +
-      "For example, you could write the tree above as: " +
-      "<ul><li>" + lists[treeNum] + "</li></ul></p>" +
-      "<p>If you choose to do this, if a node has one child you should say if it's " +
-      "the left or right child.</p>")
+        "<p><img src=\"" + trees[treeNum] + "\"></p>" +
+            "<p><b>If you have trouble scanning your answers,</b> " +
+            "you can instead write your tree as a nested list. " +
+            "For example, you could write the tree above as: " +
+            "<ul><li>" + lists[treeNum] + "</li></ul></p>" +
+            "<p>If you choose to do this, if a node has one child you should say if it's " +
+            "the left or right child.</p>"
+    );
 }
 
 
@@ -191,7 +192,7 @@ function q6(rng) {
     return `
 Edge weights:
 <ul><li>${edgelist}</li></ul>
-or equivalently, as a weighted graph:
+or equivalently, inserted into the graph:
 <pre>${graph}</pre>
 `;
 }
@@ -200,8 +201,47 @@ or equivalently, as a weighted graph:
 ////////////////////////////////////////////////////////////////////////////////
 // complexity
 function q7(rng, elem) {
-    // TODO
-    return "TODO";
+
+    let c = rng.selectUniform([12, 14, 15, 16, 18]);
+    let xs = rng.selectUniform(['as', 'bs', 'cs', 'xs']);
+    let i = rng.selectUniform(['i', 'j', 'k']);
+    let {vs, v} = rng.selectUniform([
+        {vs: 'vs', v: 'v'},
+        {vs: 'as', v: 'a'},
+        {vs: 'xs', v: 'x'},
+        {vs: 'ys', v: 'y'},
+    ]);
+
+    return `
+<ul>
+<li>
+A(n, k) = O((n + ${c} sqrt(n)) (1 + ${c} sqrt(k))).
+</li>
+<li>
+B(n, k) is the complexity of the below algorithm for <pre class='pseudocode' style='display: inline;'>${xs}</pre> of size n and <pre class='pseudocode' style='display: inline;'>${i}</pre> equal to 0:
+<pre class='pseudocode'>
+boolean has_sum(int[] ${xs}, int ${i}, int y):
+    if i == xs.length: return y == 0
+    return has_sum(${xs}, ${i} + 1, y) or has_sum(${xs}, ${i} + 1, y - ${xs}[i])
+</pre>
+</li>
+<li>
+C(n, k) is the complexity of binary search on a sorted array of size n k.
+</li>
+<li>
+D(n, k) = O((n + n k + k)<sup>${c}</sup>).
+</li>
+<li>
+E(n, k) is the complexity of the below algorithm for <pre class='pseudocode' style='display: inline;'>set</pre> of size n and <pre class='pseudocode' style='display: inline;'>${vs}</pre> of size k:
+<pre class='pseudocode'>
+void track_large(RedBlackSet<Int> set, int[] ${vs}):
+    for ${v} in ${vs}:
+        set.add(${v})
+        set.remove(set.min())
+</pre>
+</li>
+</ul>
+`;
 }
 
 
