@@ -124,8 +124,18 @@ function q3(rng, elem) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// not in this exam
+// priority queues
 function q4(rng) {
+    let pq = rng.nextBool() ? "pq" : "heap";
+    let result = rng.nextBool() ? "result" : "list";
+    return (
+        "<pre>\n" +
+        "List&lt;Int&gt; mergePQs(PriorityQueue&lt;Int&gt; " + pq + "1, PriorityQueue&lt;Int&gt; " + pq + "2):\n" +
+        "    List&lt;Int&gt; " + result + " = new DynamicArrayList&lt;Int&gt;()\n" +
+        "    while not (" + pq + "1.isEmpty() and " + pq + "2.isEmpty()):\n" +
+        "        <b>???</b>\n" +
+        "    return " + result + "\n" +
+        "</pre>");
 }
 
 
