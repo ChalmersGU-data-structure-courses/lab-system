@@ -1,16 +1,21 @@
 from collections import defaultdict
+import contextlib
 from datetime import datetime, timedelta, timezone
 import decimal
 import errno
+import fcntl
 import functools
 import itertools
 import json
 from pathlib import Path
-import  time
 import re
+import tempfile
+import time
 from types import SimpleNamespace
 import os
+import shlex
 import shutil
+import subprocess
 import sys
 
 def identity(x):
@@ -33,6 +38,11 @@ def from_singleton(xs):
     assert(len(ys) >= 1)
     assert(len(ys) <= 1)
     return ys[0]
+
+def from_singleton_maybe(xs):
+    ys = list(xs)
+    assert(len(ys) <= 1)
+    return ys[0] if ys else None
 
 def choose_unique(f, xs):
     return from_singleton(filter(f, xs))
@@ -404,3 +414,34 @@ def add_to_path(dir):
     path = str(dir.resolve())
     assert(not (':' in path))
     os.environ['PATH'] = path + ':' + os.environ['PATH']
+
+@contextlib.contextmanager
+def temp_fifo():
+    with tempfile.TemporaryDirectory() as dir:
+        fifo = Path(dir) / 'fifo'
+        os.mkfifo(fifo)
+        try:
+            yield fifo
+        finally:
+            fifo.unlink()
+
+def Popen(cmd, **kwargs):
+    print(shlex.join(cmd), file = sys.stderr)
+    fds = list(kwargs.get('pass_fds', []))
+    for fd in fds:
+        os.set_inheritable(fd, True)
+    p = subprocess.Popen(cmd, **kwargs)
+    for fd in fds:
+        os.close(fd)
+    return p
+
+def check_process(p):
+    p.wait()
+    assert(p.returncode == 0)
+
+# Only implemented for linux.
+def pipe(min_size):
+    (r, w) = os.pipe()
+    F_SETPIPE_SZ = 1031
+    fcntl.fcntl(r, F_SETPIPE_SZ, min_size)
+    return (r, w)
