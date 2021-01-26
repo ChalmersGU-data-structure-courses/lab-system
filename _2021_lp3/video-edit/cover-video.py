@@ -244,6 +244,22 @@ def load_overlay_list(dir):
         if file.is_dir():
             yield load_overlay(file)
 
+# position and size are for the webcam video that should be copies from the original recording
+# You can supply a starting time string for the slides video.
+def replace_slides_video(output, input_recording, input_slides, position, size, slides_starting_time = '0'):
+    slides = ffmpeg.input(str(input_slides), ss = slides_starting_time)
+    recording = ffmpeg.input(str(input_recording))
+
+    audio = recording.audio
+
+    (x, y) = position
+    (sx, sy) = size
+
+    webcam = recording.crop(x, y, sx, sy)
+    video = slides.overlay(webcam, x = x, y = y, eof_action = 'endall')
+
+    ffmpeg.output(video, audio, str(output)).run()
+
 # Usage: change below as required
 
 lectures = repo / '..' / 'Lectures'
