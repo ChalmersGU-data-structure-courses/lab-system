@@ -433,7 +433,7 @@ class LabAssignment(Assignment):
                 copy_tree_fresh(source, target)
 
         if [() for _, target in subdirs for f in target.iterdir() if f.suffix == '.class']:
-            print_error('I am refusing to work on a lab whose problem/solution folders contains class files.')
+            print_error('I am refusing to work on a lab whose problem/solution folders contain class files.')
             exit(1)
 
         self.prepare_build(dir, dir / lab_assignment_constants.rel_dir_problem, lab_assignment_constants.rel_dir_solution)
