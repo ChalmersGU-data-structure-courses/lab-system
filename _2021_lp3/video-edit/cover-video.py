@@ -12,7 +12,8 @@ import subprocess
 import sys
 import tempfile
 
-this_dir = Path(__file__).parent
+from this_dir import this_dir
+
 repo = this_dir / '..' / '..'
 sys.path.insert(1, str(repo / 'Lab-grading'))
 from general import *
@@ -166,6 +167,7 @@ def mse(image_a, image_b):
     return numpy.sum((image_a.astype("float") - image_b.astype("float")) ** 2) / float(image_a.shape[0] * image_a.shape[1])
 
 def match_with_mask(file, mask):
+    global n
     while True:
         buffer = file.read(mask_size(mask))
         if not buffer:
@@ -206,7 +208,7 @@ def ffmpeg_match_overlays(input, overlay_list, quiet = False):
         pipe_outs.append(w)
         matchers.append(match_with_mask(os.fdopen(r, 'rb'), mask))
         outputs.append(
-            crop_to_mask(source, mask).output(ffmpeg_pipe(w), format = 'rawvideo', pix_fmt = 'rgb24')
+            crop_to_mask(source, mask).output(ffmpeg_pipe(w), format = 'rawvideo', pix_fmt = 'bgr24')
         )
 
     cmd = ffmpeg.compile(ffmpeg.merge_outputs(*outputs))
@@ -262,11 +264,11 @@ def replace_slides_video(output, input_recording, input_slides, position, size, 
 
 # Usage: change below as required
 
-lectures = repo / '..' / 'Lectures'
+lectures = repo / '..' / '..' / 'DIT181' / 'lectures'
 
 #dir_overlays = 'nick'
-#dir_overlays = 'peter-2020-11-10-A'
-dir_overlays = 'peter-2020-11-10-B'
+dir_overlays = 'peter-2020-11-10-A'
+#dir_overlays = 'peter-2020-11-10-B'
 
 overlay_list = list(load_overlay_list(this_dir / dir_overlays))
 
@@ -276,16 +278,10 @@ for overlay in overlay_list:
 print()
 
 # This seems to be a reasonable threshold for sqrt(MSE) detection
-threshold = 40
+threshold = 20
 
-#for date in ['2020-11-02', '2020-11-03', '2020-11-05']:
-#    for file in list((lectures / date).iterdir()):
-#        if file.suffix == '.mp4':
-#            output_file = with_stem(file, file.stem + '-overlaid')
-#            process_video(file, threshold, output_file)
-
-for date in ['2020-11-10']:
+for date in ['2021-01-28']:
     for file in list((lectures / date).iterdir()):
-        if file.suffix == '.mp4' and file.name.startswith('B'):
+        if file.suffix == '.mp4':
             output_file = with_stem(file, file.stem + '-overlaid')
             process_video(file, threshold, output_file)
