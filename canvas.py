@@ -226,10 +226,12 @@ class Course:
 
         self.user_details = dict()
         self.user_name_to_id = dict()
-        for user in self.canvas.get_list(['courses', course_id, 'users'], params = {'include[]': ['enrollments']}, use_cache = use_cache):
-            if any(e.role == 'StudentEnrollment' for e in user.enrollments):
-                self.user_details[user.id] = user
-                self.user_name_to_id[user.name] = user.id
+        for user in self.canvas.get_list(['courses', course_id, 'users'], params = {
+                'enrollment_type[]': ['student'],
+                'enrollment_state[]': ['active', 'invited', 'completed', 'inactive'],
+        }, use_cache = use_cache):
+            self.user_details[user.id] = user
+            self.user_name_to_id[user.name] = user.id
 
         self.assignments_name_to_id = dict()
         self.assignment_details = dict()
