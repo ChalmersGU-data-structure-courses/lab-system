@@ -7,6 +7,7 @@ import fcntl
 import functools
 import itertools
 import json
+import logging
 from pathlib import Path
 import re
 import tempfile
@@ -445,3 +446,24 @@ def pipe(min_size):
     F_SETPIPE_SZ = 1031
     fcntl.fcntl(r, F_SETPIPE_SZ, min_size)
     return (r, w)
+
+@contextlib.contextmanager
+def working_dir(path):
+    old = os.getcwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(old)
+
+def log_command(logger, cmd, working_dir = False):
+    logger.log(logging.DEBUG, 'running command{}:\n{}'.format(' in {}'.format(shlex.quote(os.getcwd())) if working_dir else '', shlex.join(cmd)))
+
+def wait_and_check(process, cmd):
+    r = process.wait()
+    if r != 0:
+        raise subprocess.CalledProcessError(r, cmd)
+
+def clear_cached_property(object, attribute):
+    if attribute in object.__dict__:
+        delattr(object, attribute)
