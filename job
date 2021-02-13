@@ -2,7 +2,7 @@
 
 cd "$(dirname "$0")"
 
-export GIT_PYTHON_TRACE = 1
+export GIT_PYTHON_TRACE=1
 
 while [[ 1 ]]; do
   echo "Waking up."
