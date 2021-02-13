@@ -39,7 +39,7 @@ class Lab:
 
         # GitLab local repo config
         self.dir = self.config.dir_labs / self.rel_path
-        init_repo()
+        self.init_repo()
 
         # Code repo config
         self.code_repo_dir = self.config.code_repo_lab_dir / self.rel_path
