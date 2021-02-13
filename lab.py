@@ -39,7 +39,7 @@ class Lab:
 
         # GitLab local repo config
         self.dir = self.config.dir_labs / self.rel_path
-        self.repo = git.Repo(self.dir)
+        init_repo()
 
         # Code repo config
         self.code_repo_dir = self.config.code_repo_lab_dir / self.rel_path
@@ -200,14 +200,6 @@ class Lab:
         for n in self.course.lab_groups:
             self.course.project(course.lab_group_path(n) / 'problem').delete()
 
-    def fix_stuff(self):
-        for n in self.course.lab_groups:
-            print(f'Fixing {n}...')
-            p = self.lab_group_project(n)
-            p.default_branch = 'master'
-            p.save()
-            p.branches.delete('problem')
-
     def fork_lab_project(self):
         p = self.problem_project(lazy = False)
         print(p.forks)
@@ -272,7 +264,7 @@ class Lab:
                 push_refspecs = push_refspecs,
                 **kwargs
             )
- 
+
     def add_lab_group_remotes(self, **kwargs):
         for n in self.course.lab_groups:
             self.add_remote(
@@ -284,6 +276,14 @@ class Lab:
                 **kwargs,
             )
 
+    def init_repo(self, bare = True):
+        if self.dir.exists():
+            self.repo = git.Repo(self.dir)
+        else:
+            self.repo = git.Repo.init(self.dir, bare = bare)
+            self.add_aux_remotes()
+            self.add_lab_group_remotes()
+ 
     def fetch_lab_groups(self):
         for n in self.course.lab_groups:
             remote = self.config.lab_group_print(n)
