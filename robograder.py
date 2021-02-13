@@ -13,7 +13,7 @@ logger.setLevel(logging.DEBUG)
 
 import gitlab_config
 course = Course(gitlab_config)
-lab = Lab(course, 2)
+lab = Lab(course, 2, bare = True)
 
 lab.print_unhandled_tests()
 
