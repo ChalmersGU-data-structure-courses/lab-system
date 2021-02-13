@@ -234,7 +234,7 @@ class Lab:
     def add_remote(self, remote, project, fetch_branches = True, fetch_tags = False, push_refspecs = [], **kwargs):
         def fetch_refspecs():
             if fetch_branches:
-                yield '+refs/heads/*:refs/heads/*'.format(remote)
+                yield '+refs/heads/*:refs/remotes/{}/*'.format(remote)
             if fetch_branches == 'copy':
                 yield '+refs/heads/*:refs/heads/*'.format(remote)
             if fetch_tags:
