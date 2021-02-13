@@ -33,6 +33,7 @@ __pycache__/
 # Emacs
 *~
 \#*#
+.#*#
 
 # Mac files
 .DS_Store
@@ -41,3 +42,10 @@ __pycache__/
 node_modules/
 package.json
 package-lock.json
+
+# Eclipse files
+*.classpath
+*.iml
+*.project
+*.settings
+*.ide
