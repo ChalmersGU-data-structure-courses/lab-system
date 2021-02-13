@@ -12,7 +12,7 @@ import logging
 import operator
 from pathlib import Path, PurePosixPath
 
-#import canvas
+import canvas
 from general import *
 
 logger = logging.getLogger('course')
@@ -100,9 +100,9 @@ def protect_tags(project, tags):
 
 class Course:
     def __init__(self, config, canvas_use_cache = True):
-        #self.canvas = canvas.Canvas(config.canvas_url)
-        #self.canvas_course = canvas.Course(self.canvas, config.canvas_course_id, use_cache = canvas_use_cache)
-        #self.canvas_group_set = canvas.GroupSet(self.canvas_course, config.canvas_group_set, use_cache = canvas_use_cache)
+        self.canvas = canvas.Canvas(config.canvas_url, auth_token = config.canvas_auth_token)
+        self.canvas_course = canvas.Course(self.canvas, config.canvas_course_id, use_cache = canvas_use_cache)
+        self.canvas_group_set = canvas.GroupSet(self.canvas_course, config.canvas_group_set, use_cache = canvas_use_cache)
 
         self.config = config
         self.gl = gitlab.Gitlab(config.base_url, private_token = read_private_token(config.private_token))

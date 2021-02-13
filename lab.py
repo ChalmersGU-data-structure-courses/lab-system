@@ -107,13 +107,13 @@ class Lab:
 
     @functools.cached_property
     def grading_sheet_parsed(self):
-        return course.parse_grading_sheet(self.grading_sheet)
+        return self.course.parse_grading_sheet(self.grading_sheet)
 
     def update_grading_sheet(self):
         logger.log(logging.INFO, 'Updating grading sheet for {}...'.format(self.lab_name))
 
         cells = list()
-        for n in course.lab_groups:
+        for n in self.course.lab_groups:
             row_index = self.grading_sheet_parsed.group_rows[n]
             row = self.grading_sheet_parsed.rows[row_index]
 
@@ -128,7 +128,7 @@ class Lab:
                 query = relevant[m]
                 response = responses[query.name]
                 grading_columns = self.grading_sheet_parsed.grading_columns[m]
-                query_formatted = Course.sheet_value_link(course.tree_link(self.lab_group_project_path(n), query.name), query.name)
+                query_formatted = Course.sheet_value_link(self.course.tree_link(self.lab_group_project_path(n), query.name), query.name)
 
                 if response:
                     issue, score = response
@@ -199,7 +199,7 @@ class Lab:
 
     def delete_spam(self):
         for n in self.course.lab_groups:
-            self.course.project(course.lab_group_path(n) / 'problem').delete()
+            self.course.project(self.course.lab_group_path(n) / 'problem').delete()
 
     def fork_lab_project(self):
         p = self.problem_project(lazy = False)
@@ -369,9 +369,9 @@ class Lab:
             responses = Course.response_map(gradings)
             if last := Course.last_handled_query(gradings):
                 (issue, grade) = responses[last.name]
-                mention = Course.mention(course.students(n))
+                mention = Course.mention(self.course.students(n))
                 if not (issue.closed_at or mention in issue.description):
-                    print('{}: {}, {}'.format(n, issue.web_url, Course.mention(course.students(n))))
+                    print('{}: {}, {}'.format(n, issue.web_url, Course.mention(self.course.students(n))))
                     issue.description = '{}\n\n{}\n'.format(issue.description, mention)
                     issue.save()
         clear_cached_property(lab, 'gradings_and_tests')

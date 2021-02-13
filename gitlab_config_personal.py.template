@@ -13,3 +13,7 @@ private_token = None
 # This should be an absolute path.
 # Otherwise, it will be interpreted relative to the current directory.
 dir_labs = None  # Path('~/DIT181').expanduser()
+
+# Canvas pivate authentication token.
+# Can be given as a string or as a path to a file containing it.
+canvas_auth_token = None
