@@ -730,11 +730,11 @@ if __name__ == "__main__":
     import gitlab_config
     course = Course(gitlab_config)
 
-    lab = Lab(course, 2)
+    #lab = Lab(course, 2)
 
-    lab1 = Lab(course, 1)
-    lab2 = Lab(course, 2)
-    lab3 = Lab(course, 3)
+    lab1 = Lab(course, 1, bare = True)
+    lab2 = Lab(course, 2, bare = True)
+    lab3 = Lab(course, 3, bare = True)
     #lab4 = Lab(course, 4)
     #lab.update_grading_repo()
     #lab.robograde_submissions()
