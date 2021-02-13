@@ -16,7 +16,6 @@ import webbrowser
 import check_symlinks
 from course import *
 from general import *
-import google_sheets
 import java
 import robograde
 
