@@ -6,7 +6,7 @@ private_token = None
 
 # Here is the local directory structure:
 # dir_labs
-# | lab #0  # Local repository for lab #0. 
+# | lab #0  # Local repository for lab #0.
 # ...
 
 # Path to local directory with labs.
