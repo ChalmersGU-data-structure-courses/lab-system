@@ -22,7 +22,7 @@ import robograde
 logger = logging.getLogger('lab')
 
 class Lab:
-    def __init__(self, course, lab):
+    def __init__(self, course, lab, bare = False):
         # General config
         self.course = course
         self.config = self.course.config
@@ -38,6 +38,7 @@ class Lab:
         self.grading_path = self.path / self.config.lab_grading
 
         # GitLab local repo config
+        self.bare = bare
         self.dir = self.config.dir_labs / self.rel_path
         self.init_repo()
 
@@ -233,7 +234,9 @@ class Lab:
     def add_remote(self, remote, project, fetch_branches = True, fetch_tags = False, push_refspecs = [], **kwargs):
         def fetch_refspecs():
             if fetch_branches:
-                yield '+refs/heads/*:refs/remotes/{}/*'.format(remote)
+                yield '+refs/heads/*:refs/heads/*'.format(remote)
+            if fetch_branches == 'copy':
+                yield '+refs/heads/*:refs/heads/*'.format(remote)
             if fetch_tags:
                 yield '+refs/tags/*:refs/remote-tags/{}/*'.format(remote)
 
@@ -246,28 +249,28 @@ class Lab:
             **kwargs
         )
 
-    def add_aux_remotes(self, **kwargs):
+    def add_aux_remotes(self):
         remotes = [
-            (self.config.lab_problem, [
+            (self.config.lab_problem, True, [
                 '+refs/heads/problem:refs/heads/problem',
             ]),
-            (self.config.lab_solution, [
+            (self.config.lab_solution, 'copy' if self.bare else True, [
                 '+refs/heads/problem:refs/heads/problem',
                 '+refs/heads/solution:refs/heads/solution',
             ]),
-            (self.config.lab_grading, [
+            (self.config.lab_grading, False, [
                 '+refs/tags/*:refs/tags/*',
                 '+refs/heads/problem:refs/heads/problem',
                 '+refs/heads/solution:refs/heads/solution',
             ]),
         ]
 
-        for remote, push_refspecs in remotes:
+        for remote, fetch_branches, push_refspecs in remotes:
             self.add_remote(
                 remote,
                 self.course.project(self.path / remote, lazy = False),
+                fetch_branches = fetch_branches,
                 push_refspecs = push_refspecs,
-                **kwargs
             )
 
     def add_lab_group_remotes(self, **kwargs):
@@ -281,13 +284,18 @@ class Lab:
                 **kwargs,
             )
 
-    def init_repo(self, bare = True):
+    def init_repo(self):
         if self.dir.exists():
             self.repo = git.Repo(self.dir)
         else:
-            self.repo = git.Repo.init(self.dir, bare = bare)
+            self.repo = git.Repo.init(self.dir, bare = self.bare)
             self.add_aux_remotes()
             self.add_lab_group_remotes()
+            self.repo.remote('problem').fetch()
+            self.repo.remote('solution').fetch()
+
+            #self.repo.create_head('problem').set_tracking_branch(solution.refs.)
+            #self.repo.create_head('solution').set_tracking_branch(solution.refs.solution)
  
     def fetch_lab_groups(self):
         for n in self.course.lab_groups:

@@ -90,6 +90,10 @@ def lab_group_name_print(n):
 
 labs = [1, 2, 3, 4]
 
+def lab_parse(s):
+    m = re.fullmatch('lab(\\d+)', s)
+    return int(m.group(1)) if m else None
+
 def lab_print(n):
     return f'lab{n}'
 
@@ -138,6 +142,8 @@ def score_to_written_grade(m):
         0: 'incomplete',
         1: 'complete',
     }[m]
+
+gitlab_webhook_secret_token = 'a not so well-chosen secret'
 
 grading_sheet_header_group = 'Group'
 
