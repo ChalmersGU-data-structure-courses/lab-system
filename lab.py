@@ -212,6 +212,7 @@ class Lab:
                     'name': self.lab_name,
                     'namespace': group.id,
                 })
+                q.delete_fork_relation()
                 print('forked {} to {}'.format(p.name, group.name))
             except gitlab.exceptions.GitlabCreateError:
                 print('skipping already created project for group {}'.format(group.name))
@@ -223,6 +224,10 @@ class Lab:
             #print('protecting master...')
             #protect_master(self.lab_group_project(n))
             print('fork done')
+
+    def delete_fork_relation(self):
+        for n in self.course.lab_groups:
+            self.lab_group_project(n).delete_fork_relation()
 
     # Tags fetched will be prefixed by remote.
     def add_remote(self, remote, project, fetch_branches = True, fetch_tags = False, push_refspecs = [], **kwargs):
