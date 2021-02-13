@@ -43,9 +43,15 @@ node_modules/
 package.json
 package-lock.json
 
-# Eclipse files
+# Eclipse and IntelliJ files
 *.classpath
 *.iml
 *.project
 *.settings
-*.ide
+*.idea
+
+# Canvas cache
+Lab-grading/cache
+
+# Invitations cache
+Lab-grading/invitations_sent
