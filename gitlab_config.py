@@ -101,7 +101,7 @@ def lab_name_print(n):
     return f'Lab {n}'
 
 def grading_issue_parse(s):
-    m = re.fullmatch(f'(?:|(?:g|G)rading\s+(?:for|of)\s+)([^: ]*)\s*:\s*([^:]*)', s)
+    m = re.fullmatch('(?:|(?:g|G)rading\s+(?:for|of)\s+)([^: ]*)\s*:\s*([^:\\.!]*)[\\.!]*', s)
     return (m.group(1), written_grade_to_score(m.group(2))) if m else None
 
 def grading_issue_print(tag, grade):
