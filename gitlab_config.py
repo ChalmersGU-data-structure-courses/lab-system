@@ -54,10 +54,10 @@ lab_solution = 'solution'
 lab_grading = 'grading'
 
 # Tag pattern the students use for submission.
-submission_regex = '(?:s|S)ubmission.*'
+submission_regex = '(?:s|S)ubmission[^: ]*'
 
 # Tag pattern the students use for requesting testing (robo-grading).
-test_regex = '(?:t|T)est.*'
+test_regex = '(?:t|T)est[^: ]*'
 
 # Protected tag wildcards on GitLab (doesn't support regexes).
 protected_tags = ['submission*', 'Submission*', 'test*', 'Test*']
@@ -73,7 +73,7 @@ def branch_from_tag(n, tag):
     return f'lab_group_{n}-{tag}'
 
 # Pattern graders use as issue title
-grading_regex = f'(?:g|G)rading\s+for\s+({submission_regex})\s*:\s*()'
+#grading_regex = f'(?:g|G)rading\s+for\s+({submission_regex})\s*:\s*()'
 
 # Parse lab group identifier from group path.
 # Return None if not a lab group.
@@ -101,14 +101,14 @@ def lab_name_print(n):
     return f'Lab {n}'
 
 def grading_issue_parse(s):
-    m = re.fullmatch(f'(?:g|G)rading\s+(?:for|of)\s+([^:]*)\s*:\s*([^:]*)', s)
+    m = re.fullmatch(f'(?:|(?:g|G)rading\s+(?:for|of)\s+)([^: ]*)\s*:\s*([^:]*)', s)
     return (m.group(1), written_grade_to_score(m.group(2))) if m else None
 
 def grading_issue_print(tag, grade):
     return f'Grading for {tag}: {grade}'
 
 def testing_issue_parse(s):
-    m = re.fullmatch(f'This is (?:r|R)obo(?:g|G)rader, reporting for (.*)', s)
+    m = re.fullmatch(f'This is (?:r|R)obo(?:g|G)rader, reporting for ([^ ]*)', s)
     return m.group(1) if m else None
 
 def testing_issue_print(tag):
