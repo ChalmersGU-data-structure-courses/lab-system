@@ -397,6 +397,7 @@ class Lab:
     def robograde_tag(self, n, tag, in_student_repo = False):
         remote = self.config.lab_group_print(n)
         with_remote = lambda s: '{}/{}'.format(remote, s)
+        logger.log(logging.INFO, 'Robograding {}...'.format(with_remote(tag)))
 
         with tempfile.TemporaryDirectory() as dir:
             dir = Path(dir)
@@ -433,6 +434,7 @@ class Lab:
             })
             if in_student_repo:
                 clear_cached_property(self, 'gradings_and_tests')
+        logger.log(logging.INFO, 'Robograded {}.'.format(with_remote(tag)))
 
     def robograde_submissions(self):
         logger.log(logging.INFO, 'Robograding submissions...')
@@ -725,7 +727,7 @@ body {
 
 if __name__ == "__main__":
     logging.basicConfig()
-    logger.setLevel(logging.DEBUG)
+    logging.getLogger().setLevel(logging.INFO)
 
     import gitlab_config
     course = Course(gitlab_config)
