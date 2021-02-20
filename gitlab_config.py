@@ -107,12 +107,14 @@ def grading_issue_parse(s):
 def grading_issue_print(tag, grade):
     return f'Grading for {tag}: {grade}'
 
-def testing_issue_parse(s):
-    m = re.fullmatch(f'This is (?:r|R)obo(?:g|G)rader, reporting for ([^ ]*)', s)
+def testing_issue_parse(s, preliminary = False):
+    reporting = 'reporting \\(preliminary\\)' if preliminary else 'reporting'
+    m = re.fullmatch(f'This is (?:r|R)obo(?:g|G)rader, {reporting} for ([^ ]*)', s)
     return m.group(1) if m else None
 
-def testing_issue_print(tag):
-    return f'This is RoboGrader, reporting for {tag}'
+def testing_issue_print(tag, preliminary = False):
+    reporting = 'reporting (preliminary)' if preliminary else 'reporting'
+    return f'This is RoboGrader, {reporting} for {tag}'.format(reporting)
 
 # Here is the structure of each lab grading repository
 # Branches:
@@ -157,4 +159,4 @@ def grading_sheet_header_query_print(m):
 grading_sheet_header_grader = 'Grader'
 grading_sheet_header_score = '0/1'
 
-robograders = [2]
+robograders = [2, 3]

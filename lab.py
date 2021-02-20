@@ -101,6 +101,16 @@ class Lab:
                 self.course.print_issue(project, issue)
         return r
 
+    def mark_tests_as_preliminary(self):
+        for n in self.course.lab_groups:
+            _, tests = self.gradings_and_tests[n]
+            responses = Course.response_map(tests)
+            for tag in Course.handled_queries(tests):
+                issue = responses[tag.name][0]
+                issue.title = self.config.testing_issue_print(tag.name, preliminary = True)
+                issue.save()
+        clear_cached_property(self, 'gradings_and_tests')
+
     @functools.cached_property
     def grading_sheet(self):
         return self.course.google_client.open_by_key(self.config.lab_grading_sheets[self.lab]).get_worksheet(0)
@@ -374,7 +384,7 @@ class Lab:
                     print('{}: {}, {}'.format(n, issue.web_url, Course.mention(self.course.students(n))))
                     issue.description = '{}\n\n{}\n'.format(issue.description, mention)
                     issue.save()
-        clear_cached_property(lab, 'gradings_and_tests')
+        clear_cached_property(self, 'gradings_and_tests')
 
     def submission_checkout(self, dir, ref):
         cmd = ['tar', '-x']
@@ -392,7 +402,7 @@ class Lab:
         java.compile_java_dir(dir)
 
     def submission_robograde(self, dir):
-        return robograde.robograde(dir, [self.config.code_repo_robograding_dir, self.code_repo_dir / 'pregrade'], 'Robograder')
+        return robograde.robograde(dir, [self.config.code_repo_robograding_dir, self.code_repo_dir / 'pregrade'], 'Robograder', machine_speed = self.config.robograder_machine_speed)
 
     def robograde_tag(self, n, tag, in_student_repo = False):
         remote = self.config.lab_group_print(n)
@@ -428,12 +438,12 @@ class Lab:
                 response = '{}\n{}\n'.format(response, Course.mention(self.course.students(n)))
 
             p = self.lab_group_project(n) if in_student_repo else self.grading_project()
+            logger.log(logging.INFO, response)
             p.issues.create({
                 'title': self.config.testing_issue_print(tag if in_student_repo else with_remote(tag)),
                 'description': response,
             })
-            if in_student_repo:
-                clear_cached_property(self, 'gradings_and_tests')
+
         logger.log(logging.INFO, 'Robograded {}.'.format(with_remote(tag)))
 
     def robograde_submissions(self):
@@ -473,6 +483,7 @@ class Lab:
             _, tests = self.gradings_and_tests[n]
             if test := Course.unhandled_query(tests):
                 self.robograde_tag(n, test.name, True)
+        clear_cached_property(self, 'gradings_and_tests')
 
     def build_index(self, preview = True):
         logger.log(logging.INFO, 'Building current submissions index...')
