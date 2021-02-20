@@ -67,7 +67,8 @@ def compile_java(files, force_recompile = False, **kwargs):
 
 def compile_java_dir(dir, **kwargs):
     with working_dir(dir):
-        files = Path().rglob('*.java')
+        files = list(Path().rglob('*.java'))
+        logger.log(logging.DEBUG, 'Compiling files: {}'.format(files))
         compile_java(files, **kwargs)
 
 ################################################################################
