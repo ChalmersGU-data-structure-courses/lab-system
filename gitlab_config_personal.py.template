@@ -9,11 +9,14 @@ private_token = None
 # | lab #0  # Local repository for lab #0.
 # ...
 
+# Canvas pivate authentication token.
+# Can be given as a string or as a path to a file containing it.
+canvas_auth_token = None
+
 # Path to local directory with labs.
 # This should be an absolute path.
 # Otherwise, it will be interpreted relative to the current directory.
 dir_labs = None  # Path('~/DIT181').expanduser()
 
-# Canvas pivate authentication token.
-# Can be given as a string or as a path to a file containing it.
-canvas_auth_token = None
+# Relative machine speed to calibrate the robograder.
+robograder_machine_speed = 1
