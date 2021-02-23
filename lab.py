@@ -211,6 +211,17 @@ class Lab:
         for n in self.course.lab_groups:
             self.course.project(self.course.lab_group_path(n) / 'problem').delete()
 
+    def fix_project_names(self):
+        for n in self.course.lab_groups:
+            p = self.course.project(self.course.lab_group_path(n) / 'problem', lazy = False)
+            p.path = 'lab4'
+            p.save()
+
+    def fix_project_branches(self):
+        for n in self.course.lab_groups:
+            p = self.lab_group_project(n)
+            p.branches.get('problem').delete()
+
     def fork_lab_project(self):
         p = self.problem_project(lazy = False)
         print(p.forks)
@@ -219,11 +230,12 @@ class Lab:
             group = self.course.lab_group(n)
             print('forking {} to {}...'.format(p.name, group.name))
             try:
+                # doesn't work!
                 q = p.forks.create({
                     'name': self.lab_name,
                     'namespace': group.id,
                 })
-                q.delete_fork_relation()
+                #q.delete_fork_relation() for some reason, doesn't work here
                 print('forked {} to {}'.format(p.name, group.name))
             except gitlab.exceptions.GitlabCreateError:
                 print('skipping already created project for group {}'.format(group.name))
@@ -262,7 +274,7 @@ class Lab:
     def add_aux_remotes(self):
         remotes = [
             (self.config.lab_problem, True, [
-                '+refs/heads/problem:refs/heads/problem',
+                '+refs/heads/master:refs/heads/problem',
             ]),
             (self.config.lab_solution, 'copy' if self.bare else True, [
                 '+refs/heads/problem:refs/heads/problem',
@@ -432,7 +444,7 @@ class Lab:
             except robograde.RobogradeFileConflict as e:
                 response = 'I could not test your submission because the compiled file\n```\n{}\n```\nconflicts with files I use for testing.'.format(e.file)
             except robograde.RobogradeException as e:
-                record_error('Oops, you broke me!\n\nI encountered a problem with myself while testing your submission:', e.errors, True)
+                record_error('Oops, you broke me!\n\nI encountered a problem while testing your submission.\nThis could be a problem with myself (a robo-bug) or with your code (unexpected changes to class or methods signatures). If it is the latter, you might be able to elucidate the cause from the below error message and fix it. If not, tell my designers!', e.errors, True)
 
             if in_student_repo:
                 response = '{}\n{}\n'.format(response, Course.mention(self.course.students(n)))
@@ -748,6 +760,7 @@ if __name__ == "__main__":
     lab1 = Lab(course, 1, bare = True)
     lab2 = Lab(course, 2, bare = True)
     lab3 = Lab(course, 3, bare = True)
+    lab4 = Lab(course, 4, bare = True)
     #lab4 = Lab(course, 4)
     #lab.update_grading_repo()
     #lab.robograde_submissions()

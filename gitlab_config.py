@@ -130,7 +130,8 @@ gitlab_teacher_to_name = {
     'hugoga': 'Hugo',
     'naredi': 'REDACTED_FIRST_NAME',
     'sattler': 'Christian',
-    'wikarin': 'Karin'
+    'wikarin': 'Karin',
+    'bastys': 'Iulia',
 }
 
 def written_grade_to_score(s):
