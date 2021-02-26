@@ -374,7 +374,7 @@ class Lab:
 
     def push_grading(self):
         logger.log(logging.INFO, 'Pushing grading repository...')
-        self.repo.remote('grading').push(prune = True)
+        self.repo.remote(self.config.lab_grading).push(prune = True)
         logger.log(logging.INFO, 'Pushed grading repository.')
 
     def update_grading_repo(self):
@@ -384,6 +384,46 @@ class Lab:
         self.add_grading_tags()
         self.push_grading()
         logger.log(logging.INFO, 'Updated grading repository.')
+
+    def hotfix_lab_group_master(self, hotfix_name, n):
+        remote = self.config.lab_group_print(n)
+        with_remote = lambda s: '{}/{}'.format(remote, s)
+
+        problem = resolve_ref(self.repo, abs_head('problem'))
+        hotfix = resolve_ref(self.repo, abs_head(hotfix_name))
+        if problem == hotfix:
+            logger.log(logging.WARNING, 'Hotfixing: hotfix is identical to problem.')
+            return
+
+        master = abs_remote(with_remote('master'))
+        index = git.IndexFile.from_tree(self.repo, problem, master, hotfix, i = '-i')
+        merge = index.write_tree()
+        diff = merge.diff(master)
+        if not diff:
+            logger.log(logging.WARNING, 'Hotfixing: already applied for {}.'.format(self.config.lab_group_name_print(n)))
+            return
+        for x in diff:
+            logger.log(logging.INFO, str(x))
+
+        commit = git.Commit.create_from_tree(
+            self.repo,
+            merge,
+            hotfix.message,
+            parent_commits = [resolve_ref(self.repo, master)],
+            head = False,
+            author = hotfix.author,
+            committer = hotfix.committer,
+            author_date = hotfix.authored_datetime,
+            commit_date = hotfix.committed_datetime,
+        )
+
+        remote = self.repo.remote(remote)
+        refspec = commit.hexsha + ':' + abs_head('master')
+        return remote.push(refspec = refspec)
+
+    def hotfix_lab_groups_master(self, hotfix_name):
+        for n in self.course.lab_groups:
+            self.hotfix_lab_group_master(hotfix_name, n)
 
     def mention_students_in_last_gradings(self):
         for n in self.course.lab_groups:
