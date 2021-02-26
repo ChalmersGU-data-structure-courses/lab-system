@@ -26,10 +26,12 @@ def boolean(x):
 with_refs = lambda s: 'refs/{}'.format(s)
 with_heads = lambda s: 'heads/{}'.format(s)
 with_tags = lambda s: 'tags/{}'.format(s)
+with_remotes = lambda s: 'remotes/{}'.format(s)
 with_remote_tags = lambda s: 'remote-tags/{}'.format(s)
 
 abs_head = compose(with_heads, with_refs)
 abs_tag = compose(with_tags, with_refs)
+abs_remote = compose(with_remotes, with_refs)
 abs_remote_tag = compose(with_remote_tags, with_refs)
 
 def without_refs(s):
@@ -64,8 +66,18 @@ def add_remote(repo, remote, url, fetch_refspecs = [], push_refspecs = [], prune
         if no_tags:
             c.add_value(section, 'tagopt', '--no-tags')
 
+
+
 def onesided_merge(repo, commit, new_parent):
-    return git.Commit.create_from_tree(repo, commit.tree, 'merge commit', [commit, new_parent])
+    return git.Commit.create_from_tree(
+        repo,
+        commit.tree,
+        'merge commit',
+        [commit, new_parent],
+        head = False,
+        author_date = commit.authored_datetime,
+        commit_date = commit.committed_datetime,
+    )
 
 # Only creates a new commit if necessary.
 def tag_onesided_merge(repo, tag, commit, new_parent):
