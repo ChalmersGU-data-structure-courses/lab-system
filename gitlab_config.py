@@ -160,4 +160,4 @@ def grading_sheet_header_query_print(m):
 grading_sheet_header_grader = 'Grader'
 grading_sheet_header_score = '0/1'
 
-robograders = [2, 3]
+robograders = [2, 3, 4]
