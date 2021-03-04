@@ -23,11 +23,13 @@ def add_classpath(classpath):
 ################################################################################
 # Java Compiler
 
-def javac_cmd(files = None, destination = None, classpath = None, options = None):
+def javac_cmd(files = None, destination = None, classpath = None, encoding = None, options = None):
     yield 'javac'
     if destination != None:
         yield from ['-d', str(destination)]
     yield from add_classpath(classpath)
+    if encoding != None:
+        yield from ['-encoding', encoding]
     if options != None:
         for option in options:
             yield str(option)
@@ -45,7 +47,7 @@ class CompileError(Exception):
 # Unless forced, only recompiles if necessary: missing or outdated class-files.
 # On success, returns None.
 # On failure, returns compile errors as string.
-def compile_java(files, force_recompile = False, **kwargs):
+def compile_java(files, force_recompile = False, detect_enc = False, **kwargs):
     def is_up_to_date(file_java):
         file_class = Path(file_java).with_suffix('.class')
         return file_class.exists() and os.path.getmtime(file_class) > get_recursive_modification_time(file_java)
@@ -59,6 +61,10 @@ def compile_java(files, force_recompile = False, **kwargs):
         recompile = False
 
     if recompile:
+        if detect_enc:
+            encoding = detect_encoding(files)
+            logger.log(logging.DEBUG, 'Detected encoding {}'.format(encoding))
+            kwargs['encoding'] = encoding
         cmd = list(javac_cmd(files, **kwargs))
         log_command(logger, cmd, True)
         process = subprocess.run(cmd, stderr = subprocess.PIPE, encoding = 'utf-8')
