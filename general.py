@@ -1,3 +1,4 @@
+import chardet
 from collections import defaultdict
 import contextlib
 from datetime import datetime, timedelta, timezone
@@ -467,3 +468,12 @@ def wait_and_check(process, cmd):
 def clear_cached_property(object, attribute):
     if attribute in object.__dict__:
         delattr(object, attribute)
+
+def detect_encoding(files):
+    detector = chardet.universaldetector.UniversalDetector()
+    for file in files:
+        if isinstance(file, str):
+            file = Path(file)
+        detector.feed(file.read_bytes())
+    detector.close()
+    return detector.result['encoding']

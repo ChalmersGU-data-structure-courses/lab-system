@@ -451,7 +451,7 @@ class Lab:
         check_symlinks.check_self_contained(dir)
 
     def submission_compile(self, dir):
-        java.compile_java_dir(dir)
+        java.compile_java_dir(dir, detect_enc = True)
 
     def submission_robograde(self, dir):
         return robograde.robograde(dir, [self.config.code_repo_robograding_dir, self.code_repo_dir / 'pregrade'], 'Robograder', machine_speed = self.config.robograder_machine_speed)
