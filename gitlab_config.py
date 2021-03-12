@@ -135,7 +135,7 @@ gitlab_teacher_to_name = {
     'sattler': 'Christian',
     'wikarin': 'Karin',
     'bastys': 'Iulia',
-    'REDACTED_EMAIL_USERNAME ': 'Linda',
+    'REDACTED_EMAIL_USERNAME' : 'Linda',
 }
 
 def written_grade_to_score(s):
