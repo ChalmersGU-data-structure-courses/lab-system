@@ -65,7 +65,7 @@ def compile_java(files, force_recompile = False, detect_enc = False, **kwargs):
             encoding = detect_encoding(files)
             logger.log(logging.DEBUG, 'Detected encoding {}'.format(encoding))
             kwargs['encoding'] = encoding
-        cmd = list(javac_cmd(files, **kwargs))
+        cmd = list(javac_cmd(files, options = javac_standard_options, **kwargs))
         log_command(logger, cmd, True)
         process = subprocess.run(cmd, stderr = subprocess.PIPE, encoding = 'utf-8')
         if process.returncode != 0:
