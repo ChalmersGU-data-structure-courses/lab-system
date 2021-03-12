@@ -17,7 +17,7 @@ course = Course(gitlab_config)
 lab1 = Lab(course, 1, bare = True)
 lab2 = Lab(course, 2, bare = True)
 lab3 = Lab(course, 3, bare = True)
-lab3 = Lab(course, 4, bare = True)
+lab4 = Lab(course, 4, bare = True)
 
 lab2.print_unhandled_tests()
 lab2.update_grading_repo()
