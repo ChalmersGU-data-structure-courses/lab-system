@@ -13,6 +13,9 @@ canvas_course_id = 42575
 canvas_group_set = 'Lab groups'
 canvas_grading_path = 'temp'
 
+# Exam room
+canvas_exam_course_id = 48360
+
 # Google Sheet config
 lab_grading_sheets = {
   1: '1AiiaEhz-8_4oWCQ0_4Z1mUCMK3C_kjyB0eyLO1ezHHE',
@@ -132,6 +135,7 @@ gitlab_teacher_to_name = {
     'sattler': 'Christian',
     'wikarin': 'Karin',
     'bastys': 'Iulia',
+    'linda.erlenhov ': 'Linda',
 }
 
 def written_grade_to_score(s):
