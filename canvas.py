@@ -4,7 +4,7 @@ import logging
 import http_logging
 import json
 import os.path
-from pathlib import PurePath, Path
+from pathlib import PurePosixPath, Path
 import re
 import requests
 import shlex
@@ -27,7 +27,7 @@ logger = logging.getLogger("canvas")
 # * a timestamp: only entries at most this old are considered valid.
 class Canvas:
     def __init__(self, domain, auth_token = Path(__file__).parent / "auth_token", cache_dir = Path("cache")):
-        if isinstance(auth_token, PurePath):
+        if isinstance(auth_token, PurePosixPath):
             try:
                 self.auth_token = Path(auth_token).open().read().strip()
             except FileNotFoundError:
@@ -51,7 +51,7 @@ class Canvas:
     # internal
     @staticmethod
     def get_cache_path(endpoint, params):
-        p = PurePath(*(map(str, endpoint)))
+        p = PurePosixPath(*(map(str, endpoint)))
         n = p.name
         if bool(params):
             n = n + "?" + urllib.parse.urlencode(params)
@@ -59,7 +59,7 @@ class Canvas:
 
     # internal
     def get_url(self, endpoint):
-        return self.base_url + "/" + str(PurePath(*(map(str, endpoint))))
+        return self.base_url + "/" + str(PurePosixPath(*(map(str, endpoint))))
 
     # internal
     @staticmethod
@@ -165,16 +165,16 @@ class Canvas:
     # Perform a PUT request to the designated endpoint.
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
     # The starting elements 'api' and 'v1' are omitted.
-    def put(self, endpoint, params):
+    def put(self, endpoint, params = dict(), data = None, json = None):
         logger.log(logging.INFO, 'PUT with endpoint ' + self.get_url(Canvas.with_api(endpoint)))
-        return Canvas.objectify_json(Canvas.get_response_json(self.session.put(self.get_url(Canvas.with_api(endpoint)), params = params)))
+        return Canvas.objectify_json(Canvas.get_response_json(self.session.put(self.get_url(Canvas.with_api(endpoint)), data = data, json = json, params = params)))
 
     # Perform a POST request to the designated endpoint.
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
     # The starting elements 'api' and 'v1' are omitted.
-    def post(self, endpoint, data, params = dict()):
+    def post(self, endpoint, data = None, json = None, params = dict()):
         logger.log(logging.INFO, 'POST with endpoint ' + self.get_url(Canvas.with_api(endpoint)))
-        return Canvas.objectify_json(Canvas.get_response_json(self.session.post(self.get_url(Canvas.with_api(endpoint)), params = params, data = data)))
+        return Canvas.objectify_json(Canvas.get_response_json(self.session.post(self.get_url(Canvas.with_api(endpoint)), data = data, json = json, params = params)))
 
     # Perform a DELETE request to the designated endpoint.
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
@@ -226,12 +226,12 @@ class Course:
 
         self.user_details = dict()
         self.user_name_to_id = dict()
-        for user in self.canvas.get_list(['courses', course_id, 'users'], params = {
-                'enrollment_type[]': ['student'],
-                'enrollment_state[]': ['active', 'invited', 'completed', 'inactive'],
-        }, use_cache = use_cache):
-            self.user_details[user.id] = user
-            self.user_name_to_id[user.name] = user.id
+        self.user_integration_id_to_id = dict()
+        for user in self.canvas.get_list(['courses', course_id, 'users'], params = {'include[]': ['enrollments']}, use_cache = use_cache):
+            if any(e.role == 'StudentEnrollment' for e in user.enrollments):
+                self.user_details[user.id] = user
+                self.user_name_to_id[user.name] = user.id
+                self.user_integration_id_to_id[user.integration_id] = user.id
 
         self.assignments_name_to_id = dict()
         self.assignment_details = dict()
@@ -245,8 +245,11 @@ class Course:
     def users_str(self, ids):
         return ', '.join(self.user_str(id) for id in ids) if ids else '[no users]'
 
-    def get_assignments(self, use_cache = True):
-        return self.canvas.get_list(self.endpoint + ['assignments'], use_cache = use_cache)
+    def get_assignments(self, include = None, use_cache = True):
+        params = None
+        if include:
+            params = {'include': include}
+        return self.canvas.get_list(self.endpoint + ['assignments'], params = params, use_cache = use_cache)
 
     def select_assignment(self, assignment_name):
         id = self.assignments_name_to_id.get(assignment_name)
@@ -268,6 +271,38 @@ class Course:
     def assignment_str(self, id):
         return '{} (id {})'.format(self.assignment_details[id].name, id)
 
+    def post_assignment(self, assignment):
+        return self.canvas.post(self.endpoint + ['assignments'], json = {
+            'assignment': assignment,
+        })
+
+    def edit_assignment(self, id, assignment):
+        return self.canvas.put(self.endpoint + ['assignments', id], json = {
+            'assignment': assignment,
+        })
+
+    def delete_assignment(self, id):
+        self.canvas.delete(self.endpoint + ['assignments', id])
+
+    def get_submissions(self, assignment_id, use_cache = True):
+        return self.canvas.get_list(['courses', self.course_id, 'assignments', assignment_id, 'submissions'], params = {'include[]': ['submission_comments', 'submission_history']}, use_cache = use_cache)
+
+    def get_section(self, name, use_cache = True):
+        sections = self.canvas.get_list(self.endpoint + ['sections'], use_cache = use_cache)
+        return from_singleton(s for s in sections if s.name == name)
+
+    def get_students_in_section(self, id, use_cache = True):
+        return self.canvas.get(self.endpoint + ['sections', id], params = {'include': ['students']}, use_cache = use_cache).students
+
+    def get_dir_id(self, canvas_dir, use_cache = True):
+        canvas_dir = PurePosixPath(canvas_dir)
+        try:
+            return self.canvas.get_list(self.endpoint + ['folders', 'by_path', canvas_dir.relative_to('/')], use_cache = use_cache)[-1].id
+        except requests.HTTPError as e:
+            if e.response.status_code == 404:
+                return None
+            raise e
+
     def get_file_descr(self, id):
         return self.canvas.get(self.endpoint + ['files', id])
 
@@ -277,6 +312,41 @@ class Course:
         if locked:
             self.canvas.file_set_locked(file_id, True)
         return file_id
+
+    def get_folder(self, id):
+        return self.canvas.get(['folders', id])
+
+    def create_folder(self, canvas_dir, unlock_at = None, lock_at = None, locked = None, hidden = None):
+        canvas_dir = PurePosixPath(canvas_dir)
+        params = {
+            'name': canvas_dir.name,
+            'parent_folder_path': str(canvas_dir.parent),
+        }
+        if unlock_at != None:
+            params['unlock_at'] = unlock_at.isoformat()
+        if lock_at != None:
+            params['lock_at'] = lock_at.isoformat()
+        if locked != None:
+            params['locked'] = locked
+        if hidden != None:
+            params['hidden'] = hidden
+
+        folder = self.canvas.post(self.endpoint + ['folders'], params)
+        if not folder.full_name == 'course files' + str(canvas_dir):
+            self.delete_folder(folder.id)
+            assert False, 'Could not create Canvas folder {}.'.format(shlex.quote(str(canvas_dir)))
+
+        return folder
+
+    # id can also be path.
+    def delete_folder(self, id, use_cache = False):
+        if not isinstance(id, int):
+            id = self.get_dir_id(id, use_cache = use_cache)
+
+        self.canvas.delete(['folders', id])
+
+    def list_folders(self, use_cache = False):
+        return self.canvas.get_list(self.endpoint + ['folders'], use_cache = use_cache)
 
 class GroupSet:
     def __init__(self, course, group_set, use_cache = True):
@@ -439,7 +509,7 @@ class Assignment:
         return result
 
     def collect_submissions(self, use_cache = True):
-        raw_submissions = self.canvas.get_list(['courses', self.course.course_id, 'assignments', self.assignment_id, 'submissions'], params = {'include[]': ['submission_comments', 'submission_history']}, use_cache = use_cache)
+        raw_submissions = self.course.get_submissions(self.assignment_id)
         grouped_submission = Assignment.group_identical_submissions(Assignment.filter_submissions(raw_submissions))
         self.submissions = self.align_with_groups(grouped_submission)
 
