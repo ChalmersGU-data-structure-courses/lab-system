@@ -477,3 +477,6 @@ def detect_encoding(files):
         detector.feed(file.read_bytes())
     detector.close()
     return detector.result['encoding']
+
+def read_without_comments(path):
+    return list(filter(lambda s: s and not s.startswith('#'), path.read_text().splitlines()))
