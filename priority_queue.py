@@ -71,13 +71,14 @@ class Question:
         first = heap[0]
         last = heap.pop()
         heap[0] = last
-        yield ('sol_remove_swap_delete', f'We swap {first} with {last}, delete {first}, and then sink down {last}:')
+        yield ('sol_remove_swap_delete', f'We swap the root {first} with the last element {last}, delete the new last element {first}, and then sink down the root {last}:')
 
         def valid(k):
             return k < len(heap)
 
         j = 0
-        for i in range(3):
+        msgs = list()
+        while True:
             l = 2 * j + 1
             r = 2 * j + 2
             ambiguous = False
@@ -89,8 +90,11 @@ class Question:
                 next = l if heap[l] <= heap[r] else r
                 ambiguous = heap[l] == heap[r]
                 child = {l: 'left', r: 'right'}[next]
-            msg = f'We swap {heap[j]} with its {child} child {heap[next]}.{" Note: we could also have chosen its right child!" if ambiguous else ""}' if next != -1 else ''
-            yield (f'sol_remove_sink_{i}', msg)
+            if not (next != -1 and heap[next] < heap[j]):
+                break
+            msgs.append(f'We swap {heap[j]} with its {child} child {heap[next]}.{" Note: we could also have chosen its right child!" if ambiguous else ""}')
             swap(heap, j, next)
             j = next
+        for i in range(3):
+            yield (f'sol_remove_sink_{i}', msgs[i] if i < len(msgs) else '')
         yield ('sol_heap', str(heap))
