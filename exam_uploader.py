@@ -226,7 +226,7 @@ def download_submissions(dir, use_cache = True):
 
         submission = exam.get_submissions(a.id, use_cache = use_cache)[0]
         state = submission.workflow_state
-        if state != 'unsubmitted' and user.integration_id == 'gusbrannsi@gu.se':
+        if state != 'unsubmitted':
             dir_user = dir / user.integration_id
             general.mkdir_fresh(dir_user)
             for attachment in submission.attachments:
@@ -249,6 +249,6 @@ def write_lookup(course, submission_dir, lookup_file):
 
 def read_lookup(lookup_file):
     with lookup_file.open() as file:
-        return list(csv.reader(file))
+        return list((int(i), int(j), integration_id, name) for (i, j, integration_id, name) in csv.reader(file))
 
 #x = post_assignments(extra_time_students, instances_on_canvas)
