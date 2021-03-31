@@ -2,6 +2,7 @@ import csv
 from pathlib import Path
 import PyPDF2
 import shlex
+import shutil
 import subprocess
 
 import general
@@ -105,7 +106,7 @@ def calculate_selectors():
 
         yes_substrict = all (len(pages) <= 1 for pages in to_pages_strict.values())
         if yes_substrict and s[0] == 'okay':
-            return to_selectors(to_pages_strict, num_pages)
+            return to_selectors(to_pages, num_pages)
 
         subprocess.run(['evince', str(file)], check = True)
 
@@ -127,22 +128,39 @@ def extract_from_pdf(source, target, ranges):
 def solution_file(i):
     return sol_dir / str(i) / 'test.pdf'
 
-def package_submissions():
-    solution_selectors = dict((i, find_selectors(solution_file(i))) for i in range(20))
-    selectors = calculate_selectors()
-    general.mkdir_fresh(packaged_dir)
+#selectors = calculate_selectors()
+print(selectors['REDACTED_GU_EMAIL'])
 
-    for q in questions_actual:
+for (i, j, integration_id, name) in read_lookup():
+    if integration_id == 'REDACTED_GU_EMAIL':
+        print(i, j)
+
+def package_submissions():
+    #solution_selectors = dict((i, find_selectors(solution_file(i))) for i in range(20))
+    selectors = calculate_selectors()
+    #general.mkdir_fresh(packaged_dir)
+
+    for q in [7]:#questions_actual:
         question_dir = packaged_dir / f'Q{q}'
         #question_dir.mkdir()
         for i in range(20):
             version_dir = question_dir / f'V{i}'
-            #version_dir.mkdir()
-            extract_from_pdf(solution_file(i), version_dir / 'solution.pdf', solution_selectors[i][q])
+            version_dir.mkdir()
+            #extract_from_pdf(solution_file(i), version_dir / 'solution.pdf', solution_selectors[i][q])
+
+    if False:
+        question_dir = packaged_dir / 'original'
+        for i in range(20):
+            version_dir = question_dir / f'V{i}'
+            version_dir.mkdir()
 
     for (i, j, integration_id, name) in read_lookup():
-        for q in questions_actual:
-            file = packaged_dir / f'Q{q}' / f'V{i}' / f'N{j}.pdf'
-            print(integration_id, q, selectors[integration_id])
-            ranges = selectors[integration_id][q]
-            extract_from_pdf(exam_uploader.submissions_dir / integration_id / 'submission.pdf', file, ranges)
+        #if integration_id == 'REDACTED_GU_EMAIL':
+            for q in [7]:#questions_actual:
+                file = packaged_dir / f'Q{q}' / f'V{i}' / f'N{j}.pdf'
+                ranges = selectors[integration_id][q]
+                extract_from_pdf(exam_uploader.submissions_dir / integration_id / 'submission.pdf', file, ranges)
+
+            if False:
+                file = packaged_dir / 'original' / f'V{i}' / f'N{j}.pdf'
+                shutil.copy(exam_uploader.submissions_dir / integration_id / 'submission.pdf', file)

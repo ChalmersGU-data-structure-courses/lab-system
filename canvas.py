@@ -246,7 +246,7 @@ class Course:
         return ', '.join(self.user_str(id) for id in ids) if ids else '[no users]'
 
     def get_assignments(self, include = None, use_cache = True):
-        params = None
+        params = dict()
         if include:
             params = {'include': include}
         return self.canvas.get_list(self.endpoint + ['assignments'], params = params, use_cache = use_cache)
