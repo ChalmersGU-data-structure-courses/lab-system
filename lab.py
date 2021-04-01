@@ -10,12 +10,14 @@ import git
 import functools
 import operator
 from pathlib import Path, PurePosixPath
+import shutil
 import tempfile
 import webbrowser
 
 import check_symlinks
 from course import *
 from general import *
+import get_feedback_helpers
 import java
 import robograde
 
@@ -788,9 +790,111 @@ body {
     #    mkdir_fresh(self.dir)
     #    repo = git.Repo.clone_from(self.dir)
 
+    def extract_names(self, n, tag):
+        remote = self.config.lab_group_print(n)
+        with_remote = lambda s: '{}/{}'.format(remote, s)
+        with tempfile.TemporaryDirectory() as dir:
+            dir = Path(dir)
+            self.submission_checkout(dir, abs_remote_tag(with_remote(tag)))
+            answers_file = dir / 'answers.txt'
+            answers = read_text_detect_encoding(answers_file)
+            answers = '\n'.join(map(str.strip, answers.splitlines()))
+            (header, info) = get_feedback_helpers.parse_answers_list(answers)[0]
+            assert re.fullmatch('DIT181\\s+Datastrukturer\\s+och\\s+algoritmer,\\s+LP3\\s+2021', header[0])
+            info_lines = info.splitlines()
+            i = 0
+            while not info_lines[i] == 'Group members:':
+                i = i + 1
+            for s in info_lines[i + 1:]:
+                if (re.fullmatch(get_feedback_helpers.pattern_question_begin, s + '\n')):
+                    break
+                while True:
+                    s_orig = s
+                    s = s.strip()
+                    s = s.removeprefix('-')
+                    if s and s[0] == '[' and s[-1] == ']':
+                        s = s[1:-1]
+                    if s == s_orig:
+                        break
+                if not s:
+                    continue
+                if s == '...':
+                    continue
+                yield s
+
+    def get_canvas_group_users(self, n):
+        g = self.course.canvas_group_set
+        g_id = g.name_to_id[self.config.lab_group_name_print(n)]
+        return g.group_users[g_id]
+
+    @staticmethod
+    def name_parts(name):
+        return list(map(str.lower, re.findall(r'\w+', name)))
+
+    def name_matches(self, name, n = None):
+        if n != None:
+            user_ids = self.get_canvas_group_users(n)
+
+        for user in self.course.canvas_course.user_details.values():
+            if set(set(Lab.name_parts(name))).issubset(set(Lab.name_parts(user.name))):
+                if n == None or user.id in user_ids:
+                    yield (user.name, user.id)
+
+    # Bad complexity.
+    def parse_name(self, name, n):
+        corrected = self.config.name_corrections.get(name)
+        if corrected != None:
+            name = corrected
+
+        matches = list(self.name_matches(name))
+
+        # If there is more than one match, filter by group.
+        # A common reason is a student just specifying their first name.
+        if len(matches) > 1 and n != None:
+            matches = list(self.name_matches(name, n))
+
+        if len(matches) == 0 and name in self.config.outside_canvas:
+            return name
+
+        assert len(matches) == 1, f'Non-unique users matching {name}: {matches}'
+        return from_singleton(matches)[1]
+
+    # def confirm_names(self, n, names):
+    #     g = self.course.canvas_group_set
+    #     g_id = g.name_to_id[config.lab_group_name_print(n)]
+    #     users = g.details[g_id]
+    #     print(names
+
+    # Returns list of Canvas ids (and names of student not registered) that passed this lab.
+    def students_that_passed(self):
+        def f(n):
+            gradings, _ = self.gradings_and_tests[n]
+            responses = Course.response_map(gradings)
+            tag = Course.last_handled_query(gradings)
+            if tag and responses[tag.name][1] == 1:
+                #print(n, tag.name)
+                provided_ids = set(self.parse_name(name, n) for name in self.extract_names(n, tag.name))
+                group_user_ids = set(self.get_canvas_group_users(n))
+
+                if provided_outside_group := provided_ids - group_user_ids - set(self.config.outside_canvas):
+                    logger.log(logging.WARNING, 'Users listed in answers file are not in {}: {}'.format(self.config.lab_group_name_print(n), self.course.canvas_course.users_str(provided_outside_group)))
+
+                if group_not_provided := group_user_ids - provided_ids:
+                    logger.log(logging.WARNING, 'Group users in {} are not listed in answers file: {}'.format(self.config.lab_group_name_print(n), self.course.canvas_course.users_str(group_not_provided)))
+
+                # Trust the student reportings over group membership.
+                # Group membership might have changed.
+                yield from provided_ids
+
+        return [x for n in self.course.lab_groups for x in f(n)]
+
+def labs(gitlab_config):
+    course = Course(gitlab_config)
+    return (course, dict((k, Lab(course, k, bare = True)) for k in gitlab_config.lab_grading_sheets))
+
 if __name__ == "__main__":
     logging.basicConfig()
-    logging.getLogger().setLevel(logging.INFO)
+    logging.getLogger().setLevel(logging.WARNING)
 
     import gitlab_config
     course = Course(gitlab_config)

@@ -66,8 +66,6 @@ def add_remote(repo, remote, url, fetch_refspecs = [], push_refspecs = [], prune
         if no_tags:
             c.add_value(section, 'tagopt', '--no-tags')
 
-
-
 def onesided_merge(repo, commit, new_parent):
     return git.Commit.create_from_tree(
         repo,
@@ -323,7 +321,7 @@ class Course:
                 return x[i][0]
         return None
 
-    # Handled plus last handled query.
+    # Handled plus last unhandled query, if any.
     def relevant_queries(x):
         yield from Course.handled_queries(x)
         if y := Course.unhandled_query(x):
