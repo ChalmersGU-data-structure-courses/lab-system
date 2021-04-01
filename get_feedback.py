@@ -75,6 +75,7 @@ import tempfile
 from general import print_error, add_to_path, join_lines, multidict, from_singleton, fix_encoding, multidict
 from canvas import Canvas, GroupSet, Course, Assignment
 from lab_assignment import LabAssignment
+from get_feedback_helpers import *
 import config
 
 logging.basicConfig()
@@ -90,36 +91,7 @@ filename_answers = 'answers.txt'
 template = (lab_assignment.dir_problem / filename_answers).read_text()
 #print(template)
 
-def implicit_group(pattern):
-    return f'(?:{pattern})'
-
-pattern_linebreak = implicit_group(r'\r*\n')
-pattern_stars = implicit_group(r'\*{10,}')
-pattern_question_begin = implicit_group(f'/{pattern_stars}{pattern_linebreak}')
-pattern_question_end = implicit_group(f'{pattern_stars}/?{pattern_linebreak}?')
-pattern_question_line = implicit_group(f'\\*\\*[^\\n]*{pattern_linebreak}')
-pattern_question = f'{pattern_question_begin}({pattern_question_line}*){pattern_question_end}'
-
-def parse_answers_iter(content):
-    matches = list(re.finditer(pattern_question, content))
-    in_appendix = False
-    for i in range(len(matches)):
-        lines = list(map(lambda line: line.lstrip('**').strip(), matches[i].group(1).splitlines()))
-        if lines[0].startswith('Appendix'):
-            in_appendix = True
-            del lines[0]
-            while not lines[0].strip():
-                del lines[0]
-        if in_appendix:
-            yield (
-                tuple(lines),
-                content[matches[i].end() : len(content) if i + 1 == len(matches) else matches[i + 1].start()].strip(),
-            )
-
-def parse_answers(content):
-    return dict((q[0][0], (q, a)) for q, a in parse_answers_iter(content))
-
-template_answers = parse_answers(template)
+template_answers = parse_answers(template, only_appendix = True)
 
 def parse_submission_answers(s):
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -128,7 +100,7 @@ def parse_submission_answers(s):
         if filename_answers in files:
             canvas.place_file(file, files[filename_answers])
             fix_encoding(file)
-            return parse_answers(file.read_text())
+            return parse_answers(file.read_text(), only_appendix = True)
         return None
 
 submission_answers = dict((group, answers) for group, s in lab_assignment.submissions.items() for answers in [parse_submission_answers(s)] if answers)

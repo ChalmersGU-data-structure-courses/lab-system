@@ -165,3 +165,21 @@ grading_sheet_header_grader = 'Grader'
 grading_sheet_header_score = '0/1'
 
 robograders = [2, 3, 4]
+
+# Students taking part in labs who are not registered on Canvas.
+outside_canvas = ['Alan Ali Doosti']
+
+# For translations from student provided answers files to student names on Canvas.
+name_corrections = {
+    'Carl Andersson': 'Carl Andreasson',
+    'Alan Ali Doosti': None,
+    'Markus Gutierrez': 'Markus Emilio Puerto Gutiérrez',
+    'Sarath M.R': 'Sarath Mookola Raveendran', # inactive
+    'Mohamad Nnnnn Aaaaaaa': 'Nnnnn Aaaaaaa ',
+    'Bbbb Kkkkk': 'Bora Koçak',
+    'Esbet Shire': 'Esbet Mohamed Shire', # inactive
+    'Toafik Arnouk': 'Taofik Arnouk',
+    'Sam Hashimi': 'Samandar Hashimi',
+    'Sicily Ann Brannen': 'Sicily Brannen',
+    'Anna Brannen': 'Sicily Brannen',
+}

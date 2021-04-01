@@ -142,11 +142,9 @@ def create_canvas_instance_folder(instances, extra_time_students):
             yield (user.id, dict(g()))
     return dict(f())
 
-instances = read_instances(exam, instance_dir)
-extra_time_students = get_extra_time_students(use_cache = True)
+#instances = read_instances(exam, instance_dir)
+#extra_time_students = get_extra_time_students(use_cache = True)
 #instances_on_canvas = create_canvas_instance_folder(instances, extra_time_students)
-
-
 
 def print_folders():
     for x in exam.list_folders(use_cache = False):
