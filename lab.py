@@ -785,7 +785,13 @@ body {
             self.robograde_submissions()
         self.build_index()
         self.update_grading_sheet()
- 
+
+    def compile_robograder(self):
+        with tempfile.TemporaryDirectory() as dir:
+            dir = Path(dir)
+            self.submission_checkout(dir, abs_head('problem'))
+            java.compile_java_dir(self.code_repo_dir / 'pregrade', force_recompile = True, classpath = [self.config.code_repo_robograding_dir, self.code_repo_dir / 'pregrade', dir])
+
     #def initialize_repo():
     #    mkdir_fresh(self.dir)
     #    repo = git.Repo.clone_from(self.dir)
