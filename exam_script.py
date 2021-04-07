@@ -4,8 +4,6 @@ from pathlib import Path
 import exam._2021_04_07_dat038_tdaa417_reexam.data as exam_config
 import exam.canvas
 
-logger = logging.getLogger('exam.canvas_exam')
-
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 
