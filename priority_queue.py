@@ -57,12 +57,12 @@ class Question:
         self.heaps = [self.good, self.bad, self.ugly]
         self.r.shuffle(self.heaps)
 
-    def replacement(self):
+    def replacements(self, solution):
         for i in range(len(self.heaps)):
             yield (f'heap_{i}', str(self.heaps[i][0]))
 
-    def replacement_sol(self):
-        yield from self.replacement()
+        if not solution:
+            return
 
         for i in range(len(self.heaps)):
             yield (f'sol_heap_{i}', str(self.heaps[i][1]))

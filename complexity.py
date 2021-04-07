@@ -10,11 +10,8 @@ class Question:
 
         self.x = self.r.choice(['x', 'y', 'z'])
 
-    def replacement(self):
+    def replacements(self, solution):
         yield from [
             ('n', self.n),
             ('x', self.x),
         ]
-
-    def replacement_sol(self):
-        yield from self.replacement()
