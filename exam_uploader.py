@@ -31,12 +31,12 @@ duration_scanning = datetime.timedelta(minutes = 30)
 grace_period = datetime.timedelta(minutes = 0) # Canvas doesn't have second granularity.
 
 extra_time_section = 'Students with extra time'
-extra_time = 0.5
+extra_time = 1.5
 
 max_points = 18
 
 def time_factor(has_extra_time = False):
-    return 1 + (extra_time if has_extra_time else 0)
+    return extra_time if has_extra_time else 1
 
 def due(has_extra_time = False):
     return start + time_factor(has_extra_time) * duration
@@ -53,7 +53,7 @@ canvas_instance_dir = PurePosixPath('/Exam instances 2')
 secret_salt = 'cypIjYzZbB4We0Mb'
 
 def hash_salted(x):
-    return hashlib.shake_256(bytes(x + secret_salt, encoding = 'utf-8')).hexdigest(length = 8)
+    return hashlib.shake_256(bytes(secret_salt + '$' + x, encoding = 'utf-8')).hexdigest(length = 8)
 
 # Make it less trivial to guess other people's exam files.
 # Attackers can still iterate over all file ids.
