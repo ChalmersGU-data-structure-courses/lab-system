@@ -93,14 +93,14 @@ class Question:
     def format_entry(self, x):
         return '' if x == -1 else str(x)
 
-    def replacement(self):
+    def replacements(self, solution):
         for i in range(self.n):
             yield (f'entry_{i}', self.format_entry(self.table[i]))
         for i in range(len(self.insert)):
             yield (f'insert_{i}', str(self.insert[i]))
 
-    def replacement_sol(self):
-        yield from self.replacement()
+        if not solution:
+            return
         
         cluster_no = 0
         for i in range(len(self.table)):

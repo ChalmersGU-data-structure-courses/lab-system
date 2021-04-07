@@ -488,3 +488,6 @@ def read_text_detect_encoding(path):
 
 def read_without_comments(path):
     return list(filter(lambda s: s and not s.startswith('#'), path.read_text().splitlines()))
+
+def unique_list(xs):
+    return list(dict.fromkeys(xs))

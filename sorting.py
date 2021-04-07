@@ -49,9 +49,6 @@ class QuestionQuicksort:
             if self.is_good():
                 break
 
-    def replacement(self):
-        yield ('array_to_partition', str(self.array))
-
     # Doesn't handle the case where one partition is empty.
     def solution(self, ys, partitions):
         pivot = ys[0]
@@ -89,8 +86,12 @@ class QuestionQuicksort:
         for a, b in (0, hi), (hi, hi + 1), (hi + 1, len(ys)):
             partitions.append(ys[a : b])
 
-    def replacement_sol(self):
-        yield from self.replacement()
+    def replacements(self, solution):
+        yield ('array_to_partition', str(self.array))
+
+        if not solution:
+            return
+
         yield('quick_sol_lo', str(1))
         yield('quick_sol_hi', str(len(self.array) - 1))
         yield('quick_sol_pivot', str(self.array[0]))
@@ -127,12 +128,12 @@ class QuestionMergeSort:
         for i in range(len(pattern)):
             self.lists[pattern[i]].append(xs[i])
 
-    def replacement(self):
+    def replacements(self, solution):
         for i in range(len(self.lists)):
             yield (f'merge_{i}', str(self.lists[i]))
 
-    def replacement_sol(self):
-        yield from self.replacement()
+        if not solution:
+            return
 
         indices = [0 for _ in self.lists]
         def resolve(i):

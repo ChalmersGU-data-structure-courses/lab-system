@@ -140,18 +140,16 @@ class QuestionDijkstra:
     def starting_node(self):
         return self.instance.names[self.instance.start]
 
-    def replacement(self):
+    def replacements(self, solution):
         yield ('starting_node', self.instance.names[self.instance.start])
 
-    def replacement_sol(self):
-        yield from self.replacement()
+        if solution:
+            for (i, (a, k, queue)) in enumerate(self.instance.run_dijkstra()):
+                yield (f'sol_{i}_node', self.instance.names[a])
+                yield (f'sol_{i}_cost', str(k))
+                yield (f'sol_{i}_entries', ', '.join(f'{self.instance.names[b]}:{m}' for (m, b) in queue))
 
-        for (i, (a, k, queue)) in enumerate(self.instance.run_dijkstra()):
-            yield (f'sol_{i}_node', self.instance.names[a])
-            yield (f'sol_{i}_cost', str(k))
-            yield (f'sol_{i}_entries', ', '.join(f'{self.instance.names[b]}:{m}' for (m, b) in queue))
-
-    def replacement_img(self):
+    def replacements_img(self, solution):
         (fd, name) = tempfile.mkstemp(suffix = '.png')
         os.close(fd)
         path = pathlib.Path(name)

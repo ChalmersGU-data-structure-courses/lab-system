@@ -58,8 +58,9 @@ class Canvas:
         return p.with_name(n)
 
     # internal
-    def get_url(self, endpoint):
-        return self.base_url + "/" + str(PurePosixPath(*(map(str, endpoint))))
+    def get_url(self, endpoint, absolute = True):
+        prefix = self.base_url if absolute else ''
+        return prefix + '/' + str(PurePosixPath(*(map(str, endpoint))))
 
     # internal
     @staticmethod
@@ -183,6 +184,10 @@ class Canvas:
         logger.log(logging.INFO, 'DELETE with endpoint ' + self.get_url(Canvas.with_api(endpoint)))
         return Canvas.objectify_json(Canvas.get_response_json(self.session.delete(self.get_url(Canvas.with_api(endpoint)), params = params)))
 
+    @staticmethod
+    def param_boolean(v):
+        return 'true' if v else 'false'
+
     # Returns the id of the posted file.
     def post_file(self, endpoint, file, folder_id, name, use_curl = False):
         file = file.resolve()
@@ -216,7 +221,7 @@ class Canvas:
         return self.get_list(['courses'])
 
     def file_set_locked(self, file_id, locked):
-        self.put(['files', file_id], params = {'locked': locked})
+        self.put(['files', file_id], params = {'locked': Canvas.param_boolean(locked)})
 
 class Course:
     def __init__(self, canvas, course_id, use_cache = True):
@@ -229,6 +234,11 @@ class Course:
         self.user_sortable_name_to_id = dict()
         self.user_integration_id_to_id = dict()
         self.user_sis_id_to_id = dict()
+
+        # new style
+        self.user_by_integration_id = dict()
+        self.user_by_sis_id = dict()
+
         for user in self.canvas.get_list(['courses', course_id, 'users'], params = {
             'include[]': ['enrollments'],
             'enrollment_state[]': ['active', 'invited', 'completed', 'inactive'],
@@ -239,6 +249,9 @@ class Course:
                 self.user_sortable_name_to_id[user.sortable_name] = user.id
                 self.user_integration_id_to_id[user.integration_id] = user.id
                 self.user_sis_id_to_id[user.sis_user_id] = user.id
+
+                self.user_by_integration_id[user.integration_id] = user
+                self.user_by_sis_id[user.sis_user_id] = user
 
         self.assignments_name_to_id = dict()
         self.assignment_details = dict()
@@ -299,12 +312,13 @@ class Course:
         return from_singleton(s for s in sections if s.name == name)
 
     def get_students_in_section(self, id, use_cache = True):
-        return self.canvas.get(self.endpoint + ['sections', id], params = {'include': ['students']}, use_cache = use_cache).students
+        x = self.canvas.get(self.endpoint + ['sections', id], params = {'include': ['students']}, use_cache = use_cache).students
+        return x if x != None else []
 
-    def get_dir_id(self, canvas_dir, use_cache = True):
+    def get_folder_by_path(self, canvas_dir, use_cache = True):
         canvas_dir = PurePosixPath(canvas_dir)
         try:
-            return self.canvas.get_list(self.endpoint + ['folders', 'by_path', canvas_dir.relative_to('/')], use_cache = use_cache)[-1].id
+            return self.canvas.get_list(self.endpoint + ['folders', 'by_path', canvas_dir.relative_to('/')], use_cache = use_cache)[-1]
         except requests.HTTPError as e:
             if e.response.status_code == 404:
                 return None
@@ -313,6 +327,13 @@ class Course:
     def get_file_descr(self, id):
         return self.canvas.get(self.endpoint + ['files', id])
 
+    def get_file_link(self, id, absolute = False, download = True):
+        endpoint = list(self.endpoint)
+        endpoint.extend(['files', id])
+        if download:
+            endpoint.append('download')
+        return self.canvas.get_url(endpoint, absolute = absolute)
+
     # Returns the id of the posted file.
     def post_file(self, file, folder_id, name, locked = False, use_curl = False):
         file_id = self.canvas.post_file(self.endpoint + ['files'], file, folder_id, name, use_curl = use_curl)
@@ -320,8 +341,14 @@ class Course:
             self.canvas.file_set_locked(file_id, True)
         return file_id
 
-    def get_folder(self, id):
-        return self.canvas.get(['folders', id])
+    def get_files(self, folder_id, use_cache = False):
+        if not isinstance(folder_id, int):
+            folder_id = self.get_folder_by_path(folder_id, use_cache = use_cache).id
+        files = self.canvas.get_list(['folders', folder_id, 'files'])
+        return dict((file.filename, file) for file in files)
+
+    def get_folder(self, id, use_cache = True):
+        return self.canvas.get(['folders', id], use_cache = True)
 
     def create_folder(self, canvas_dir, unlock_at = None, lock_at = None, locked = None, hidden = None):
         canvas_dir = PurePosixPath(canvas_dir)
@@ -334,9 +361,9 @@ class Course:
         if lock_at != None:
             params['lock_at'] = lock_at.isoformat()
         if locked != None:
-            params['locked'] = locked
+            params['locked'] = Canvas.param_boolean(locked)
         if hidden != None:
-            params['hidden'] = hidden
+            params['hidden'] = Canvas.param_boolean(hidden)
 
         folder = self.canvas.post(self.endpoint + ['folders'], params)
         if not folder.full_name == 'course files' + str(canvas_dir):
@@ -345,10 +372,28 @@ class Course:
 
         return folder
 
+    def edit_folder(self, id, name = None, unlock_at = None, lock_at = None, locked = None, hidden = None, use_cache = False):
+        if not isinstance(id, int):
+            id = self.get_folder_by_path(id, use_cache = use_cache).id
+
+        params = dict()
+        if name != None:
+            params['name'] = name
+        if unlock_at != None:
+            params['unlock_at'] = unlock_at.isoformat()
+        if lock_at != None:
+            params['lock_at'] = lock_at.isoformat()
+        if locked != None:
+            params['locked'] = 'true' if locked else 'false'
+        if hidden != None:
+            params['hidden'] = hidden
+
+        return self.canvas.put(['folders', id], data = params)
+
     # id can also be path.
     def delete_folder(self, id, use_cache = False):
         if not isinstance(id, int):
-            id = self.get_dir_id(id, use_cache = use_cache)
+            id = self.get_folder_by_path(id, use_cache = use_cache).id
 
         self.canvas.delete(['folders', id])
 
