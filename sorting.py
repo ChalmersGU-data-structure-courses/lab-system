@@ -16,27 +16,36 @@ class QuestionQuicksort:
         if abs(lower - higher) != 2:
             return False
 
-        # Oh, this part was buggy:
-        # It starts out with a swap.
         lo = 1
         hi = len(ys) - 1
         swaps = 0
-        while lo < hi:
-            swaps = swaps + 1
-            swap(ys, lo, hi)
+
+        while True:
             lucky = True
-            while True:
-                lo = lo + 1
-                if ys[lo] > pivot:
+            while lo <= hi:
+                if ys[lo] < pivot:
+                    lo = lo + 1
+                    lucky = False
+                else:
                     break
-                lucky = False
-            while True:
-                hi = hi - 1
-                if ys[hi] < pivot:
+
+            while lo <= hi:
+                if ys[hi] > pivot:
+                    hi = hi - 1
+                    lucky = False
+                else:
                     break
-                lucky = False
+
+            if not lo <= hi:
+                break
+
             if lucky:
                 return False
+
+            swap(ys, lo, hi)
+            swaps = swaps + 1
+            lo = lo + 1
+            hi = hi - 1
 
         return swaps == 2
 
@@ -80,6 +89,8 @@ class QuestionQuicksort:
 
             yield f'We swap {ys[lo]} and {ys[hi]} and advance lo and hi.'
             swap(ys, lo, hi)
+            lo = lo + 1
+            hi = hi - 1
 
         yield f'Finally, we swap the pivot {pivot} with {ys[hi]}.'
         swap(ys, 0, hi)
@@ -99,7 +110,7 @@ class QuestionQuicksort:
         ys = list(self.array)
         partitions = []
         msgs = list(self.solution(ys, partitions))
-        k = 16
+        k = 16 # TODO: only need 14 (change Google document)
         assert len(msgs) <= k, f'Have {len(msgs)} messages.'
         for i in range(k):
             yield (f'quick_sol_{i}', msgs[i] if i < len(msgs) else '')
