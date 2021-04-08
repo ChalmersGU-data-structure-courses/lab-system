@@ -123,13 +123,22 @@ class QuestionMergeSort:
         pivot = ys[0]
 
     def __init__(self, seed):
+        # these patterns enforce that the following zip-solution cannot work:
+        # for x,y in zip(xs,ys): insert min(x,y) + max(x,y)
         patterns = [
-            [0, 1, 1, 0, 0, 1, 1, 0, 1],
             [0, 1, 1, 0, 1, 1, 0, 0, 1],
-            [0, 1, 1, 0, 1, 0, 0, 1, 1],
             [1, 0, 0, 1, 1, 0, 1, 1, 0],
             [1, 0, 1, 1, 0, 0, 1, 1, 0],
+            [0, 1, 0, 0, 1, 0, 1, 1, 1],
         ]
+
+        # for these patterns the zip-solution works (but is still wrong as merge)
+        # patterns = [
+        #     [0, 1, 1, 0, 0, 1, 1, 0, 1],
+        #     [0, 1, 1, 0, 1, 0, 0, 1, 1],
+        #     [1, 0, 0, 1, 1, 0, 1, 0, 1],
+        #     [1, 0, 0, 1, 0, 1, 0, 1, 1],
+        # ]
 
         self.r = random.Random(seed)
         pattern = self.r.choice(patterns)
