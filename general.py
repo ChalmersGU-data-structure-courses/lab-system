@@ -386,6 +386,10 @@ def fix_encoding(path):
     with OpenWithNoModificationTime(path) as file:
         file.write(content)
 
+def format_with_leading_zeroes(x, bound):
+    num_digits = len(str(bound - 1))
+    return f'{x:0{num_digits}}'
+
 def format_with_rel_prec(x, precision = 3):
     context = decimal.Context(prec = precision, rounding = decimal.ROUND_DOWN)
     return str(context.create_decimal_from_float(x))

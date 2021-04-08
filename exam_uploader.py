@@ -14,7 +14,7 @@ import general
 import gitlab_config as config
 
 logging.basicConfig()
-logging.getLogger().setLevel(logging.WARNING)
+logging.getLogger().setLevel(logging.INFO)
 
 Format = collections.namedtuple('Format', field_names = ['extension', 'description'])
 
@@ -24,6 +24,8 @@ formats = [
     Format(extension = 'odt', description = 'OpenDocument'),
     Format(extension = 'pdf', description = 'PDF, for reading'),
 ]
+
+format_pdf = formats[-1]
 
 start = datetime.datetime.fromisoformat('2021-03-19 08:45+01:00')
 duration = datetime.timedelta(hours = 4)
@@ -47,13 +49,14 @@ def end(has_extra_time = False):
 exam_dir = Path('/home/noname/DIT181/exam')
 
 instance_dir = exam_dir / 'instances'
+sol_dir = exam_dir / 'sol'
 
 canvas_instance_dir = PurePosixPath('/Exam instances 2')
 
 secret_salt = 'cypIjYzZbB4We0Mb'
 
 def hash_salted(x):
-    return hashlib.shake_256(bytes(secret_salt + '$' + x, encoding = 'utf-8')).hexdigest(length = 8)
+    return hashlib.shake_256(bytes(x + secret_salt, encoding = 'utf-8')).hexdigest(length = 8)
 
 # Make it less trivial to guess other people's exam files.
 # Attackers can still iterate over all file ids.
@@ -63,8 +66,8 @@ def integration_id_with_hash(integration_id):
 def until_char(c, s):
     return ''.join(itertools.takewhile(lambda d: d != c, s))
 
-def format_exam_name(integration_id, format):
-    return 'exam-' + until_char('@', integration_id) + '.' + format.extension
+def format_exam_name(integration_id, format, solution = False):
+    return ('solution' if solution else 'exam') + '-' + until_char('@', integration_id) + '.' + format.extension
 
 use_cache = True
 
@@ -124,6 +127,51 @@ def get_extra_time_students(use_cache = False):
     students = exam.get_students_in_section(section.id, use_cache = use_cache)
     return frozenset(user.id for user in students)
 
+def get_student_versions(lookup):
+    return dict((integration_id, i) for (i, j, integration_id, name) in lookup)
+
+def upload_solutions(instances, lookup):
+    student_versions = get_student_versions(lookup)
+    def f():
+        for user in exam.user_details.values():
+            folder = exam.get_folder_by_path(canvas_instance_dir / integration_id_with_hash(user.integration_id))
+
+            #exam.edit_folder(folder.id, unlock_at = None, lock_at = None, hidden = True)
+            path = sol_dir / str(student_versions[user.integration_id]) / 'test.pdf'
+            sol_name = format_exam_name(user.integration_id, format_pdf, solution = True)
+            exam_name = format_exam_name(user.integration_id, format_pdf, solution = False)
+            files = exam.get_files(folder.id, use_cache = True)
+            file = files[sol_name] if sol_name in files else exam.post_file(path, folder.id, sol_name)
+            yield (user.id, (files[exam_name], file))
+    return dict(f())
+
+#    def edit_folder(self, id, name = None, unlock_at = None, lock_at = None, locked = None, hidden = None, use_cache = False):
+
+# Should use author id, but the author id looks weird/different from the user id.
+def post_solutions(solutions, use_cache = True):
+    assignments = exam.get_assignments(include = ['overrides'], use_cache = use_cache)
+    for assignment in assignments:
+        if not assignment.overrides[0].student_ids:
+            continue
+
+        user_id = assignment.overrides[0].student_ids[0]
+        user = exam.user_details[user_id]
+        print(user.integration_id)
+
+        (file_exam, file_solution) = solutions[user_id]
+        def f(file):
+            return exam.get_file_link(file.id, absolute = True, download = True)
+
+        comment = f'''Hello {user.name}!
+
+Easter is over now, so here are suggested solutions for your individual exam version: {f(file_solution)}
+
+For comparison, here are your original exam problems: {f(file_exam)}'''
+        #
+        print(comment)
+        endpoint = ['courses', exam.course_id, 'assignments', assignment.id, 'submissions', user_id]
+        c.put(endpoint, params = {'comment[text_comment]': comment})
+
 def create_canvas_instance_folder(instances, extra_time_students):
     folder = exam.create_folder(canvas_instance_dir, hidden = 'true')
     def f():
@@ -142,9 +190,12 @@ def create_canvas_instance_folder(instances, extra_time_students):
             yield (user.id, dict(g()))
     return dict(f())
 
-#instances = read_instances(exam, instance_dir)
+lookup = read_lookup(lookup_file)
+instances = read_instances(exam, instance_dir)
 #extra_time_students = get_extra_time_students(use_cache = True)
 #instances_on_canvas = create_canvas_instance_folder(instances, extra_time_students)
+
+solutions = upload_solutions(instances, lookup)
 
 def print_folders():
     for x in exam.list_folders(use_cache = False):
@@ -236,7 +287,7 @@ def download_submissions(dir, use_cache = True):
 def write_lookup(course, submission_dir, lookup_file):
     lookup = dict((i, []) for i in range(20))
     for user in course.user_details.values():
-        if (submissions_dir / user.integration_id).exists():
+        #if (submissions_dir / user.integration_id).exists():
             r = random.Random(user.integration_id)
             i = r.choice(range(20))
             lookup[i].append(user)
