@@ -344,7 +344,7 @@ class Course:
     def get_files(self, folder_id, use_cache = False):
         if not isinstance(folder_id, int):
             folder_id = self.get_folder_by_path(folder_id, use_cache = use_cache).id
-        files = self.canvas.get_list(['folders', folder_id, 'files'])
+        files = self.canvas.get_list(['folders', folder_id, 'files'], use_cache = use_cache)
         return dict((file.filename, file) for file in files)
 
     def get_folder(self, id, use_cache = True):
@@ -379,10 +379,8 @@ class Course:
         params = dict()
         if name != None:
             params['name'] = name
-        if unlock_at != None:
-            params['unlock_at'] = unlock_at.isoformat()
-        if lock_at != None:
-            params['lock_at'] = lock_at.isoformat()
+        params['unlock_at'] = unlock_at.isoformat() if unlock_at != None else 'null'
+        params['lock_at'] = lock_at.isoformat() if lock_at != None else 'null'
         if locked != None:
             params['locked'] = 'true' if locked else 'false'
         if hidden != None:

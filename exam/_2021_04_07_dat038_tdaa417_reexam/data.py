@@ -56,6 +56,14 @@ import priority_queue
 import hash_table
 import graph
 
+questions = [i + 1 for i in range(8)]
+
+def question_key(q):
+    return f'Q{q}'
+
+def question_name(q):
+    return f'Question {q}'
+
 question_randomizers = [
     ('Q1', complexity.Question),
     ('Q2', sorting.QuestionQuicksort),
@@ -70,3 +78,6 @@ allocation_seed = 24782
 
 allocations_file = this_dir / 'allocations.csv'
 instance_dir = this_dir / 'instances'
+submissions_dir = this_dir / 'submissions'
+selectors_file = this_dir / 'selectors.csv'
+submissions_packaged_dir = this_dir / 'packaged'

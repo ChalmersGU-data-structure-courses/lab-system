@@ -1,13 +1,17 @@
 import canvas
+import csv
 import functools
 import general
 import gitlab_config as config
-import logging
 import hashlib
+import itertools
+import logging
+import PyPDF2
+import shlex
+import subprocess
 
-import exam._2021_04_07_dat038_tdaa417_reexam.data as exam_config
-import exam.allocate_versions
-import exam.instantiate_template
+from . import allocate_versions
+from . import instantiate_template
 from google_tools.drive import Drive
 import google_tools.general
 
@@ -16,7 +20,10 @@ logger = logging.getLogger('exam.canvas')
 class Exam:
     def __init__(self, exam_config):
         self.exam_config = exam_config
-        self.randomized_questions = general.unique_list(question for (question, _) in self.exam_config.question_randomizers)
+
+        x = frozenset(question for (question, _) in self.exam_config.question_randomizers)
+        self.randomized_questions = [q for q in self.exam_config.questions if self.exam_config.question_key(q) in x]
+
         self.exam_formats = Drive.mime_types_document.keys()
 
     @functools.cached_property
@@ -35,32 +42,34 @@ class Exam:
 
     @functools.cached_property
     def allocations(self):
-        return exam.allocate_versions.read(self.exam_config.allocations_file)
+        return allocate_versions.read(self.exam_config.allocations_file)
 
     @functools.cached_property
     def allocation_id_lookup(self):
         return dict((student, id) for (id, (student, _)) in self.allocations.items())
 
     def allocate_students(self):
-        self.allocations = exam.allocate_versions.allocate(
+        self.allocations = allocate_versions.allocate(
             [user.sis_user_id for user in self.course.user_details.values()],
-            dict((question, self.exam_config.max_versions) for question in self.randomized_questions),
+            dict((self.exam_config.question_key(q), self.exam_config.max_versions) for q in self.randomized_questions),
             seed = 24782,
         )
-        general.clear_cached_property('allocation_id_lookup')
-        exam.allocate_versions.write(
+        general.clear_cached_property(self, 'allocation_id_lookup')
+        allocate_versions.write(
             self.exam_config.allocations_file,
             self.allocations,
             lambda id: self.course.user_by_sis_id[id].name
         )
 
     def format_id(self, id):
-        num_digits = len(str(len(self.allocations) - 1))
-        return f'{id:0{num_digits}}'
+        return general.format_with_leading_zeroes(id, len(self.allocations))
+
+    def format_version(self, version):
+        return general.format_with_leading_zeroes(version, self.exam_config.max_versions)
 
     def instantiate_template(self, share_dir = None, share_url = None, solution = False):
         self.exam_config.instance_dir.mkdir(exist_ok = True)
-        exam.instantiate_template.generate(
+        instantiate_template.generate(
             self.exam_config.instance_dir,
             google_tools.general.get_token_for_scopes(['drive', 'documents']),
             exam_id = self.exam_config.exam_id,
@@ -225,13 +234,268 @@ class Exam:
                 lock_at = self.end(has_extra_time),
             )
 
-from pathlib import Path
+    def download_submissions(self, dir, use_cache = False):
+        dir.mkdir(exist_ok = True)
 
-share_dir = Path('/home/noname/DIT181/exam/uxul')
-share_url = 'http://uxul.org/~noname/exam/'
+        for (user_id, assignment) in self.get_assignments(use_cache = use_cache).items():
+            if not assignment.overrides[0].student_ids:
+                logger.log(logging.WARNING, f'Assignment {assignment.name} has no assigned student (typical cause: student unregistered from Canvas exam course).')
+                continue
 
-e = Exam(exam_config)
+            user_id = assignment.overrides[0].student_ids[0]
+            user = self.course.user_details[user_id]
+            id = self.allocation_id_lookup[user.sis_user_id]
+            logger.log(logging.INFO, f'Downloading latest submission for {assignment.name}')
 
-#e.delete_canvas_instance_folder()
-#e.create_canvas_instance_folder()
-#e.upload_instances()
+            submission = self.course.get_submissions(assignment.id, use_cache = use_cache)[0]
+            state = submission.workflow_state
+            if state != 'unsubmitted':
+                dir_submission = dir / self.format_id(id)
+                general.mkdir_fresh(dir_submission)
+                for attachment in submission.attachments:
+                    self.canvas.place_file(dir_submission / canvas.Assignment.get_file_name(attachment), attachment)
+                if len(submission.attachments) != 1:
+                    logger.log(logging.WARNING, f'Submission with not exactly one file: allocation id {self.format_id(id)}, {self.course.user_str(user.id)}')
+
+    def list_submissions(self):
+        for id in self.allocations:
+            dir_submission = self.exam_config.submissions_dir / self.format_id(id)
+            if dir_submission.exists():
+                yield (id, dir_submission / 'submission.pdf')
+
+    @functools.cached_property
+    def submissions(self):
+        return list(self.list_submissions())
+
+    def normalize_submission(self, id):
+        dir_submission = self.exam_config.submissions_dir / self.format_id(id)
+        files = list(dir_submission.iterdir())
+        if len(files) == 1:
+            file = files[0]
+            if file.suffix == '.pdf':
+                file.rename(file.with_name('submission.pdf'))
+                return
+
+        logger.log(logging.WARNING, f'Could not normalize submission {self.format_id(id)}.')
+
+    def normalize_submissions(self):
+        for id in self.submissions():
+            self.normalize_submission(id)
+        general.clear_cached_property(self, 'submissions')
+
+    @staticmethod
+    def format_range(range, adjust = False):
+        (a, b) = range
+        return f'{a + 1}-{b}'
+
+    @staticmethod
+    def parse_range(s):
+        (a, b) = map(int, s.split('-'))
+        return (a - 1, b)
+
+    @staticmethod
+    def format_ranges(ranges, adjust = False):
+        if not ranges:
+            return 'missing'
+        return ','.join(map(lambda range: Exam.format_range(range, adjust = adjust), ranges))
+
+    @staticmethod
+    def parse_ranges(s):
+        if s == 'missing':
+            return []
+        return list(map(Exam.parse_range, s.split(',')))
+
+    @staticmethod
+    def generate_selectors(questions, num_pages, starts, omit = []):
+        def next(q):
+            i = q + 1
+            while i not in starts and i in questions:
+                i = i + 1
+            return i
+
+        return dict(
+            (q, [(starts[q], starts.get(next(q), num_pages))] if q in starts else [])
+            for q in questions
+            if not q in omit
+        )
+
+    def to_selectors(self, starts, num_pages):
+        return Exam.generate_selectors(
+            self.exam_config.questions,
+            num_pages,
+            dict(
+                (k, general.from_singleton(v))
+                for (k, v) in starts.items()
+                if v
+            ),
+        )
+
+    def find_to_pages(self, file):
+        logger.log(logging.INFO, f'Finding question title positions in {shlex.quote(str(file))}...')
+        pdf = PyPDF2.PdfFileReader(str(file), strict = False)
+        num_pages = pdf.getNumPages()
+
+        to_pages = dict(
+            (strict, dict((i, []) for i in self.exam_config.questions))
+            for strict in [True, False]
+        )
+        for i in range(num_pages):
+            text = subprocess.run(
+                ['pdftotext', '-f', str(i + 1), '-l', str(i + 1), str(file), '-'],
+                stdout = subprocess.PIPE,
+                encoding = 'utf-8',
+                check = True
+            ).stdout.strip()
+            for q in self.exam_config.questions:
+                qt = self.exam_config.question_name(q)
+                for strict in to_pages:
+                    if text.startswith(qt) if strict else qt in text:
+                        to_pages[strict][q].append(i)
+        return (num_pages, to_pages)
+
+    @functools.cached_property
+    def solution_selectors(self):
+        def f(id, _):
+            solution_file = self.exam_config.instance_dir / self.format_id(id) / 'solution.pdf'
+            (num_pages, to_pages) = self.find_to_pages(solution_file)
+            return (id, self.to_selectors(to_pages[True], num_pages))
+
+        return dict(itertools.starmap(f, self.submissions))
+
+    def guess_selector_info(self, file):
+        (num_pages, x) = self.find_to_pages(file)
+        (to_pages_strict, to_pages) = (x[True], x[False])
+
+        print(to_pages_strict)
+        print(to_pages)
+
+        yes_strict = all(len(pages) == 1 for pages in to_pages_strict.values())
+        if yes_strict and to_pages_strict[self.exam_config.questions[0]] == [0]:
+            return ('standard', self.to_selectors(to_pages_strict, num_pages))
+
+        yes = all(len(pages) == 1 for pages in to_pages.values())
+        if yes and to_pages[self.exam_config.questions[0]] == [0]:
+            return ('check', self.to_selectors(to_pages, num_pages))
+
+        return ('enter', dict())
+
+    def guess_selector_infos(self, dir):
+        return dict(
+            (id, self.guess_selector_info(file))
+            for (id, file) in self.submissions
+        )
+
+    def read_selector_infos(self):
+        lines = general.read_without_comments(self.exam_config.selectors_file)
+        return dict(
+            (int(entry['id']), (entry['type'], dict((int(k), Exam.parse_ranges(v)) for (k, v) in entry.items() if k.isdigit() if v != None)))
+            for entry in csv.DictReader(lines, dialect = csv.excel_tab)
+        )
+
+    @functools.cached_property
+    def selector_infos(self):
+        return self.read_selector_infos()
+
+    def write_selector_infos(self, selector_infos):
+        with self.exam_config.selectors_file.open('w') as file:
+            out = csv.DictWriter(file, fieldnames = ['id', 'type'] + list(map(str, self.exam_config.questions)), dialect = csv.excel_tab)
+            out.writeheader()
+            for (id, (type, selectors)) in selector_infos.items():
+                out.writerow({'id': id, 'type': type} | dict((str(k), Exam.format_ranges(v)) for (k, v) in selectors.items()))
+        self.selector_infos = selector_infos
+
+    def check_selector_infos(self):
+        for (id, _) in self.submissions:
+            (type, selectors) = self.selector_infos[id]
+            assert type in ['standard', 'okay', 'manual']
+
+    def prepare_grading_table(self, out_path, fill_in_missing_questions = False):
+        with out_path.open('w') as file:
+            out = csv.writer(file)
+
+            def process(
+                id,
+                question_score,
+                question_version,
+                question_feedback,
+                question_comments
+            ):
+                def f():
+                    yield id
+                    for q in self.exam_config.questions:
+                        yield question_score(q)
+                        if q in self.randomized_questions:
+                            yield(question_version(q))
+                        yield question_feedback(q)
+                        yield question_comments(q)
+                out.writerow(list(f()))
+
+            process(
+                None,
+                self.exam_config.question_name,
+                lambda _: None,
+                lambda _: None,
+                lambda _: None,
+            )
+
+            process(
+                'ID',
+                lambda _: 'Score',
+                lambda _: 'Version',
+                lambda _: 'Feedback',
+                lambda _: 'Comments',
+            )
+
+            for (id, _) in self.submissions:
+                (student, versions) = self.allocations[id]
+
+                def question_score(q):
+                    if fill_in_missing_questions and self.selector_infos[id][1][q] == []:
+                        return '-'
+                    return None
+
+                process(
+                    id,
+                    question_score,
+                    lambda q: versions[self.exam_config.question_key(q)],
+                    lambda _: None,
+                    lambda _: None,
+                )
+
+    @staticmethod
+    def extract_from_pdf(source, target, ranges):
+        if ranges:
+            cmd = ['pdfjam', '--keepinfo', '--outfile', str(target), str(source), Exam.format_ranges(ranges, adjust = True)]
+            logger.log(logging.INFO, shlex.join(cmd))
+            subprocess.run(cmd, check = True)
+
+    def extract_question_submission(self, dir, file, id, q):
+        Exam.extract_from_pdf(file, dir / (self.format_id(id) + '.pdf'), self.selector_infos[id][1][q])
+
+    def package_question(self, dir, q):
+        logger.log(logging.INFO, f'Packaging question {q}...')
+        for (id, file) in self.submissions:
+            self.extract_question_submission(dir, file, id, q)
+
+    def package_randomized_question(self, dir, q):
+        logger.log(logging.INFO, f'Packaging question {q} (randomized)...')
+        for (id, file) in self.submissions:
+            version = self.allocations[id][1][self.exam_config.question_key(q)]
+            dir_version = dir / ('version-' + self.format_version(version))
+            if not dir_version.exists():
+                dir_version.mkdir()
+                Exam.extract_from_pdf(
+                    self.exam_config.instance_dir / self.format_id(id) / 'solution.pdf',
+                    dir_version / 'solution.pdf',
+                    self.solution_selectors[id][q]
+                )
+            self.extract_question_submission(dir_version, file, id, q)
+
+    def package_submissions(self):
+        dir = self.exam_config.submissions_packaged_dir
+        general.mkdir_fresh(dir)
+        for q in self.exam_config.questions:
+            dir_question = dir / self.exam_config.question_key(q)
+            dir_question.mkdir()
+            f = self.package_randomized_question if q in self.randomized_questions else self.package_question
+            f(dir_question, q)
