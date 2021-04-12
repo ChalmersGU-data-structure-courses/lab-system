@@ -3,9 +3,11 @@ import csv
 import functools
 import general
 import gitlab_config as config
+import gspread
 import hashlib
 import itertools
 import logging
+import operator
 import PyPDF2
 import shlex
 import subprocess
@@ -52,7 +54,7 @@ class Exam:
         self.allocations = allocate_versions.allocate(
             [user.sis_user_id for user in self.course.user_details.values()],
             dict((self.exam_config.question_key(q), self.exam_config.max_versions) for q in self.randomized_questions),
-            seed = 24782,
+            seed = self.exam_config.allocation_seed,
         )
         general.clear_cached_property(self, 'allocation_id_lookup')
         allocate_versions.write(
@@ -116,8 +118,12 @@ class Exam:
     def delete_canvas_instance_folder(self):
         self.course.delete_folder(self.exam_config.canvas_instance_dir)
 
+    @staticmethod
+    def exam_or_solution(solution = False):
+        return 'solution' if solution else 'exam'
+
     def exam_file_name(self, id, extension, solution = False):
-        s = 'solution' if solution else 'exam'
+        s = Exam.exam_or_solution(solution)
         formatted_id = self.format_id(id)
         return f'{s}-version-{formatted_id}.{extension}'
 
@@ -135,28 +141,31 @@ class Exam:
     def instance_folder_path(self, user):
         return self.exam_config.canvas_instance_dir / self.instance_folder_name(user)
 
-    def upload_instance(user):
-        logger.log(logging.INFO, f'Creating exam assignment for {course.user_str(user.id)}...')
+    def upload_instance(self, user, delete_old = True, solution = False):
+        s = Exam.exam_or_solution(solution)        
+        logger.log(logging.INFO, f'Uploading {s} instance for {self.course.user_str(user.id)}...')
 
-        old_folder_id = self.course.get_folder_by_path(folder_name, use_cache = False)
-        if old_folder_id != None:
-            self.canvas.delete(['folders', old_folder_id])
-        folder = self.course.create_folder(
-            canvas_dir = self.instance_folder_path(user),
-            locked = True,
-        )
+        folder = self.course.get_folder_by_path(self.instance_folder_path(user), use_cache = False)
+        if folder != None and delete_old:
+            self.canvas.delete(['folders', folder.id])
+            folder = None
+        if folder == None:
+            folder = self.course.create_folder(
+                canvas_dir = self.instance_folder_path(user),
+                locked = True,
+            )
 
         id = self.allocation_id_lookup[user.sis_user_id]
-        for format in self.exam_formats:
-            file = general.add_suffix(self.exam_config.instance_dir / self.format_id(id) / 'exam', '.' + format)
-            self.course.post_file(file, folder.id, self.exam_file_name(id, format))
+        for format in ['pdf'] if solution else self.exam_formats:
+            file = general.add_suffix(self.exam_config.instance_dir / self.format_id(id) / s, '.' + format)
+            self.course.post_file(file, folder.id, self.exam_file_name(id, format, solution = solution))
 
-    def upload_instances(users = None):
+    def upload_instances(self, users = None, delete_old = True, solution = False):
         if users == None:
             users = self.course.user_details.values()
 
         for user in users:
-            self.upload_instance(user)
+            self.upload_instance(user, delete_old = delete_old, solution = solution)
 
     def get_assignments(self, use_cache = False):
         def f(assignment):
@@ -171,13 +180,17 @@ class Exam:
             for x in f(assignment)
         )
 
+    @functools.cached_property
+    def assignments(self):
+        return self.get_assignments(use_cache = True)
+
     def delete_assignments(self, use_cache = False):
         for user_id, assignment in self.get_assignments(use_cache = use_cache).items():
-            logger.log(logging.INFO, f'Deleting exam assignment for {course.user_str(user_id)}...')
+            logger.log(logging.INFO, f'Deleting exam assignment for {self.course.user_str(user_id)}...')
             self.course.delete_assignment(assignment.id)
 
     def create_assignment(self, user, publish = True):
-        logger.log(logging.INFO, f'Creating exam assignment for {course.user_str(user.id)}...')
+        logger.log(logging.INFO, f'Creating exam assignment for {self.course.user_str(user.id)}...')
 
         folder = self.course.get_folder_by_path(self.instance_folder_path(user))
         has_extra_time = user.id in self.extra_time_students
@@ -366,9 +379,6 @@ class Exam:
         (num_pages, x) = self.find_to_pages(file)
         (to_pages_strict, to_pages) = (x[True], x[False])
 
-        print(to_pages_strict)
-        print(to_pages)
-
         yes_strict = all(len(pages) == 1 for pages in to_pages_strict.values())
         if yes_strict and to_pages_strict[self.exam_config.questions[0]] == [0]:
             return ('standard', self.to_selectors(to_pages_strict, num_pages))
@@ -499,3 +509,113 @@ class Exam:
             dir_question.mkdir()
             f = self.package_randomized_question if q in self.randomized_questions else self.package_question
             f(dir_question, q)
+
+    @functools.cached_property
+    def gradings(self):
+        worksheet = gspread.oauth().open_by_key(self.exam_config.grading_sheet).get_worksheet(0)
+        rows = worksheet.get_all_values() #value_render_option = 'FORMULA'
+        grading_lookup = self.exam_config.GradingLookup(self.exam_config.grading_rows_headers(rows))
+
+        def process_row(row):
+            v = row[grading_lookup.id()]
+            if v:
+                id = int(v)
+
+                def process_question(q):
+                    score = self.exam_config.parse_score(row[grading_lookup.score(q)])
+                    feedback = row[grading_lookup.feedback(q)]
+                    return (score, feedback)
+
+                yield (id, dict((q, process_question(q)) for q in self.exam_config.questions))
+
+        return dict(x for row in self.exam_config.grading_rows_data(rows) for x in process_row(row))
+
+    def write_grading_report_for_users(self, output, users):
+        def row(user):
+            output = [user.sis_user_id, user.sortable_name]
+            output.append('{:.5g}'.format(self.exam_config.points_basic(grading)) if grading else '-')
+            output.append('{:.5g}'.format(self.exam_config.points_advanced(grading)) if grading else '-')
+            output.append('{result.grade}'.format(self.exam_config.grade(grading)) if grading else '-')
+            return output
+
+        with output.open('w') as file:
+            out = csv.DictWriter(file, fieldnames = ['ID', 'Name'] + [key for (key, _) in self.exam_config.grading_report_columns])
+            out.writeheader()
+            for user in users:
+                id = self.allocation_id_lookup.get(user.sis_user_id)
+                grading = self.gradings.get(id) if id != None else None
+                def f():
+                    yield ('ID', user.sis_user_id)
+                    yield ('Name', user.name)
+                    for (key, h) in self.exam_config.grading_report_columns:
+                        yield (key, h(grading) if grading else None)
+                out.writerow(dict(f()))
+
+    def write_grading_report(self, output, include_non_allocations = True, include_non_submissions = True):
+        def include(user):
+            id = self.allocation_id_lookup.get(user.sis_user_id)
+            if id == None:
+                return include_non_allocations
+
+            grading = self.gradings.get(id)
+            if grading == None:
+                return include_non_submissions
+
+            return True
+
+        students = [user for user in self.course.user_details.values() if include(user)]
+        students.sort(key = operator.attrgetter('sortable_name'))
+        self.write_grading_report_for_users(output, students)
+
+    def upload_grading(self, user, replace_author_name = None):
+        logger.log(logging.INFO, f'Uploading grading for {self.course.user_str(user.id)}...')
+
+        id = self.allocation_id_lookup.get(user.sis_user_id)
+        if not id:
+            logger.log(logging.INFO, f'No allocation.')
+            return
+
+        grading = self.gradings.get(id)
+        if not grading:
+            logger.log(logging.INFO, f'No grading.')
+            return
+
+        assignment = self.assignments[user.id]
+        folder = self.course.get_folder_by_path(self.instance_folder_path(user))
+        files = self.course.get_files(folder.id)
+
+        def resource(solution):
+            name = self.exam_file_name(id, 'pdf', solution = solution)
+            link = self.course.get_file_link(files[name].id, absolute = True)
+            return (name, link)
+
+        self.course.edit_folder(
+            id = folder.id,
+            locked = False,
+            unlock_at = None,
+            lock_at = None,
+        )
+
+        submission = general.from_singleton(self.course.get_submissions(assignment.id, use_cache = False))
+        assert submission.workflow_state != 'unsubmitted'
+        if replace_author_name or submission.workflow_state != 'graded':
+            if replace_author_name:
+                for comment in submission.submission_comments:
+                    if comment.author_name == replace_author_name:
+                        self.canvas.delete(self.course.endpoint + ['assignments', assignment.id, 'submissions', user.id, 'comments', comment.id])
+            endpoint = self.course.endpoint + ['assignments', assignment.id, 'submissions', user.id]
+            params = {
+                'comment[text_comment]': self.exam_config.grading_feedback(grading, resource),
+                'submission[posted_grade]': self.exam_config.grading_score(grading),
+            }
+            print(self.exam_config.grading_score(grading))
+            print(self.exam_config.grading_feedback(grading, resource))
+            #c.put(endpoint, params = params)
+
+    def upload_gradings(self, users = None, replace_author_name = None):
+        if users == None:
+            users = self.course.user_details.values()
+
+        for user in users:
+            self.upload_grading(user, replace_author_name = replace_author_name)
+

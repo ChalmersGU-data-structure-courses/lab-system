@@ -872,14 +872,13 @@ body {
     #     users = g.details[g_id]
     #     print(names
 
-    # Returns list of Canvas ids (and names of student not registered) that passed this lab.
-    def students_that_passed(self):
+    # Returns a map from Canvas ids (and names of student not registered) to grade of last lab grading, if existing.
+    def student_grades(self):
         def f(n):
             gradings, _ = self.gradings_and_tests[n]
             responses = Course.response_map(gradings)
             tag = Course.last_handled_query(gradings)
-            if tag and responses[tag.name][1] == 1:
-                #print(n, tag.name)
+            if tag:
                 provided_ids = set(self.parse_name(name, n) for name in self.extract_names(n, tag.name))
                 group_user_ids = set(self.get_canvas_group_users(n))
 
@@ -889,11 +888,13 @@ body {
                 if group_not_provided := group_user_ids - provided_ids:
                     logger.log(logging.WARNING, 'Group users in {} are not listed in answers file: {}'.format(self.config.lab_group_name_print(n), self.course.canvas_course.users_str(group_not_provided)))
 
+                #print(n, tag.name)
+
                 # Trust the student reportings over group membership.
                 # Group membership might have changed.
-                yield from provided_ids
+                yield from ((id, responses[tag.name][1]) for id in provided_ids)
 
-        return [x for n in self.course.lab_groups for x in f(n)]
+        return dict(x for n in self.course.lab_groups for x in f(n))
 
 def labs(gitlab_config):
     course = Course(gitlab_config)
