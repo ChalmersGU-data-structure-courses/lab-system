@@ -216,6 +216,7 @@ class Exam:
             'name': 'Exam for {}'.format(user.name),
             'submission_types': ['online_upload'],
             'points_possible': self.exam_config.canvas_max_points,
+            'post_manually': False,
             'only_visible_to_overrides': True,
             'assignment_overrides': [{
                     'student_ids': [user.id],
@@ -571,7 +572,7 @@ class Exam:
         logger.log(logging.INFO, f'Uploading grading for {self.course.user_str(user.id)}...')
 
         id = self.allocation_id_lookup.get(user.sis_user_id)
-        if not id:
+        if id == None:
             logger.log(logging.INFO, f'No allocation.')
             return
 
@@ -610,7 +611,7 @@ class Exam:
             }
             print(self.exam_config.grading_score(grading))
             print(self.exam_config.grading_feedback(grading, resource))
-            #c.put(endpoint, params = params)
+            self.canvas.put(endpoint, params = params)
 
     def upload_gradings(self, users = None, replace_author_name = None):
         if users == None:
