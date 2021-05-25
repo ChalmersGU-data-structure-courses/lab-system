@@ -27,15 +27,15 @@ def question6(seed=None):
             del weights[rnd.randrange(0, len(weights))]
         # the path will be the even-numbered elements 
         path = weights[0::2]
-        # the cheap distractors are the odd-numbered elements
-        cheap = weights[1::2]
-        path_cost = sum(path)
 
+    path_cost = sum(path)
+    mst_cost = sum(weights[:5])
+
+    # add some expensive distractor edges
     weights.append(path_cost)
     while len(weights) < NEDGES:
         weights.append(weights[-1] + rnd.randrange(1, 4))
 
-    mst_cost = sum(weights[:5])
 
     return {
         'weights': ', '.join(map(str, weights)),
