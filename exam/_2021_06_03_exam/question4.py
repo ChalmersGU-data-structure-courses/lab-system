@@ -39,7 +39,14 @@ def question4(seed=None):
             increase = rnd.choice(choices)
             array.append(array[parent(i)] + increase)
 
-    answer = {'solution': []}
+    min_insert_val = array[parent(INSERT)] + 1
+    max_insert_val = array[INSERT] - 1
+
+    answer = {'solution': {
+        'array': [],
+        'insert': f"{min_insert_val}-{max_insert_val}",
+        }
+    }
     for i, val in enumerate(array):
         solval = val
         if i in HOLES:
@@ -49,7 +56,7 @@ def question4(seed=None):
             solval = f"{parentval+1}-{min(leftval,rightval)-1}"
             val = "?"
         answer[f'v{i}'] = val
-        answer['solution'].append(solval)
+        answer['solution']['array'].append(solval)
     return answer
 
 
