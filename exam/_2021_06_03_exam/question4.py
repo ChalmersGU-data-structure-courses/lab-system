@@ -12,7 +12,8 @@ HOLE_INC = [2, 3] # possible diff between one value and its child, if one of the
 INSERT_INC = [4, 5] # possible diff between one value and its child, if one of them is the INSERT position
 
 def test_unique_values(array):
-    return len(array) == len(set(array))
+    insert_values = set(range(array[parent(INSERT)] + 1, array[INSERT])) - set(array)
+    return (len(array) == len(set(array)) and len(insert_values) >= 2)
 
 
 def parent(i):
@@ -44,7 +45,7 @@ def question4(seed=None):
 
     answer = {'solution': {
         'array': [],
-        'insert': f"{min_insert_val}-{max_insert_val}",
+        'insert': f"{min_insert_val}..{max_insert_val}",
         }
     }
     for i, val in enumerate(array):
@@ -53,7 +54,7 @@ def question4(seed=None):
             parentval = array[parent(i)] if i > 0 else -1
             leftval = array[leftchild(i)] if leftchild(i) < len(array) else 100
             rightval = array[rightchild(i)] if rightchild(i) < len(array) else 100
-            solval = f"{parentval+1}-{min(leftval,rightval)-1}"
+            solval = f"{parentval+1}..{min(leftval,rightval)-1}"
             val = "?"
         answer[f'v{i}'] = val
         answer['solution']['array'].append(solval)
