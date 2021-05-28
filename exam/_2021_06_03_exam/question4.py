@@ -33,7 +33,6 @@ def question4(seed=None):
         array = [rnd.choice(STARTVALUES)]
         while len(array) < SIZE:
             i = len(array)
-            prev = array[parent(i)]
             choices = (INSERT_INC if i == INSERT or parent(i) == INSERT else
                        HOLE_INC   if i in HOLES or parent(i) in HOLES   else
                        INCREASE)
