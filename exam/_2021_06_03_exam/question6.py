@@ -47,3 +47,9 @@ def question6(seed=None):
 if __name__=='__main__':
     print(question6())
 
+class Generator:
+    def __init__(self, seed):
+        self.seed = seed
+
+    def replacements(self, solution = False):
+        return question6(self.seed).items()

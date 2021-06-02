@@ -53,12 +53,6 @@ def canvas_assignment_description(resource_for_format):
         p('Submit your solutions via file upload, preferably as a ', strong('single PDF file'), '. If you do not know how to convert your solutions to PDF, other formats are accepted as well. Please use separate pages for each question.'),
     ).render(pretty = False)
 
-#import complexity
-#import sorting
-#import priority_queue
-#import hash_table
-#import graph
-
 questions = [i + 1 for i in range(8)]
 
 def question_key(q):
@@ -71,13 +65,16 @@ def question_name_parse(q):
     m = re.fullmatch('Question (\\d+)', s)
     return int(m.group(1)) if m else None
 
+from .. import question6
+from .. import question4
+
 question_randomizers = [
 #    ('Q1', complexity.Question),
 #    ('Q2', sorting.QuestionQuicksort),
 #    ('Q2', sorting.QuestionMergeSort),
-#    ('Q4', priority_queue.Question),
+    ('Q4', question4.Generator),
 #    ('Q5', hash_table.Question),
-#    ('Q6', graph.QuestionDijkstra),
+    ('Q6', question6.Generator),
 ]
 
 max_versions = 12
