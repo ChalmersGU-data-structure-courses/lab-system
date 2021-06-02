@@ -17,4 +17,4 @@ class Generator:
             c = count_inversions(values)
             if c == n * (n - 1) // 4: # average amount of inversions
                 break
-        return ('merge', ', '.join(values))
+        yield ('merge', ', '.join(values))
