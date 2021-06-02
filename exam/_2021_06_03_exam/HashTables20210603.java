@@ -94,7 +94,7 @@ public class HashTables20210603 {
 		for(int i = 0; i < inserted.length; i++) {
 			for(int j = 0; j < inserted[i].length; j++) {
 				b.append(associate("ko_" + (i + 1) + "_" + j,
-						inserted[i][j] >= 0 ? keys.get(inserted[i][j]) : ""));
+						   inserted[i][(j + offset) % m] >= 0 ? keys.get(inserted[i][(j + offset) % m]) : ""));
 			}
 		}
 		return b.toString();
