@@ -1,17 +1,13 @@
 import general
 import logging
 
-#import exam._2021_06_03_exam.dit181.data as exam_config
-#from exam.canvas import Exam
+import exam._2021_06_03_exam.dit181.data as exam_config
+from exam.canvas import Exam
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 
-#e = Exam(exam_config)
+e = Exam(exam_config)
 #e.allocate_students()
-#e.instantiate_template()
+e.instantiate_template()
 #e.upload_instances()
-
-from exam._2021_06_03_exam.question5 import *
-
-g = Generator(1)

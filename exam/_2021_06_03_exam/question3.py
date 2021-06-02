@@ -131,4 +131,4 @@ class Generator:
         self.values = [self.sorted_values[self.case[i]] for i in range(len(self.case))]
 
     def replacements(self, solution = False):
-        yield ('tree', ', '.join([str(value) for value in values]))
+        yield ('tree', ', '.join([str(value) for value in self.values]))

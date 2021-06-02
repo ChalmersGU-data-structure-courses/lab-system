@@ -1,3 +1,5 @@
+import random
+
 def count_inversions(xs):
     r = 0
     for i in range(len(xs)):
@@ -15,6 +17,6 @@ class Generator:
         while True:
             values = self.r.sample([k + 1 for k in range(9)], 8)
             c = count_inversions(values)
-            if c == n * (n - 1) // 4: # average amount of inversions
+            if c == self.n * (self.n - 1) // 4: # average amount of inversions
                 break
-        yield ('merge', ', '.join(values))
+        yield ('merge', ', '.join([str(value) for value in values]))
