@@ -5,28 +5,27 @@ import java.util.Random;
 import java.util.SplittableRandom;
 
 public class HashTables20210603 {
-	private static SplittableRandom rng = new SplittableRandom(1);
-	private static Random rng2 = new Random(1);
+        private static SplittableRandom rng;
+        private static Random rng2;
 
 	private static String associate(String key, String value) {
-		return key + "=" + value + "\n";
+		return key + "=\"" + value + "\"\n";
 	}
 
-	private static String getKeys(String prefix, List<String> keys, int base, int size, boolean forward) {
-		StringBuilder b = new StringBuilder();
+	private static String getKeys(String prefix, List<String> keys, int base, boolean forward) {
 		int p = 0;
-		for(int i = forward ? 0 : size - 1;
-			forward ? i < size : i >= 0;
-			p++, i = forward ? i + 1 : i - 1) {
+		String[] ks = new String[keys.size()];
+		for(int i = forward ? 0 : keys.size() - 1;
+		    forward ? i < keys.size() : i >= 0;
+		        i = (forward ? i + 1 : i - 1)) {
 			String key;
 			if(i < keys.size()) {
-				key = keys.get(i);
-			} else {
-				key = "";
+			    key = keys.get(i);
+			    ks[p] = keys.get(i);
 			}
-			b.append(associate(prefix + (base * 2 + p), key));
+			p++;
 		}
-		return b.toString();
+		return associate(prefix + base, String.join(" ", ks));
 	}
 
 	private static String getSeparateChainingText(int[] hashes, int m) {
@@ -57,14 +56,14 @@ public class HashTables20210603 {
 				hashTable.add(new ArrayList<>());
 			}
 			for(int j = 0; j < hashes.length; j++) {
-				hashTable.get(hashes[j] % m).add(keys.get(j));
+			        hashTable.get(hashes[j] % m).add(keys.get(j));
 			}
 			int o = order.get(i);
 			boolean firstOrder = (o & 1) == 0;
 			boolean secondOrder = (o & 2) == 0;
 			for(int j = 0; j < m; j++) {
 				boolean o2 = j % 2 == 0 ? firstOrder : secondOrder;
-				b.append(getKeys("ks_" + (i + 1) + "_", hashTable.get(j), j, 2, o2));
+				b.append(getKeys("ks_" + (i + 1) + "_", hashTable.get(j), j, o2));
 			}
 		}
 
@@ -102,19 +101,19 @@ public class HashTables20210603 {
 	}
 
 	public static void main(String[] args) {
-		int instances = args.length > 0 ? Integer.parseInt(args[0]) : 1;
-		for(int i = 0; i < instances; i++) {
-			String scInstance = getSeparateChainingText(new int[] {3, 0, 9, 2, 6, 5, 6}, 5);
-			String oaInstance = printOpenAddressing(new int[] {1, 1, 2, 2, 3, 4, 5},
-					new int[][] {
-				{-1, 0, 1, 3, 4, 2, 6, 5},
-				{-1, 1, 2, 3, 0, 4, 5, 6},
-				{-1, 1, 0, 4, 6, 2, 3, 5},
-				{-1, 0, 1, 5, 2, 6, 3, 4}
-			}, 8);
-      if (i == instances - 1)
-          System.out.println(scInstance + oaInstance);
-		}
-	}
+		int instanceId = args.length > 0 ? Integer.parseInt(args[0]) : 1;
+		rng = new SplittableRandom(instanceId);
+		rng2 = new Random(instanceId);
 
+		String scInstance = getSeparateChainingText(new int[] {3, 0, 9, 2, 6, 5, 6}, 5);
+		String oaInstance = printOpenAddressing(new int[] {1, 1, 2, 2, 3, 4, 5},
+							new int[][] {
+							    {-1, 0, 1, 3, 4, 2, 6, 5},
+							    {-1, 1, 2, 3, 0, 4, 5, 6},
+							    {-1, 1, 0, 4, 6, 2, 3, 5},
+							    {-1, 0, 1, 5, 2, 6, 3, 4}
+							}, 8);
+		System.out.print(scInstance);
+		System.out.print(oaInstance);
+	}
 }
