@@ -112,7 +112,8 @@ public class HashTables20210603 {
 				{-1, 1, 0, 4, 6, 2, 3, 5},
 				{-1, 0, 1, 5, 2, 6, 3, 4}
 			}, 8);
-			System.out.println(scInstance + oaInstance);
+      if (i == instances - 1)
+          System.out.println(scInstance + oaInstance);
 		}
 	}
 

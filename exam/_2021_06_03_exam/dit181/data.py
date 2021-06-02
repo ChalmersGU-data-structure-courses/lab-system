@@ -68,12 +68,14 @@ def question_name_parse(q):
 from .. import question2
 from .. import question3
 from .. import question4
+from .. import question5
 from .. import question6
 
 question_randomizers = [
-    ('Q3', question2.Generator),
+    ('Q2', question2.Generator),
     ('Q3', question3.Generator),
     ('Q4', question4.Generator),
+    ('Q5', question5.Generator),
     ('Q6', question6.Generator),
 ]
 
