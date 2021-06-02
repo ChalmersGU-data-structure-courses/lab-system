@@ -77,7 +77,7 @@ public class HashTables20210603 {
 			keys.add(String.copyValueOf(c));
 		}
 		Collections.shuffle(keys, rng2);
-		int offset = rng.nextInt(0, m * 2);
+		int offset = rng.nextInt(0, m);
 		for(int i = 0; i < hashes.length; i++) {
 			hashes[i] = (hashes[i] + offset) % (m * 2) + m;
 		}
@@ -90,11 +90,14 @@ public class HashTables20210603 {
 		for(int i = 0; i < hashes.length; i++) {
 			b.append(associate("entryB_" + i, keys.get(i) + ":" + Integer.toString(hashes[i])));
 		}
-
+		System.out.println("OFFSET: " + offset);
 		for(int i = 0; i < inserted.length; i++) {
 			for(int j = 0; j < inserted[i].length; j++) {
-				b.append(associate("ko_" + (i + 1) + "_" + j,
-						   inserted[i][(j + offset) % m] >= 0 ? keys.get(inserted[i][(j + offset) % m]) : ""));
+			    int hvIdx = (j + m - offset) % m;
+			    System.out.println("j: " + j + "\thvIdx: " + hvIdx);
+			    b.append(associate("ko_" + (i + 1) + "_" + j,
+					       inserted[i][hvIdx] >= 0 ? keys.get(inserted[i][hvIdx]) : ""));
+			    //	   hvIdx >= 0 && inserted[i][hvIdx] >= 0 ? keys.get(inserted[i][hvIdx]) : ""));
 			}
 		}
 		return b.toString();
