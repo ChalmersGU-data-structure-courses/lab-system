@@ -7,8 +7,8 @@ HOLES = [2, 3, 9] # positions for "?" unknown values
 INSERT = 1 # position where the inserted element should end up
 
 STARTVALUES = [1, 2, 3] # possible values for the first element
-INCREASE = [2, 3, 4, 5] # possible diffs between one value and its child
-HOLE_INC = [2, 3] # possible diff between one value and its child, if one of them is a hole
+INCREASE = [2, 3, 4, 5, 6] # possible diffs between one value and its child
+HOLE_INC = [2, 3, 4] # possible diff between one value and its child, if one of them is a hole
 INSERT_INC = [4, 5] # possible diff between one value and its child, if one of them is the INSERT position
 
 def test_unique_values(array):
@@ -33,8 +33,9 @@ def question4(seed=None):
         array = [rnd.choice(STARTVALUES)]
         while len(array) < SIZE:
             i = len(array)
-            choices = (INSERT_INC if i == INSERT or parent(i) == INSERT else
-                       HOLE_INC   if i in HOLES or parent(i) in HOLES   else
+            prev = array[parent(i)]
+            choices = (INSERT_INC if i == INSERT else
+                       HOLE_INC   if i in HOLES or parent(i) in HOLES else
                        INCREASE)
             increase = rnd.choice(choices)
             array.append(array[parent(i)] + increase)
