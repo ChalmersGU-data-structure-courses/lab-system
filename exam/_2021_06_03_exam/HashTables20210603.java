@@ -79,7 +79,7 @@ public class HashTables20210603 {
 		Collections.shuffle(keys, rng2);
 		int offset = rng.nextInt(0, m * 2);
 		for(int i = 0; i < hashes.length; i++) {
-			hashes[i] = (hashes[i] + offset) % (m * 2) + m * 2;
+			hashes[i] = (hashes[i] + offset) % (m * 2) + m;
 		}
 		StringBuilder b = new StringBuilder();
 		List<Integer> order = new ArrayList<>();
