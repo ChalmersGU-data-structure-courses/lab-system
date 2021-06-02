@@ -18,4 +18,4 @@ class Generator:
         for line in self.output.splitlines():
             a = line.split('=')
             if len(a) == 2:
-                yield(a[0], a[1])
+                yield(a[0], a[1].strip('"'))
