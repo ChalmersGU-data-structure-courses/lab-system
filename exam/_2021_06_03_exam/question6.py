@@ -39,8 +39,8 @@ def question6(seed=None):
 
     return {
         'weights': ', '.join(map(str, weights)),
-        'path_cost': path_cost,
-        'mst_cost': mst_cost,
+        'path_cost': str(path_cost),
+        'mst_cost': str(mst_cost),
     }
 
 
