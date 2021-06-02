@@ -2,21 +2,37 @@ import csv
 from pathlib import Path
 import random
 
-def allocate(students, max_versions, seed = None):
+def allocate_versions(n, num_versions, r):
+    '''
+    Randomly generate a list of n versions [0, num_versions). 
+    r is an instance of random.Random.
+    Make sure that every version occurs approximately equally often.
+    '''
+
+    versions = [num_versions * i // n for i in range(n)]
+    r.shuffle(versions)
+    return versions
+
+def allocate(students, num_versions, seed = None):
     '''
     Randomly assign sequential ids to students and allocate question versions to students.
     student is a collections of students.
-    max_version is a dictionary sending questions to the total number of versions.
+    num_versions is a dictionary sending questions to the total number of versions.
     Assigns a random sequential id, formatted as sortable strings with leading zeroes, to every student and returns a dictionary mapping ids to pairs of students and a dictionary from questions to versions in the range specified by the total number of versions for that question.
     '''
 
     r = random.Random(seed)
     students_shuffled = list(students)
     r.shuffle(students_shuffled)
+
+    versions = dict(
+        (question, allocate_versions(len(students), num_versions, r))
+        for question, num_versions in num_versions.items()
+    )
     return dict(
         (id, (student, dict(
-            (question, r.randrange(max_version))
-            for question, max_version in max_versions.items()
+            (question, versions[question][id])
+            for question in num_versions
         )))
         for (id, student) in enumerate(students_shuffled)
     )
