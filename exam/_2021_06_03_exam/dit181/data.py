@@ -18,7 +18,7 @@ formats = [
     ('pdf', 'PDF, for reading'),
 ]
 
-canvas_url = 'chalmers.instructure.com'
+canvas_url = 'canvas.gu.se'
 canvas_room = 50996
 canvas_extra_time_section = 'Students with extra time'
 canvas_secret_salt = '1EZB2k9p0KUAfh2b'

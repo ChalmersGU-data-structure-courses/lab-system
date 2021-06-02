@@ -83,7 +83,7 @@ class Exam:
                 for id, (student, versions) in self.allocations.items()
             ),
             solution = solution,
-            output_types = ['pdf'] if solution else exam_formats,
+            output_types = ['pdf'] if solution else self.exam_formats,
             share_dir = share_dir,
             share_url = share_url,
         )
