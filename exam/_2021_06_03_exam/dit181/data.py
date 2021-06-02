@@ -65,15 +65,13 @@ def question_name_parse(q):
     m = re.fullmatch('Question (\\d+)', s)
     return int(m.group(1)) if m else None
 
-from .. import question6
+from .. import question3
 from .. import question4
+from .. import question6
 
 question_randomizers = [
-#    ('Q1', complexity.Question),
-#    ('Q2', sorting.QuestionQuicksort),
-#    ('Q2', sorting.QuestionMergeSort),
+    ('Q3', question3.Generator),
     ('Q4', question4.Generator),
-#    ('Q5', hash_table.Question),
     ('Q6', question6.Generator),
 ]
 
