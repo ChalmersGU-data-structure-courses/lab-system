@@ -95,7 +95,8 @@ def generate_from_template_document(
 
     # Perform the replacements as a single batch request.
     logger.log(logging.DEBUG, f'Performing replacements:\n{requests}\n...')
-    r = docs.batch_update(id_copy, requests)
+    if requests:
+        r = docs.batch_update(id_copy, requests)
 
     # Export the document in the requested file types.
     for suffix, path in output_paths.items():
