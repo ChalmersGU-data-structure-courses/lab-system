@@ -495,3 +495,24 @@ def read_without_comments(path):
 
 def unique_list(xs):
     return list(dict.fromkeys(xs))
+
+def find_all(key, s, start = 0):
+    r = s.find(key, start)
+    if r != -1:
+        yield r
+        yield from find_all(key, s, r + len(key))
+
+def find_all_many(keywords, s):
+    '''
+    keywords is a dictionary whose values are keywords to be searched in the string text.
+    The result is a list of pairs (k, i) where k is a dictionary key and i is a position in s where k appears.
+    The result is sorted by positions.
+    '''
+    return sorted((i, k) for (k, v) in keywords.items() for i in find_all(v, s))
+
+def filter_keywords(keywords, s):
+    '''
+    keywords is a dictionary whose values are keywords to be searched in the string text.
+    The result is a list of (not necessarily unique) keys of dictionary in the order they appear in text.
+    '''
+    return [k for i, k in find_all_many(keywords, s)]
