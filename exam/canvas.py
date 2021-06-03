@@ -260,8 +260,8 @@ class Exam:
                 lock_at = self.end(has_extra_time),
             )
 
-    def download_submissions(self, dir, use_cache = False):
-        dir.mkdir(exist_ok = True)
+    def download_submissions(self, use_cache = False):
+        self.exam_config.submissions_dir.mkdir(exist_ok = True)
 
         for (user_id, assignment) in self.get_assignments(use_cache = use_cache).items():
             if not assignment.overrides[0].student_ids:
@@ -276,7 +276,7 @@ class Exam:
             submission = self.course.get_submissions(assignment.id, use_cache = use_cache)[0]
             state = submission.workflow_state
             if state != 'unsubmitted':
-                dir_submission = dir / self.format_id(id)
+                dir_submission = self.exam_config.submissions_dir / self.format_id(id)
                 general.mkdir_fresh(dir_submission)
                 for attachment in submission.attachments:
                     self.canvas.place_file(dir_submission / canvas.Assignment.get_file_name(attachment), attachment)
@@ -305,7 +305,7 @@ class Exam:
         logger.log(logging.WARNING, f'Could not normalize submission {self.format_id(id)}.')
 
     def normalize_submissions(self):
-        for id in self.submissions():
+        for id, _ in self.submissions:
             self.normalize_submission(id)
         general.clear_cached_property(self, 'submissions')
 
@@ -331,76 +331,77 @@ class Exam:
             return []
         return list(map(Exam.parse_range, s.split(',')))
 
-    @staticmethod
-    def generate_selectors(questions, num_pages, starts, omit = []):
-        def next(q):
-            i = q + 1
-            while i not in starts and i in questions:
-                i = i + 1
-            return i
-
-        return dict(
-            (q, [(starts[q], starts.get(next(q), num_pages))] if q in starts else [])
-            for q in questions
-            if not q in omit
-        )
-
-    def to_selectors(self, starts, num_pages):
-        return Exam.generate_selectors(
-            self.exam_config.questions,
-            num_pages,
-            dict(
-                (k, general.from_singleton(v))
-                for (k, v) in starts.items()
-                if v
-            ),
-        )
-
-    def find_to_pages(self, file):
-        logger.log(logging.INFO, f'Finding question title positions in {shlex.quote(str(file))}...')
+    def find_question_occurrences(self, file):
+        logger.log(logging.INFO, f'Finding question title occurrences in {shlex.quote(str(file))}...')
         pdf = PyPDF2.PdfFileReader(str(file), strict = False)
         num_pages = pdf.getNumPages()
+        keywords = dict((q, self.exam_config.question_name(q)) for q in self.exam_config.questions)
 
-        to_pages = dict(
-            (strict, dict((i, []) for i in self.exam_config.questions))
-            for strict in [True, False]
-        )
-        for i in range(num_pages):
+        def f(i):
             text = subprocess.run(
                 ['pdftotext', '-f', str(i + 1), '-l', str(i + 1), str(file), '-'],
                 stdout = subprocess.PIPE,
                 encoding = 'utf-8',
                 check = True
             ).stdout.strip()
-            for q in self.exam_config.questions:
-                qt = self.exam_config.question_name(q)
-                for strict in to_pages:
-                    if text.startswith(qt) if strict else qt in text:
-                        to_pages[strict][q].append(i)
-        return (num_pages, to_pages)
+            return [(q, i == 0) for (i, q) in general.find_all_many(keywords, text)]
+        return [f(i) for i in range(num_pages)]
+
+    @staticmethod
+    def guess_selectors(questions, occurrences):
+        r = dict((q, []) for q in questions)
+        q_current = None
+        s = None
+
+        def start(i, q):
+            nonlocal s, q_current
+            s = i
+            q_current = q
+
+        def end(i):
+            nonlocal s
+            if s != None:
+                r[q_current].append((s, i))
+                s = None
+
+        for i, qs in enumerate(occurrences):
+            for (q, top) in qs:
+                end(i if top else i + 1)
+                start(i, q)
+
+        end(len(occurrences))
+        return r
+
+    def guess_selector_info(self, file):
+        occurrences = self.find_question_occurrences(file)
+        if not list(itertools.chain.from_iterable(occurrences)):
+            return ('enter', dict())
+
+        selectors = Exam.guess_selectors(self.exam_config.questions, occurrences)
+        starts_at_beginning = occurrences[0] and occurrences[0][0][1] == True
+        questions_on_own_pages = all(not xs or xs[0][1] == True for xs in occurrences)
+        starts_with_first_question = self.exam_config.questions or occurrences[0][0][0] == self.exam_config.questions[0]
+        has_single_ranges = all(len(ranges) <= 1 for ranges in selectors.values())
+        has_all_questions = all(len(ranges) >= 1 for ranges in selectors.values())
+
+        verdict = 'standard' if all([
+            starts_at_beginning,
+            questions_on_own_pages,
+            starts_with_first_question,
+            has_single_ranges,
+            has_all_questions,
+        ]) else 'check'
+        return (verdict, selectors)
 
     @functools.cached_property
     def solution_selectors(self):
         def f(id, _):
             solution_file = self.exam_config.instance_dir / self.format_id(id) / 'solution.pdf'
-            (num_pages, to_pages) = self.find_to_pages(solution_file)
-            return (id, self.to_selectors(to_pages[True], num_pages))
+            (verdict, selectors) = self.guess_selector_info(solution_file)
+            assert verdict == 'standard'
+            return (id, selectors)
 
         return dict(itertools.starmap(f, self.submissions))
-
-    def guess_selector_info(self, file):
-        (num_pages, x) = self.find_to_pages(file)
-        (to_pages_strict, to_pages) = (x[True], x[False])
-
-        yes_strict = all(len(pages) == 1 for pages in to_pages_strict.values())
-        if yes_strict and to_pages_strict[self.exam_config.questions[0]] == [0]:
-            return ('standard', self.to_selectors(to_pages_strict, num_pages))
-
-        yes = all(len(pages) == 1 for pages in to_pages.values())
-        if yes and to_pages[self.exam_config.questions[0]] == [0]:
-            return ('check', self.to_selectors(to_pages, num_pages))
-
-        return ('enter', dict())
 
     def guess_selector_infos(self, dir):
         return dict(
@@ -495,33 +496,34 @@ class Exam:
     def extract_question_submission(self, dir, file, id, q):
         Exam.extract_from_pdf(file, dir / (self.format_id(id) + '.pdf'), self.selector_infos[id][1][q])
 
-    def package_question(self, dir, q):
+    def package_question(self, dir, q, include_solutions):
         logger.log(logging.INFO, f'Packaging question {q}...')
         for (id, file) in self.submissions:
             self.extract_question_submission(dir, file, id, q)
 
-    def package_randomized_question(self, dir, q):
+    def package_randomized_question(self, dir, q, include_solutions):
         logger.log(logging.INFO, f'Packaging question {q} (randomized)...')
         for (id, file) in self.submissions:
             version = self.allocations[id][1][self.exam_config.question_key(q)]
             dir_version = dir / ('version-' + self.format_version(version))
             if not dir_version.exists():
                 dir_version.mkdir()
-                Exam.extract_from_pdf(
-                    self.exam_config.instance_dir / self.format_id(id) / 'solution.pdf',
-                    dir_version / 'solution.pdf',
-                    self.solution_selectors[id][q]
-                )
+                if include_solutions:
+                    Exam.extract_from_pdf(
+                        self.exam_config.instance_dir / self.format_id(id) / 'solution.pdf',
+                        dir_version / 'solution.pdf',
+                        self.solution_selectors[id][q]
+                    )
             self.extract_question_submission(dir_version, file, id, q)
 
-    def package_submissions(self):
+    def package_submissions(self, include_solutions = True):
         dir = self.exam_config.submissions_packaged_dir
         general.mkdir_fresh(dir)
         for q in self.exam_config.questions:
             dir_question = dir / self.exam_config.question_key(q)
             dir_question.mkdir()
             f = self.package_randomized_question if q in self.randomized_questions else self.package_question
-            f(dir_question, q)
+            f(dir_question, q, include_solutions)
 
     @functools.cached_property
     def gradings(self):
