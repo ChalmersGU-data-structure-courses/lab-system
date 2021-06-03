@@ -161,6 +161,10 @@ class Exam:
             self.course.post_file(file, folder.id, self.exam_file_name(id, format, solution = solution))
 
     def upload_instances(self, users = None, delete_old = True, solution = False):
+        '''
+        If delete_old is false, the old instance files are replaced.
+        This automatically updates the links in already created assignments to point to the new files.
+        '''
         if users == None:
             users = self.course.user_details.values()
 
@@ -182,19 +186,19 @@ class Exam:
 
     @functools.cached_property
     def assignments(self):
-        return self.get_assignments(use_cache = True)
+        return self.get_assignments(use_cache = False)
 
     def delete_assignments(self, use_cache = False):
         for user_id, assignment in self.get_assignments(use_cache = use_cache).items():
             logger.log(logging.INFO, f'Deleting exam assignment for {self.course.user_str(user_id)}...')
             self.course.delete_assignment(assignment.id)
 
-    def create_assignment(self, user, publish = True):
+    def create_assignment(self, user, publish = True, update = False):
         logger.log(logging.INFO, f'Creating exam assignment for {self.course.user_str(user.id)}...')
 
         folder = self.course.get_folder_by_path(self.instance_folder_path(user))
-        has_extra_time = user.id in self.extra_time_students
         files = self.course.get_files(folder.id)
+        has_extra_time = user.id in self.extra_time_students
 
         id = self.allocation_id_lookup[user.sis_user_id]
         def resource_for_format(extension):
@@ -227,15 +231,23 @@ class Exam:
                 }],
                 'description': self.exam_config.canvas_assignment_description(resource_for_format)
             }
-        return self.course.post_assignment(assignment)
 
-    def create_assignments(self, users = None, publish = True):
+        if update:
+            r = self.course.edit_assignment(self.assignments[user.id].id, assignment)
+        else:
+            r = self.course.post_assignment(assignment)
+        return r
+
+    def create_assignments(self, users = None, publish = True, update = False):
+        '''
+        If update is True, update existing assignments instead of creating new ones.
+        '''
         if users == None:
             assignments = self.get_assignments()
             users = [user for user in self.course.user_details.values() if not user.id in assignments]
 
         for user in users:
-            self.create_assignment(user, publish = publish)
+            self.create_assignment(user, publish = publish, update = update)
 
     def set_instances_availability(self):
         for user in self.course.user_details.values():
