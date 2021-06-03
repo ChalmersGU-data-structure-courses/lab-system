@@ -79,8 +79,8 @@ question_randomizers = [
     ('Q6', question6.Generator),
 ]
 
-max_versions = 12
-allocation_seed = 24782
+max_versions = 6
+allocation_seed = 37844
 
 allocations_file = this_dir / 'allocations.csv'
 instance_dir = this_dir / 'instances'
@@ -135,7 +135,7 @@ questions_basic = [q for q in questions if q <= 6]
 questions_advanced = [q for q in questions if q > 6]
 
 def question_score_max(q):
-    return 2 if q in questions_basic else 3
+    return 2
 
 def questions_score_max(qs):
     return sum(question_score_max(q) for q in qs)
