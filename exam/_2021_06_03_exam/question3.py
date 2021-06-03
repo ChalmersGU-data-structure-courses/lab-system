@@ -18,7 +18,7 @@ def height(node):
 def balancing(node):
     return height(node.l) - height(node.r) if node else 0
 
-def is_balanced(node, threshold = 1):
+def is_balanced(node, threshold):
     return abs(balancing(node)) <= threshold
 
 def rotate_left(node):
@@ -33,15 +33,23 @@ class Rebalance(Enum):
     RIGHT_LEFT = auto()
     RIGHT_RIGHT = auto()
 
+format_rebalance = {
+    Rebalance.LEFT_LEFT: 'left-left case',
+    Rebalance.LEFT_RIGHT: 'left-right case',
+    Rebalance.RIGHT_LEFT: 'right-left case',
+    Rebalance.RIGHT_RIGHT: 'right-right case',
+}
+
 rb_trivial = [None]
 rb_easy = [Rebalance.LEFT_RIGHT, Rebalance.RIGHT_LEFT]
 rb_hard = [Rebalance.LEFT_LEFT, Rebalance.RIGHT_RIGHT]
 
-def balance(node, threshold = 1):
-    #print(f'balancing {node} with threshold {threshold}')
-    if is_balanced(node, threshold = threshold):
-        rb = None
-    elif balancing(node) > 0:
+def balance(node, threshold):
+    if is_balanced(node, threshold):
+        return (None, node)
+
+    rb_value = node.value
+    if balancing(node) > 0:
         d = balancing(node.l)
         assert d != 0
         if d < 0:
@@ -59,10 +67,9 @@ def balance(node, threshold = 1):
         else:
             rb = Rebalance.RIGHT_RIGHT
         node = rotate_left(node)
-    return (rb, node)
+    return ((rb, rb_value), node)
 
-def insert(node, value, threshold = 2):
-    #print(f'inserting {value} into {node}')
+def insert(node, value, threshold):
     if not node:
         return (None, Node(value, None, None))
 
@@ -70,57 +77,54 @@ def insert(node, value, threshold = 2):
         return (None, node)
 
     if value < node.value:
-        (rb, l) = insert(node.l, value, threshold = threshold)
+        (rb, l) = insert(node.l, value, threshold)
         node = Node(node.value, l, node.r)
     else:
-        (rb, r) = insert(node.r, value, threshold = threshold)
+        (rb, r) = insert(node.r, value, threshold)
         node = Node(node.value, node.l, r)
     if not rb:
-        (rb, node) = balance(node, threshold = threshold)
+        (rb, node) = balance(node, threshold)
 
-    assert is_balanced(node, threshold = threshold)
+    assert is_balanced(node, threshold)
     return (rb, node)
 
-def check_balanced(node, threshold = 2):
+def only_rebalancing_type(rb):
+    return rb and rb[0]
+
+def check_balanced(node, threshold):
     if node:
         check_balanced(node.l)
         check_balanced(node.r)
-        assert is_balanced(node, threshold = threshold)
+        assert is_balanced(node, threshold)
 
-# node = None
-# for v in [1, 2, 3, 4, 5, 6, 7]: #[7, 6, 5, 4, 3, 2, 1]:
-#     (rb, node) = insert(node, v, threshold = 2)
-#     print()
-#     print(rb)
-#     print(node)
-#     check_balanced(node, threshold = 2)
-
-def rebalancings(vs, threshold = 2):
+def rebalancings(vs, threshold):
     node = None
     for v in vs:
-        (rb, node) = insert(node, v, threshold = threshold)
+        (rb, node) = insert(node, v, threshold)
         yield rb
 
-def has_right_rebalancing(vs, rbss, threshold = 2):
+def has_right_rebalancing(vs, rbss, threshold):
     node = None
     for (v, rbs) in zip(vs, rbss):
-        (rb, node) = insert(node, v, threshold = threshold)
-        if not rb in rbs:
+        (rb, node) = insert(node, v, threshold)
+        if only_rebalancing_type(rb) in rbs:
             return False
     return True
 
 def ilen(it):
     return sum(1 for _ in it)
 
-def find_good_cases(n, threshold = 2):
+def find_good_cases(n, threshold):
     for vs in itertools.permutations(range(n)):
-        rbs = list(rebalancings(vs))
+        rbs = [only_rebalancing_type(rb) for rb in rebalancings(vs, threshold)]
         easy = ilen(filter(lambda x: x in rb_easy, rbs))
         hard = ilen(filter(lambda x: x in rb_hard, rbs))
         if easy == 1 and hard == 1:
             yield vs
 
-good_cases = list(find_good_cases(6, threshold = 2))
+threshold = 2
+
+good_cases = list(find_good_cases(6, threshold))
 
 class Generator:
     def __init__(self, seed):
@@ -130,5 +134,27 @@ class Generator:
         self.sorted_values = sorted(r.sample([k + 1 for k in range(9)], len(self.case)))
         self.values = [self.sorted_values[self.case[i]] for i in range(len(self.case))]
 
+    @staticmethod
+    def format_rebalancing(rb, rb_value):
+        return f', we have to rebalance at node {rb_value} ({format_rebalance[rb]})'
+
+    @staticmethod
+    def format_tree(node, prefix_node = '', prefix_subtree = ''):
+        if not node:
+            return f'{prefix_node}<empty>\n'
+        return ''.join([
+            f'{prefix_node}{node.value} [height {node.height - 1}]\n',
+            Generator.format_tree(node.l, prefix_subtree + '|-- ', prefix_subtree + '|   '),
+            Generator.format_tree(node.r, prefix_subtree + '|-- ', prefix_subtree + '|   '),
+        ])
+
     def replacements(self, solution = False):
         yield ('tree', ', '.join([str(value) for value in self.values]))
+
+        if solution:
+            node = None
+            for (i, v) in enumerate(self.values):
+                yield(f'el_{i}', str(v))
+                (rb, node) = insert(node, v, threshold)
+                yield (f'desc_{i}', Generator.format_rebalancing(*rb) if rb else '')
+                yield (f'tree_{i}', Generator.format_tree(node).strip())

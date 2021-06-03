@@ -1,3 +1,4 @@
+import itertools
 import random
 
 def count_inversions(xs):

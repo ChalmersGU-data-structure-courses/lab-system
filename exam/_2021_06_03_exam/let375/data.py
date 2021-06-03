@@ -8,7 +8,7 @@ import general
 this_dir = Path(__file__).parent
 
 exam_id = '1M6r0N5U3LXYBybseMJBmc6Q47CBldrqVU3gKzPZMDA0'
-solution_id = None # TODO
+solution_id = '1hJbk5HOzRp8Q76MIEh5VTvObZH4wAxA4hVXAOg6iBTs'
 secret_salt = 'It is hot.'
 
 formats = [
