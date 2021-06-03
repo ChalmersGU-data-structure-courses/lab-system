@@ -26,7 +26,7 @@ def rightchild(i):
     return 2 * i + 2
 
 
-def question4(seed=None):
+def question4(seed = None, solution = False):
     rnd = random.Random(seed)
     array = None
     while not (array and test_unique_values(array)):
@@ -42,6 +42,7 @@ def question4(seed=None):
 
     min_insert_val = array[parent(INSERT)] + 1
     max_insert_val = array[INSERT] - 1
+    unique_choice_insert_val = min(v for f in [leftchild, rightchild] for v in [array[f(parent(INSERT))]] if v != None) - 1
 
     #answer = {'solution': {
     #    'array': [],
@@ -55,10 +56,21 @@ def question4(seed=None):
             parentval = array[parent(i)] if i > 0 else -1
             leftval = array[leftchild(i)] if leftchild(i) < len(array) else 100
             rightval = array[rightchild(i)] if rightchild(i) < len(array) else 100
-            solval = f"{parentval+1}..{min(leftval,rightval)-1}"
+            # not all choices valid because of uniqueness constraint
+            #solval = f"{parentval+1}..{min(leftval,rightval)-1}"
             val = '?'
         answer[f'v{i}'] = str(val)
-        #answer['solution']['array'].append(solval)
+        answer[f'sol_v{i}'] = str(solval)
+
+    i = len(array)
+    array.append(unique_choice_insert_val)
+    while array[i] < array[parent(i)]:
+        x = array[i]
+        array[i] = array[parent(i)]
+        array[parent(i)] = x
+        i = parent(i)
+    for i, val in enumerate(array):
+        answer[f'sol_b_v{i}'] = str(array[i])
     return answer
 
 if __name__=='__main__':
