@@ -403,7 +403,7 @@ class Exam:
 
         return dict(itertools.starmap(f, self.submissions))
 
-    def guess_selector_infos(self, dir):
+    def guess_selector_infos(self):
         return dict(
             (id, self.guess_selector_info(file))
             for (id, file) in self.submissions
