@@ -161,12 +161,10 @@ def has_threshold(grading, min_basic, min_combined):
     return basic >= min_basic and advanced + (basic - min_basic) / 2 >= min_combined
 
 def grading_grade(grading):
-    if has_threshold(grading, 10, 4):
-        return '5'
-    if has_threshold(grading, 9, 2):
-        return '4'
+    if has_threshold(grading, 8, 4):
+        return 'VG'
     if has_threshold(grading, 8, 0):
-        return '3'
+        return 'G'
     return 'U'
 
 grading_report_columns_summary = [
