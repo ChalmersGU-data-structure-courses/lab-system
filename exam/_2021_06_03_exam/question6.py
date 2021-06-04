@@ -16,7 +16,7 @@ def test_unique_path(weights, path):
     return True
 
 
-def question6(seed=None):
+def question6(seed = None, solution = False):
     rnd = random.Random(seed)
     weights = None
     while not (weights and test_unique_path(weights, path)):
@@ -36,12 +36,17 @@ def question6(seed=None):
     while len(weights) < NEDGES:
         weights.append(weights[-1] + rnd.randrange(1, 4))
 
-
-    return {
+    r = {
         'weights': ', '.join(map(str, weights)),
         'path_cost': str(path_cost),
         'mst_cost': str(mst_cost),
     }
+
+    if solution:
+        for (i, w) in enumerate(weights):
+            r[f'sol_{i}'] = str(w)
+
+    return r
 
 
 if __name__=='__main__':
@@ -52,4 +57,4 @@ class Generator:
         self.seed = seed
 
     def replacements(self, solution = False):
-        return question6(self.seed).items()
+        return question6(self.seed, solution).items()

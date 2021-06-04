@@ -60,17 +60,19 @@ def question4(seed = None, solution = False):
             #solval = f"{parentval+1}..{min(leftval,rightval)-1}"
             val = '?'
         answer[f'v{i}'] = str(val)
-        answer[f'sol_v{i}'] = str(solval)
+        if solution:
+            answer[f'sol_v{i}'] = str(solval)
 
-    i = len(array)
-    array.append(unique_choice_insert_val)
-    while array[i] < array[parent(i)]:
-        x = array[i]
-        array[i] = array[parent(i)]
-        array[parent(i)] = x
-        i = parent(i)
-    for i, val in enumerate(array):
-        answer[f'sol_b_v{i}'] = str(array[i])
+    if solution:
+        i = len(array)
+        array.append(unique_choice_insert_val)
+        while array[i] < array[parent(i)]:
+            x = array[i]
+            array[i] = array[parent(i)]
+            array[parent(i)] = x
+            i = parent(i)
+        for i, val in enumerate(array):
+            answer[f'sol_b_v{i}'] = str(array[i])
     return answer
 
 if __name__=='__main__':
@@ -81,4 +83,4 @@ class Generator:
         self.seed = seed
 
     def replacements(self, solution = False):
-        return question4(self.seed).items()
+        return question4(self.seed, solution).items()
