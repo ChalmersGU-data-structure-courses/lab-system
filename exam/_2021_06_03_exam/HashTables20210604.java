@@ -345,57 +345,55 @@ public class HashTables20210604 {
 		return null;
 	}
 
+	private static boolean atLeastOneElementInOriginalPosition(OAHTable t) {
+		for (int i = 0; i < t.m; i++) {
+			if (t.entries[i].hash % t.m == i) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private static List<KHPair> getInsertionOrder(OAHTable t) {
+		if (t.m - 1 != t.keys.size()) {
+			// Defer general solution to another occasion in case there'll ever be one.
+			throw new AssertionError("Only works when number of keys is one less than the modulus.");
+		}
 		final Set<KHPair> unused = new HashSet<>(t.keys);
 		final List<KHPair> used = new LinkedList<>();
-		boolean foundOrigin;
+		final boolean foundOrigin;
 		final BitSet seen = new BitSet();
-		do {
-			foundOrigin = false;
-			final KHPair o = findInOriginalPosition(t, unused);
-			if (o != null) {
-				unused.remove(o);
-				used.add(o);
-				foundOrigin = true;
-				seen.set(o.hash % t.m);
-				for (int i = 1; i < t.m; i++) {
-					final int pos = (o.hash + i) % t.m;
-					final KHPair kh = t.entries[pos];
-					if (kh == null) {
-						break;
-					}
-					if (!unused.contains(kh) || !seen.get(kh.hash % t.m) && kh.hash % t.m != pos) {
-						return List.of(kh, new KHPair(kh.key, pos));
-					}
-					used.add(kh);
-					unused.remove(kh);
-					seen.set((o.hash + i) % t.m);
-				}
-			}
-		} while (foundOrigin);
-		if (unused.isEmpty()) {
-			return used;
-		}
-
-		// All elements not used => inconsistent table.
-		for (final KHPair k : unused) {
-			if (seen.get(k.hash % t.m) || k.equals(t.entries[k.hash % t.m])) {
-				used.add(k);
-				unused.remove(k);
-				seen.set(k.hash % t.m);
+		int firstEmptyIdx = -1;
+		for (int i = 0; i < t.m; i++) {
+			if (t.entries[i] == null) {
+				firstEmptyIdx = i;
+				break;
 			}
 		}
-		final List<KHPair> erronous = new LinkedList<>();
-		for (final KHPair bad : unused) {
-			for (int i = 0; i < t.m; i++) {
-				if (t.entries[i] != null && t.entries[i].equals(bad)) {
-					erronous.add(t.entries[i]);
-					erronous.add(new KHPair(bad.key, i));
+		for (int i = 1; i <= t.keys.size(); i++) {
+			final int pos = (firstEmptyIdx + i) % t.m;
+			if (t.entries[pos] != null) {
+				final KHPair k = t.entries[pos];
+				final int h = k.hash % t.m;
+				if (unused.contains(k)) {
+					if (seen.get(h)) {
+						// Collision, possible.
+						used.add(k);
+						unused.remove(k);
+					} else // Slot was free. Should only happen
+					// if slotIdx = hash % m
+					if (h == pos) {
+						// All good.
+						used.add(k);
+						unused.remove(k);
+						seen.set(h);
+					} else {
+						return List.of(k, new KHPair(k.key, pos));
+					}
 				}
 			}
 		}
-		System.out.println("Erronous: " + erronous);
-		return erronous;
+		return used;
 	}
 
 	private static String getOASolutionText(List<OAHTable> oats) {
