@@ -403,8 +403,8 @@ public class HashTables20210604 {
 				b.append(associate("answerB_" + tIdx,
 						"Table " + tIdx + ": " + offending.key + " has hash value " + offending.hash + " (= "
 								+ offending.hash % t.m + " (mod " + t.m + ")) but is in slot " + offendingPosition
-								+ ". This is impossible because there is an empty slot " + firstEmptyIdx
-								+ " in between that would have been probed during insertion."));
+								+ ". This is impossible because there is an empty slot, " + firstEmptyIdx
+								+ ", in between that would have been probed during insertion."));
 			}
 
 			tIdx++;
