@@ -328,7 +328,7 @@ public class HashTables20210604 {
 			solutionTexts.add("");
 		}
 		for (int i = 0; i < scts.size(); i++) {
-			b.append(associate("answerA_" + i, solutionTexts.get(i)));
+			b.append(associate("answerA_" + (i + 1), solutionTexts.get(i)));
 		}
 		return b.toString();
 	}
