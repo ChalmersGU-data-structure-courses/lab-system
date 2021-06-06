@@ -299,12 +299,12 @@ public class HashTables20210604 {
 	private static String getSCSolutionText(List<SCHTable> scts) {
 		final Set<SCHTable> ts = new HashSet<>();
 		scts.forEach(h -> ts.add(h));
-		final StringBuffer b = new StringBuffer();
+		String generalSolutionText;
 		if (ts.size() == 2) {
-			b.append("The intent was to have four distinct tables but in some cases there were only two. ");
+			generalSolutionText = "The intent was to have four distinct tables but in some cases there were only two.";
 		} else {
-			b.append("You should have found two or three impossible tables, depending on how "
-					+ "you formulate your assumption about linked lists. ");
+			generalSolutionText = "You should have found two or three impossible tables, depending on how "
+					+ "you formulate your assumption about linked lists.";
 		}
 		final List<SCHTable> uTables = new LinkedList<>(ts);
 		final SCHTable forwardTable = new SCHTable(uTables.get(0).m);
@@ -313,15 +313,24 @@ public class HashTables20210604 {
 			forwardTable.add(k.hash, k.key, false);
 			reverseTable.add(k.hash, k.key, true);
 		}
+		final List<String> solutionTexts = new ArrayList<>();
 		for (final SCHTable t : ts) {
-			b.append("The table with contents [" + Arrays.toString(t.table.toArray()) + "] is "
+			solutionTexts.add("The table with contents [" + Arrays.toString(t.table.toArray()) + "] is "
 					+ (t.equals(forwardTable) || t.equals(reverseTable)
 							? "possible -- elements are consistently added first or last. "
 							: "impossible since elements are not consistently "
 									+ "added first or last to the lists. "));
 		}
 
-		return associate("answerA", b.toString());
+		final StringBuilder b = new StringBuilder();
+		b.append(associate("answerA_general", generalSolutionText));
+		while (solutionTexts.size() < scts.size()) {
+			solutionTexts.add("");
+		}
+		for (int i = 0; i < scts.size(); i++) {
+			b.append(associate("answerA_" + i, solutionTexts.get(i)));
+		}
+		return b.toString();
 	}
 
 	private static KHPair findInOriginalPosition(OAHTable t, Set<KHPair> unused) {
