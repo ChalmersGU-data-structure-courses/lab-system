@@ -376,20 +376,12 @@ public class HashTables20210604 {
 				final KHPair k = t.entries[pos];
 				final int h = k.hash % t.m;
 				if (unused.contains(k)) {
-					if (seen.get(h)) {
-						// Collision, possible.
-						used.add(k);
-						unused.remove(k);
-					} else // Slot was free. Should only happen
-					// if slotIdx = hash % m
-					if (h == pos) {
-						// All good.
-						used.add(k);
-						unused.remove(k);
-						seen.set(h);
-					} else {
+					if (!seen.get(h) && h != pos) {
 						return List.of(k, new KHPair(k.key, pos));
 					}
+					used.add(k);
+					unused.remove(k);
+					seen.set(pos);
 				}
 			}
 		}
@@ -408,9 +400,9 @@ public class HashTables20210604 {
 				final KHPair offending = insertions.get(0);
 				final int offendingPosition = insertions.get(1).hash;
 				final int firstEmptyIdx = t.findFirstEmptySlot();
-				b.append(associate("answerB_" + tIdx, offending + " can not be at slot " + offendingPosition
-						+ " since it should end up in slot " + offending.hash % t.m + " (" + offending.hash + " % "
-						+ t.m + " = " + offending.hash % t.m + "). "
+				b.append(associate("answerB_" + tIdx, "Table " + tIdx + ": " + offending + " can not be at slot "
+						+ offendingPosition + " since it should end up in slot " + offending.hash % t.m + " ("
+						+ offending.hash + " % " + t.m + " = " + offending.hash % t.m + "). "
 						+ "The only way an element can end up in a lower numbered slot is if its original slot is occupied "
 						+ "and probing has caused the index to wrap around. Since slot " + firstEmptyIdx
 						+ " is empty this can't be the case; " + offending + " would have had to pass over slot "
