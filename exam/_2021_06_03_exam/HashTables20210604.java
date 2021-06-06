@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.Deque;
@@ -155,6 +156,15 @@ public class HashTables20210604 {
 			this.keys.add(key);
 			this.entries[pos] = key;
 		}
+
+		public int findFirstEmptySlot() {
+			for (int i = 0; i < this.m; i++) {
+				if (this.entries[i] == null) {
+					return i;
+				}
+			}
+			return -1;
+		}
 	}
 
 	private static String associate(String key, String value) {
@@ -291,12 +301,26 @@ public class HashTables20210604 {
 		scts.forEach(h -> ts.add(h));
 		final StringBuffer b = new StringBuffer();
 		if (ts.size() == 2) {
-			b.append("Due to a bug in the problem generator, your problem instances contained "
-					+ "two duplicated tables out of which 0, 1 or 2 were impossible.");
+			b.append("The intent was to have four distinct tables but in some cases there were only two. ");
 		} else {
 			b.append("You should have found two or three impossible tables, depending on how "
-					+ "you formulate your assumption about linked lists.");
+					+ "you formulate your assumption about linked lists. ");
 		}
+		final List<SCHTable> uTables = new LinkedList<>(ts);
+		final SCHTable forwardTable = new SCHTable(uTables.get(0).m);
+		final SCHTable reverseTable = new SCHTable(uTables.get(0).m);
+		for (final KHPair k : uTables.get(0).keys) {
+			forwardTable.add(k.hash, k.key, false);
+			reverseTable.add(k.hash, k.key, true);
+		}
+		for (final SCHTable t : ts) {
+			b.append("The table with contents [" + Arrays.toString(t.table.toArray()) + "] is "
+					+ (t.equals(forwardTable) || t.equals(reverseTable)
+							? "possible -- elements are consistently added first or last. "
+							: "impossible since elements are not consistently "
+									+ "added first or last to the lists. "));
+		}
+
 		return associate("answerA", b.toString());
 	}
 
@@ -332,7 +356,7 @@ public class HashTables20210604 {
 						break;
 					}
 					if (!unused.contains(kh) || !seen.get(kh.hash % t.m) && kh.hash % t.m != pos) {
-						return Collections.singletonList(kh);
+						return List.of(kh, new KHPair(kh.key, pos));
 					}
 					used.add(kh);
 					unused.remove(kh);
@@ -343,6 +367,8 @@ public class HashTables20210604 {
 		if (unused.isEmpty()) {
 			return used;
 		}
+
+		// All elements not used => inconsistent table.
 		for (final KHPair k : unused) {
 			if (seen.get(k.hash % t.m) || k.equals(t.entries[k.hash % t.m])) {
 				used.add(k);
@@ -350,7 +376,17 @@ public class HashTables20210604 {
 				seen.set(k.hash % t.m);
 			}
 		}
-		return new LinkedList<>(unused);
+		final List<KHPair> erronous = new LinkedList<>();
+		for (final KHPair bad : unused) {
+			for (int i = 0; i < t.m; i++) {
+				if (t.entries[i] != null && t.entries[i].equals(bad)) {
+					erronous.add(t.entries[i]);
+					erronous.add(new KHPair(bad.key, i));
+				}
+			}
+		}
+		System.out.println("Erronous: " + erronous);
+		return erronous;
 	}
 
 	private static String getOASolutionText(List<OAHTable> oats) {
@@ -363,11 +399,15 @@ public class HashTables20210604 {
 						"Table " + tIdx + " can be generated with this insertion order: " + insertions));
 			} else {
 				final KHPair offending = insertions.get(0);
-				b.append(associate("answerB_" + tIdx,
-						"Table " + tIdx + " can not be generated from any insertion order: " + offending
-								+ " can not be at the index in the table since the position taken by " + offending
-								+ " always will be filled with another element before " + offending
-								+ " will be inserted."));
+				final int offendingPosition = insertions.get(1).hash;
+				final int firstEmptyIdx = t.findFirstEmptySlot();
+				b.append(associate("answerB_" + tIdx, offending + " can not be at slot " + offendingPosition
+						+ " since it should end up in slot " + offending.hash % t.m + " (" + offending.hash + " % "
+						+ t.m + " = " + offending.hash % t.m + "). "
+						+ "The only way an element can end up in a lower numbered slot is if its original slot is occupied "
+						+ "and probing has caused the index to wrap around. Since slot " + firstEmptyIdx
+						+ " is empty this can't be the case; " + offending + " would have had to pass over slot "
+						+ firstEmptyIdx + " to reach slot " + offendingPosition + "."));
 			}
 			tIdx++;
 		}
@@ -377,10 +417,15 @@ public class HashTables20210604 {
 	public static void main(String[] args) {
 		int instanceId = 0;
 		boolean solution = false;
+		boolean printQuestion = true;
 		if (args.length > 0) {
 			instanceId = args.length > 0 ? Integer.parseInt(args[0]) : 1;
-			if (args.length == 2) {
+			if (args.length >= 2) {
 				solution = true;
+				printQuestion = false;
+				if (args.length == 3) {
+					printQuestion = true;
+				}
 			}
 		}
 
@@ -394,12 +439,13 @@ public class HashTables20210604 {
 		final int[][] oaInsertions = new int[][] { { -1, 0, 1, 3, 4, 2, 6, 5 }, { -1, 1, 2, 3, 0, 4, 5, 6 },
 				{ -1, 1, 0, 4, 6, 2, 3, 5 }, { -1, 0, 1, 5, 2, 6, 3, 4 } };
 		final List<OAHTable> oats = createOpenAddressingTables(oaHashes, oaInsertions, 8);
+		if (printQuestion) {
+			System.out.print(getSeparateChainingText(scts));
+			System.out.print(getOpenAddressingText(oats));
+		}
 		if (solution) {
 			System.out.println(getSCSolutionText(scts));
 			System.out.println(getOASolutionText(oats));
-		} else {
-			System.out.print(getSeparateChainingText(scts));
-			System.out.print(getOpenAddressingText(oats));
 		}
 	}
 
