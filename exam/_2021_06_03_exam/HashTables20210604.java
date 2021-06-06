@@ -400,14 +400,13 @@ public class HashTables20210604 {
 				final KHPair offending = insertions.get(0);
 				final int offendingPosition = insertions.get(1).hash;
 				final int firstEmptyIdx = t.findFirstEmptySlot();
-				b.append(associate("answerB_" + tIdx, "Table " + tIdx + ": " + offending + " can not be at slot "
-						+ offendingPosition + " since it should end up in slot " + offending.hash % t.m + " ("
-						+ offending.hash + " % " + t.m + " = " + offending.hash % t.m + "). "
-						+ "The only way an element can end up in a lower numbered slot is if its original slot is occupied "
-						+ "and probing has caused the index to wrap around. Since slot " + firstEmptyIdx
-						+ " is empty this can't be the case; " + offending + " would have had to pass over slot "
-						+ firstEmptyIdx + " to reach slot " + offendingPosition + "."));
+				b.append(associate("answerB_" + tIdx,
+						"Table " + tIdx + ": " + offending.key + " has hash value " + offending.hash + " (= "
+								+ offending.hash % t.m + " (mod " + t.m + ")) but is in slot " + offendingPosition
+								+ ". This is impossible because there is an empty slot " + firstEmptyIdx
+								+ " in between that would have been probed during insertion."));
 			}
+
 			tIdx++;
 		}
 		return b.toString();
