@@ -9,7 +9,7 @@ name = 'HashTables20210604'
 
 def parse_output(s):
     for line in s.splitlines():
-        a = line.split('=')
+        a = line.split('=', maxsplit = 1)
         if len(a) == 2:
             yield(a[0], a[1].strip('"'))
 
@@ -28,6 +28,5 @@ class Generator:
         compile()
 
     def replacements(self, solution = False):
-        yield from run_and_parse([str(self.java_seed)])
-        if solution:
-            yield from run_and_parse([str(self.java_seed), 'solution'])
+        args = ['problem', 'solution'] if solution else []
+        yield from run_and_parse([str(self.java_seed), *args])
