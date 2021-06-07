@@ -372,10 +372,13 @@ class Exam:
         end(len(occurrences))
         return r
 
-    def guess_selector_info(self, file):
+    def guess_selector_info(self, file, use_all_by_default):
         occurrences = self.find_question_occurrences(file)
         if not list(itertools.chain.from_iterable(occurrences)):
-            return ('enter', dict())
+            if use_all_by_default:
+                return ('manual', dict((q, [(0, len(occurrences))]) for q in self.exam_config.questions))
+            else:
+                return ('enter', dict())
 
         selectors = Exam.guess_selectors(self.exam_config.questions, occurrences)
         starts_at_beginning = occurrences[0] and occurrences[0][0][1] == True
@@ -403,9 +406,9 @@ class Exam:
 
         return dict(itertools.starmap(f, self.submissions))
 
-    def guess_selector_infos(self):
+    def guess_selector_infos(self, use_all_by_default = False):
         return dict(
-            (id, self.guess_selector_info(file))
+            (id, self.guess_selector_info(file, use_all_by_default))
             for (id, file) in self.submissions
         )
 
