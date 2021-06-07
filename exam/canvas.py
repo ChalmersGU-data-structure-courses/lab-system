@@ -1,5 +1,7 @@
 import canvas
 import csv
+import datetime
+import dateutil.parser
 import functools
 import general
 import gitlab_config as config
@@ -11,6 +13,7 @@ import operator
 import PyPDF2
 import shlex
 import subprocess
+import sys
 
 from . import allocate_versions
 from . import instantiate_template
@@ -142,7 +145,7 @@ class Exam:
         return self.exam_config.canvas_instance_dir / self.instance_folder_name(user)
 
     def upload_instance(self, user, delete_old = True, solution = False):
-        s = Exam.exam_or_solution(solution)        
+        s = Exam.exam_or_solution(solution)
         logger.log(logging.INFO, f'Uploading {s} instance for {self.course.user_str(user.id)}...')
 
         folder = self.course.get_folder_by_path(self.instance_folder_path(user), use_cache = False)
@@ -205,7 +208,7 @@ class Exam:
             name = self.exam_file_name(id, extension)
             link = self.course.get_file_link(files[name].id)
             return (name, link)
-        
+
         self.course.edit_folder(
             id = folder.id,
             locked = False,
@@ -260,7 +263,25 @@ class Exam:
                 lock_at = self.end(has_extra_time),
             )
 
-    def download_submissions(self, use_cache = False):
+    @functools.cached_property
+    def checklist_submission_times(self):
+        def f():
+            with self.exam_config.checklist.open() as file:
+                for entry in csv.DictReader(file, dialect = csv.excel_tab):
+                    name = entry[self.exam_config.checklist_name]
+                    time_str = entry[self.exam_config.checklist_time]
+
+                    if time_str.strip():
+                        logger.log(logging.INFO, f'Trying to find student with sortable name {name}...')
+                        user_id = self.course.user_sortable_name_to_id[name]
+
+                        logger.log(logging.INFO, f'Trying to parse submission time {time_str}...')
+                        time = dateutil.parser.parse(time_str, default = self.exam_config.canvas_start)
+
+                        yield (user_id, time)
+        return dict(f())
+
+    def download_submissions(self, use_cache = False, include_comments = True, check_submission_times = False):
         self.exam_config.submissions_dir.mkdir(exist_ok = True)
 
         for (user_id, assignment) in self.get_assignments(use_cache = use_cache).items():
@@ -282,6 +303,40 @@ class Exam:
                     self.canvas.place_file(dir_submission / canvas.Assignment.get_file_name(attachment), attachment)
                 if len(submission.attachments) != 1:
                     logger.log(logging.WARNING, f'Submission with not exactly one file: allocation id {self.format_id(id)}, {self.course.user_str(user.id)}')
+
+                if check_submission_times:
+                    checked = self.checklist_submission_times.get(user_id)
+                    if not checked:
+                        logger.log(logging.WARNING, f'Student {user.name} (allocation id {id}) has a submission, but no recorded submission time in the checklist.')
+                    else:
+                        def get_date(d):
+                            return d.submitted_at_date.astimezone(self.exam_config.canvas_start.tzinfo)
+
+                        submitted = get_date(submission)
+                        diff = submitted - checked
+                        if diff > datetime.timedelta(minutes = 5):
+                            lines = [
+                                f'Student {user.name} (allocation id {id}) has submitted {general.format_timespan(diff)} later than was recorded on the checklist:',
+                                f'- time recorded on checklist: {checked}',
+                                f'- time of last submission: {submitted}',
+                            ]
+
+                            if len(submission.submission_history) == 1:
+                                lines.append('This was the only submission.')
+                            else:
+                                lines.append('There are earlier submissions:')
+                                for s in submission.submission_history:
+                                    lines.append(f'- {get_date(s)}')
+                            logger.log(logging.WARNING, '\n'.join(lines))
+
+                comments = submission.submission_comments
+                if comments:
+                    dir_comments = dir_submission / 'submission_comments'
+                    general.mkdir_fresh(dir_comments)
+                    for i, comment in enumerate(comments):
+                        filename = dir_comments / f'{general.format_with_leading_zeroes(i, len(comments))}.txt'
+                        with general.OpenWithModificationTime(filename, comment.created_at_date) as file:
+                            file.write(comment.comment)
 
     def list_submissions(self):
         for id in self.allocations:
@@ -308,6 +363,22 @@ class Exam:
         for id, _ in self.submissions:
             self.normalize_submission(id)
         general.clear_cached_property(self, 'submissions')
+
+    def print_comments(self, file = sys.stdout, use_cache = True):
+        for id in self.allocations:
+            student, _ = self.allocations[id]
+            user = self.course.user_by_sis_id[student]
+            if assignment := self.assignments.get(user.id):
+                submission = self.course.get_submissions(assignment.id, use_cache = use_cache)[0]
+                if submission.workflow_state != 'unsubmitted':
+                    if comments := submission.submission_comments:
+                        print('=' * 80, file = file)
+                        print(f'Allocation ID {id}', file = file)
+                        print(file = file)
+                        for comment in comments:
+                            print(comment.created_at_date.astimezone(self.exam_config.canvas_start.tzinfo), file = file)
+                            print(comment.comment, file = file)
+                            print(file = file)
 
     @staticmethod
     def format_range(range, adjust = False):
@@ -636,4 +707,3 @@ class Exam:
 
         for user in users:
             self.upload_grading(user, replace_author_name = replace_author_name)
-
