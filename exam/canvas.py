@@ -471,7 +471,7 @@ class Exam:
     def solution_selectors(self):
         def f(id, _):
             solution_file = self.exam_config.instance_dir / self.format_id(id) / 'solution.pdf'
-            (verdict, selectors) = self.guess_selector_info(solution_file)
+            (verdict, selectors) = self.guess_selector_info(solution_file, False)
             assert verdict == 'standard'
             return (id, selectors)
 
