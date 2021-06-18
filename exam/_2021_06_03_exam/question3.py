@@ -15,6 +15,24 @@ class Node:
 def height(node):
     return node.height if node else 0
 
+def format_tree(node, prefix_node = '', prefix_subtree = ''):
+    if not node:
+        return f'{prefix_node}<empty>\n'
+    return ''.join([
+        f'{prefix_node}{node.value} [height {node.height - 1}]\n',
+        format_tree(node.l, prefix_subtree + '|-- ', prefix_subtree + '|   '),
+        format_tree(node.r, prefix_subtree + '|-- ', prefix_subtree + '|   '),
+    ])
+
+def format_tree_alt_helper(node, prefix_node, prefix_left, prefix_right):
+    if node:
+        yield from format_tree_alt_helper(node.l, *map(lambda x: prefix_left + x, ['┌── ', '    ', '│   ']))
+        yield f'{prefix_node}{node.value} [height {node.height - 1}]\n'
+        yield from format_tree_alt_helper(node.r, *map(lambda x: prefix_right + x, ['└── ', '│   ', '    ']))
+
+def format_tree_alt(node):
+    return ''.join(format_tree_alt_helper(node, '', '', ''))
+
 def balancing(node):
     return height(node.l) - height(node.r) if node else 0
 
@@ -138,16 +156,6 @@ class Generator:
     def format_rebalancing(rb, rb_value):
         return f', we have to rebalance at node {rb_value} ({format_rebalance[rb]})'
 
-    @staticmethod
-    def format_tree(node, prefix_node = '', prefix_subtree = ''):
-        if not node:
-            return f'{prefix_node}<empty>\n'
-        return ''.join([
-            f'{prefix_node}{node.value} [height {node.height - 1}]\n',
-            Generator.format_tree(node.l, prefix_subtree + '|-- ', prefix_subtree + '|   '),
-            Generator.format_tree(node.r, prefix_subtree + '|-- ', prefix_subtree + '|   '),
-        ])
-
     def replacements(self, solution = False):
         yield ('tree', ', '.join([str(value) for value in self.values]))
 
@@ -157,4 +165,7 @@ class Generator:
                 yield(f'el_{i}', str(v))
                 (rb, node) = insert(node, v, threshold)
                 yield (f'desc_{i}', Generator.format_rebalancing(*rb) if rb else '')
-                yield (f'tree_{i}', Generator.format_tree(node).strip())
+                yield (f'tree_{i}', format_tree_alt(node).rstrip())
+                #print(format_tree_alt(node))
+
+#list(Generator(3).replacements(True))
