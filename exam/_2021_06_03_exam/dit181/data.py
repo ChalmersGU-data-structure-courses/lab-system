@@ -97,13 +97,13 @@ checklist_time = 'Inlämningstid'
 
 ### Configuration of grading sheet
 
-grading_sheet = None # TODO
+grading_sheet = '1l_3oK2b7orfO2IVfP4TwBT5PhdzWk4Ri9bg9VVmDN9Q'
 
 def grading_rows_headers(rows):
-    return [rows[0], rows[2]]
+    return [rows[0], rows[1]]
 
 def grading_rows_data(rows):
-    return rows[3:]
+    return rows[2:]
 
 class GradingLookup:
     def __init__(self, headers_rows):
@@ -120,7 +120,7 @@ class GradingLookup:
         return self.header_lookup[('ID', None)]
 
     def score(self, q):
-        return self.header_lookup[(question_name(q), 'Round')]
+        return self.header_lookup[(question_name(q), 'Score')]
 
     def feedback(self, q):
         return self.header_lookup[(question_name(q), 'Feedback')]
@@ -167,19 +167,22 @@ def has_threshold(grading, min_basic, min_combined):
     return basic >= min_basic and advanced + (basic - min_basic) / 2 >= min_combined
 
 def grading_grade(grading):
-    if has_threshold(grading, 8, 4):
+    if has_threshold(grading, 8, 3):
         return 'VG'
-    if has_threshold(grading, 8, 0):
+    if has_threshold(grading, 7, 0):
         return 'G'
     return 'U'
 
+def formatted(f):
+    return lambda x: format_score(f(x))
+
 grading_report_columns_summary = [
-    ('Basic points', grading_score_basic),
-    ('Advanced points', grading_score_advanced),
+    ('Basic points', formatted(grading_score_basic)),
+    ('Advanced points', formatted(grading_score_advanced)),
     ('Grade', grading_grade),
 ]
 
-grading_report_columns = [(question_name(q), grading_questions_score_via_questions([q])) for q in questions] + grading_report_columns_summary
+grading_report_columns = [(question_name(q), formatted(grading_questions_score_via_questions([q]))) for q in questions] + grading_report_columns_summary
 
 def grading_feedback(grading, resource):
     def format_points(score, score_max):
