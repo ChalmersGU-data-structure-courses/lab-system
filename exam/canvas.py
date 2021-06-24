@@ -635,7 +635,7 @@ class Exam:
                 grading = self.gradings.get(id) if id != None else None
                 def f():
                     yield ('ID', user.sis_user_id)
-                    yield ('Name', user.name)
+                    yield ('Name', user.sortable_name)
                     for (key, h) in self.exam_config.grading_report_columns:
                         yield (key, h(grading) if grading else None)
                 out.writerow(dict(f()))
