@@ -89,6 +89,13 @@ selectors_file = this_dir / 'selectors.csv'
 submissions_packaged_dir = this_dir / 'packaged'
 
 
+### Checklist
+
+checklist = this_dir / 'checklist.csv'
+
+checklist_name = 'Efternamn_Fornamn'
+checklist_time = 'Inlämningstid'
+
 ### Configuration of grading sheet
 
 grading_sheet = None # TODO
