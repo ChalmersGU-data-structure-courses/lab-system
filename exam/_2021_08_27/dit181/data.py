@@ -19,7 +19,7 @@ formats = [
 ]
 
 canvas_url = 'canvas.gu.se'
-canvas_room = None #50996
+canvas_room = 51458
 canvas_extra_time_section = 'Students with extra time'
 canvas_secret_salt = '1EZB2k9p0KUAfh2b'
 
