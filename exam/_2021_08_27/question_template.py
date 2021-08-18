@@ -1,3 +1,5 @@
+# To write a generator for question N, copy this file to question_N.py and fill in the below class.
+
 import random
 
 class Generator:
