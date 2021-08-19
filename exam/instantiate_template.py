@@ -35,7 +35,7 @@ def generate(
 
     token is a Goolge OAuth2 token with scopes for drives and documents.
 
-    questions is a collection of pairs of question keys and functions that take a single seed argument and return an object with optional methods
+    questions is a collection of pairs of question keys and functions that take a random seed argument and version number and return an object with optional methods
     * replacements(solution)
     * replacements_img(solution)
     returning iterables of key-value pairs.
@@ -64,7 +64,8 @@ def generate(
         logger.log(logging.INFO, f'Generating {filename} for student {student} with versions {versions}')
 
         def f(question, generator):
-            x = generator(get_seed(secret_salt, versions[question]))
+            version = versions[question]
+            x = generator(get_seed(secret_salt, version), version)
             y = dict(
                 (s, getattr(x, s, lambda solution: [])(solution))
                 for s in ['replacements', 'replacements_img']
