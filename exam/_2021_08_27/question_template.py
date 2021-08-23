@@ -23,6 +23,12 @@ class Generator:
     # Parameters are as for the method 'replacements'.
     # Yield key-value pairs of a string id of the placeholder image and the local path to an image to replace it.
     # The caller takes ownership of the image and will delete it.
+    #
+    # Supported image formats are PNG, JPEG, GIF.
+    # The Google Docs API says:
+    # > Scales and centers the image to fill the bounds of the original image.
+    # > The image may be cropped in order to fill the original image's bounds.
+    # > The rendered size of the image will be the same as that of the original image.  
     # def replacements_img(self, solution = False):
     #     (fd, name) = tempfile.mkstemp(suffix = '.png')
     #     os.close(fd)
