@@ -10,5 +10,5 @@ class Generator:
         values = ["", "1", "2", "3", "4"]
         assert len(keys) == len(values)
 
-        permuted = self.r.sample(["", "1", "2", "3", "4"], 5)
+        permuted = self.r.sample(values, len(values))
         yield from zip(keys, permuted)
