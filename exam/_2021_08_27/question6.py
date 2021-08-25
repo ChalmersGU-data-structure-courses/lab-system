@@ -1,13 +1,10 @@
-# To write a generator for question N, copy this file to questionN.py in the same directory and fill out the below class.
 import pathlib
 import random
 import tempfile
 import subprocess
 import os
 
-
 A, B, C, D, E, F, G, H = NODES = "ABCDEFGH"
-
 
 dotgraph_header = """
 graph Q6 {
@@ -17,21 +14,18 @@ ratio="fill";
 node [shape = circle];
 """
 
-
 class Generator:
-    def __init__(self, seed):
+    def __init__(self, seed, version = None):
         self.r = random.Random(seed)
         self.graph = self.generate_graph()
         self.eccs = self.calc_eccentricities()
         asked_index = (len(self.eccs)-1) // 2
         self.asked_node = self.eccs[asked_index][1]
 
-
     def replacements(self, solution = False):
         yield ('node', self.asked_node)
         if solution:
             yield ('solution', 'B')
-
 
     def replacements_img(self, solution = False):
         (fd, name) = tempfile.mkstemp(suffix = '.png')
@@ -40,8 +34,7 @@ class Generator:
         dotgraph = dotgraph_header + "\n".join(f'{a}--{b}[label="{w}"];' for a,b,w in self.graph) + "}"
         with open(path, 'wb') as PNG:
             subprocess.run(['dot', '-Tpng'], input=dotgraph, text=True, stdout=PNG)
-        yield ('kix.gq7jtslsbc2f', path) # replace id by actual id
-
+        yield ('kix.xjn609dsdw9n', path)
 
     def generate_graph(self):
         smallW = lambda: self.r.choice([1,2,3])
@@ -62,7 +55,6 @@ class Generator:
                       (D, self.r.choice([F, G]), smallW())]
         return graph
 
-
     # stolen from Christian
     def run_dijkstra(self, start):
         queue = [(0, start)]
@@ -77,8 +69,7 @@ class Generator:
                     queue.append((k + w, b))
             visited.add(a)
             queue = sorted([(k, b) for (k, b) in queue if b not in visited])
-            yield (a, k, queue)
-
+            yield (a, k)
 
     def calc_eccentricities(self):
         eccs = []
@@ -88,13 +79,11 @@ class Generator:
         eccs.sort()
         return eccs
 
-
     def eccentricity(self, node):
         dists = list(self.run_dijkstra(node))
         ecc = dists[-1][1]
         furthest = [a for a,k,_ in dists if k == ecc]
         return ecc, furthest
-
 
 if __name__ == "__main__":
     g = Generator(None)
@@ -104,4 +93,3 @@ if __name__ == "__main__":
     for i, f in g.replacements_img():
         print(i, f)
         subprocess.run(['open', f])
-
