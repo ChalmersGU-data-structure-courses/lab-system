@@ -1,0 +1,1 @@
+for file in *.svg; do inkscape $file -w 1920 -o ${file%svg}png; done

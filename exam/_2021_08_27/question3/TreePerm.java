@@ -17,7 +17,7 @@ public class TreePerm {
 			sb.append(r.readLine() + "\n");
 		}
 		String svgFile = sb.toString();
-		final String charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+		final String charset = "ABCDEFGHKLMNOPQRSTUVWXYZ";
 		final Random rng = new Random(seed);
 		final List<Character> cs = new ArrayList<>();
 		for (final char c : charset.toCharArray()) {

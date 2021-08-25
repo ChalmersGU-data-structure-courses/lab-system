@@ -43,13 +43,13 @@
 	<path class="st2" d="M241.5,444.6l1.2,0l-0.6,1.4l-3.2-1.5L241.5,444.6z"/>
 	<path class="st3" d="M314.1,478.8l-14.9-1.9l4-8.4L314.1,478.8z"/>
 </g>
-<text transform="matrix(1 0 0 1 86.3503 111.7612)" class="st4 st5">##2</text>
-<text transform="matrix(1 0 0 1 206.9954 113.1414)" class="st4 st5">##8</text>
-<text transform="matrix(1 0 0 1 24.1608 191.5414)" class="st4 st5">##1</text>
-<text transform="matrix(1 0 0 1 126.9954 193.1414)" class="st4 st5">##5</text>
-<text transform="matrix(1 0 0 1 266.9955 193.1414)" class="st4 st5">##9</text>
-<text transform="matrix(1 0 0 1 64.1608 273.1414)" class="st4 st5">##3</text>
-<text transform="matrix(1 0 0 1 144.1608 353.1413)" class="st4 st5">##4</text>
-<text transform="matrix(1 0 0 1 146.3504 31.7612)" class="st4 st5">##7</text>
-<text transform="matrix(1 0 0 1 160.6404 242.4136)"><tspan x="0" y="0" class="st4 st6">Insert ##6</tspan><tspan x="0" y="25.2" class="st4 st6">Then remove ##5</tspan></text>
+<text transform="matrix(1 0 0 1 90.3503 111.7612)" class="st4 st5">##2</text>
+<text transform="matrix(1 0 0 1 210.9954 113.1414)" class="st4 st5">##8</text>
+<text transform="matrix(1 0 0 1 28.1608 191.5414)" class="st4 st5">##1</text>
+<text transform="matrix(1 0 0 1 130.9954 193.1414)" class="st4 st5">##5</text>
+<text transform="matrix(1 0 0 1 270.9955 193.1414)" class="st4 st5">##9</text>
+<text transform="matrix(1 0 0 1 66.1608 273.1414)" class="st4 st5">##3</text>
+<text transform="matrix(1 0 0 1 148.1608 353.1413)" class="st4 st5">##4</text>
+<text transform="matrix(1 0 0 1 150.3504 31.7612)" class="st4 st5">##7</text>
+<text transform="matrix(1 0 0 1 164.6404 242.4136)"><tspan x="0" y="0" class="st4 st6">Insert ##6</tspan><tspan x="0" y="25.2" class="st4 st6">Then remove ##7</tspan></text>
 </svg>

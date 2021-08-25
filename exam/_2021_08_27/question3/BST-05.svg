@@ -43,14 +43,14 @@
 	<path class="st2" d="M404.2,444.4l-3.2,1.5l-0.6-1.4l1.2,0L404.2,444.4z"/>
 	<path class="st3" d="M339.8,468.5l4,8.4l-14.9,1.9L339.8,468.5z"/>
 </g>
-<text transform="matrix(1 0 0 1 146.3506 31.7613)" class="st4 st5">E</text>
-<text transform="matrix(1 0 0 1 86.3505 111.7615)" class="st4 st5">C</text>
-<text transform="matrix(1 0 0 1 26.3504 191.7616)" class="st4 st5">A</text>
-<text transform="matrix(1 0 0 1 206.3504 111.7617)" class="st4 st5">W</text>
-<text transform="matrix(1 0 0 1 166.3504 191.7618)" class="st4 st5">I</text>
-<text transform="matrix(1 0 0 1 266.3503 190.1619)" class="st4 st5">X</text>
-<text transform="matrix(1 0 0 1 226.3503 271.7617)" class="st4 st5">L</text>
-<text transform="matrix(1 0 0 1 146.3502 351.7617)" class="st4 st5">J</text>
-<text transform="matrix(1 0 0 1 6.1916 242.4136)"><tspan x="0" y="0" class="st4 st6">Insert H</tspan><tspan x="0" y="27.6" class="st4 st6">Then remove I</tspan></text>
+<text transform="matrix(1 0 0 1 150.3506 31.7613)" class="st4 st5">F</text>
+<text transform="matrix(1 0 0 1 90.3505 111.7615)" class="st4 st5">D</text>
+<text transform="matrix(1 0 0 1 30.3504 191.7616)" class="st4 st5">A</text>
+<text transform="matrix(1 0 0 1 210.3504 111.7617)" class="st4 st5">T</text>
+<text transform="matrix(1 0 0 1 170.3504 191.7618)" class="st4 st5">O</text>
+<text transform="matrix(1 0 0 1 270.3503 190.1619)" class="st4 st5">Y</text>
+<text transform="matrix(1 0 0 1 230.3503 271.7617)" class="st4 st5">S</text>
+<text transform="matrix(1 0 0 1 150.3502 351.7617)" class="st4 st5">P</text>
+<text transform="matrix(1 0 0 1 10.1916 242.4136)"><tspan x="0" y="0" class="st4 st6">Insert N</tspan><tspan x="0" y="27.6" class="st4 st6">Then remove F</tspan></text>
 </svg>
 
