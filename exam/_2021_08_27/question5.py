@@ -3,7 +3,6 @@ import random
 class Generator:
     def __init__(self, seed, version = None):
         self.r = random.Random(seed)
-        self.version = version
 
     def replacements(self, solution = False):
         keys = ["a", "b", "c", "d", "e"]
