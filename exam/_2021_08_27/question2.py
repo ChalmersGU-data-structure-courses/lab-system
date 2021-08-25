@@ -70,7 +70,8 @@ def rangify(xs):
 # Uses the Unicode en-dash.
 def format_range(r):
     (s, e) = r
-    return f'{s}' if e == s + 1 else f'{s}–{e}'
+    e = e - 1
+    return f'{s}' if e == s else f'{s}–{e}'
 
 def format_ranges(rs):
     if not rs:
