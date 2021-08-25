@@ -71,14 +71,13 @@ def question_name_parse(q):
     m = re.fullmatch('Question (\\d+)', s)
     return int(m.group(1)) if m else None
 
-question_randomizers = [
-    ('Q1', complexity.Question),
-    ('Q2', sorting.QuestionQuicksort),
-    ('Q2', sorting.QuestionMergeSort),
-    ('Q4', priority_queue.Question),
-    ('Q5', hash_table.Question),
-    ('Q6', graph.QuestionDijkstra),
-]
+question_randomizers = {
+    1: (complexity.Question,),
+    2: ([sorting.QuestionQuicksort, sorting.QuestionMergeSort],),
+    4: (priority_queue.Question,),
+    5: (hash_table.Question,),
+    6: (graph.QuestionDijkstra,),
+}
 
 max_versions = 12
 allocation_seed = 24782

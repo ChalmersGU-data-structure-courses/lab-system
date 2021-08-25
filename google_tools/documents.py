@@ -1,7 +1,5 @@
 import googleapiclient.discovery
 
-from . import general
-
 class Documents:
     default_scopes = ['documents']
 

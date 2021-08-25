@@ -72,6 +72,14 @@ def generate(
             )
             return (question, types.SimpleNamespace(**y))
 
+        def g():
+            for question, generators in questions.items():
+                print(question)
+                if not isinstance(generators, list):
+                    generators = [generators]
+                for generator in generators:
+                    yield f(question, generator)
+
         (output_dir / student).mkdir(exist_ok = True)
         google_tools.general.generate_from_template_document(
             dict(
@@ -81,6 +89,7 @@ def generate(
             f'{filename}-{student}',
             token,
             id,
-            *google_tools.general.namespaced_replacements(itertools.starmap(f, questions)),
+            *google_tools.general.namespaced_replacements(g()),
             share_dir = share_dir,
-            share_url = share_url)
+            share_url = share_url
+        )

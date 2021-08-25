@@ -25,10 +25,6 @@ logger = logging.getLogger('exam.canvas')
 class Exam:
     def __init__(self, exam_config):
         self.exam_config = exam_config
-
-        x = frozenset(question for (question, _) in self.exam_config.question_randomizers)
-        self.randomized_questions = [q for q in self.exam_config.questions if self.exam_config.question_key(q) in x]
-
         self.exam_formats = Drive.mime_types_document.keys()
 
     @functools.cached_property
@@ -54,9 +50,15 @@ class Exam:
         return dict((student, id) for (id, (student, _)) in self.allocations.items())
 
     def allocate_students(self):
+        def get_num_versions(v):
+            try:
+                return v[1]
+            except IndexError:
+                return self.exam_config.max_versions
+
         self.allocations = allocate_versions.allocate(
             [user.sis_user_id for user in self.course.user_details.values()],
-            dict((self.exam_config.question_key(q), self.exam_config.max_versions) for q in self.randomized_questions),
+            dict((self.exam_config.question_key(q), get_num_versions(v)) for q, v in self.exam_config.question_randomizers.items()),
             seed = self.exam_config.allocation_seed,
         )
         general.clear_cached_property(self, 'allocation_id_lookup')
@@ -79,7 +81,7 @@ class Exam:
             google_tools.general.get_token_for_scopes(['drive', 'documents']),
             exam_id = self.exam_config.exam_id,
             solution_id = self.exam_config.solution_id,
-            questions = self.exam_config.question_randomizers,
+            questions = dict((self.exam_config.question_key(q), v[0]) for q, v in self.exam_config.question_randomizers.items()),
             secret_salt = self.exam_config.secret_salt,
             student_versions = dict(
                 (self.format_id(id), versions)
@@ -522,7 +524,7 @@ class Exam:
                     yield id
                     for q in self.exam_config.questions:
                         yield question_score(q)
-                        if q in self.randomized_questions:
+                        if q in self.exam_config.question_randomizers:
                             yield(question_version(q))
                         yield question_feedback(q)
                         yield question_comments(q)
@@ -596,7 +598,7 @@ class Exam:
         for q in self.exam_config.questions:
             dir_question = dir / self.exam_config.question_key(q)
             dir_question.mkdir()
-            f = self.package_randomized_question if q in self.randomized_questions else self.package_question
+            f = self.package_randomized_question if q in self.exam_config.question_randomizers else self.package_question
             f(dir_question, q, include_solutions)
 
     @functools.cached_property

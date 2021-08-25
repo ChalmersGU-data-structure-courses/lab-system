@@ -71,15 +71,16 @@ from .. import question4
 from .. import question5
 from .. import question6
 
-question_randomizers = [
-    ('Q2', question2.Generator),
-    ('Q3', question3.Generator),
-    ('Q4', question4.Generator),
-    ('Q5', question5.Generator),
-    ('Q6', question6.Generator),
-]
+question_randomizers = {
+    2: (question2.Generator,),
+    3: (question3.Generator, 10),
+    4: (question4.Generator,),
+    5: (question5.Generator,),
+    6: (question6.Generator,),
+}
 
 max_versions = 6
+
 allocation_seed = 37844
 
 allocations_file = this_dir / 'allocations.csv'
@@ -97,7 +98,7 @@ checklist_time = 'Inlämningstid'
 
 ### Configuration of grading sheet
 
-grading_sheet = '1l_3oK2b7orfO2IVfP4TwBT5PhdzWk4Ri9bg9VVmDN9Q'
+grading_sheet = None #'1l_3oK2b7orfO2IVfP4TwBT5PhdzWk4Ri9bg9VVmDN9Q'
 
 def grading_rows_headers(rows):
     return [rows[0], rows[1]]

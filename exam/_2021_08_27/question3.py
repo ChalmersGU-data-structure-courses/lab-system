@@ -17,6 +17,6 @@ class Generator:
         path = gen_tmp_file(suffix = '.png')
         with tempfile.TemporaryDirectory() as dir:
             link = pathlib.Path(dir) / 'link'
-            link.symlink_to(pathlib.Path(__file__).resolve() / 'question3' / f'BST-{self.version:0>2d}.png')
+            link.symlink_to(pathlib.Path(__file__).parent.resolve() / 'question3' / f'BST-{self.version:0>2d}.png')
             link.rename(path)
         yield ('kix.c5e9tjg3u8t7', path)

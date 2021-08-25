@@ -139,7 +139,7 @@ def inversions(xs):
     return count
 
 class Generator:
-    def __init__(self, seed):
+    def __init__(self, seed, version = None):
         self.n = 9
         self.range = (0, 30)
         self.num_problems = 3

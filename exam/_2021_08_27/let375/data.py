@@ -73,15 +73,15 @@ from .. import question4
 from .. import question5
 from .. import question6
 
-question_randomizers = [
-    ('Q2', question2.Generator),
-    ('Q3', question3.Generator),
-    ('Q4', question4.Generator),
-    ('Q5', question5.Generator),
-    ('Q6', question6.Generator),
-]
+question_randomizers = {
+    2: (question2.Generator,),
+    3: (question3.Generator, 10),
+    4: (question4.Generator,),
+    5: (question5.Generator,),
+    6: (question6.Generator,),
+}
 
-max_versions = 12
+max_versions = 10
 allocation_seed = 15234
 
 allocations_file = this_dir / 'allocations.csv'

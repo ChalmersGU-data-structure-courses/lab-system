@@ -82,7 +82,7 @@ class Generator:
     def eccentricity(self, node):
         dists = list(self.run_dijkstra(node))
         ecc = dists[-1][1]
-        furthest = [a for a,k,_ in dists if k == ecc]
+        furthest = [a for a,k in dists if k == ecc]
         return ecc, furthest
 
 if __name__ == "__main__":
