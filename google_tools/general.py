@@ -9,7 +9,7 @@ import urllib.parse
 
 import general
 
-from .drive import Drive
+from .drive import Drive, TemporaryFile
 from .documents import Documents
 
 logger = logging.getLogger('google_tools.general')
@@ -80,32 +80,25 @@ def generate_from_template_document(
     drive = Drive(token)
     docs = Documents(token)
 
-    # Create a temporary copy of the document to work with.
-    logger.log(logging.DEBUG, f'Creating a copy of template document {id}...')
-    id_copy = drive.copy(id, name)
+    with TemporaryFile(drive, id, name) as id_copy:
+        # Collect all replacement requests.
+        requests = []
+        for key, value in replacements.items():
+            requests.append(Documents.request_replace(key, value))
+        for key, value in replacements_img.items():
+            name = key + '_' + value.name
+            shutil.copyfile(value, share_dir / name)
+            requests.append(Documents.request_replace_image(key, share_url + urllib.parse.quote(name)))
 
-    # Collect all replacement requests.
-    requests = []
-    for key, value in replacements.items():
-        requests.append(Documents.request_replace(key, value))
-    for key, value in replacements_img.items():
-        name = key + '_' + value.name
-        shutil.copyfile(value, share_dir / name)
-        requests.append(Documents.request_replace_image(key, share_url + urllib.parse.quote(name)))
+        # Perform the replacements as a single batch request.
+        logger.log(logging.DEBUG, f'Performing replacements:\n{requests}\n...')
+        if requests:
+            r = docs.batch_update(id_copy, requests)
 
-    # Perform the replacements as a single batch request.
-    logger.log(logging.DEBUG, f'Performing replacements:\n{requests}\n...')
-    if requests:
-        r = docs.batch_update(id_copy, requests)
-
-    # Export the document in the requested file types.
-    for suffix, path in output_paths.items():
-        logger.log(logging.DEBUG, f'Generating {shlex.quote(str(path))}...')
-        drive.export(id_copy, path, Drive.mime_types_document[suffix])
-
-    # Delete the temporary copy.
-    logger.log(logging.DEBUG, f'Deleting copy of template document...')
-    drive.delete(id_copy)
+        # Export the document in the requested file types.
+        for suffix, path in output_paths.items():
+            logger.log(logging.DEBUG, f'Generating {shlex.quote(str(path))}...')
+            drive.export(id_copy, path, Drive.mime_types_document[suffix])
 
 def namespaced_replacements(sections):
     '''
@@ -127,14 +120,3 @@ def namespaced_replacements(sections):
             replacements_img.append((key, value))
 
     return (general.sdict(replacements), general.sdict(replacements_img))
-
-def generate_from_template_document_namespaced(
-    output_paths,
-    token,
-    id,
-    sections,
-    share_dir = None,
-    share_url = None,
-):
-    '''Combines generate_from_template_document with namespaced_replacements'''
-    generate_from_template_document(output_paths, token, id, *namespaced_replacements(sections), share_dir, share_url)
