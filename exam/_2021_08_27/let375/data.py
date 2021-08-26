@@ -81,7 +81,7 @@ question_randomizers = {
     6: (question6.Generator,),
 }
 
-max_versions = 10
+max_versions = 8
 allocation_seed = 15234
 
 allocations_file = this_dir / 'allocations.csv'
