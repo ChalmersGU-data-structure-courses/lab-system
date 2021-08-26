@@ -385,11 +385,17 @@ class Exam:
     @staticmethod
     def format_range(range, adjust = False):
         (a, b) = range
-        return f'{a + 1}-{b}'
+        a += 1
+        return f'{a}' if a == b else f'{a}-{b}'
 
     @staticmethod
     def parse_range(s):
-        (a, b) = map(int, s.split('-'))
+        xs = map(int, s.split('-'))
+        try:
+            (a, b) = xs
+        except ValueError:
+            (a,) = xs
+            b = a
         return (a - 1, b)
 
     @staticmethod
