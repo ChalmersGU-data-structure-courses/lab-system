@@ -74,7 +74,6 @@ def generate(
 
         def g():
             for question, generators in questions.items():
-                print(question)
                 if not isinstance(generators, list):
                     generators = [generators]
                 for generator in generators:
