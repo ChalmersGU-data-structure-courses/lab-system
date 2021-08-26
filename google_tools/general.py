@@ -81,19 +81,26 @@ def generate_from_template_document(
     docs = Documents(token)
 
     with TemporaryFile(drive, id, name) as id_copy:
-        # Collect all replacement requests.
-        requests = []
-        for key, value in replacements.items():
-            requests.append(Documents.request_replace(key, value))
-        for key, value in replacements_img.items():
-            name = key + '_' + value.name
-            shutil.copyfile(value, share_dir / name)
-            requests.append(Documents.request_replace_image(key, share_url + urllib.parse.quote(name)))
+        with general.ScopedFiles() as files:
+            # Collect all replacement requests.
+            requests = []
+            for key, value in replacements.items():
+                requests.append(Documents.request_replace(key, value))
+            for key, value in replacements_img.items():
+                name = key + '_' + value.name
+                share_file = share_dir / name
 
-        # Perform the replacements as a single batch request.
-        logger.log(logging.DEBUG, f'Performing replacements:\n{requests}\n...')
-        if requests:
-            r = docs.batch_update(id_copy, requests)
+                # Copy and unlink instead of renaming because 'value' could be a symlink that might have no meaning to the HTTP server that will serve the file request from Google Docs. 
+                shutil.copyfile(value, share_file)
+                files.add(share_file)
+                value.unlink()
+
+                requests.append(Documents.request_replace_image(key, share_url + urllib.parse.quote(name)))
+
+            # Perform the replacements as a single batch request.
+            logger.log(logging.DEBUG, f'Performing replacements:\n{requests}\n...')
+            if requests:
+                r = docs.batch_update(id_copy, requests)
 
         # Export the document in the requested file types.
         for suffix, path in output_paths.items():

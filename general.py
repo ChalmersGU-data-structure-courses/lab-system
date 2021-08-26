@@ -516,3 +516,18 @@ def filter_keywords(keywords, s):
     The result is a list of (not necessarily unique) keys of dictionary in the order they appear in text.
     '''
     return [k for i, k in find_all_many(keywords, s)]
+
+# A context manager for file paths.
+class ScopedFiles:
+    def __init__(self):
+        self.files = []
+
+    def add(self, file):
+        self.files.append(file)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        for file in reversed(self.files):
+            file.unlink()
