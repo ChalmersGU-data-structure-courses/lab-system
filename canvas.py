@@ -393,7 +393,7 @@ class Course:
         if not isinstance(id, int):
             id = self.get_folder_by_path(id, use_cache = use_cache).id
 
-        self.canvas.delete(['folders', id])
+        self.canvas.delete(['folders', id], params = {'force': Canvas.param_boolean(True)})
 
     def list_folders(self, use_cache = False):
         return self.canvas.get_list(self.endpoint + ['folders'], use_cache = use_cache)

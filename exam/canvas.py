@@ -151,8 +151,9 @@ class Exam:
         logger.log(logging.INFO, f'Uploading {s} instance for {self.course.user_str(user.id)}...')
 
         folder = self.course.get_folder_by_path(self.instance_folder_path(user), use_cache = False)
+        general.print_json(folder)
         if folder != None and delete_old:
-            self.canvas.delete(['folders', folder.id])
+            self.course.delete_folder(folder.id)
             folder = None
         if folder == None:
             folder = self.course.create_folder(
@@ -249,7 +250,7 @@ class Exam:
         '''
         if users == None:
             assignments = self.get_assignments()
-            users = [user for user in self.course.user_details.values() if not user.id in assignments]
+            users = [user for user in self.course.user_details.values() if (user.id in assignments) == update]
 
         for user in users:
             self.create_assignment(user, publish = publish, update = update)
@@ -339,7 +340,7 @@ class Exam:
                         filename = dir_comments / f'{general.format_with_leading_zeroes(i, len(comments))}.txt'
                         with general.OpenWithModificationTime(filename, comment.created_at_date) as file:
                             file.write(comment.comment)
-
+ 
     def list_submissions(self):
         for id in self.allocations:
             dir_submission = self.exam_config.submissions_dir / self.format_id(id)
