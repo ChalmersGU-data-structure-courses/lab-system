@@ -33,7 +33,7 @@ class Generator:
         path = pathlib.Path(name)
         dotgraph = dotgraph_header + "\n".join(f'{a}--{b}[label="{w}"];' for a,b,w in self.graph) + "}"
         with open(path, 'wb') as PNG:
-            subprocess.run(['dot', '-Tpng'], input=dotgraph, text=True, stdout=PNG)
+            subprocess.run(['dot', '-Tpng', '-Gdpi=300'], input=dotgraph, text=True, stdout=PNG)
         yield ('kix.xjn609dsdw9n', path)
 
     def generate_graph(self):

@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Generator: Adobe Illustrator 25.4.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
 <svg version="1.1" id="Layer_1" xmlns:lucid="lucid"
 	 xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 323 364.6"
 	 style="enable-background:new 0 0 323 364.6;" xml:space="preserve">
@@ -8,9 +7,7 @@
 	.st1{fill:none;stroke:#5E5E5E;stroke-width:2;}
 	.st2{fill:#5E5E5E;}
 	.st3{fill:#5E5E5E;stroke:#5E5E5E;stroke-width:2;}
-	.st4{font-family:'MyriadPro-Regular';}
-	.st5{font-size:30px;}
-	.st6{font-size:21px;}
+	.st4{font-family:'Arial';font-size:30px;}
 </style>
 <g transform="translate(-160 -160)" lucid:page-tab-id="0_0">
 	<path class="st0" d="M361.5,182.3c0,11.5-17.9,20.8-40,20.8s-40-9.3-40-20.8s17.9-20.8,40-20.8S361.5,170.8,361.5,182.3z"/>
@@ -43,13 +40,12 @@
 	<path class="st2" d="M241.5,444.6l1.2,0l-0.6,1.4l-3.2-1.5L241.5,444.6z"/>
 	<path class="st3" d="M314.1,478.8l-14.9-1.9l4-8.4L314.1,478.8z"/>
 </g>
-<text transform="matrix(1 0 0 1 90.3503 111.7612)" class="st4 st5">##2</text>
-<text transform="matrix(1 0 0 1 210.9954 113.1414)" class="st4 st5">##8</text>
-<text transform="matrix(1 0 0 1 28.1608 191.5414)" class="st4 st5">##1</text>
-<text transform="matrix(1 0 0 1 130.9954 193.1414)" class="st4 st5">##5</text>
-<text transform="matrix(1 0 0 1 270.9955 193.1414)" class="st4 st5">##9</text>
-<text transform="matrix(1 0 0 1 66.1608 273.1414)" class="st4 st5">##3</text>
-<text transform="matrix(1 0 0 1 148.1608 353.1413)" class="st4 st5">##4</text>
-<text transform="matrix(1 0 0 1 150.3504 31.7612)" class="st4 st5">##7</text>
-<text transform="matrix(1 0 0 1 164.6404 242.4136)"><tspan x="0" y="0" class="st4 st6">Insert ##6</tspan><tspan x="0" y="25.2" class="st4 st6">Then remove ##7</tspan></text>
+<text transform="matrix(1 0 0 1 90.3503 111.7612)" class="st4">##1</text>
+<text transform="matrix(1 0 0 1 210.9954 113.1414)" class="st4">##7</text>
+<text transform="matrix(1 0 0 1 28.1608 191.5414)" class="st4">##0</text>
+<text transform="matrix(1 0 0 1 130.9954 193.1414)" class="st4">##4</text>
+<text transform="matrix(1 0 0 1 270.9955 193.1414)" class="st4">##8</text>
+<text transform="matrix(1 0 0 1 66.1608 273.1414)" class="st4">##2</text>
+<text transform="matrix(1 0 0 1 148.1608 353.1413)" class="st4">##3</text>
+<text transform="matrix(1 0 0 1 150.3504 31.7612)" class="st4">##6</text>
 </svg>
