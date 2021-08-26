@@ -47,8 +47,12 @@ class _Generator:
         self.params = [self.is_left, self.nodes]
 
     def replacements(self, solution = False):
-        yield ('insert', self.nodes[5])
-        yield ('remove', self.nodes[6])
+        for (i, node) in enumerate(self.nodes):
+            yield (str(i), node)
+
+        if solution:
+            for v in [True, False]:
+                yield (format_direction(v), format_direction(v == self.is_left))
 
     def replacements_img(self, solution = False):
         path = gen_tmp_file(suffix = '.png')

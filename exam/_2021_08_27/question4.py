@@ -182,6 +182,3 @@ class Generator:
                 yield ('sol_heap_as_tree', format_heap_as_tree(heap))
 
             yield from analyze_removal(list(self.good[0]), start = start, step = step, end = end)
-
-g = Generator()
-x = list(g.replacements(solution = True))
