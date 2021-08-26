@@ -19,7 +19,7 @@ formats = [
 ]
 
 canvas_url = 'chalmers.instructure.com'
-canvas_room = 17204
+canvas_room = 17203
 canvas_extra_time_section = 'Students with extra time'
 canvas_secret_salt = '1EZB2k9p0KUAfh2b'
 
@@ -79,7 +79,7 @@ question_randomizers = {
     6: (question6.Generator,),
 }
 
-max_versions = 6
+max_versions = 5
 allocation_seed = 37844
 
 allocations_file = this_dir / 'allocations.csv'
