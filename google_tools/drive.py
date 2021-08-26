@@ -1,6 +1,9 @@
 import googleapiclient.discovery
+import logging
 
 from . import general
+
+logger = logging.getLogger('google_tools.drive')
 
 class Drive:
     default_scopes = ['drive']
@@ -39,3 +42,18 @@ class Drive:
     def export(self, id, path, mime_type):
         data = self.drive.files().export(fileId = id, mimeType = mime_type).execute()
         path.write_bytes(data)
+
+class TemporaryFile:
+    def __init__(self, drive, id, name):
+        self.drive = drive
+        self.id = id
+        self.name = name
+
+    def __enter__(self):
+        logger.log(logging.DEBUG, f'Creating a copy of drive file {self.id}...')
+        self.id_copy = self.drive.copy(self.id, self.name)
+        return self.id_copy
+
+    def __exit__(self, type, value, traceback):
+        logger.log(logging.DEBUG, f'Deleting copy of drive file...')
+        self.drive.delete(self.id_copy)
