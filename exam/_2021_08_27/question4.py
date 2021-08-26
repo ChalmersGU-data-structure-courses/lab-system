@@ -74,6 +74,38 @@ def analyze_removal(xs, start = None, step = None, end = None):
     if end:
         yield from end(heap)
 
+
+class Node:
+    def __init__(self, value, l, r):
+        self.value = value
+        self.l = l
+        self.r = r
+
+def format_tree_helper(node, prefix_node, prefix_left, prefix_right):
+    if node:
+        yield from format_tree_helper(node.l, *map(lambda x: prefix_left + x, ['┌── ', '    ', '│   ']))
+        yield f'{prefix_node}{node.value}\n'
+        yield from format_tree_helper(node.r, *map(lambda x: prefix_right + x, ['└── ', '│   ', '    ']))
+
+def format_tree(node):
+    return ''.join(format_tree_helper(node, '', '', ''))
+
+def heap_as_tree_aux(xs, i):
+    if not i < len(xs):
+        return None
+
+    return Node(
+        xs[i],
+        heap_as_tree_aux(xs, 2 * i + 1),
+        heap_as_tree_aux(xs, 2 * i + 2)
+    )
+
+def heap_as_tree(xs):
+    return heap_as_tree_aux(xs, 0)
+
+def format_heap_as_tree(xs):
+    return format_tree(heap_as_tree(xs))
+
 class Generator:
     def generate_good_heap(self):
         while True:
@@ -131,8 +163,10 @@ class Generator:
             yield (f'heap_{i}', str(self.heaps[i][0]))
 
         if solution:
+            yield ('good_heap_as_tree', format_heap_as_tree(self.good[0]))
+
             for i in range(len(self.heaps)):
-                yield (f'sol_heap_{i}', str(self.heaps[i][1]))
+                yield (f'sol_heap_{i}', self.heaps[i][1])
 
             def start(first, last):
                 yield ('sol_remove_swap_delete', f'We swap the root {first} with the last element {last}, delete the new last element {first}, and then sink down the root {last}:')
@@ -145,5 +179,9 @@ class Generator:
 
             def end(heap):
                 yield ('sol_heap', str(heap))
+                yield ('sol_heap_as_tree', format_heap_as_tree(heap))
 
             yield from analyze_removal(list(self.good[0]), start = start, step = step, end = end)
+
+g = Generator()
+x = list(g.replacements(solution = True))
