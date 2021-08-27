@@ -230,11 +230,12 @@ class Generator:
                 for part, select_pivot in [('A', first), ('B', median_of_three)]:
                     yield (f'{part}_{i}_solution', format_ranges(rangify(self.solve(self.values, self.varying, select_pivot, problem))))
 
-                yield ('array_ordered', ' < '.join(map(str, self.values)))
+        if solution:
+            yield ('array_ordered', ' < '.join(map(str, self.values)))
 
-                for_median = sorted(self.values[k] for k in self.for_median_ranks)
-                for (i, x) in enumerate(for_median):
-                    yield (f'median_{i}', x)
+            for_median = sorted(self.values[k] for k in self.for_median_ranks)
+            for (i, x) in enumerate(for_median):
+                yield (f'median_{i}', str(x))
 
-                    yield (f'median_0_larger', len([() for x in self.values if x > for_median[0]])
-                    yield (f'median_1_smaller', len([() for x in self.values if x < for_median[1]])
+            yield ('median_0_larger', str(len([() for x in self.values if x > for_median[0]])))
+            yield ('median_1_smaller', str(len([() for x in self.values if x < for_median[1]])))

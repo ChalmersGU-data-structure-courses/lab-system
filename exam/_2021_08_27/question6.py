@@ -49,7 +49,7 @@ class Generator:
             return
 
         ecc, node, furthest = self.eccs[self.asked_index]
-        yield ('a-eccentricity', ecc)
+        yield ('a-eccentricity', str(ecc))
         yield ('a-furthest-node', pp_any_of_list(furthest))
         distances = {n:d for n,d in self.run_dijkstra(node)}
         shortest_paths = []
@@ -60,12 +60,12 @@ class Generator:
 
         min_ecc = self.eccs[0][0]
         min_nodes = [n for ecc,n,_ in self.eccs if ecc == min_ecc]
-        yield ('b-min-eccentricity', min_ecc)
+        yield ('b-min-eccentricity', str(min_ecc))
         yield ('b-min-node', pp_any_of_list(min_nodes))
 
         max_ecc = self.eccs[-1][0]
         max_nodes = [n for ecc,n,_ in self.eccs if ecc == max_ecc]
-        yield ('b-max-eccentricity', max_ecc)
+        yield ('b-max-eccentricity', str(max_ecc))
         yield ('b-max-node', pp_any_of_list(max_nodes))
 
     def replacements_img(self, solution = False):
