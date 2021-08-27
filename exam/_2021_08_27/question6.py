@@ -14,18 +14,59 @@ ratio="fill";
 node [shape = circle];
 """
 
+def pp_any_of_list(items):
+    if len(items) == 1:
+        return items[0]
+    if len(items) == 2:
+        return ' or '.join(items)
+    return 'Any of ' + ', '.join(items[:-1]) + ' or ' + items[-1]
+
+
+def all_shortest_paths(goal, graph, distances):
+    if distances[goal] == 0:
+        yield [goal]
+    else:
+        for a, b, dist in graph:
+            node = a if goal==b else b if goal==a else None
+            if node is not None:
+                dist_ = distances[goal] - distances[node]
+                if dist == dist_:
+                    for path in all_shortest_paths(node, graph, distances):
+                        yield path + [goal]
+                
+
 class Generator:
     def __init__(self, seed, version = None):
         self.r = random.Random(seed)
         self.graph = self.generate_graph()
         self.eccs = self.calc_eccentricities()
-        asked_index = (len(self.eccs)-1) // 2
-        self.asked_node = self.eccs[asked_index][1]
+        self.asked_index = (len(self.eccs)-1) // 2
+        self.asked_node = self.eccs[self.asked_index][1]
 
     def replacements(self, solution = False):
         yield ('node', self.asked_node)
-        if solution:
-            yield ('solution', 'B')
+        if not solution:
+            return
+
+        ecc, node, furthest = self.eccs[self.asked_index]
+        yield ('a-eccentricity', ecc)
+        yield ('a-furthest-node', pp_any_of_list(furthest))
+        distances = {n:d for n,d in self.run_dijkstra(node)}
+        shortest_paths = []
+        for goal in furthest:
+            for path in all_shortest_paths(goal, self.graph, distances):
+                shortest_paths.append('-'.join(path))
+        yield ('a-shortest-path', pp_any_of_list(shortest_paths))
+
+        min_ecc = self.eccs[0][0]
+        min_nodes = [n for ecc,n,_ in self.eccs if ecc == min_ecc]
+        yield ('b-min-eccentricity', min_ecc)
+        yield ('b-min-node', pp_any_of_list(min_nodes))
+
+        max_ecc = self.eccs[-1][0]
+        max_nodes = [n for ecc,n,_ in self.eccs if ecc == max_ecc]
+        yield ('b-max-eccentricity', max_ecc)
+        yield ('b-max-node', pp_any_of_list(max_nodes))
 
     def replacements_img(self, solution = False):
         (fd, name) = tempfile.mkstemp(suffix = '.png')
@@ -90,6 +131,10 @@ if __name__ == "__main__":
     print(g.graph)
     print("\n".join(f'{e}: {n} --> {" ".join(f)}' for e,n,f in g.eccs))
     print(f"Asked node: {g.asked_node}")
+    print()
+    for i, f in g.replacements(solution=True):
+        print(i, f)
+    print()
     for i, f in g.replacements_img():
         print(i, f)
         subprocess.run(['open', f])
