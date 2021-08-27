@@ -235,3 +235,6 @@ class Generator:
                 for_median = sorted(self.values[k] for k in self.for_median_ranks)
                 for (i, x) in enumerate(for_median):
                     yield (f'median_{i}', x)
+
+                    yield (f'median_0_larger', len([() for x in self.values if x > for_median[0]])
+                    yield (f'median_1_smaller', len([() for x in self.values if x < for_median[1]])
