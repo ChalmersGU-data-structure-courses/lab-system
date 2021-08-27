@@ -37,8 +37,8 @@ def svg_template_removed_tree(is_left, intended):
 
 # svg_template is a function taking a boolean 'is_left' as argument and returning a path to the SVG file.
 # The result is a string.
-def instantiate_svg_template(svg_template, is_left, nodes):
-    return re.sub('##(\\d+)', lambda m: nodes[int(m.group(1))], svg_template(is_left).read_text())
+def instantiate_svg_template(svg_template, nodes, *params):
+    return re.sub('##(\\d+)', lambda m: nodes[int(m.group(1))], svg_template(*params).read_text())
 
 def png_from_svg(png_path, svg):
     with png_path.open('wb') as png_file:
@@ -74,12 +74,12 @@ class _Generator:
                 yield (format_smallest(v), format_smallest(v == self.is_left))
 
     def replacements_img(self, solution = False):
-        yield (self.placeholder_id, gen_png_from_svg_template(svg_template_initial_tree, self.is_left, self.nodes))
+        yield (self.placeholder_id, gen_png_from_svg_template(svg_template_initial_tree, self.nodes, self.is_left))
 
         if solution:
-            yield ('kix.fb9j64evdz0y', gen_png_from_svg_template(svg_template_inserted_tree, self.is_left, self.nodes))
+            yield ('kix.fb9j64evdz0y', gen_png_from_svg_template(svg_template_inserted_tree, self.nodes, self.is_left))
             for v in [True, False]:
-                yield ('kix.r7dc08ncuqle' if v else 'kix.7d5i67igq28c', gen_png_from_svg_template(svg_template_inserted_tree, self.is_left, self.nodes))
+                yield ('kix.r7dc08ncuqle' if v else 'kix.7d5i67igq28c', gen_png_from_svg_template(svg_template_removed_tree, self.nodes, self.is_left, v))
 
 def Generator(placeholder_id):
     def f(seed, version = None):

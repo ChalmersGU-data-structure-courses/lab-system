@@ -22,11 +22,31 @@ logging.getLogger().setLevel(logging.INFO)
 
 exams = dict((key, Exam(exam_config)) for (key, exam_config) in exam_configs.items())
 
-for e in exams.values():
+def search_user(exam, pattern):
+    def f():
+        for user in exam.course.user_details.values():
+            if pattern in user.name:
+                yield user
+    return list(f())
+
+def select_user_id(exam, pattern):
+    rs = search_user(exam, pattern)
+    assert len(rs) == 1
+    return rs[0].id
+
+for key, e in exams.items():
+    if key != 'dit181':
+        continue
+    print(key)
+    
     #e.allocate_students()
-    #e.instantiate_template(share_dir = Path() / 'exam' / '_2021_08_27' / 'share_dir', share_url = 'http://uxul.org/~noname/exam/')
-    e.upload_instances()
+    e.instantiate_template(share_dir = Path() / 'exam' / '_2021_08_27' / 'share_dir', share_url = 'http://uxul.org/~noname/exam/', solution = True)
+    #e.upload_instances(delete_old = False)
+    #e.create_assignments(publish = True, update = True)
+    #e.delete_assignments()
 
     #e.allocate_students()
 #e.instantiate_template(share_dir = Path() / 'exam' / '_2021_08_27' / 'share_dir', share_url = 'http://uxul.org/~noname/exam/')
 #e.upload_instances()
+
+e = exams['dit181']

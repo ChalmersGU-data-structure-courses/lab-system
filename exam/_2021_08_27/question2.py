@@ -216,6 +216,10 @@ class Generator:
             ]):
                 return xs
 
+    def L_R(self, pattern, l = None, r = None):
+        yield (f'{pattern}_L', str(l if l else self.n - r - 1))
+        yield (f'{pattern}_R', str(r if r else self.n - l - 1))
+
     def replacements(self, solution = False):
         formatted_values = [str(v) for v in self.values]
         formatted_values.insert(self.varying, 'X')
@@ -223,19 +227,17 @@ class Generator:
         yield ('range', format_range(self.range))
 
         for i, problem in enumerate(self.problems_shuffled):
-            yield (f'{i}_L', str(problem))
-            yield (f'{i}_R', str(self.n - problem - 1))
+            yield from self.L_R(f'{i}', problem)
 
             if solution:
                 for part, select_pivot in [('A', first), ('B', median_of_three)]:
                     yield (f'{part}_{i}_solution', format_ranges(rangify(self.solve(self.values, self.varying, select_pivot, problem))))
 
         if solution:
-            yield ('array_ordered', ' < '.join(map(str, self.values)))
+            yield ('array_ordered', ' < '.join(map(str, sorted(self.values))))
 
-            for_median = sorted(self.values[k] for k in self.for_median_ranks)
+            for_median = sorted(self.values[k - 1] for k in median_of_three_indices(self.n)[1:])
             for (i, x) in enumerate(for_median):
                 yield (f'median_{i}', str(x))
-
-            yield ('median_0_larger', str(len([() for x in self.values if x > for_median[0]])))
-            yield ('median_1_smaller', str(len([() for x in self.values if x < for_median[1]])))
+            yield from self.L_R(f'median_0', r = len([() for y in self.values if y > for_median[0]]))
+            yield from self.L_R(f'median_1', l = len([() for y in self.values if y < for_median[1]]))
