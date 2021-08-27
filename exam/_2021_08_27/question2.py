@@ -152,7 +152,9 @@ class Generator:
         self.r = random.Random(seed)
         self.values = self.build_permutation_controlled(self.choose_numbers_controlled())
         self.problems_shuffled = shuffled(self.r, self.problems)
-        self.invert = self.r.choice([False, True])
+
+        # wasn't used
+        #self.invert = self.r.choice([False, True])
 
     def build_permutation(self, xs):
         ys = multidict(map(on_first(lambda i: i in self.for_median_ranks), enumerate(xs)))
@@ -227,3 +229,9 @@ class Generator:
             if solution:
                 for part, select_pivot in [('A', first), ('B', median_of_three)]:
                     yield (f'{part}_{i}_solution', format_ranges(rangify(self.solve(self.values, self.varying, select_pivot, problem))))
+
+                yield ('array_ordered', ' < '.join(map(str, self.values)))
+
+                for_median = sorted(self.values[k] for k in self.for_median_ranks)
+                for (i, x) in enumerate(for_median):
+                    yield (f'median_{i}', x)
