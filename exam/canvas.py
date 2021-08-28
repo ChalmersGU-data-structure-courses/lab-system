@@ -391,7 +391,7 @@ class Exam:
 
     @staticmethod
     def parse_range(s):
-        xs = map(int, s.split('-'))
+        xs = list(map(int, s.split('-')))
         try:
             (a, b) = xs
         except ValueError:
