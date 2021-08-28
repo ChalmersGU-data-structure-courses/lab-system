@@ -53,7 +53,7 @@ def canvas_assignment_description(resource_for_format):
         p('Submit your solutions via file upload, preferably as a ', strong('single PDF file'), '. If you do not know how to convert your solutions to PDF, other formats are accepted as well. Please use separate pages for each question.'),
     ).render(pretty = False)
 
-questions = [i + 1 for i in range(9)]
+questions = [i + 1 for i in range(6)]
 
 def question_key(q):
     return f'Q{q}'

@@ -179,7 +179,7 @@ class Exam:
 
     def get_assignments(self, use_cache = False):
         def f(assignment):
-            if assignment.overrides[0].student_ids:
+            if assignment.overrides and assignment.overrides[0].student_ids:
                 user_id = assignment.overrides[0].student_ids[0]
                 user = self.course.user_details[user_id]
                 yield (user_id, assignment)

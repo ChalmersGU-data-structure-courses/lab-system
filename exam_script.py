@@ -35,18 +35,19 @@ def select_user_id(exam, pattern):
     return rs[0].id
 
 for key, e in exams.items():
-    if key != 'dit181':
-        continue
+    #if key != 'dit961':
+    #    continue
     print(key)
     
     #e.allocate_students()
-    e.instantiate_template(share_dir = Path() / 'exam' / '_2021_08_27' / 'share_dir', share_url = 'http://uxul.org/~noname/exam/', solution = True)
+    #e.instantiate_template(share_dir = Path() / 'exam' / '_2021_08_27' / 'share_dir', share_url = 'http://uxul.org/~noname/exam/', solution = True)
     #e.upload_instances(delete_old = False)
     #e.create_assignments(publish = True, update = True)
     #e.delete_assignments()
+    #e.normalize_submissions()
+    x = e.guess_selector_infos()
+    e.write_selector_infos(x)
 
-    #e.allocate_students()
-#e.instantiate_template(share_dir = Path() / 'exam' / '_2021_08_27' / 'share_dir', share_url = 'http://uxul.org/~noname/exam/')
-#e.upload_instances()
+    #e.download_submissions(check_submission_times = False)
 
 e = exams['dit181']

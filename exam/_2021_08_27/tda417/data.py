@@ -53,7 +53,7 @@ def canvas_assignment_description(resource_for_format):
         p('Submit your solutions via file upload, preferably as a ', strong('single PDF file'), '. If you do not know how to convert your solutions to PDF, other formats are accepted as well. Please use separate pages for each question.'),
     ).render(pretty = False)
 
-questions = [i + 1 for i in range(9)]
+questions = [i + 1 for i in range(8)]
 
 def question_key(q):
     return f'Q{q}'
@@ -141,7 +141,7 @@ questions_basic = [q for q in questions if q <= 6]
 questions_advanced = [q for q in questions if q > 6]
 
 def question_score_max(q):
-    return 2
+    return 2 if q <= 6 else 3
 
 def questions_score_max(qs):
     return sum(question_score_max(q) for q in qs)
