@@ -73,7 +73,7 @@ from .. import question6
 
 question_randomizers = {
     2: (question2.Generator,),
-    3: (question3.Generator('kix.bjfury1ntd88'),),
+    3: (question3.Generator(),),
     4: (question4.Generator,),
     5: (question5.Generator,),
     6: (question6.Generator,),

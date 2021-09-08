@@ -8,7 +8,7 @@ import general
 this_dir = Path(__file__).parent
 
 exam_id = '1oXOT5xumvM9EthPc8JHbbL9WSzEGr_LsyGubO0ppSUA'
-solution_id = None #'1hJbk5HOzRp8Q76MIEh5VTvObZH4wAxA4hVXAOg6iBTs'
+solution_id = '1ZGpr3Sx1f1MyKSGxQqJjuoJMHua71kalX2DJPWaH9D8'
 secret_salt = 'Half-rainy night'
 
 formats = [
@@ -73,7 +73,7 @@ from .. import question6
 
 question_randomizers = {
     2: (question2.Generator,),
-    3: (question3.Generator('kix.j8188v64adk0'),),
+    3: (question3.Generator(True),),
     4: (question4.Generator,),
     5: (question5.Generator,),
     6: (question6.Generator,),

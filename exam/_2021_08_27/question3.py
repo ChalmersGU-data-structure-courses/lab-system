@@ -55,8 +55,8 @@ def gen_png_from_svg_template(*args):
     return png_path
 
 class _Generator:
-    def __init__(self, placeholder_id, seed, version):
-        self.placeholder_id = placeholder_id
+    def __init__(self, is_dit961, seed, version):
+        self.is_dit961 = is_dit961
 
         self.r = random.Random(seed)
         self.is_left = self.r.choice([True, False])
@@ -74,14 +74,17 @@ class _Generator:
                 yield (format_smallest(v), format_smallest(v == self.is_left))
 
     def replacements_img(self, solution = False):
-        yield (self.placeholder_id, gen_png_from_svg_template(svg_template_initial_tree, self.nodes, self.is_left))
+        yield ('kix.bjfury1ntd88' if not self.is_dit961 else 'kix.j8188v64adk0', gen_png_from_svg_template(svg_template_initial_tree, self.nodes, self.is_left))
 
         if solution:
-            yield ('kix.fb9j64evdz0y', gen_png_from_svg_template(svg_template_inserted_tree, self.nodes, self.is_left))
-            for v in [True, False]:
-                yield ('kix.r7dc08ncuqle' if v else 'kix.7d5i67igq28c', gen_png_from_svg_template(svg_template_removed_tree, self.nodes, self.is_left, v))
+            yield ('kix.fb9j64evdz0y' if not self.is_dit961 else 'kix.9piqdo6kwqda', gen_png_from_svg_template(svg_template_inserted_tree, self.nodes, self.is_left))
+            for v, id in [
+                (True, 'kix.r7dc08ncuqle' if not self.is_dit961 else 'kix.af62clhvh9zy'),
+                (False, 'kix.7d5i67igq28c' if not self.is_dit961 else 'kix.1anrg18eoi5'),
+            ]:
+                yield (id, gen_png_from_svg_template(svg_template_removed_tree, self.nodes, self.is_left, v))
 
-def Generator(placeholder_id):
+def Generator(is_dit961 = False):
     def f(seed, version = None):
-        return _Generator(placeholder_id, seed, version)
+        return _Generator(is_dit961, seed, version)
     return f
