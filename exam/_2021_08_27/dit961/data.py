@@ -31,7 +31,7 @@ canvas_extra_time = 1.5
 canvas_early_assignment_unlock = datetime.timedelta(minutes = 0)
 
 canvas_instance_dir = PurePosixPath('/exam_instances')
-canvas_max_points = 18
+canvas_max_points = 2
 
 def canvas_assignment_description(resource_for_format):
     '''
@@ -97,7 +97,8 @@ checklist_time = 'Inlämningstid'
 
 ### Configuration of grading sheet
 
-grading_sheet = None #'1l_3oK2b7orfO2IVfP4TwBT5PhdzWk4Ri9bg9VVmDN9Q'
+grading_sheet = '10QVjRDzRhl7hCaCIn1J6GZNFnpo8ku_C9B6MAkG-SOw'
+grading_worksheet = 'DIT961'
 
 def grading_rows_headers(rows):
     return [rows[0], rows[1]]
@@ -126,92 +127,78 @@ class GradingLookup:
         return self.header_lookup[(question_name(q), 'Feedback')]
 
 def parse_score(s):
-    assert s != '', 'Found ungraded question.'
+    #assert s != '', 'Found ungraded question.'
     if s == '-':
         return None
-    return float(s)
+    try:
+        if s in ['U', 'G', 'VG']:
+            return s
+    except:
+        pass
+    return 'U'
 
 def format_score(x):
-    return f'{x:.5g}' if x != None else '-'
-
+    return x if x != None else '-'
 
 ### Configuration of grading report and assignment scoring
 
-questions_basic = [q for q in questions if q <= 6]
-questions_advanced = [q for q in questions if q > 6]
+def is_good(s):
+    return s in ['G', 'VG']
 
-def question_score_max(q):
-    return 2
+def is_very_good(s):
+    return s == 'VG'
 
-def questions_score_max(qs):
-    return sum(question_score_max(q) for q in qs)
+def num_questions(f, grading):
+    return len([() for (q, r) in grading.items() if f(r[0])])
 
-def score_value(s):
-    return 0 if s == None else s
-
-def grading_question_score(grading, q):
-    return score_value(grading[q][0])
-
-def grading_questions_score(grading, qs):
-    return sum(grading_question_score(grading, q) for q in qs)
-
-grading_questions_score_via_questions = lambda qs: lambda grading: grading_questions_score(grading, qs)
-
-grading_score = grading_questions_score_via_questions(questions)
-grading_score_basic = grading_questions_score_via_questions(questions_basic)
-grading_score_advanced = grading_questions_score_via_questions(questions_advanced)
-
-def has_threshold(grading, min_basic, min_combined):
-    basic = grading_score_basic(grading)
-    advanced = grading_score_advanced(grading)
-    return basic >= min_basic and advanced + (basic - min_basic) / 2 >= min_combined
+def has_threshold(grading, min_good, min_very_good):
+    num_good = num_questions(is_good, grading)
+    num_very_good = num_questions(is_very_good, grading)
+    return num_good >= min_good and num_very_good >= min_very_good
 
 def grading_grade(grading):
-    if has_threshold(grading, 8, 3):
+    if has_threshold(grading, 0, 5):
         return 'VG'
-    if has_threshold(grading, 7, 0):
+    if has_threshold(grading, 4, 0):
         return 'G'
     return 'U'
 
-def formatted(f):
-    return lambda x: format_score(f(x))
+def grading_score(grading):
+    return {
+        'U': 0,
+        'G': 1,
+        'VG': 2,
+    }[grading_grade(grading)]
 
 grading_report_columns_summary = [
-    ('Basic points', formatted(grading_score_basic)),
-    ('Advanced points', formatted(grading_score_advanced)),
     ('Grade', grading_grade),
 ]
 
-grading_report_columns = [(question_name(q), formatted(grading_questions_score_via_questions([q]))) for q in questions] + grading_report_columns_summary
+grading_report_columns = [(question_name(q), lambda grading: format_score(grading[q][0])) for q in questions] + grading_report_columns_summary
 
 def grading_feedback(grading, resource):
-    def format_points(score, score_max):
+    def format_points(score):
         if score == None:
             return 'not attempted'
-        return f'{format_score(score)} points (out of {format_score(score_max)})'
+        return f'{format_score(score)}'
 
-    def format_line(description, score, score_max):
-        return f'{description}: {format_points(score, score_max)}'
-
-    def format_summary_line(kind, qs):
-        return format_line(f'* {kind} part', grading_questions_score(grading, qs), questions_score_max(qs))
+    def format_line(description, score):
+        return f'{description}: {format_points(score)}'
 
     def format_question(q):
         (score, feedback) = grading[q]
-        yield format_line(f'## {question_name(q)}', score, question_score_max(q))
+        yield format_line(f'## {question_name(q)}', score)
         yield ''
         if feedback:
             yield feedback
             yield ''
 
     return general.join_lines(itertools.chain([
-        'Summary:',
-        format_summary_line('Basic', questions_basic),
-        format_summary_line('Advanced', questions_advanced),
-        '',
         f'Exam grade: {grading_grade(grading)}',
         '',
         f'Original exam problems: {resource(False)[1]}',
         f'Suggested solutions: {resource(True)[1]}',
         '',
-    ], *(format_question(q) for q in questions)))
+    ], *(format_question(q) for q in questions), [
+        'Alex Gerdes',
+    ]))

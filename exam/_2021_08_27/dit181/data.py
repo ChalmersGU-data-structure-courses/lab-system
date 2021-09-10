@@ -97,7 +97,8 @@ checklist_time = 'Inlämningstid'
 
 ### Configuration of grading sheet
 
-grading_sheet = None #'1l_3oK2b7orfO2IVfP4TwBT5PhdzWk4Ri9bg9VVmDN9Q'
+grading_sheet = '10QVjRDzRhl7hCaCIn1J6GZNFnpo8ku_C9B6MAkG-SOw'
+grading_worksheet = 'DIT181'
 
 def grading_rows_headers(rows):
     return [rows[0], rows[1]]
@@ -167,7 +168,7 @@ def has_threshold(grading, min_basic, min_combined):
     return basic >= min_basic and advanced + (basic - min_basic) / 2 >= min_combined
 
 def grading_grade(grading):
-    if has_threshold(grading, 8, 3):
+    if has_threshold(grading, 8, 4):
         return 'VG'
     if has_threshold(grading, 7, 0):
         return 'G'

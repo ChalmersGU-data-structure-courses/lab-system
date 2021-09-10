@@ -35,19 +35,22 @@ def select_user_id(exam, pattern):
     return rs[0].id
 
 for key, e in exams.items():
-    #if key != 'dit961':
-    #    continue
+    if key != 'dit961':
+        continue
     print(key)
     
     #e.allocate_students()
     #e.instantiate_template(share_dir = Path() / 'exam' / '_2021_08_27' / 'share_dir', share_url = 'http://uxul.org/~noname/exam/', solution = True)
-    #e.upload_instances(delete_old = False)
+    #e.upload_instances(delete_old = False, solution = True)
     #e.create_assignments(publish = True, update = True)
     #e.delete_assignments()
-    #e.normalize_submissions()
-    x = e.guess_selector_infos()
-    e.write_selector_infos(x)
-
     #e.download_submissions(check_submission_times = False)
+    #e.normalize_submissions()
+    #x = e.guess_selector_infos()
+    #e.write_selector_infos(x)
+    #e.package_submissions(include_solutions = True)
+    #e.prepare_grading_table(e.exam_config.this_dir / 'grading-table.csv', fill_in_missing_questions = True)
+    e.upload_gradings(dry_run = True)
 
-e = exams['dit181']
+#e = exams['dit961']
+#e.write_grading_report(e.exam_config.this_dir / 'report.csv')

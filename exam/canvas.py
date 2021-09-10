@@ -610,7 +610,7 @@ class Exam:
 
     @functools.cached_property
     def gradings(self):
-        worksheet = gspread.oauth().open_by_key(self.exam_config.grading_sheet).get_worksheet(0)
+        worksheet = gspread.oauth().open_by_key(self.exam_config.grading_sheet).worksheet(self.exam_config.grading_worksheet if hasattr(self.exam_config, 'grading_worksheet') else 0)
         rows = worksheet.get_all_values() #value_render_option = 'FORMULA'
         grading_lookup = self.exam_config.GradingLookup(self.exam_config.grading_rows_headers(rows))
 
@@ -665,7 +665,7 @@ class Exam:
         students.sort(key = operator.attrgetter('sortable_name'))
         self.write_grading_report_for_users(output, students)
 
-    def upload_grading(self, user, replace_author_name = None):
+    def upload_grading(self, user, replace_author_name = None, dry_run = False):
         logger.log(logging.INFO, f'Uploading grading for {self.course.user_str(user.id)}...')
 
         id = self.allocation_id_lookup.get(user.sis_user_id)
@@ -687,12 +687,13 @@ class Exam:
             link = self.course.get_file_link(files[name].id, absolute = True)
             return (name, link)
 
-        self.course.edit_folder(
-            id = folder.id,
-            locked = False,
-            unlock_at = None,
-            lock_at = None,
-        )
+        if not dry_run:
+            self.course.edit_folder(
+                id = folder.id,
+                locked = False,
+                unlock_at = None,
+                lock_at = None,
+            )
 
         submission = general.from_singleton(self.course.get_submissions(assignment.id, use_cache = False))
         assert submission.workflow_state != 'unsubmitted'
@@ -708,11 +709,12 @@ class Exam:
             }
             print(self.exam_config.grading_score(grading))
             print(self.exam_config.grading_feedback(grading, resource))
-            self.canvas.put(endpoint, params = params)
+            if not dry_run:
+                self.canvas.put(endpoint, params = params)
 
-    def upload_gradings(self, users = None, replace_author_name = None):
+    def upload_gradings(self, users = None, **args):
         if users == None:
             users = self.course.user_details.values()
 
         for user in users:
-            self.upload_grading(user, replace_author_name = replace_author_name)
+            self.upload_grading(user, **args)

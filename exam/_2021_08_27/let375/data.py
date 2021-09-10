@@ -99,7 +99,8 @@ checklist_time = 'Inlämningstid'
 
 ### Configuration of grading sheet
 
-grading_sheet = '1djsY1Rw1yau5h0mi5KIVVviyZyz91LNqBEQzXMWdp4E'
+grading_sheet = '10QVjRDzRhl7hCaCIn1J6GZNFnpo8ku_C9B6MAkG-SOw'
+grading_worksheet = 'LET375'
 
 def grading_rows_headers(rows):
     return [rows[0], rows[1]]
