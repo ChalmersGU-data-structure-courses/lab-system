@@ -171,7 +171,7 @@ def has_threshold(grading, min_basic, min_combined):
 def grading_grade(grading):
     if has_threshold(grading, 8, 4):
         return 'VG'
-    if has_threshold(grading, 7, 0):
+    if has_threshold(grading, 7.5, 0):
         return 'G'
     return 'U'
 
