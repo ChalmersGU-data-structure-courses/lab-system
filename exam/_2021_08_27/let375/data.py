@@ -134,7 +134,7 @@ def parse_score(s):
         return None
     if s == '?':
         return '?'
-    return float(s)
+    return ceil(2 * float(s)) / 2
 
 def format_score(x):
     if x == '?':
@@ -251,4 +251,5 @@ def grading_feedback(grading, resource):
         f'Original exam problems: {resource(False)[1]}',
         f'Suggested solutions: {resource(True)[1]}',
         '',
+        f'Pelle Evensen'
     ], *(format_question(q) for q in questions)))

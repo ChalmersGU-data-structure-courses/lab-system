@@ -130,7 +130,7 @@ def parse_score(s):
     assert s != '', 'Found ungraded question.'
     if s == '-':
         return None
-    return float(s)
+    return ceil(2 * float(s)) / 2
 
 def format_score(x):
     return f'{x:.5g}' if x != None else '-'
