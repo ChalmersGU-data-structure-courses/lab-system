@@ -226,6 +226,10 @@ class Exam:
             'name': 'Exam for {}'.format(user.name),
             'submission_types': ['online_upload'],
             'points_possible': self.exam_config.canvas_max_points,
+            # Bug (Canvas?).
+            # This is ignored by Chalmers Canvas.
+            # The assignments end up created with post_manually set to True anyways.
+            # Find out why.
             'post_manually': False,
             'only_visible_to_overrides': True,
             'assignment_overrides': [{
