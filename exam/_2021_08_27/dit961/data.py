@@ -127,15 +127,11 @@ class GradingLookup:
         return self.header_lookup[(question_name(q), 'Feedback')]
 
 def parse_score(s):
-    #assert s != '', 'Found ungraded question.'
+    assert s != '', 'Found ungraded question.'
     if s == '-':
         return None
-    try:
-        if s in ['U', 'G', 'VG']:
-            return s
-    except:
-        pass
-    return 'U'
+    assert s in ['U', 'G', 'VG']
+    return s
 
 def format_score(x):
     return x if x != None else '-'
@@ -174,7 +170,7 @@ grading_report_columns_summary = [
     ('Grade', grading_grade),
 ]
 
-grading_report_columns = [(question_name(q), lambda grading: format_score(grading[q][0])) for q in questions] + grading_report_columns_summary
+grading_report_columns = [(question_name(q), lambda grading, q = q: format_score(grading[q][0])) for q in questions] + grading_report_columns_summary
 
 def grading_feedback(grading, resource):
     def format_points(score):
