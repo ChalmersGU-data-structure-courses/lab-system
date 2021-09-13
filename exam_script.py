@@ -35,7 +35,7 @@ def select_user_id(exam, pattern):
     return rs[0].id
 
 for key, e in exams.items():
-    if key != 'dit961':
+    if key != 'dat038':
         continue
     print(key)
     
@@ -50,7 +50,7 @@ for key, e in exams.items():
     #e.write_selector_infos(x)
     #e.package_submissions(include_solutions = True)
     #e.prepare_grading_table(e.exam_config.this_dir / 'grading-table.csv', fill_in_missing_questions = True)
-    #e.upload_gradings()
+    e.upload_gradings(dry_run = True)
 
-e = exams['dit961']
+e = exams['dat038']
 e.write_grading_report(e.exam_config.this_dir / 'report.csv')

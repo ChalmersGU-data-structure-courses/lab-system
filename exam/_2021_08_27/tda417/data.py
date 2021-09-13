@@ -1,5 +1,6 @@
 import datetime
 import itertools
+import math
 from pathlib import Path, PurePosixPath
 import re
 
@@ -130,7 +131,7 @@ def parse_score(s):
     assert s != '', 'Found ungraded question.'
     if s == '-':
         return None
-    return ceil(2 * float(s)) / 2
+    return math.ceil(2 * float(s)) / 2
 
 def format_score(x):
     return f'{x:.5g}' if x != None else '-'
@@ -158,20 +159,29 @@ def grading_questions_score(grading, qs):
 
 grading_questions_score_via_questions = lambda qs: lambda grading: grading_questions_score(grading, qs)
 
+def round(s):
+    if s == '?':
+        return '?'
+    if s == None:
+        return None
+    return math.ceil(s)
+
 grading_score = grading_questions_score_via_questions(questions)
-grading_score_basic = grading_questions_score_via_questions(questions_basic)
-grading_score_advanced = grading_questions_score_via_questions(questions_advanced)
+grading_score_basic = lambda x: round(grading_questions_score_via_questions(questions_basic)(x))
+grading_score_advanced = lambda x: round(grading_questions_score_via_questions(questions_advanced)(x))
 
 def has_threshold(grading, min_basic, min_combined):
     basic = grading_score_basic(grading)
     advanced = grading_score_advanced(grading)
-    return basic >= min_basic and advanced + (basic - min_basic) / 2 >= min_combined
+    return basic >= min_basic and (min_combined == None or advanced + (basic - min_basic) / 2 >= min_combined)
 
 def grading_grade(grading):
-    if has_threshold(grading, 8, 3):
-        return 'VG'
-    if has_threshold(grading, 7, 0):
-        return 'G'
+    if has_threshold(grading, 10, 4):
+        return '5'
+    if has_threshold(grading, 9, 2):
+        return '4'
+    if has_threshold(grading, 8, None):
+        return '3'
     return 'U'
 
 def formatted(f):
@@ -186,16 +196,19 @@ grading_report_columns_summary = [
 grading_report_columns = [(question_name(q), formatted(grading_questions_score_via_questions([q]))) for q in questions] + grading_report_columns_summary
 
 def grading_feedback(grading, resource):
-    def format_points(score, score_max):
+    def format_points(score, score_max, do_rounding):
         if score == None:
             return 'not attempted'
-        return f'{format_score(score)} points (out of {format_score(score_max)})'
+        if do_rounding:
+            return f'{format_score(score)} rounded up to {format_score(round(score))} points (out of {format_score(score_max)})'
+        else:
+            return f'{format_score(score)} points (out of {format_score(score_max)})'
 
-    def format_line(description, score, score_max):
-        return f'{description}: {format_points(score, score_max)}'
+    def format_line(description, score, score_max, do_rounding = False):
+        return f'{description}: {format_points(score, score_max, do_rounding)}'
 
     def format_summary_line(kind, qs):
-        return format_line(f'* {kind} part', grading_questions_score(grading, qs), questions_score_max(qs))
+        return format_line(f'* {kind} part', grading_questions_score(grading, qs), questions_score_max(qs), do_rounding = True)
 
     def format_question(q):
         (score, feedback) = grading[q]
@@ -215,4 +228,6 @@ def grading_feedback(grading, resource):
         f'Original exam problems: {resource(False)[1]}',
         f'Suggested solutions: {resource(True)[1]}',
         '',
-    ], *(format_question(q) for q in questions)))
+    ], *(format_question(q) for q in questions), [
+        f'Peter Ljunglöf',
+    ]))

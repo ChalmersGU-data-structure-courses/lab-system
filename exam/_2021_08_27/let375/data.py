@@ -134,7 +134,7 @@ def parse_score(s):
         return None
     if s == '?':
         return '?'
-    return ceil(2 * float(s)) / 2
+    return math.ceil(2 * float(s)) / 2
 
 def format_score(x):
     if x == '?':
@@ -196,10 +196,10 @@ def grading_score(x):
 def formatted(f):
     return lambda x: format_score(f(x))
 
-def has_threshold(grading, min_basic, min_advanced):
+def has_threshold(grading, min_basic, min_combined):
     basic = grading_score_basic(grading)
     advanced = grading_score_advanced(grading)
-    return basic >= min_basic and (min_advanced == None or advanced >= min_advanced)
+    return basic >= min_basic and (min_combined == None or advanced + (basic - min_basic) / 2 >= min_combined)
 
 def grading_grade(grading):
     if has_threshold(grading, 10, 4):
@@ -209,6 +209,9 @@ def grading_grade(grading):
     if has_threshold(grading, 8, None):
         return '3'
     return 'U'
+
+def formatted(f):
+    return lambda x: format_score(f(x))
 
 grading_report_columns_summary = [
     ('Basic points', formatted(grading_score_basic)),
@@ -251,5 +254,6 @@ def grading_feedback(grading, resource):
         f'Original exam problems: {resource(False)[1]}',
         f'Suggested solutions: {resource(True)[1]}',
         '',
+    ], *(format_question(q) for q in questions), [
         f'Pelle Evensen'
-    ], *(format_question(q) for q in questions)))
+    ]))

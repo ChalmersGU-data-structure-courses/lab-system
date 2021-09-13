@@ -1,5 +1,6 @@
 import datetime
 import itertools
+import math
 from pathlib import Path, PurePosixPath
 import re
 
@@ -130,7 +131,7 @@ def parse_score(s):
     assert s != '', 'Found ungraded question.'
     if s == '-':
         return None
-    return ceil(2 * float(s)) / 2
+    return math.ceil(2 * float(s)) / 2
 
 def format_score(x):
     return f'{x:.5g}' if x != None else '-'
