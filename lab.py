@@ -116,7 +116,9 @@ class Lab:
 
     @functools.cached_property
     def grading_sheet(self):
-        return self.course.google_client.open_by_key(self.config.lab_grading_sheets[self.lab]).get_worksheet(0)
+        (spreadsheet_key, worksheet) = self.config.lab_grading_sheets[self.lab]
+        s = course.google_client.open_by_key(spreadsheet_key)
+        return s.get_worksheet(worksheet) if isinstance(worksheet, int) else s.get_worksheet_by_id(worksheet)
 
     @functools.cached_property
     def grading_sheet_parsed(self):
