@@ -177,7 +177,7 @@ class Course:
 
     @functools.cached_property
     def google_client(self):
-        return gspread.oauth()
+        return gspread.service_account(filename = config.google_credentials_path)
 
     GradingColumns = collections.namedtuple('GradingColumns', ['query', 'grader', 'score'])
 
