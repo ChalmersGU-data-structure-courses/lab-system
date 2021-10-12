@@ -18,10 +18,10 @@ canvas_exam_course_id = 48360
 
 # Google Sheet config
 lab_grading_sheets = {
-  1: '1AiiaEhz-8_4oWCQ0_4Z1mUCMK3C_kjyB0eyLO1ezHHE',
-  2: '1iA2JuW8gSOklVCAAV9AE3rjUlcMwBmdpBb9KfiXfFMs',
-  3: '1iPccoBWNOheEPpkuoYkEV4P7LDAAHZ01r90BmFyMCK4',
-  4: '1GlVuPwFLyzRaYSJ7gOPgEL7FmCUKGHfZHU1Oco5S-t4',
+  1: ('1AiiaEhz-8_4oWCQ0_4Z1mUCMK3C_kjyB0eyLO1ezHHE', 0),
+  2: ('1iA2JuW8gSOklVCAAV9AE3rjUlcMwBmdpBb9KfiXfFMs', 0),
+  3: ('1iPccoBWNOheEPpkuoYkEV4P7LDAAHZ01r90BmFyMCK4', 0),
+  4: ('1GlVuPwFLyzRaYSJ7gOPgEL7FmCUKGHfZHU1Oco5S-t4', 0),
 }
 
 # Personal configuration.
