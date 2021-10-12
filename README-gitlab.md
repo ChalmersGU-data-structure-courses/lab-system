@@ -64,6 +64,16 @@ We do integration with Google Sheets etc., we use a Google Cloud project with se
 All Google resources that the scripts should be able to work on need to be shared with the service account created above.
 The simplest way to do that is to share the Google Drive folder of the course with the service account.
 
+### Git
+
+A git installation is required.
+
+### Java
+
+If the robograder is activated for a lab, a recent version of Java is needed to generate reports for student submissions.
+Because the students may use syntactic features added in recent versions of Java, we recommend to use the most recent version (at least 14).
+We recommend to use the HotSpot implementation (by Oracle) to make sure that exception messages are compatible with what most students will see on their machine.
+
 ## Speeding up remote git access
 
 The lab scripts will frequently interact with the repositories on Chalmers GitLab.
@@ -85,22 +95,12 @@ Before running the lab script, execute the following command and leave it runnin
 
 ```ssh -MNT git@github.com```
 
-This will establish a single master connection that each individual remote git repository interaction will then run over. 
+This will establish a single master connection that each individual remote git repository interaction will then run over.
 The options mean the following:
 
 * **M**: let this connection be the control master,
 * **N**: do not execute remote command
 * **T**: don't allocate terminal.
-
-### Git
-
-A git installation is required.
-
-### Java
-
-The robograder needs a recent version of Java to generate reports for student submissions.
-Because the students may use syntactic features added in recent versions of Java, we recommend to use the most recent version (at least 14).
-We recommend to use the HotSpot implementation (by Oracle) to make sure that exception messages are compatible with what most students will see on their machine.
 
 ## A note on Canvas caching
 
@@ -117,6 +117,59 @@ If you find that information handled by the script is no longer up to date, you 
 ### Features
 
 TODO
+
+## GitLab group structure
+
+The following is an overview of the group structure on Chalmers GitLab.
+You only need to create the three top-level groupsfill the 
+The remaining hierarchy will be created by scripts.
+
+
+```
+teachers             # Who should be allowed to grade?
+                     # Members of this group will have access to all lab groups and grading repositories.
+					 # There is a script function that adds or, if not possible,
+					 # sends invitation emails to all teachers in the Canvas course.
+
+labs
+  ├── 1
+  │   ├──  official  # Official problem and solution repository.
+  │   │              # Contains a branch 'problem' with the initial lab problem.
+  │   │              # All lab group repositories are initially clones of the 'problem' branch.
+  │   │              # Also contains a branch 'solution' with the official lab solution.
+  │   │
+  │   └──  grading   # Grading repository, maintained by the lab script.
+  │                  # Fetches the official problem and solution branches and submissions from individual lab groups.
+  │                  # Contains merge commits needed to represent three-way diffs on the GitLab UI.
+  │                  # The individual submissions are available as tags of the form lab-group-XX/submissionYYY.
+  │                  #
+  │                  # If a grader wants to work seriously with submission files, they should clone this repository.
+  │                  # Example use cases:
+  │                  # - cd lab2-grading
+  │                  # - git checkout lab_group_13/submission1   to switch to a group's submission
+  │                  # - git diff problem                        changes compared to problem
+  │                  # - git diff solution                       changes compared to solution
+  │                  # - git diff lab_group_13/submission0       changes compared to last submission
+  │                  # - git diff problem answers.txt            changes in just one file
+  ├── 2
+  ...
+
+lab-groups
+  ├── 0              # A student group.
+  │   │              # There is a script that will invite students to their group on Chalmers GitLab
+  │   │              # based on which assignment group they signed up for in Canvas.
+  │   │
+  │   ├── lab1       # For mid-course group membership changes, membership can also
+  │   │              # be managed at the project level (only for the needed students).
+  │   │              # Remove them from their lab group and manually add them to the projects they should have access to.
+  │   │              # Example: lab1 and lab2 in lab-group-13, but lab3 and lab4 in lab-group-37.
+  │   │
+  │   ├── lab2
+  │   ├── lab3
+  │   └── lab4
+  ├── 1
+  ...
+```
 
 ### Configuration
 
