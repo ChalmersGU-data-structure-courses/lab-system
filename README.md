@@ -128,8 +128,8 @@ The remaining hierarchy will be created by scripts.
 ```
 teachers             # Who should be allowed to grade?
                      # Members of this group will have access to all lab groups and grading repositories.
-					 # There is a script function that adds or, if not possible,
-					 # sends invitation emails to all teachers in the Canvas course.
+                     # There is a script function that adds or, if not possible,
+                     # sends invitation emails to all teachers in the Canvas course.
 
 labs
   ├── 1
