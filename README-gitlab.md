@@ -121,7 +121,7 @@ TODO
 ## GitLab group structure
 
 The following is an overview of the group structure on Chalmers GitLab.
-You only need to create the three top-level groupsfill the 
+You only need to create the three top-level groups.
 The remaining hierarchy will be created by scripts.
 
 
