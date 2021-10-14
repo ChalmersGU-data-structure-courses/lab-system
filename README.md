@@ -204,7 +204,7 @@ The title of the issue needs to follow a certain pattern, by default:
 
 The body is free form and should be used to give detailed feedback to the students.
 The graders are encouraged to use Markdown formatting to format lists and code blocks.
-If students did not subscribe to notification emails from Chalmers GitLab for new issues in their project, their usernames should be included in the issue body (e.g. *@student0 @student1*) to those.
+If students did not subscribe to notification emails from Chalmers GitLab for new issues in their project, their usernames should be included in the issue body (e.g. *@student0 @student1*) to force notifications emails.
 
 Students may engage in discussions with their grader via the discussion thread of their grading issue, for example to request clarification.
 This possibility should be highlighted to the students.
