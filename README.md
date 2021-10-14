@@ -127,8 +127,8 @@ The remaining hierarchy will be created by the lab scripts.
 ```
 graders              # Who should be allowed to grade?
                      # Members of this group will have access to all lab groups and grading repositories.
-                     # There is a script function that adds or, if not possible,
-                     # sends invitation emails to all teachers in the Canvas course.
+                     # TODO: write a script function that adds or, if not possible,
+                     #       sends invitation emails to all teachers in the Canvas course.
 
 labs
   ├── 1
@@ -136,6 +136,8 @@ labs
   │   │              # Contains a branch 'problem' with the initial lab problem.
   │   │              # All lab group repositories are initially clones of the 'problem' branch.
   │   │              # Also contains a branch 'solution' with the official lab solution.
+  │   │              # Can be created by the lab script from a given lab directory in the code repository.
+  │   │              # Used by the lab script to fork the individual lab group projects.
   │   │
   │   └──  grading   # Grading repository, maintained by the lab scripts.
   │                  # Fetches the official problem and solution branches and submissions from individual lab groups.
@@ -154,14 +156,15 @@ labs
   ...
 
 lab-groups
-  ├── 0              # A student group.
+  ├── 0              # A student lab group.
   │   │              # There is a script that will invite students to their group on Chalmers GitLab
   │   │              # based on which assignment group they signed up for in Canvas.
   │   │
   │   ├── lab1       # For mid-course group membership changes, membership can also
   │   │              # be managed at the project level (only for the needed students).
   │   │              # Remove them from their lab group and manually add them to the projects they should have access to.
-  │   │              # Example: lab1 and lab2 in lab-group-13, but lab3 and lab4 in lab-group-37.
+  │   │              # Example: A student may be part of lab1 and lab2 in group 13, but lab3 and lab4 in group 37.
+  │   │              #          In that case, they should neither be part of group 13 nor of group 37.
   │   │
   │   ├── lab2
   │   ├── lab3
@@ -230,7 +233,7 @@ It can also be used to collect notes and comments.
 
 It is convenient to use a single Sheet document with one worksheet for each lab.
 It is initially created by the course-responsible.
-You may do so by copying (this template)[https://docs.google.com/spreadsheets/d/1phOUdj_IynVKPiEU6KtNqI3hOXwNgIycc-bLwgChmUs].
+You may do so by copying [this template](https://docs.google.com/spreadsheets/d/1phOUdj_IynVKPiEU6KtNqI3hOXwNgIycc-bLwgChmUs).
 It includes conditional formatting that helps you easily identify groups in need of grading and groups that have passed.
 Delete unneeded rows and column groups.
 
@@ -265,7 +268,7 @@ Go to the html editor for the Canvas page and paste a snippet for an iframe incl
 (It does not seem possible to set the height to the natural height of the embedded html file.
 If the defined height does not suffice, an annoying scroll wheel for the iframe will appear.)
 
-Files overwritten by upload to the same location will not retain the old id.
+*Note*: Files overwritten by upload to the same location will not retain the old id.
 However, Canvas automatically updates links to overwritten course files with the new id.
 Thus, when the lab scripts upload a new submission table, the Canvas page will reflect the update.
 
