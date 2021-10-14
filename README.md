@@ -212,6 +212,8 @@ Student engangement should benefit from having a two-way grading communication c
 The graders should be reminded to have notifications from Chalmers GitLab enabled (the default notification settings will work).
 
 Grading issues, recognized only by members of the *graders* group, serve as the official database of grading outcomes.
+It follows that you may change a grading by editing the corresponding grading issue.
+
 The lab scripts will output warnings if it detects grader-created issues whose title does not follow the standard pattern.
 Common mistakes include typos and incorrect capitalization when referencing the (case-sensitive) tag.
 
