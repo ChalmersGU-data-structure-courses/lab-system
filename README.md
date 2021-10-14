@@ -120,7 +120,7 @@ If you find that information handled by the script is no longer up to date, you 
 ### Chalmers GitLab group structure
 
 The following is an overview of the group structure on Chalmers GitLab.
-You need to create the three top-level groups and invite all graders to the group called 'graders'.
+You need to create the three top-level groups and invite all graders to the group called *graders*.
 The remaining hierarchy will be created by the lab scripts.
 
 ```
@@ -181,9 +181,9 @@ We use Chalmers GitLab for submission and grading.
 To submit, a group creates a **tag** in their repository that references a specific commit.
 They can do this in two ways:
 * They create the tag locally in their Git repository and then push it to Chalmers GitLab.
-* The go the project overview page in Chamers GitLab, click on the "plus" button, and select "New tag".
+* The go the project overview page in Chamers GitLab, click on the "**+**" button, and select **New tag**.
 
-The tag name must have a specific form (by default, start with 'submission', e.g. 'submission2') and is case sensitive.
+The tag name must have a specific form (by default, start with `submission`, e.g. `submission2`) and is case sensitive.
 The (optional) tag message serves as submission message.
 
 The tag is *protected*: it cannot be changed or deleted once it has been created (the same applies to the commit it references).
@@ -197,19 +197,21 @@ TODO: automatically detect these cases and omit warnings.
 We use **issues** on Chalmers GitLab to grade submissions.
 
 Suppose a grader has gone over a submission in a project of a group (as identified by a tag as above).
-They then go to the project page and create an issue (go to "Issues" and click on "New issue") to record their evaluation.
+They then go to the project page and create an issue (go to **Issues** and click on **New issue**) to record their evaluation.
 
-The title of the issue needs to follow a standardized pattern (by default, "Grading for <tag>: complete/incomplete").
+The title of the issue needs to follow a certain pattern, by default:
+> Grading for submission-whatever: complete/incomplete
+
 The body is free form and should be used to give detailed feedback to the students.
 The graders are encouraged to use Markdown formatting to format lists and code blocks.
-If students did not subscribe to notification emails from Chalmers GitLab for new issues in their project, their usernames should be included in the issue body (e.g. "@student0 @student1") to those.
+If students did not subscribe to notification emails from Chalmers GitLab for new issues in their project, their usernames should be included in the issue body (e.g. *@student0 @student1*) to those.
 
 Students may engage in discussions with their grader via the discussion thread of their grading issue, for example to request clarification.
 This possibility should be highlighted to the students.
 Student engangement should benefit from having a two-way grading communication channel.
 The graders should be reminded to have notifications from Chalmers GitLab enabled (the default notification settings will work).
 
-Grading issues, recognized only by members of the 'graders' group, serve as the official database of grading outcomes.
+Grading issues, recognized only by members of the *graders* group, serve as the official database of grading outcomes.
 The lab scripts will output warnings if it detects grader-created issues whose title does not follow the standard pattern.
 Common mistakes include typos and incorrect capitalization when referencing the (case-sensitive) tag.
 
@@ -235,7 +237,7 @@ It is initially created by the course-responsible.
 You may do so by copying [this template](https://docs.google.com/spreadsheets/d/1phOUdj_IynVKPiEU6KtNqI3hOXwNgIycc-bLwgChmUs).
 It includes conditional formatting that helps you easily identify groups in need of grading and groups that have passed.
 Delete unneeded rows and column groups.
-Duplicate the included worksheet as needed (e.g., "Lab 1", "Lab 2", etc.).
+Duplicate the included worksheet as needed (e.g., *Lab 1*, *Lab 2*, etc.).
 
 ### Canvas integration
 
@@ -259,7 +261,7 @@ The submission table includes information useful to graders:
 
 We recommend including the submission table in the grading information module.
 It can be embedded as follows.
-Create an empty page in the grading information module with appropriate title (e.g. "Lab 3: submissions awaiting grading").
+Create an empty page in the grading information module with appropriate title (e.g. *Lab 3: submissions awaiting grading*).
 Create an empty placeholder html file in the above upload location and note its file id.
 Go to the html editor for the Canvas page and paste a snippet for an iframe including the file:
 ```
