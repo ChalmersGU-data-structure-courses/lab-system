@@ -23,7 +23,7 @@ Install the required packages via this command:
 pip install -r requirements.txt
 ```
 
-Create an untracked copy of `gitlab_config_personal.py.template` with the suffix removed.
+Create an untracked copy of `gitlab_config_personal.py.template` and remove the suffix.
 We will fill in the configuration values below.
 
 ### Canvas
@@ -80,7 +80,7 @@ The lab scripts will frequently interact with the repositories on Chalmers GitLa
 Under the hood, it does so by calling SSH and asking it to execute certain remote commands.
 
 The Chalmers network limits the number of SSH connection attempts from outside to 10 per minute.
-If you are running the lab script from outside the network, this rate limiting will make it impossible to handle all lab groups in a time efficient manner.
+If you are running the lab scripts from outside the network, this rate limiting will make it impossible to handle all lab groups in a time efficient manner.
 Even inside the network, it it not efficient to establish a new SSH connection for working with each of the many repositories in the Chalmers GitLab group.
 
 For this reason, we recommend using connection sharing.
@@ -91,7 +91,7 @@ Hostname git.chalmers.se
 ControlPath /tmp/%r@%h:%p
 ```
 
-Before running the lab script, execute the following command and leave it running until you are finished:
+Before running the lab scripts, execute the following command and leave it running until you are finished:
 
 ```ssh -MNT git@github.com```
 
@@ -114,16 +114,15 @@ If you find that information handled by the script is no longer up to date, you 
 * perform the `use_cache = False`, which will refresh the values stored in the cache,
 * or delete the cache directory, leading to it being lazily regenerated.
 
-### Features
+## Features
 
 TODO
 
-## GitLab group structure
+### Chalmers GitLab group structure
 
 The following is an overview of the group structure on Chalmers GitLab.
-You only need to create the three top-level groups.
-The remaining hierarchy will be created by scripts.
-
+You need to create the three top-level groups and invite all graders to the group called 'graders'.
+The remaining hierarchy will be created by the lab scripts.
 
 ```
 graders              # Who should be allowed to grade?
@@ -138,7 +137,7 @@ labs
   │   │              # All lab group repositories are initially clones of the 'problem' branch.
   │   │              # Also contains a branch 'solution' with the official lab solution.
   │   │
-  │   └──  grading   # Grading repository, maintained by the lab script.
+  │   └──  grading   # Grading repository, maintained by the lab scripts.
   │                  # Fetches the official problem and solution branches and submissions from individual lab groups.
   │                  # Contains merge commits needed to represent three-way diffs on the GitLab UI.
   │                  # The individual submissions are available as tags of the form lab-group-XX/submissionYYY.
@@ -171,6 +170,124 @@ lab-groups
   ...
 ```
 
-### Configuration
+Repositories in a GitLab group are also called *projects* by GitLab.
+
+### Submission on Chalmers GitLab via tags
+
+We use Chalmers GitLab for submission and grading.
+
+To submit, a group creates a **tag** in their repository that references a specific commit.
+They can do this in two ways:
+* They create the tag locally in their Git repository and then push it to Chalmers GitLab.
+* The go the project overview page in Chamers GitLab, click on the "plus" button, and select "New tag".
+
+The tag name must have a specific form (by default, start with 'submission', e.g. 'submission2') and is case sensitive.
+The (optional) tag message serves as submission message.
+
+The tag is *protected*: it cannot be changed or deleted once it has been created (the same applies to the commit it references).
+Thus, the tag serves as proof of submission.
+
+*Note*: Some groups confuse tags with commit and create a commit with the intended tag name as commit message.
+TODO: automatically detect these cases and omit warnings.
+
+### Grading on Chalmers GitLab via issues
+
+We use **issues** on Chalmers GitLab to grade submissions.
+
+Suppose a grader has gone over a submission in a project of a group (as identified by a tag as above).
+They then go to the project page and create an issue (go to "Issues" and click on "New issue") to record their evaluation.
+
+The title of the issue needs to follow a standardized pattern (by default, "Grading for <tag>: complete/incomplete").
+The body is free form and should be used to give detailed feedback to the students.
+The graders are encouraged to use Markdown formatting to format lists and code blocks.
+If students did not subscribe to notification emails from Chalmers GitLab for new issues in their project, their usernames should be included in the issue body (e.g. "@student0 @student1") to those.
+
+Students may engage in discussions with their grader via the discussion thread of their grading issue, for example to request clarification.
+This possibility should be highlighted to the students.
+Student engangement should benefit from having a two-way grading communication channel.
+The graders should be reminded to have notifications from Chalmers GitLab enabled (the default notification settings will work).
+
+Grading issues, recognized only by members of the 'graders' group, serve as the official database of grading outcomes.
+The lab scripts will output warnings if it detects grader-created issues whose title does not follow the standard pattern.
+Common mistakes include typos and incorrect capitalization when referencing the (case-sensitive) tag.
+
+### Grading sheets on Google Cloud
+
+We use Google Sheets to synchronize the grading and keep track of grading outcomes.
+Their purpose is two-fold:
+* The lab scripts maintains grading outcomes and links to grading issues in the grading sheet.
+  This gives an overview of the grading progress.
+  It also allows graders to easily find their own previous grading issues (e.g. to copy text fragments) and see how other graders are working.
+* Before grading a (bunch of) submission(s), graders should be encouraged to write down their name in the grading sheet for the submissions they intend to grade.
+  This helps avoid grading conflicts.
+  Once it detects that a grader has created a grading issue on Chalmers GitLab, it fill record the grading outcome and link to the grading issue in the sheet.
+  (In particular, the grader does *not* have to do this.)
+
+The grading sheet is **not** the official database of which groups have passed which labs.
+It merely reflects the grading issues in Chalmers GitLab.
+It is purely informational.
+It can also be used to collect notes and comments.
+
+It is convenient to use a single Sheet document with one worksheet for each lab.
+It is initially created by the course-responsible.
+You may do so by copying (this template)[https://docs.google.com/spreadsheets/d/1phOUdj_IynVKPiEU6KtNqI3hOXwNgIycc-bLwgChmUs].
+It includes conditional formatting that helps you easily identify groups in need of grading and groups that have passed.
+Delete unneeded rows and column groups.
+
+### Canvas integration
+
+We recommend creating an unpublished module (viewable only by teachers) on Canvas with grading-related information.
+Here, you can record grading instructions and put the link to the grading sheet.
+
+The lab scripts maintain a **submission table** of submissions in needs of grading on Canvas.
+This table is in the form of an html file.
+The upload location can be configured.
+Its parent directory should exist and be unpublished.
+
+The submission table includes information useful to graders:
+* A link to the submission (the lab repository of the group at the commit of the submission tag).
+* Diffs on Chalmers GitLab between a submission, the previous submission, the original problem, the official solution.
+* The number of previous attempts.
+  The previous grader and a link to their evaluation.
+* A link to the robograder's evaluation of the submission.
+  This is in form of an issue created by the robograder in the grading repository, only visible to graders.
+  If a lab group has not run the robograder themselves, graders may find it useful to copy fragments of the robograder's evaluation into their own grading feedback.
+* The submission message, if any.
+
+We recommend including the submission table in the grading information module.
+It can be embedded as follows.
+Create an empty page in the grading information module with appropriate title (e.g. "Lab 3: submissions awaiting grading").
+Create an empty placeholder html file in the above upload location and note its file id.
+Go to the html editor for the Canvas page and paste a snippet for an iframe including the file:
+```
+<iframe src="https://canvas.gu.se/courses/<course id>/files/<file id>/download" width="100%" height="3000px"></iframe>
+```
+(It does not seem possible to set the height to the natural height of the embedded html file.
+If the defined height does not suffice, an annoying scroll wheel for the iframe will appear.)
+
+Files overwritten by upload to the same location will not retain the old id.
+However, Canvas automatically updates links to overwritten course files with the new id.
+Thus, when the lab scripts upload a new submission table, the Canvas page will reflect the update.
+
+### Robograder
+
+Certain labs may support a robograder.
+In that case, a student group may ask that the robograder test their work before they submit it.
+They do this by creating a tag in their repository on Chalmers GitLab referencing the commit they want to have tested.
+
+The tag name must have a specific form (by default, start with 'test', e.g. 'testPlz') and is case sensitive.
+Once the lab scripts detect that a robograding has been requested, it runs the robograder.
+Its output is made available to the student group via a new issue in the Chalmers GitLab repository.
+
+## Configuration
+
+The lab scripts are configured via the file `gitlab_config.py`.
+To get started, create an untracked copy of `gitlab_config_personal.py.template` and remove the suffix.
+Fill in and/or change the configuration values according to your needs.
+
+The template configuration file includes documentation for each parameter in the form of comments.
+After reading the current document, you should be able to make sense of these comments.
+
+## Running
 
 TODO
