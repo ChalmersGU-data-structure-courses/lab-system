@@ -235,6 +235,7 @@ It is initially created by the course-responsible.
 You may do so by copying [this template](https://docs.google.com/spreadsheets/d/1phOUdj_IynVKPiEU6KtNqI3hOXwNgIycc-bLwgChmUs).
 It includes conditional formatting that helps you easily identify groups in need of grading and groups that have passed.
 Delete unneeded rows and column groups.
+Duplicate the included worksheet as needed (e.g., "Lab 1", "Lab 2", etc.).
 
 ### Canvas integration
 
@@ -287,7 +288,7 @@ The lab scripts are configured via the file `gitlab_config.py`.
 To get started, create an untracked copy of `gitlab_config_personal.py.template` and remove the suffix.
 Fill in and/or change the configuration values according to your needs.
 
-The template configuration file includes documentation for each parameter in the form of comments.
+The above template configuration file includes documentation for each parameter in the form of comments.
 After reading the current document, you should be able to make sense of these comments.
 
 ## Running
