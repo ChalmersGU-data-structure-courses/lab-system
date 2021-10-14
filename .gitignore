@@ -53,6 +53,9 @@ Lab-grading/cache
 # Invitations cache
 Lab-grading/invitations_sent
 
-# secrets
+# Secrets
 Lab-grading/auth_token
 Lab-grading/gitlab_config_personal.py
+
+# Ignore directories called 'local'
+local
