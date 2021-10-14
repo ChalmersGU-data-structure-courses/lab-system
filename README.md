@@ -50,6 +50,7 @@ For this, go to [SSH Keys](https://git.chalmers.se/-/profile/keys) in your user 
 We do integration with Google Sheets etc., we use a Google Cloud project with service account.
 
 * Go to [Google Cloud Platform](https://console.cloud.google.com/) and create a project.
+  Alternatively, join an existing project like this and skip to the last step.
 * Under **APIs & Services**, click on **enables APIs and services** and enable the following APIs:
   - Google Drive API
   - Google Sheets API
@@ -115,8 +116,6 @@ If you find that information handled by the script is no longer up to date, you 
 * or delete the cache directory, leading to it being lazily regenerated.
 
 ## Features
-
-TODO
 
 ### Chalmers GitLab group structure
 
