@@ -181,7 +181,7 @@ We use Chalmers GitLab for submission and grading.
 To submit, a group creates a **tag** in their repository that references a specific commit.
 They can do this in two ways:
 * They create the tag locally in their Git repository and then push it to Chalmers GitLab.
-* The go the project overview page in Chamers GitLab, click on the "**+**" button, and select **New tag**.
+* They go the project overview page on Chamers GitLab, click on the "**+**" button, and select **New tag**.
 
 The tag name must have a specific form (by default, start with `submission`, e.g. `submission2`) and is case sensitive.
 The (optional) tag message serves as submission message.
@@ -230,7 +230,7 @@ Their purpose is two-fold:
   (In particular, the grader does *not* have to do this.)
 
 The grading sheet is **not** the official database of which groups have passed which labs.
-It merely reflects the grading issues in Chalmers GitLab.
+It merely reflects the grading issues on Chalmers GitLab.
 It is purely informational.
 It can also be used to collect notes and comments.
 
