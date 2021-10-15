@@ -1,5 +1,5 @@
 import chardet
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 import contextlib
 from datetime import datetime, timedelta, timezone
 import decimal
@@ -33,13 +33,11 @@ def flatten(*xss):
     return list(itertools.chain(*xss))
 
 def singleton(x):
-    return [x]
+    return (x,)
 
 def from_singleton(xs):
-    ys = list(xs)
-    assert(len(ys) >= 1)
-    assert(len(ys) <= 1)
-    return ys[0]
+    (x,) = xs
+    return x
 
 def from_singleton_maybe(xs):
     ys = list(xs)
@@ -106,11 +104,13 @@ def starfilter(f, xs):
         if f(*x):
             yield x
 
-def sdict(xs):
+def sdict(xs, strict = True):
     r = dict()
-    for k, v in xs:
-        assert not k in r
-        r[k] = v
+    if strict:
+        for k, v in xs:
+            if k in r:
+                raise ValueError(f'duplicate entry for key {k}')
+            r[k] = v
     return r
 
 def multidict(xs):
@@ -531,3 +531,18 @@ class ScopedFiles:
     def __exit__(self, type, value, traceback):
         for file in reversed(self.files):
             file.unlink()
+
+def on(i, f):
+    def h(xs):
+        ys = xs.copy()
+        ys[i] = f(ys[i])
+        return ys
+    return h
+
+def remove_prefix(xs, prefix, strict = True):
+    if xs[:len(prefix] == prefix:
+        return xs[len(prefix):]
+
+    if strict:
+        raise ValueError('{xs} does not have prefix {[refix}')
+    return xs
