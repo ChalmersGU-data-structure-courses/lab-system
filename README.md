@@ -124,46 +124,49 @@ You need to create the three top-level groups and invite all graders to the grou
 The remaining hierarchy will be created by the lab scripts.
 
 ```
-graders              # Who should be allowed to grade?
-                     # Members of this group will have access to all lab groups and grading repositories.
-                     # TODO: write a script function that adds or, if not possible,
-                     #       sends invitation emails to all teachers in the Canvas course.
+graders             # Who should be allowed to grade?
+                    # Members of this group will have access to all lab groups and grading repositories.
+                    # TODO: write a script function that adds or, if not possible,
+                    #       sends invitation emails to all teachers in the Canvas course.
 
 labs
   ├── 1
-  │   ├──  official  # Official problem and solution repository.
-  │   │              # Contains a branch 'problem' with the initial lab problem.
-  │   │              # All lab group repositories are initially clones of the 'problem' branch.
-  │   │              # Also contains a branch 'solution' with the official lab solution.
-  │   │              # Can be created by the lab script from a given lab directory in the code repository.
-  │   │              # Used by the lab script to fork the individual lab group projects.
+  │   ├── official  # Official problem and solution repository.
+  │   │             # Contains a branch 'problem' with the initial lab problem.
+  │   │             # All lab group repositories are initially clones of the 'problem' branch.
+  │   │             # Also contains a branch 'solution' with the official lab solution.
+  │   │             # Can be created by the lab script from a given lab directory in the code repository.
+  │   │             # Used by the lab script to fork the individual lab group projects.
   │   │
-  │   └──  grading   # Grading repository, maintained by the lab scripts.
-  │                  # Fetches the official problem and solution branches and submissions from individual lab groups.
-  │                  # Contains merge commits needed to represent three-way diffs on the GitLab UI.
-  │                  # The individual submissions are available as tags of the form lab-group-XX/submissionYYY.
-  │                  #
-  │                  # If a grader wants to work seriously with submission files, they should clone this repository.
-  │                  # Example use cases:
-  │                  # - cd lab2-grading
-  │                  # - git checkout lab_group_13/submission1   to switch to a group's submission
-  │                  # - git diff problem                        changes compared to problem
-  │                  # - git diff solution                       changes compared to solution
-  │                  # - git diff lab_group_13/submission0       changes compared to last submission
-  │                  # - git diff problem answers.txt            changes in just one file
+  │   ├── staging   # Used as a temporary project from which fork the student lab projects.
+  │   │             # It is derived by the lab script from the official project.
+  │   │
+  │   └── grading   # Grading repository, maintained by the lab scripts.
+  │                 # Fetches the official problem and solution branches and submissions from individual lab groups.
+  │                 # Contains merge commits needed to represent three-way diffs on the GitLab UI.
+  │                 # The individual submissions are available as tags of the form lab-group-XX/submissionYYY.
+  │                 #
+  │                 # If a grader wants to work seriously with submission files, they should clone this repository.
+  │                 # Example use cases:
+  │                 # - cd lab2-grading
+  │                 # - git checkout lab_group_13/submission1   to switch to a group's submission
+  │                 # - git diff problem                        changes compared to problem
+  │                 # - git diff solution                       changes compared to solution
+  │                 # - git diff lab_group_13/submission0       changes compared to last submission
+  │                 # - git diff problem answers.txt            changes in just one file
   ├── 2
   ...
 
 lab-groups
-  ├── 0              # A student lab group.
-  │   │              # There is a script that will invite students to their group on Chalmers GitLab
-  │   │              # based on which assignment group they signed up for in Canvas.
+  ├── 0             # A student lab group.
+  │   │             # There is a script that will invite students to their group on Chalmers GitLab
+  │   │             # based on which assignment group they signed up for in Canvas.
   │   │
-  │   ├── lab1       # For mid-course group membership changes, membership can also
-  │   │              # be managed at the project level (only for the needed students).
-  │   │              # Remove them from their lab group and manually add them to the projects they should have access to.
-  │   │              # Example: A student may be part of lab1 and lab2 in group 13, but lab3 and lab4 in group 37.
-  │   │              #          In that case, they should neither be part of group 13 nor of group 37.
+  │   ├── lab1      # For mid-course group membership changes, membership can also
+  │   │             # be managed at the project level (only for the needed students).
+  │   │             # Remove them from their lab group and manually add them to the projects they should have access to.
+  │   │             # Example: A student may be part of lab1 and lab2 in group 13, but lab3 and lab4 in group 37.
+  │   │             #          In that case, they should neither be part of group 13 nor of group 37.
   │   │
   │   ├── lab2
   │   ├── lab3

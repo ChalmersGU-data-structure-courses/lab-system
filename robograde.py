@@ -1,3 +1,4 @@
+import collections
 import functools
 import logging
 from pathlib import Path
@@ -50,4 +51,7 @@ def robograde(dir, robograde_dirs, entrypoint, machine_speed = 1):
             raise RobogradeExecutionError(process.stderr)
 
         logger.log(logging.DEBUG, 'pregrading output of {}:\n'.format(entrypoint) + process.stdout)
-        return process.stdout
+        return types.SimpleNamespace(
+            grading = None,
+            report = process.stdout,
+        )
