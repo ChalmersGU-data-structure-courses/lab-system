@@ -167,7 +167,7 @@ on_fourth = functools.partial(on_component, 3)
 def ev(*x):
     return lambda f: f(*x)
 
-def tuple(*fs):
+def tupling(*fs):
     return lambda *x: tuple(map(ev(*x), fs))
 
 def zip_dicts_with(f, us, vs):
@@ -177,7 +177,7 @@ def zip_dicts_with(f, us, vs):
             yield (k, f(u, vs[k]))
 
 def zip_dicts(us, vs):
-    return zip_dicts_with(tuple, us, vs)
+    return zip_dicts_with(tupling, us, vs)
 
 def group_by_unique(f, xs):
     return sdict(map_with_key(f, xs))
@@ -209,6 +209,9 @@ def join_null(lines):
 
 def doublequote(s):
     return '"' + s.replace('\\', '\\\\').replace('"', '\\"') + '"'
+
+def parens(s):
+    return f'({s})'
 
 class Timer:
     def __enter__(self):
@@ -462,16 +465,19 @@ def working_dir(path):
         os.chdir(old)
 
 def log_command(logger, cmd, working_dir = False):
-    logger.log(logging.DEBUG, 'running command{}:\n{}'.format(' in {}'.format(shlex.quote(os.getcwd())) if working_dir else '', shlex.join(cmd)))
+    logger.debug('running command{}:\n{}'.format(' in {}'.format(shlex.quote(os.getcwd())) if working_dir else '', shlex.join(cmd)))
 
 def wait_and_check(process, cmd):
     r = process.wait()
     if r != 0:
         raise subprocess.CalledProcessError(r, cmd)
 
-def clear_cached_property(object, attribute):
-    if attribute in object.__dict__:
-        delattr(object, attribute)
+@contextlib.contextmanager
+def catch_attribute_error():
+    try:
+        yield
+    except AttributeError:
+        pass
 
 # Detection seems not to be so good.
 # A Unicode file with 'Markus Järveläinen' is detected as EUC-KR.
@@ -540,9 +546,18 @@ def on(i, f):
     return h
 
 def remove_prefix(xs, prefix, strict = True):
-    if xs[:len(prefix] == prefix:
+    if xs[:len(prefix)] == prefix:
         return xs[len(prefix):]
 
     if strict:
         raise ValueError('{xs} does not have prefix {[refix}')
     return xs
+
+def map_values(f, u):
+    return dict((key, f(value)) for (key, value) in u.items())
+
+def eq_on(x, y, f = identity):
+    return f(x) == f(y)
+
+def ne_on(x, y, f = identity):
+    return f(x) != f(y)

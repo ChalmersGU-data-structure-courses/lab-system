@@ -2,6 +2,7 @@ from pathlib import Path, PurePath
 import shlex
 
 from general import working_dir
+import markdown
 
 # Lesson learned:
 # The resolution of a path is not transparent in the following sense.
@@ -23,12 +24,26 @@ class AbsoluteSymlinkException(SymlinkException):
             shlex.quote(str(self.path)),
         )
 
+    def markdown(self):
+        return general.join_lines([
+            'The symlink'
+        ]) + markdown.escape_code_block(self.path) + general.join_lines([
+            'refers to an absolute path.'
+        ])
+
 class EscapingSymlinkException(SymlinkException):
     def __init__(self, path):
         super().__init__(path)
         self.text = 'The symlink {} refers to an outside path.'.format(
             shlex.quote(str(self.path)),
         )
+
+    def markdown(self):
+        return general.join_lines([
+            'The symlink'
+        ]) + markdown.escape_code_block(self.path) + general.join_lines([
+            'refers to an outside path.'
+        ])
 
 def check_link(link):
     target = link.readlink()

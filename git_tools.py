@@ -1,8 +1,12 @@
 from enum import Enum, auto
 import git
+import logging
 from pathlib import PurePosixPath
+import subprocess
 
 import general
+
+logger = logging.getLogger(__name__)
 
 # References
 
@@ -11,7 +15,10 @@ heads = PurePosixPath('heads')
 tags = PurePosixPath('tags')
 remotes = PurePosixPath('remotes')
 remote_tags = PurePosixPath('remote_tags')
+
 wildcard = '*'
+head = 'HEAD'
+master = 'master'
 
 def remove_prefix(path, prefix, **kwargs):
     return PurePosixPath(**general.remove_prefix(path.parts, prefix.parts), **kwargs)
@@ -22,7 +29,7 @@ def local_branch(branch):
 def local_tag(tag):
     return refs / tags / tag
 
-def remote_branch(remote, brach):
+def remote_branch(remote, branch):
     return refs / remotes / remote / branch
 
 def remote_tag(remote, tag):
@@ -32,13 +39,13 @@ class Namespacing(Enum):
     local = auto()
     remote = auto()
 
-def namespaced_branch(remote, branch, namespacing):
+def namespaced_branch(remote, namespacing, branch):
     return {
         Namespacing.local: local_branch(branch),
         Namespacing.remote: remote_branch(remote, branch),
     }[namespacing]
 
-def namespaced_tag(remote, tag, namespacing):
+def namespaced_tag(remote, namespacing, tag):
     return {
         Namespacing.local: local_tag(tag),
         Namespacing.remote: remote_tag(remote, tag),
@@ -58,6 +65,9 @@ def refspec(src = None, dst = None, force = False):
 
 def boolean(x):
     return str(bool(x)).lower()
+
+class OverwriteException(IOError):
+    pass
 
 def add_remote(
     repo,
@@ -80,8 +90,8 @@ def add_remote(
         if c.has_section(section):
             if overwrite:
                 c.remove_section(section)
-            else:
-                assert exist_ok, "section {} exists".format(section)
+            elif not exist_ok:
+                raise OverwriteException(f'remote {remote} already exists')
         c.add_section(section)
         c.add_value(section, 'url', url)
         for refspec in fetch_refspecs:
@@ -99,9 +109,7 @@ def add_tracking_remote(
     remote,
     url,
     fetch_branches = [],
-    fetch_branches_namespacing = Namespacing.local
     fetch_tags = [],
-    fetch_tags_namespacing = Namespacing.local
     push_branches = [],
     push_tags = [],
     force = True,
@@ -110,21 +118,23 @@ def add_tracking_remote(
     '''
     Add a tracking remote to a git repository.
     This sets up fetch tracking of branches and tags according to the given parameters.
-    For fetched references, there are two namespacing options:
-    * Namespacing.local: let local references mirror the remote ones,
-    * Namespacing.remote: put remote references in their own 'refs' namespace
-                          ('remotes' for branches and 'remote-tags' for tags).
-    To fetch or pull all branches or tags, give an argument of [wildcard].
+    Specified fetched references are lists of pairs where:
+    * the first component specifies the namespacing:
+      - Namespacing.local: let local references mirror the remote ones,
+      - Namespacing.remote: put remote references in their own 'refs' namespace
+                            ('remotes' for branches and 'remote-tags' for tags).
+    * the second component gives the reference.
+    For example, to fetch or pull all branches, use wildcard as reference.
     '''
 
     fetch_refspecs = [refspec(
-        namespaced(remote, wildcard, Namespacing.local),
-        namespaced(remote, wildcard, fetch),
+        namespaced(remote, Namespacing.local, ref),
+        namespaced(remote, namespacing, ref),
         force = force,
-    ) for (namespaced, option) in [
+    ) for (namespaced, namespaced_refs) in [
         (namespaced_branch, fetch_branches),
         (namespaced_tag, fetch_tags),
-    ]]
+    ] for (namespacing, ref) in namespaced_refs]
 
     push_refspecs = [refspec(local(ref), local(ref), force = force) for (local, refs) in [
         (local_branch, push_branches),
@@ -156,3 +166,14 @@ def tag_onesided_merge(repo, tag, commit, new_parent):
     if not repo.is_ancestor(new_parent, commit):
         commit = onesided_merge(repo, commit, new_parent)
     return repo.create_tag(tag, commit)
+
+def checkout(repo, dir, ref):
+    ''' Checkout a reference into the given directory. '''
+    cmd = ['tar', '-x']
+    with general.working_dir(dir):
+        general.log_command(logger, cmd, True)
+        tar = subprocess.Popen(cmd, stdin = subprocess.PIPE)
+    repo.archive(tar.stdin, ref)
+    tar.stdin.close()
+    general.wait_and_check(tar, cmd)
+

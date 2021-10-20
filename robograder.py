@@ -1,37 +1,31 @@
-# Special import for git python.
-import os
-os.environ['GIT_PYTHON_TRACE'] = '1'
-import git
+import general
+import markdown
 
-from course import *
-from lab import *
+class RobograderException(Exception):
+    def markdown(self):
+        return None
 
-logger = logging.getLogger('robograder')
+class FileConflict(RobograderException):
+    def __init__(self, file):
+        self.file = file
 
-logging.basicConfig()
-logging.getLogger().setLevel(logging.INFO)
+    def markdown(self):
+        return general.join_lines([
+            'I could not robograde your submission because the compiled file',
+        ]) + markdown.escape_code_block(self.file) + general.join_lines([
+            'conflicts with files I use for testing.'
+        ])
 
-import gitlab_config
-course = Course(gitlab_config)
+class ExecutionError(RobograderException):
+    def __init__(self, errors):
+        self.errors = errors
 
-lab1 = Lab(course, 1, bare = True)
-lab2 = Lab(course, 2, bare = True)
-lab3 = Lab(course, 3, bare = True)
-lab4 = Lab(course, 4, bare = True)
-
-lab2.print_unhandled_tests()
-lab2.update_grading_repo()
-lab2.robograde_tests()
-
-lab3.print_unhandled_tests()
-lab3.update_grading_repo()
-lab3.robograde_tests()
-
-lab4.print_unhandled_tests()
-lab4.update_grading_repo()
-lab4.robograde_tests()
-
-lab1.update_submissions_and_gradings()
-lab2.update_submissions_and_gradings()
-lab3.update_submissions_and_gradings()
-lab4.update_submissions_and_gradings()
+    def markdown(self):
+        return general.join_lines([
+            'Oops, you broke the robograder!',
+            '',
+            'I encountered a problem while testing your submission.',
+            'This could be a problem with myself (a robo-bug) or with your code (unexpected changes to class or methods signatures).',
+            'In the latter case, you might elucidate the cause from the below error message.',
+            'In the former case, please tell me designers!',
+        ]) + markdown.escape_code_block(self.errors)

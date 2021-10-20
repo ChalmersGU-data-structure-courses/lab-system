@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import general
 import print_parse
+import robograder_java
 from this_dir import this_dir
 
 # Canvas config
@@ -39,51 +40,53 @@ base_url = 'https://git.chalmers.se/'
 # Here is the group structure.
 # The top-level group need to be created, the rest if managed by script.
 #
-# * graders              # Who should be allowed to grade?
-#                        # Members of this group will have access to all lab groups and grading repositories.
-#                        # TODO: write a script function that adds or, if not possible,
-#                        #       sends invitation emails to all teachers in the Canvas course.
+# * graders             # Who should be allowed to grade?
+#                       # Members of this group will have access to all lab groups and grading repositories.
+#                       # TODO: write a script function that adds or, if not possible,
+#                       #       sends invitation emails to all teachers in the Canvas course.
 #
 # * labs
 #     ├── 1
-#     │   ├──  official  # Official problem and solution repository.
-#     │   │              # Contains a branch 'problem' with the initial lab problem.
-#     │   │              # All lab group repositories are initially clones of the 'problem' branch.
-#     │   │              # Also contains a branch 'solution' with the official lab solution.
-#     │   │              # Can be created by the lab script from a given lab directory in the code repository.
-#     │   │              # Used by the lab script to fork the individual lab group projects.
+#     │   ├── official  # Official problem and solution repository.
+#     │   │             # Contains a branch 'problem' with the initial lab problem.
+#     │   │             # All lab group repositories are initially clones of the 'problem' branch.
+#     │   │             # Also contains a branch 'solution' with the official lab solution.
+#     │   │             # Can be created by the lab script from a given lab directory in the code repository.
+#     │   │             # Used by the lab script to fork the individual lab group projects.
 #     │   │
+#     │   ├── staging   # Used as a temporary project from which fork the student lab projects.
+#     │   │             # It is derived by the lab script from the official project.
 #     │   │
-#     │   └──  grading   # Grading repository, maintained by the lab script.
-#     │                  # Fetches the official problem and solution branches and submissions from individual lab groups.
-#     │                  # Contains merge commits needed to represent three-way diffs on the GitLab UI.
-#     │                  # The individual submissions are available as tags of the form lab-group-XX/submissionYYY.
-#     │                  #
-#     │                  # If a grader wants to work seriously with submission files, they should clone this repository.
-#     │                  # Example use cases:
-#     │                  # - cd lab2-grading
-#     │                  # - git checkout lab_group_13/submission1   to switch to a group's submission
-#     │                  # - git diff problem                        changes compared to problem
-#     │                  # - git diff solution                       changes compared to solution
-#     │                  # - git diff lab_group_13/submission0       changes compared to last submission
-#     │                  # - git diff problem answers.txt            changes in just one file
+#     │   └── grading   # Grading repository, maintained by the lab script.
+#     │                 # Fetches the official problem and solution branches and submissions from individual lab groups.
+#     │                 # Contains merge commits needed to represent three-way diffs on the GitLab UI.
+#     │                 # The individual submissions are available as tags of the form lab-group-XX/submissionYYY.
+#     │                 #
+#     │                 # If a grader wants to work seriously with submission files, they should clone this repository.
+#     │                 # Example use cases:
+#     │                 # - cd lab2-grading
+#     │                 # - git checkout lab_group_13/submission1   to switch to a group's submission
+#     │                 # - git diff problem                        changes compared to problem
+#     │                 # - git diff solution                       changes compared to solution
+#     │                 # - git diff lab_group_13/submission0       changes compared to last submission
+#     │                 # - git diff problem answers.txt            changes in just one file
 #     ...
 #
 # * groups
-#     ├── 0              # A student lab group.
-#     │   │              # There is a script that will invite students to their group on Chalmers GitLab
-#     │   │              # based on which assignment group they signed up for in Canvas.
+#     ├── 0             # A student lab group.
+#     │   │             # There is a script that will invite students to their group on Chalmers GitLab
+#     │   │             # based on which assignment group they signed up for in Canvas.
 #     │   │
-#     │   ├── lab1       # For mid-course group membership changes, membership can also
-#     │   │              # be managed at the project level (only for the needed students).
-#     │   │              # Remove them from their group and manually add them to the projects they should have access to.
-#     │   │              # Example: A student may be part of lab1 and lab2 in group 13, but lab3 and lab4 in group 37.
-#     │   │              #          In that case, they should neither be part of group 13 nor of group 37.
+#     │   ├── lab1      # For mid-course group membership changes, membership can also
+#     │   │             # be managed at the project level (only for the needed students).
+#     │   │             # Remove them from their group and manually add them to the projects they should have access to.
+#     │   │             # Example: A student may be part of lab1 and lab2 in group 13, but lab3 and lab4 in group 37.
+#     │   │             #          In that case, they should neither be part of group 13 nor of group 37.
 #     │   ...
 #     ├── 1
 #     ...
 
-_course_path = PurePosixPath('courses/dit181')
+_course_path = PurePosixPath('courses/dit181/test')
 
 # Absolute paths on Chalmers GitLab to the groups described above.
 path = SimpleNamespace(
@@ -96,23 +99,71 @@ path = SimpleNamespace(
 path_lab = SimpleNamespace(
     official = 'official',
     grading = 'grading',
+    staging = 'staging',
 )
 
-# Branch names in official lab repository.
-# Must correspond to subfolders of lab in code repository.
+# Branch names
 branch = SimpleNamespace(
+    # Branches in official lab repository.
+    # Must correspond to subfolders of lab in code repository.
     problem = 'problem',
     solution = 'solution',
+
+    # Default branch name to use.
+    master = 'main',
 )
 
-# Tag patterns
-regex = SimpleNamespace(
-    submission = '(?:s|S)ubmission[^: ]*',  # for submission
-    test = '(?:t|T)est[^: ]*',              # for requesting testing
+_score = print_parse.compose(
+    print_parse.from_dict([
+        (0, 'incomplete'),
+        (1, 'complete'),
+    ]),
+    print_parse.lower,
 )
 
-# Protected tag wildcards on GitLab (doesn't support regexes).
-tags_protected = ['submission*', 'Submission*', 'test*', 'Test*']
+# Types of requests that student groups can make in a lab project on GitLab Chalmers.
+# These are initiated by the creation of a tag in the project repository.
+# Each request type mus define:
+# * tag_regex: Regex with which to recognize the request tag.
+# * tag_protection: List of wildcard pattern used to protect request tags from modification by students.
+# * issue: A simple namespace of issue title printer-parsers that identify project issues as responses to requests.
+#          All printer-parsers here must go from dictionaries with a key 'tag'.
+#          This is to identify the originating request.
+request = SimpleNamespace(
+    # A submission.
+    submission = SimpleNamespace(
+        tag_regex = '(?:s|S)ubmission[^: ]*',
+        tag_protection = ['submission*', 'Submission*'],
+        issue = SimpleNamespace(
+            grading = print_parse.compose(
+                print_parse.on('score', _score),
+                print_parse.regex_non_canonical_keyed(
+                    'Grading for {tag}: {score}',
+                    'grading\s+(?:for|of)\s+(?P<tag>[^: ]*)\s*:\s*(?P<score>[^:\\.!]*)[\\.!]*',
+                    flags = re.IGNORECASE,
+                ),
+            ),
+            compilation = print_parse.regex_keyed(
+                'Your submission {tag} does not compile',
+                {'tag': '[^: ]*'},
+                flags = re.IGNORECASE,
+            ),
+        ),
+    ),
+
+    # A robograding request.
+    robograding = SimpleNamespace(
+        tag_regex = '(?:t|T)est[^: ]*',
+        tag_protection = ['test*', 'Test*'],
+        issue = SimpleNamespace(
+            response = print_parse.regex_keyed(
+                'This is Robograder reporting for {tag}',
+                {'tag': '[^: ]*'},
+                flags = re.IGNORECASE,
+            ),
+        ),
+    ),
+)
 
 # Parsing and printing of references to a lab group.
 group = SimpleNamespace(
@@ -129,42 +180,20 @@ group = SimpleNamespace(
 
 # Parsing and printing of references to a lab.
 lab = SimpleNamespace(
-    # Used as relative path on Chalmers GitLab.
+    # Used as relative path on Chalmers GitLab in the labs group.
     # Needs to have length at least 2.
     id = print_parse.int_str(format = '02'),
 
-    # Not used anywhere?
+    # Used as relative path on Chalmers GitLab in each student group.
     full_id = print_parse.regex_int('lab-{}'),
 
     # Actual name.  
     name = print_parse.regex_int('Lab {}', flags = re.IGNORECASE),
 )
 
-# Printing and parsing of GitLab issue titles.
-score = print_parse.compose(
-    print_parse.dict((
-        (0, 'incomplete'),
-        (1, 'complete'),
-    )),
-    print_parse.lower,
-)
-
-issue_title = SimpleNamespace(
-    grading = print_parse.compose(
-        print_parse.on(1, score),
-        print_parse.regex_non_canonical_many(
-            'Grading for {}: {}',
-            'grading\s+(?:for|of)\s+([^: ]*)\s*:\s*([^:\\.!]*)[\\.!]*',
-            flags = re.IGNORECASE,
-        ),
-    ),
-    robograding = print_parse.regex('This is Robograder, reporting for {}', '[^: ]*', flags = re.IGNORECASE),
-    compilation = print_parse.regex('Your submission {} does not compile', '[^: ]*', flags = re.IGNORECASE),
-)
-
 # Parsing and printing of informal grader names.
 # This is only used in the grading spreadsheet.
-graders_informal = print_parse.dict([
+graders_informal = print_parse.from_dict([
     ('Peter.Ljunglof', 'Peter'),
     ('nicsma', 'Nick'),
     ('sattler', 'Christian'),
@@ -195,12 +224,12 @@ compilation_messages = {
         'If you believe this is a mistake, please contact the responsible teacher.'
         '',
         'Try to correct these errors and resubmit using a new tag.',
-        'If done in time, we will disregard this submission and grade only the new one.'
+        'If done in time, we will disregard this submission attempt and grade only the new one.'
     ]),
     CompilationRequirement.require: general.join_lines([
         'Your submission does not compile and can therefore not be accepted.',
         'For details, see the below error report.',
-        'If you believe this is a mistake with the submission system, please contact the responsible teacher.'
+        'If you believe this is a mistake, please contact the responsible teacher.'
     ]),
 }
 
@@ -208,7 +237,7 @@ compilation_messages = {
 _code_root = this_dir.parent
 
 # Example lab configuration (for purpose of documentation).
-_lab = SimpleNamespace(
+_lab_config = SimpleNamespace(
     # Filesystem path to the lab source.
     path_source = _code_root / 'labs' / 'goose-recognizer' / 'java',
     path_gitignore = _code_root / 'Other' / 'lab-gitignore' / 'java.gitignore',
@@ -222,13 +251,10 @@ _lab = SimpleNamespace(
     canvas_path_awaiting_grading = PurePosixPath('temp') / 'lab-N-awaiting-grading.html',
 
     # Optional, configuration for a compiler.
-    # This should be a function as follows.
-    # Named arguments:
-    # * src: Filesystem path to a student submission [read].
-    # * bin: Filesystem path to an existing empty folder to be used as compilation output [write].
-    # Returns an object with fields:
-    # * success: A boolean indicating successful compilation.
-    # * errors: A string of optional error message(s) from compilation; ignored if sucess is true.
+    # This should be a function taking the following named arguments:
+    # - src: Filesystem path to a student submission [read].
+    # - bin: Filesystem path to an existing empty folder to be used as compilation output [write].
+    # For non-internal errors, raise an instance of lab.SubmissionHandlingException.
     compiler = None,
 
     # Whether to require successful compilation.
@@ -236,14 +262,21 @@ _lab = SimpleNamespace(
     compilation_requirement = CompilationRequirement.ignore,
 
     # Optional configurations for a robograder or tester.
-    # This should be a function as follows.
-    # Named arguments:
-    # * src: Filesystem path to a student submission [read].
-    # * bin: Filesystem path to the compiled student submission [read].
-    #        Only given if compiler is configured.
-    # Returns an object with fields:
-    # * pass: A boolean indicating if the submission passes.
-    # * report: A string in Markdown formatting.
+    # This should be an object with the following methods.
+    # * 'setup' with named arguments
+    #   - src: Filesystem path to a submission [read].
+    #   - bin: Filesystem path to the compiled submission [read].
+    #          Only given if compiler is configured.
+    #   The given directories contain the official problem.
+    #   This is called once (for the local installation, not each program run) before any calls to 'run'.
+    #   It can for example be used to compile the robograder.
+    #
+    # * 'run' with named arguments as above.
+    #   This is called for student submissions.
+    #   Returns an object with fields:
+    #   - grading: How did the submission fare? Use-case specific.
+    #   - report: A string in Markdown formatting.
+    #   For meta-problems with the submission, raise an instance of lab.SubmissionHandlingException.
     robograder = None,
     tester = None,
 )
@@ -258,10 +291,10 @@ class _LabConfig:
         self.grading_sheet = (_grading_spreadsheet, lab.name.print(k))
         self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-awaiting-grading.html'.format(lab.full_id.print(k))
 
-        self.compiler = None
-        self.compilation_requirement = CompilationRequirement.ignore,
+        self.compiler = robograder_java.compile
+        self.compilation_requirement = CompilationRequirement.ignore
 
-        self.robograder = None
+        self.robograder = robograder_java.Robograder(self.path_source, machine_speed = 1)
         self.tester = None
 
 _lab_folders = {
