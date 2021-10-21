@@ -9,15 +9,11 @@ import shutil
 import tempfile
 import types
 
+from course_basics import SubmissionHandlingException
 import course_new as course
 import git_tools
 import gitlab_tools
 from instance_cache import instance_cache
-
-class SubmissionHandlingException:
-    # Return a markdown-formatted error message for use within a Chalmers GitLab issue.
-    def markdown(self):
-        None
 
 class Lab:
     def __init__(self, course, id, dir, config = None, logger = logging.getLogger('lab')):
@@ -353,9 +349,7 @@ class Lab:
         Call before any robograding happens.
         Once needs to be called (for the local installation, not each program run).
         '''
-        with tempfile.TemporaryDirectory() as src:
-            src = Path(src)
-            git_tools.checkout(self.repo, src, git_tools.local_branch(self.course.config.branch.problem))
+        with git_tools.with_checkout(self.repo, git_tools.local_branch(self.course.config.branch.problem)) as src:
             with tempfile.TemporaryDirectory() as bin:
                 bin = Path(bin)
                 if self.config.compiler:
@@ -365,6 +359,12 @@ class Lab:
 
     #def compile_submission(self, bin):
     #   
+
+    @functools.cached_property
+    def grading_sheet(self):
+        (spreadsheet_key, worksheet) = self.config.grading_sheet
+        s = self.course.google_client.open_by_key(spreadsheet_key)
+        return s.get_worksheet(worksheet) if isinstance(worksheet, int) else s.get_worksheet_by_id(worksheet)
 
 class GroupProject:
     def __init__(self, lab, group_id, logger = logging.getLogger('group-project')):
@@ -379,8 +379,8 @@ class GroupProject:
         def f(x):
             return self.course.request_namespace(lambda request_type, spec: x)
 
-        self.request_tags = self.course.request_dict(lambda x, y: dict())
-        self.response_issues = self.course.request_dict(lambda x, y: dict())
+        self.request_tags = self.course.request_namespace(lambda x, y: dict())
+        self.response_issues = self.course.request_namespace(lambda x, y: dict())
         self.requests_and_responses = self.course.request_namespace(lambda x, y: dict())
 
     @functools.cached_property
@@ -434,7 +434,7 @@ class GroupProject:
                 raise e
 
     def repo_fetch(self):
-        self.lab.repo.remotes[self.course.config.group.full_id.print(group_id)].fetch()
+        self.lab.repo.remotes[self.remote].fetch()
 
     def hotfix_group(self, branch_hotfix, branch_group):
         '''
@@ -491,10 +491,13 @@ class GroupProject:
             general.ne_on(
                 request_tags,
                 self.request_tags,
-                lambda x: tuple(tag.name for tag in x[request_type])
+                lambda x: tuple(tag.name for tag in x.__dict__[request_type])
             )
         )
         self.request_tags = request_tags
+ 
+        if any(updated.__dict__.values()):
+            self.repo_fetch()
         return updated
 
     def response_key(self, response):
@@ -520,7 +523,7 @@ class GroupProject:
                 self.response_issues,
                 lambda x: dict(
                     (response_type, self.response_key(response))
-                    for (response_type, response) in x[request_type].items()
+                    for (response_type, response) in x.__dict__[request_type].items()
                 )
             )
         )
@@ -557,6 +560,116 @@ class GroupProject:
         )
         self.requests_and_responses = requests_and_responses
         return updated
+
+    def process_robograding(self, request):
+        # Get the response on record so far.
+        response = self.requests_and_responses.robograding[request]
+
+        # Have we already handled this request?
+        if response.compilation or response.robograding:
+            return
+
+        self.logger.info(f'Robograding {request}')
+
+        # Check the commit out.
+        with git_tools.with_checkout(self.lab.repo, git_tools.remote_tag(self.remote, request.name)) as src:
+            with tempfile.TemporaryDirectory() as bin:
+
+                # If a compiler is configured, compile first.
+                if self.lab.config.compiler:
+                    try:
+                        self.lab.config.compiler(src, bin)
+                    except SubmissionHandlingException as e:
+                        self.logger.debug(general.join_lines([
+                            f'Compilation problem for robograding request {request}:'
+                        ]) + str(e))
+                        response.compilation = p.issues.create({
+                            'title': self.course.config.request.robograding.issue.compilation.print(request),
+                            'description': e.markdown(),
+                        })
+                        return
+
+                # Call the robograder.
+                try:
+                    r = self.lab.config.robograder(src, bin)
+                    description = r.report
+                except SubmissionHandlingException as e:
+                    description = e.markdown()
+                self.logger.debug(general.join_lines([
+                    f'Robograding report for {request}:'
+                ]) + str(e))
+                response.robograding = p.issues.create({
+                    'title': self.course.config.request.robograding.issue.robograding.print(request),
+                    'description': e.markdown(),
+                })
+
+    def process_robogradings(self):
+        for request in self.requests_and_responses.robograding.keys():
+            self.process_robograding(request)
+
+    def process_submission(self):
+        x = self.requests_and_responses.submission
+        if not x:
+            return
+
+        (request, response) = list(x.items())[-1]
+        
+
+        # how do we know a submission has been processed?
+        # ultimately, we can never know: we might have crashed.
+        # we could run with a flag 'force' to indicate that we don't know.
+        # if 'force' is false, then existing an robograding in the grading repository can indicate that we don't need to process.
+        # but what if we don't have a robograder?
+        # we would also have to compile again.
+        # we could check in the google doc.
+        # if we have an entry there, then we processed it already.
+
+        with git_tools.with_checkout(self.lab.repo, git_tools.remote_tag(self.remote, request.name)) as src:
+            with tempfile.TemporaryDirectory() as bin:
+                pass
+
+        # if self.lab.config.compiler:
+
+        # with_remote = lambda s: '{}/{}'.format(remote, s)
+        # logger.log(logging.INFO, 'Robograding {}...'.format(with_remote(tag)))
+
+        # with tempfile.TemporaryDirectory() as dir:
+        #     dir = Path(dir)
+        #     self.submission_checkout(dir, abs_remote_tag(with_remote(tag)))
+
+        #     response = None
+
+        #     # TODO: Escape embedded error for Markdown.
+        #     def record_error(description, error, is_code):
+        #         nonlocal response
+        #         code = '```' if is_code else ''
+        #         response = '{}\n{}\n{}\n{}\n'.format(description, code, error.strip(), code)
+
+        #     try:
+        #         self.submission_check_symlinks(dir)
+        #         self.submission_compile(dir)
+        #         response = self.submission_robograde(dir)
+        #     except check_symlinks.SymlinkException as e:
+        #         record_error('There is a problem with symbolic links in your submission.', e.text, True)
+        #     except java.CompileError as e:
+        #         record_error('I could not compile your Java files:', e.compile_errors, True)
+        #     except robograde.RobogradeFileConflict as e:
+        #         response = 'I could not test your submission because the compiled file\n```\n{}\n```\nconflicts with files I use for testing.'.format(e.file)
+        #     except robograde.RobogradeException as e:
+        #         record_error('Oops, you broke me!\n\nI encountered a problem while testing your submission.\nThis could be a problem with myself (a robo-bug) or with your code (unexpected changes to class or methods signatures). If it is the latter, you might be able to elucidate the cause from the below error message and fix it. If not, tell my designers!', e.errors, True)
+
+        #     if in_student_repo:
+        #         response = '{}\n{}\n'.format(response, Course.mention(self.course.students(n)))
+
+        #     p = self.lab_group_project(n) if in_student_repo else self.grading_project()
+        #     logger.log(logging.INFO, response)
+        #     p.issues.create({
+        #         'title': self.config.testing_issue_print(tag if in_student_repo else with_remote(tag)),
+        #         'description': response,
+        #     })
+
+        # logger.log(logging.INFO, 'Robograded {}.'.format(with_remote(tag)))
+
 
 import gitlab_config as config
 
