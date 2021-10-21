@@ -1,7 +1,9 @@
+import collections
 import dateutil.parser as date_parser
 import functools
 import general
 import gitlab
+import gspread
 import logging
 import operator
 from pathlib import Path, PurePosixPath
@@ -42,16 +44,6 @@ class Course:
 
     def gitlab_url(self, path):
         return self.config.base_url + str(path)
-
-    def gitlab_group(self, path, lazy):
-        if not lazy:
-            self.logger.debug(f'Getting group {path}')
-        return self.gl.groups.get(str(path), lazy = lazy)
-
-    def gitlab_project(self, path, lazy):
-        if not lazy:
-            self.logger.debug(f'Getting project {path}')
-        return self.gl.projects.get(str(path), lazy)
 
     @functools.cached_property
     def labs_group(self):
@@ -155,14 +147,11 @@ class Course:
         gitlab_tools.protect_branch(self.gl, project.id, self.config.branch.master)
         return project
 
-    def request_dict(self, f):
-        return dict(
+    def request_namespace(self, f):
+        return types.SimpleNamespace(**dict(
             (request_type, f(request_type, spec))
             for (request_type, spec) in self.config.request.__dict__.items()
-        )
-
-    def request_namespace(self, f):
-        return types.SimpleNamespace(**self.request_dict(f))
+        ))
 
     def format_tag_metadata(self, project, tag, description = None):
         def lines():
@@ -179,7 +168,8 @@ class Course:
         Parse the request tags of a project.
         A request tag is one matching the the pattern in self.config.tag.
         These are used for grading and testing requests.
-        Returns a dictionary mapping request types to lists of tags sorted by committed date.
+        Returns an object with attributes for each request type (as specified in config.request).
+        Each attribute is a list of tags sorted by committed date.
 
         Warning: The committed date can be controlled by students by pushing a tag
                  (instead of creating it in the web user interface) with an incorrect date.
@@ -187,19 +177,19 @@ class Course:
         self.logger.debug('Parsing request tags in project {project.path_with_namespace}')
 
         request_types = self.config.request.__dict__
-        r = self.request_dict(lambda x, y: list())
+        r = self.request_namespace(lambda x, y: list())
         for tag in project.tags.list(all = True):
             tag.date = date_parser.parse(tag.commit['committed_date'])
             for (request_type, spec) in request_types.items():
                 if re.fullmatch(spec.tag_regex, tag.name):
-                    r[request_type].append(tag)
+                    r.__dict__[request_type].append(tag)
                     break
             else:
                 self.logger.info(self.format_tag_metadata(project, tag,
                     f'Unrecognized tag in project {project.path_with_namespace}:'
                 ))
 
-        for xs in r.values():
+        for xs in r.__dict__.values():
             xs.sort(key = operator.attrgetter('date'))
         return r
 
@@ -226,13 +216,14 @@ class Course:
     def parse_response_issues(self, project):
         '''
         Parse the response issues of a project (see 'official_issues').
-        Returns a dictionary mapping request types to a dictionary mapping
-        pairs of tag names and issue types to pairs of an issue and the issue title parsing.
+        Returns an object with attributes for each request type (as specified in config.request).
+        Each attribute is a dictionary mapping pairs of tag names and issue types
+        to pairs of an issue and the issue title parsing.
         '''
         self.logger.debug('Parsing response issues in project {project.path_with_namespace}')
 
         request_types = self.config.request.__dict__
-        r = self.request_dict(lambda x, y: dict())
+        r = self.request_namespace(lambda x, y: dict())
         def parse_issue(issue):
             for (request_type, spec) in request_types.items():
                 for (response_type, pp) in spec.issue.__dict__.items():
@@ -241,7 +232,7 @@ class Course:
                     except:
                         continue
 
-                    request_issues = r[request_type]
+                    request_issues = r.__dict__[request_type]
                     key = (u['tag'], response_type)
                     prev = request_issues.get(key)
                     if prev:
@@ -295,8 +286,75 @@ class Course:
             return r
 
         return self.request_namespace(lambda request_type, spec:
-            merge(request_type, spec, request_tags[request_type], response_issues[request_type])
+            merge(request_type, spec, request_tags.__dict__[request_type], response_issues.__dict__[request_type])
         )
+
+    @functools.cached_property
+    def google_client(self):
+        return gspread.service_account(filename = self.config.google_credentials_path)
+
+    GradingColumns = collections.namedtuple('GradingColumns', ['query', 'grader', 'score'])
+
+    class SheetParseException(Exception):
+        pass
+
+    def parse_grading_columns(self, row):
+        i = 0
+
+        def consume_header(value):
+            nonlocal i
+            if not (i != len(row) and row[i] == value):
+                raise Course.SheetParseException(f'expected header in column {i + 1}: {value}')
+            r = i
+            i += 1
+            return r
+
+        consume_header(self.config.grading_sheet_header.group)
+
+        r = list()
+        while i != len(row):
+            try:
+               j = self.config.grading_sheet_header.query.parse(row[i])
+            except:
+                i += 1
+                continue
+
+            if j != len(r):
+                raise ValueError(f'unexpected query header {row[i]}, expected {self.config.grading_sheet_header.query.parse(row[len(r)])}')
+
+            r.append(Course.GradingColumns(
+                query = consume_header(self.config.grading_sheet_header.query.print(len(r))),
+                grader = consume_header(self.config.grading_sheet_header.grader),
+                score = consume_header(self.config.grading_sheet_header.score),
+            ))
+
+        return r
+
+    def parse_group_rows(self, column):
+        r = dict()
+        for i in range(1, len(column)):
+            if column[i] != '':
+                n = int(column[i])
+                if n in r:
+                    raise Course.SheetParseException(f'Duplicate group {n}')
+                r[n] = i
+        return r
+
+    GradingSheet = collections.namedtuple('GradingSheet', ['group_rows', 'grading_columns', 'rows'])
+
+    def parse_grading_sheet(self, worksheet):
+        rows = worksheet.get_all_values(value_render_option = 'FORMULA')
+        return Course.GradingSheet(
+            group_rows = self.parse_group_rows([row[0] for row in rows]),
+            grading_columns = self.parse_grading_columns(rows[0]),
+            rows = rows,
+        )
+
+    # TODO: No idea how Google Sheets expects data to be escaped.
+    def sheet_value_link(url, label):
+        return '=HYPERLINK("{}", "{}")'.format(url, label)
+
+
 
 if __name__ == "__main__":
     logging.basicConfig()

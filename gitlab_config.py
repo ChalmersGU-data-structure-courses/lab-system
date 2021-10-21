@@ -156,8 +156,13 @@ request = SimpleNamespace(
         tag_regex = '(?:t|T)est[^: ]*',
         tag_protection = ['test*', 'Test*'],
         issue = SimpleNamespace(
-            response = print_parse.regex_keyed(
+            robograding = print_parse.regex_keyed(
                 'This is Robograder reporting for {tag}',
+                {'tag': '[^: ]*'},
+                flags = re.IGNORECASE,
+            ),
+            compilation = print_parse.regex_keyed(
+                'Robograder: I could not compile your code for {tag}',
                 {'tag': '[^: ]*'},
                 flags = re.IGNORECASE,
             ),
@@ -201,11 +206,11 @@ graders_informal = print_parse.from_dict([
 
 # Grading sheet headers.
 # These are used to parse Google Sheets that keep track of which groups have been graded.
-grading_sheet_headers = SimpleNamespace(
+grading_sheet_header = SimpleNamespace(
     group = 'Group',
     query = print_parse.compose(
         print_parse.from_one,  # 1-based numbering
-        print_parse.regex_int('Query #', regex = '\\d{1,2}'),
+        print_parse.regex_int('Query #{}', regex = '\\d{1,2}'),
     ),
     grader = 'Grader',
     score = '0/1',
@@ -306,6 +311,11 @@ _lab_folders = {
 
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict((k, _LabConfig(k, lab_folder)) for (k, lab_folder) in _lab_folders.items())
+
+labs[1].grading_sheet = ('1AiiaEhz-8_4oWCQ0_4Z1mUCMK3C_kjyB0eyLO1ezHHE', 0)
+labs[2].grading_sheet = ('1iA2JuW8gSOklVCAAV9AE3rjUlcMwBmdpBb9KfiXfFMs', 0)
+labs[3].grading_sheet = ('1iPccoBWNOheEPpkuoYkEV4P7LDAAHZ01r90BmFyMCK4', 0)
+labs[4].grading_sheet = ('1GlVuPwFLyzRaYSJ7gOPgEL7FmCUKGHfZHU1Oco5S-t4', 0)
 
 # Students taking part in labs who are not registered on Canvas.
 # List of full names on Canvas.

@@ -3,9 +3,9 @@ import shlex
 import tempfile
 
 import check_symlinks
+from course_basics import SubmissionHandlingException
 import general
 import java
-import lab_new as lab
 import markdown
 import robograder
 from this_dir import this_dir
@@ -15,19 +15,24 @@ code_root = this_dir.parent
 
 logger = logging.getLogger(__name__)
 
-class SymlinkException(lab.SubmissionHandlingException):
-    def __init__(self, e):
-        self.e = e
+def with_base(instance, base):
+    class ExtraBase(instance.__class__, base):
+        pass
 
-    def markdown(self):
-        return self.e.markdown()
+    instance.__class__ = ExtraBase
 
-class CompileException(lab.SubmissionHandlingException):
-    def __init__(self, e):
-        self.e = e
-
-    def markdown(self):
-        return markdown.escape_code_block(self.e.compile_errors)
+#class SymlinkException(SymlinkException, SubmissionHandlingException):
+#    pass
+#
+#class CompileException(CompileError, SubmissionHandlingException):
+#    def __init__(self, e):
+#        self.e = e
+#
+#    def markdown(self):
+#        return markdown.escape_code_block(self.e.compile_errors)
+#
+#    def __str__(self):
+#        return self.e.compile_errors
 
 def compile(src, bin):
     # For now.
@@ -38,11 +43,11 @@ def compile(src, bin):
         check_symlinks.check_self_contained(src)
         java.compile_java_dir(src, detect_enc = True)
     except check_symlinks.SymlinkException as e:
-        raise SymlinkException(e)
+        raise with_base(e, SubmissionHandlingException.__class__)#SymlinkException(e)
     except java.CompileError as e:
-        raise CompileException(e)
+        raise with_base(e, SubmissionHandlingException.__class__) ##CompileException(e)
 
-class RobograderException(lab.SubmissionHandlingException):
+class RobograderException(SubmissionHandlingException):
     pass
 
 class FileConflict(RobograderException):

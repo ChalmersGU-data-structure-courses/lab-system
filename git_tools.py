@@ -1,8 +1,10 @@
+import contextlib
 from enum import Enum, auto
 import git
 import logging
-from pathlib import PurePosixPath
+from pathlib import PurePosixPath, Path
 import subprocess
+import tempfile
 
 import general
 
@@ -177,3 +179,10 @@ def checkout(repo, dir, ref):
     tar.stdin.close()
     general.wait_and_check(tar, cmd)
 
+@contextlib.contextmanager
+def with_checkout(repo, ref):
+    ''' Context manager for a temporary directory containing a checkout. '''
+    with tempfile.TemporaryDirectory() as dir:
+        dir = Path(dir)
+        checkout(repo, dir, ref)
+        yield dir
