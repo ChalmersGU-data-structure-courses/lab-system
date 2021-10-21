@@ -116,6 +116,8 @@ def regex_int(holed_string, format = '', regex = '\\d+', **kwargs):
         _regex(holed_string, regex = regex, **kwargs),
     )
 
+qualify_with_slash = regex_many('{}/{}', ['[^/]*', '.*'])
+
 # Takes an iterable of (value, printed) pairs.
 # The default semantics is strict, assuming that values and printings are unique.
 # If duplicates are allowed, use strict = False.

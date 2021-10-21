@@ -561,3 +561,13 @@ def eq_on(x, y, f = identity):
 
 def ne_on(x, y, f = identity):
     return f(x) != f(y)
+
+def dict_union(us):
+    '''
+    The union of an iterable of dictionaries.
+    Later keys take precedence.
+    '''
+    r = dict()
+    for u in us:
+        r |= u
+    return r

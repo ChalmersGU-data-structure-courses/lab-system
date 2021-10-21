@@ -15,6 +15,7 @@ import os
 import canvas
 import gitlab_tools
 from instance_cache import instance_cache
+import print_parse
 
 #===============================================================================
 # Tools
@@ -41,6 +42,13 @@ class Course:
             gl = self.gl,
             logger = self.logger,
         ).__dict__
+
+        # Qualify a request by the full group id.
+        # Used as tag names in the grading repository of each lab.
+        self.qualify_request = print_parse.compose(
+            print_parse.on(0, self.config.group.full_id),
+            print_parse.qualify_with_slash
+        )
 
     def gitlab_url(self, path):
         return self.config.base_url + str(path)
@@ -125,11 +133,20 @@ class Course:
 
     @functools.cached_property
     def graders(self):
-        return gitlab_tools.members_from_access(self.graders_group.lazy, [gitlab.OWNER_ACCESS])
+        return gitlab_tools.members_from_access(
+            self.graders_group.lazy,
+            [gitlab.OWNER_ACCESS]
+        )
 
-    @instance_cache
-    def group_students(self, group_id):
-        return gitlab_tools.members_from_access(self.group(group_id), [gitlab.DEVELOPER_ACCESS, gitlab.MAINTAINER_ACCESS])
+    def student_members(self, cached_entity):
+        '''
+        Get the student members of a group or project.
+        We approximate this as meaning members that have developer or maintainer rights.
+        '''
+        return gitlab_tools.members_from_access(
+            cached_entity.lazy,
+            [gitlab.DEVELOPER_ACCESS, gitlab.MAINTAINER_ACCESS, gitlab.OWNER_ACCESS] # TODO: delete owner case
+        )
 
     def configure_student_project(self, project):
         self.logger.debug('Configuring student project {project.path_with_namespace}')
