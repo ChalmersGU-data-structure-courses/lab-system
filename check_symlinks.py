@@ -1,7 +1,8 @@
+import os
 from pathlib import Path, PurePath
 import shlex
 
-from general import working_dir
+import general
 import markdown
 
 # Lesson learned:
@@ -14,35 +15,36 @@ class SymlinkException(Exception):
     def __init__(self, path):
         self.path = path
 
-    def __str__(self):
-        return self.text
-
 class AbsoluteSymlinkException(SymlinkException):
     def __init__(self, path):
         super().__init__(path)
-        self.text = 'The symlink {} refers to an absolute path.'.format(
+
+    def __str__(self):
+        return 'The symlink {} refers to an absolute path.'.format(
             shlex.quote(str(self.path)),
         )
 
     def markdown(self):
         return general.join_lines([
             'The symlink'
-        ]) + markdown.escape_code_block(self.path) + general.join_lines([
+        ]) + markdown.escape_code_block(str(self.path)) + general.join_lines([
             'refers to an absolute path.'
         ])
 
 class EscapingSymlinkException(SymlinkException):
     def __init__(self, path):
         super().__init__(path)
-        self.text = 'The symlink {} refers to an outside path.'.format(
+
+    def __str__(self):
+        return 'The symlink {} refers to a path outside the top-level directory.'.format(
             shlex.quote(str(self.path)),
         )
 
     def markdown(self):
         return general.join_lines([
             'The symlink'
-        ]) + markdown.escape_code_block(self.path) + general.join_lines([
-            'refers to an outside path.'
+        ]) + markdown.escape_code_block(str(self.path)) + general.join_lines([
+            'refers to a path outside the top-level directory.'
         ])
 
 def check_link(link):
@@ -62,5 +64,5 @@ def check_self_contained_in_current_dir(dir):
             check_link(path)
 
 def check_self_contained(dir):
-    with working_dir(dir):
+    with general.working_dir(dir):
         check_self_contained_in_current_dir(Path())

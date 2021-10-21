@@ -1,16 +1,25 @@
 import functools
 import logging
+import os
 from pathlib import Path
-
-from general import *
+import shlex
+import subprocess
 
 logger = logging.getLogger('java')
 
 @functools.cache
 def java_version():
-    p = subprocess.run(['java', '-version'], stdin = subprocess.DEVNULL, stdout = subprocess.DEVNULL, stderr = subprocess.PIPE, encoding = 'utf-8', check = True)
+    p = subprocess.run(
+        ['java', '-version'],
+        stdin = subprocess.DEVNULL,
+        stdout = subprocess.DEVNULL,
+        stderr = subprocess.PIPE,
+        encoding = 'utf-8',
+        check = True
+    )
     v = shlex.split(str(p.stderr).splitlines()[0])
-    assert(v[1] == 'version')
+    if v[1] != 'version':
+        raise RuntimeError(f'Unexpected java version string: v')
     return [int(x) for x in v[2].split('.')]
 
 def as_iterable_of_strings(xs):
@@ -72,7 +81,7 @@ def compile_java(files, force_recompile = False, detect_enc = False, **kwargs):
             raise CompileError(process.stderr)
 
 def compile_java_dir(dir, **kwargs):
-    with working_dir(dir):
+    with general.working_dir(dir):
         files = list(Path().rglob('*.java'))
         logger.log(logging.DEBUG, 'Compiling files: {}'.format(files))
         compile_java(files, **kwargs)
@@ -81,7 +90,9 @@ def compile_java_dir(dir, **kwargs):
 # Java
 
 def policy_permission(type, args = []):
-    return 'permission {};'.format(' '.join([type] + ([', '.join(java_string_encode(str(arg)) for arg in args)] if args else [])))
+    return 'permission {};'.format(
+        ' '.join([type] + ([', '.join(java_string_encode(str(arg)) for arg in args)] if args else []))
+    )
 
 permission_all = ('java.security.AllPermission', [])
 
@@ -89,7 +100,7 @@ def permission_file_descendants_read(dir):
     return ('java.io.FilePermission', [Path(dir) / '-', 'read'])
 
 def policy_grant(path, permissions):
-    return '\n'.join([
+    return general.join_lines([
         ' '.join(['grant'] + (['codeBase', java_string_encode('file:' + str(path))] if path != None else [])) + ' {',
         *('  ' + policy_permission(*permission) for permission in permissions),
         '};',
@@ -102,8 +113,8 @@ def policy(entries):
 def java_cmd(name, args = [], classpath = None, security_policy = None, enable_assertions = False, options = None):
     yield 'java'
     if security_policy:
-        yield ''.join(['-D', 'java.security.manager'])
-        yield ''.join(['-D', 'java.security.policy', '==', str(security_policy)])
+        yield str().join(['-D', 'java.security.manager'])
+        yield str().join(['-D', 'java.security.policy', '==', str(security_policy)])
     if enable_assertions:
         yield '-ea'
     yield from add_classpath(classpath)
@@ -115,4 +126,4 @@ def java_cmd(name, args = [], classpath = None, security_policy = None, enable_a
 
 def java_standard_options():
     if java_version()[0] >= 14:
-        yield ''.join(['-XX', ':', '+', 'ShowCodeDetailsInExceptionMessages'])
+        yield str().join(['-XX', ':', '+', 'ShowCodeDetailsInExceptionMessages'])

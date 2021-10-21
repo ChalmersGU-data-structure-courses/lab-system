@@ -1,6 +1,9 @@
 import logging
+from pathlib import Path
 import shlex
+import subprocess
 import tempfile
+import types
 
 import check_symlinks
 from course_basics import SubmissionHandlingException
@@ -15,24 +18,26 @@ code_root = this_dir.parent
 
 logger = logging.getLogger(__name__)
 
-def with_base(instance, base):
-    class ExtraBase(instance.__class__, base):
-        pass
+class SubmissionHandlingExceptionForwarder(SubmissionHandlingException):
+    def __init__(self, e):
+        self.e = e
+        self.__str__ = e.__str__
+        self.markdown = e.markdown
 
-    instance.__class__ = ExtraBase
+class SymlinkException(SubmissionHandlingExceptionForwarder):
+    pass
 
-#class SymlinkException(SymlinkException, SubmissionHandlingException):
-#    pass
-#
-#class CompileException(CompileError, SubmissionHandlingException):
-#    def __init__(self, e):
-#        self.e = e
-#
-#    def markdown(self):
-#        return markdown.escape_code_block(self.e.compile_errors)
-#
-#    def __str__(self):
-#        return self.e.compile_errors
+class CompileException(SubmissionHandlingException):
+    def __init__(self, e):
+        self.e = e
+
+    def markdown(self):
+        return general.join_lines([
+            'There were compilation errors:'
+        ]) + markdown.escape_code_block(self.e.compile_errors)
+
+    def __str__(self):
+        return self.e.compile_errors
 
 def compile(src, bin):
     # For now.
@@ -43,9 +48,9 @@ def compile(src, bin):
         check_symlinks.check_self_contained(src)
         java.compile_java_dir(src, detect_enc = True)
     except check_symlinks.SymlinkException as e:
-        raise with_base(e, SubmissionHandlingException.__class__)#SymlinkException(e)
+        raise SymlinkException(e)
     except java.CompileError as e:
-        raise with_base(e, SubmissionHandlingException.__class__) ##CompileException(e)
+        raise CompileException(e)
 
 class RobograderException(SubmissionHandlingException):
     pass
@@ -106,8 +111,8 @@ class Robograder:
         bin = src
 
         # Check for class name conflicts.
-        for dir in classpath:
-            with working_dir(dir):
+        for dir in self.classpath:
+            with general.working_dir(dir):
                 files = list(Path('.').rglob('*.class'))
             for file in files:
                 if (bin / file).exists():
@@ -116,7 +121,7 @@ class Robograder:
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create policy file.
             policy_file = Path(temp_dir) / 'policy'
-            policy_file.write_text(java.policy((dir.resolve(), [java.permission_all]) for dir in classpath))
+            policy_file.write_text(java.policy((dir.resolve(), [java.permission_all]) for dir in self.classpath))
 
             cmd = list(java.java_cmd(
                 self.entrypoint,
@@ -136,5 +141,8 @@ class Robograder:
             if process.returncode != 0:
                 raise robograder.ExecutionError(process.stderr)
 
-            logger.debug('pregrading output of {}:\n'.format(entrypoint) + process.stdout)
-            return process.stdout
+            logger.debug('pregrading output of {}:\n'.format(self.entrypoint) + process.stdout)
+            return types.SimpleNamespace(
+                grading = None,
+                report = process.stdout,
+            )
