@@ -49,17 +49,19 @@ class Course:
             print_parse.qualify_with_slash
         )
 
+        self.canvas_use_cache = True
+
     @functools.cached_property
     def canvas(self):
         return canvas.Canvas(config.canvas.url, auth_token = config.canvas_auth_token)
 
     @functools.cached_property
-    def canvas_group(self):
-        return canvas.Course(self.canvas, config.canvas.course_id, use_cache = canvas_use_cache)
+    def canvas_course(self):
+        return canvas.Course(self.canvas, config.canvas.course_id, use_cache = self.canvas_use_cache)
 
     @functools.cached_property
     def canvas_group_set(self):
-        canvas.GroupSet(self.canvas_course, config.canvas.group_set, use_cache = canvas_use_cache)
+        return canvas.GroupSet(self.canvas_course, config.canvas.group_set, use_cache = self.canvas_use_cache)
 
     @functools.cached_property
     def gl(self):
