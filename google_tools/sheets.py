@@ -78,17 +78,17 @@ def request_update_title(sheet_id, title):
     }
 
 class PasteType(enum.Enum):
-    normal = auto('PASTE_NORMAL')
-    values = auto('PASTE_VALUES')
-    format = auto('PASTE_FORMAT')
-    no_borders = auto('PASTE_NO_BORDERS')
-    formula = auto('PASTE_FORMULA')
-    data_validation = auto('PASTE_DATA_VALIDATION')
-    conditional_formatting = auto('PASTE_CONDITIONAL_FORMATTING')
+    normal = 'PASTE_NORMAL'
+    values = 'PASTE_VALUES'
+    format = 'PASTE_FORMAT'
+    no_borders = 'PASTE_NO_BORDERS'
+    formula = 'PASTE_FORMULA'
+    data_validation = 'PASTE_DATA_VALIDATION'
+    conditional_formatting = 'PASTE_CONDITIONAL_FORMATTING'
 
 class PasteOrientation(enum.Enum):
-    normal = auto('NORMAL')
-    transpose = auto('TRANSPOSE')
+    normal = 'NORMAL'
+    transpose = 'TRANSPOSE'
 
 def request_copy_paste(source, destination, paste_type, paste_orientation = None):
     if paste_orientation == None:
