@@ -1,13 +1,17 @@
-# Designed to be imported qualified.
+# Should only be imported qualified.
+import ast
 import re
 import collections
+import string
+import urllib.parse
 
+from escaping_formatter import regex_escaping_formatter
 import general
 
 # Approximations to isomorphisms.
 PrintParse = collections.namedtuple('PrintParse', ['print', 'parse'])
 
-id = PrintParse(
+identity = PrintParse(
     print = general.identity,
     parse = general.identity,
 )
@@ -18,11 +22,28 @@ def compose(x, y):
         parse = general.compose(y.parse, x.parse),
     )
 
+def compose_many(*xs):
+    xs = _tuple(xs)
+    return PrintParse(
+        print = general.compose_many(*(x.print for x in xs)),
+        parse = general.compose_many(*(x.parse for x in reversed(xs))),
+    )
+
 def swap(x):
     return PrintParse(
         print = x.parse,
         parse = x.print,
     )
+
+swap_pair = PrintParse(
+    print = general.swap_pair,
+    parse = general.swap_pair,
+)
+
+interchange = PrintParse(
+    print = general.interchange,
+    parse = general.interchange,
+)
 
 singleton = PrintParse(
     print = general.singleton,
@@ -30,6 +51,11 @@ singleton = PrintParse(
 )
 
 #from_singleton = swap(singleton)
+
+reversal = PrintParse(
+    print = lambda xs: _tuple(reversed(xs)),
+    parse = lambda xs: _tuple(reversed(xs)),
+)
 
 def on_print(print):
     return PrintParse(
@@ -45,11 +71,90 @@ def on_parse(parse):
 
 lower = on_parse(str.lower)
 
-def on(i, x):
+def on(lens, x):
     return PrintParse(
-        print = general.on(i, x.print),
-        parse = general.on(i, x.parse),
+        print = general.on(lens, x.print),
+        parse = general.on(lens, x.parse),
     )
+
+# These functions take collections of printer-parsers.
+def combine(xs):
+    return PrintParse(
+        print = general.combine(_tuple(x.print for x in xs)),
+        parse = general.combine(_tuple(x.parse for x in xs)),
+    )
+
+def combine_dict(xs):
+    return PrintParse(
+        print = general.combine_dict(dict((key, x.print) for (key, x) in xs.items())),
+        parse = general.combine_dict(dict((key, x.parse) for (key, x) in xs.items())),
+    )
+
+def combine_namedtuple(xs):
+    return PrintParse(
+        print = general.combine_namedtuple(xs.__class__._make(x.print for x in xs)),
+        parse = general.combine_namedtuple(xs.__class__._make(x.parse for x in xs)),
+    )
+
+def combine_generic(fs):
+    if isinstance(fs, (_list, _tuple)):
+        r = combine
+    elif isinstance(fs, dict):
+        r = combine_dict
+    elif hasattr(fs.__class__, '_make'):
+        r = combine_namedtuple
+    return r(fs)
+
+# Sidestep limitations of shadowing in Python.
+_list = list
+
+def list(x):
+    return PrintParse(
+        print = lambda vs: [x.print(v) for v in vs],
+        parse = lambda vs: [x.parse(v) for v in vs],
+    )
+
+# Sidestep limitations of shadowing in Python.
+_tuple = tuple
+
+def tuple(x):
+    return PrintParse(
+        print = lambda vs: _tuple(x.print(v) for v in vs),
+        parse = lambda vs: _tuple(x.parse(v) for v in vs),
+    )
+
+def maybe(x):
+    return PrintParse(
+        print = general.maybe(x.print),
+        parse = general.maybe(x.parse),
+    )
+
+def with_special_case(x, value, value_printed):
+    return PrintParse(
+        print = general.with_special_case(x.print, value, value_printed),
+        parse = general.with_special_case(x.parse, value_printed, value),
+    )
+
+def with_none(x, none_printed):
+    return with_special_case(x, None, none_printed)
+
+def without(x, value):
+    return compose(on_print(general.check_return(lambda x: x != value)), x)
+
+quote = PrintParse(
+    print = lambda s: ast.unparse(ast.Constant(s)),
+    parse = ast.literal_eval,
+)
+
+doublequote = PrintParse(
+    print = general.doublequote,
+    parse = ast.literal_eval,
+)
+
+string_letters = PrintParse(
+    print = general.identity,
+    parse = ''.join,
+)
 
 def int_str(format = ''):
     format_str = f'{{:{format}d}}'
@@ -85,10 +190,13 @@ def regex_non_canonical_keyed(holed_string, regex, **kwargs):
         parse = regex_parser(regex, keyed = True, **kwargs),
     )
 
+# Bug.
+# This and following functions only work for holed_string arguments
+# that don't contained regex special characters (except for the holes).
 def regex(holed_string, regex = '.*', **kwargs):
     return regex_non_canonical(
         holed_string,
-        holed_string.format(f'({regex})'),
+        regex_escaping_formatter.format(holed_string, f'({regex})'),
         **kwargs,
     )
 
@@ -98,14 +206,20 @@ _regex = regex
 def regex_many(holed_string, regexes, **kwargs):
     return regex_non_canonical_many(
         holed_string,
-        holed_string.format(*(f'({regex})' for regex in regexes)),
+        regex_escaping_formatter.format(
+            holed_string,
+            *(f'({regex})' for regex in regexes)
+        ),
         **kwargs,
     )
 
 def regex_keyed(holed_string, regexes_keyed, **kwargs):
     return regex_non_canonical_keyed(
         holed_string,
-        holed_string.format(**dict((key, f'(?P<{key}>{regex})') for (key, regex) in regexes_keyed.items())),
+        regex_escaping_formatter.format(
+            holed_string,
+            **dict((key, f'(?P<{key}>{regex})') for (key, regex) in regexes_keyed.items())
+        ),
         **kwargs,
     )
 
@@ -122,7 +236,7 @@ qualify_with_slash = regex_many('{}/{}', ['[^/]*', '.*'])
 # The default semantics is strict, assuming that values and printings are unique.
 # If duplicates are allowed, use strict = False.
 def from_dict(xs, print_strict = True, parse_strict = True):
-    xs = tuple(xs)
+    xs = _tuple(xs)
     return PrintParse(
         print = general.sdict(((x, y) for (x, y) in xs), strict = print_strict).__getitem__,
         parse = general.sdict(((y, x) for (x, y) in xs), strict = parse_strict).__getitem__,
@@ -135,3 +249,76 @@ def add(k):
     )
 
 from_one = add(1)
+
+def skip_natural(n):
+    def print(i):
+        return i if i < n else i + 1
+
+    def parse(i):
+        if i == n:
+            raise ValueError(f'value {i} is forbidden')
+        return i if i < n else i - 1
+
+    return PrintParse(
+        print = print,
+        parse = parse,
+    )
+
+def _singleton_range_parse(range):
+    if not general.is_range_singleton(range):
+        raise ValueError(f'not a singleton range: {range}')
+
+    return range
+
+singleton_range = PrintParse(
+    print = general.range_singleton,
+    parse = _singleton_range_parse,
+)
+
+def url_quote(safe = '/'):
+    return PrintParse(
+        print = lambda s: urllib.parse.quote(s, safe = safe),
+        parse = urllib.parse.unquote,
+    )
+
+url_quote_no_safe = url_quote(safe = '')
+
+# A network location.
+# Reference: Section 3.1 of RFC 1738
+NetLoc = collections.namedtuple('NetLoc', ['host', 'port', 'user', 'password'], defaults = [None, None, None])
+
+# Exercise.
+# Mmerge _netloc_print and _netloc_regex_parse into a nice printer-parser network.
+def _netloc_print(netloc):
+    def password():
+        return ':' + netloc.password if netloc.password != None else ''
+
+    login = netloc.user + password() + '@' if netloc.user != None else ''
+    port = ':' + netloc.port if netloc.port != None else ''
+    return login + netloc.host + port
+
+_safe_regex = '[\w\\.\\-\\~]*'
+
+_netloc_regex_parser = regex_parser(
+    f'(?:(?P<user>{_safe_regex})(?::(?P<password>{_safe_regex}))?@)?(?P<host>{_safe_regex})(?::(?P<port>\d+))?',
+    keyed = True,
+    flags = re.ASCII
+)
+p = _netloc_regex_parser
+
+def _netloc_parse(s):
+    return NetLoc(**_netloc_regex_parser(s))
+
+# String representation of network locations.
+netloc = compose(
+    combine_namedtuple(NetLoc(
+        host = url_quote_no_safe,
+        port = maybe(int_str()),
+        user = maybe(url_quote_no_safe),
+        password = maybe(url_quote_no_safe),
+    )),
+    PrintParse(
+        print = _netloc_print,
+        parse = _netloc_parse,
+    ),
+)

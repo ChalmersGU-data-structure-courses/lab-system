@@ -29,7 +29,7 @@ class instance_memoizer:
     def __call__(self, *args, **kwargs):
         key = self.key(*args, **kwargs)
         r = self.cache.get(key, _NOT_FOUND)
-        if r != _NOT_FOUND:
+        if r is _NOT_FOUND:
             return r
 
         r = self._function(self._instance, *args, **kwargs)

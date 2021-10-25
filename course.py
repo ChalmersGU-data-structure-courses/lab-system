@@ -115,7 +115,7 @@ class Course:
         self.canvas_group_set = canvas.GroupSet(self.canvas_course, config.canvas_group_set, use_cache = canvas_use_cache)
 
         self.config = config
-        self.gl = gitlab.Gitlab(config.base_url, private_token = read_private_token(config.private_token))
+        self.gl = gitlab.Gitlab(config.base_url, private_token = read_private_token(config.gitlab_private_token))
         self.gl.auth()
         #self.gl.enable_debug()
 

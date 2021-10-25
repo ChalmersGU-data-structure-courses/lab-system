@@ -10,7 +10,6 @@ from course_basics import SubmissionHandlingException
 import general
 import java
 import markdown
-import robograder
 from this_dir import this_dir
 
 # Root of the code repository.
