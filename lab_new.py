@@ -8,11 +8,13 @@ from pathlib import Path
 import shutil
 import tempfile
 import types
+import urllib.parse
 
 from course_basics import SubmissionHandlingException
 import course_new as course
 import git_tools
 import gitlab_tools
+import grading_sheet
 from instance_cache import instance_cache
 
 import robograder_java
@@ -44,22 +46,25 @@ class Lab:
         self.name_full = '{} — {}'.format(self.name, self.name_semantic)
 
         # Gitlab config
-        self.gl = self.course.gl
         self.path = self.course.config.path.labs / self.id_str
 
-        self.cached_params = types.SimpleNamespace(
+    @functools.cached_property
+    def gl(self):
+        return self.course.gl
+
+    @functools.cached_property
+    def entity_cached_params(self):
+        return types.SimpleNamespace(
             gl = self.gl,
             logger = self.logger,
         ).__dict__
-
-    (group_id, request) 
 
     @functools.cached_property
     def group(self):
         '''
         The group for this lab on Chalmers GitLab.
         '''
-        r = gitlab_tools.CachedGroup(**self.cached_params,
+        r = gitlab_tools.CachedGroup(**self.entity_cached_params,
             path = self.path,
             name = self.name_full,
         )
@@ -125,7 +130,7 @@ class Lab:
           So make sure the problem and solution subdirectories are clean beforehand.
         * Problem and solution branches are set up.
         '''
-        r = gitlab_tools.CachedProject(**self.cached_params,
+        r = gitlab_tools.CachedProject(**self.entity_cached_params,
             path = self.path / self.course.config.path_lab.official,
             name = '{} — official repository'.format(self.name),
         )
@@ -163,7 +168,7 @@ class Lab:
         The staging project on Chalmers GitLab.
         When created, forked from the official project and modified to prepare for forking of student projects.
         '''
-        r = gitlab_tools.CachedProject(**self.cached_params,
+        r = gitlab_tools.CachedProject(**self.entity_cached_params,
             path = self.path / self.course.config.path_lab.staging,
             name = '{} — staging repository'.format(self.name),
         )
@@ -207,7 +212,7 @@ class Lab:
         The grading project on Chalmers GitLab.
         When created, it is empty.
         '''
-        r = gitlab_tools.CachedProject(**self.cached_params,
+        r = gitlab_tools.CachedProject(**self.entity_cached_params,
             path = self.path / self.course.config.path_lab.grading,
             name = '{} — grading repository'.format(self.name),
         )
@@ -222,7 +227,7 @@ class Lab:
     def repo(self):
         '''
         Local grading repository.
-        This is used as staging for (pushes to) the grading project on GitLab Chalmers.
+        This is used as staging for (pushes to) the grading project on Chalmers GitLab.
         It fetches from the official lab repository and student group repositories.
         '''
         return git.Repo(self.dir)
@@ -249,7 +254,7 @@ class Lab:
         '''
         Initialize the local grading repository.
         If the directory exists, we assume that all remotes are set up.
-        Otherwise, we create the directory and populate it with remotes on GitLab Chalmers as follows.
+        Otherwise, we create the directory and populate it with remotes on Chalmers GitLab as follows.
         Fetching remotes are given by the official repository and student group repositories.
         Pushing remotes are just the grading repository.
         '''
@@ -278,13 +283,13 @@ class Lab:
     def repo_fetch_official(self):
         '''
         Fetch problem and solution branches from the offical
-        repository on GitLab Chalmers to the local grading repository.
+        repository on Chalmers GitLab to the local grading repository.
         '''
         self.repo.remotes[self.course.config.path_lab.official].fetch()
 
     def repo_push_grading(self):
         '''
-        Push the local grading repository to the grading repository on GitLab Chalmers.
+        Push the local grading repository to the grading repository on Chalmers GitLab.
         
         '''
         self.repo.remotes[self.course.config.path_lab.grading].push()
@@ -367,9 +372,7 @@ class Lab:
 
     @functools.cached_property
     def grading_sheet(self):
-        (spreadsheet_key, worksheet) = self.config.grading_sheet
-        s = self.course.google_client.open_by_key(spreadsheet_key)
-        return s.get_worksheet(worksheet) if isinstance(worksheet, int) else s.get_worksheet_by_id(worksheet)
+        return grading_sheet.GradingSheet(self.course, self.config)
 
     def parse_grading_issues(self):
         for group_id in self.course.groups(self):
@@ -382,7 +385,6 @@ class Lab:
 
 class GroupProject:
     def __init__(self, lab, group_id, logger = logging.getLogger('group-project')):
-        self.gl = lab.gl
         self.course = lab.course
         self.lab = lab
         self.group_id = group_id
@@ -396,6 +398,17 @@ class GroupProject:
         self.request_tags = self.course.request_namespace(lambda x, y: dict())
         self.response_issues = self.course.request_namespace(lambda x, y: dict())
         self.requests_and_responses = self.course.request_namespace(lambda x, y: dict())
+
+        # Map from submissions to booleans.
+        # Values mean the following:
+        # * not in map: submission has not yet been considered
+        # * False: submission is invalid (for example, because compilation is required and it didn't compile)
+        # * True: submission is valid (to be sent to graders)
+        self.submission_valid = dict()
+
+    @functools.cached_property
+    def gl(self):
+        return lab.gl
 
     @functools.cached_property
     def project(self):
@@ -432,6 +445,12 @@ class GroupProject:
         return r
 
     def repo_add_remote(self, ignore_missing = False):
+        '''
+        Add the student repository on Chalmers GitLab as a remote to the local repository.
+        This configures the refspecs for fetching in the manner expected by this script.
+        This will only be done if the student project on Chalmers GitLab exists.
+        If 'ignore_missing' holds, no error is raised if the project is missing.
+        '''
         try:
             lab.repo_add_remote(
                 self.remote,
@@ -447,7 +466,10 @@ class GroupProject:
             else:
                 raise e
 
-    # TODO: could cache, but how to detect updates?
+    # TODO.
+    # We could cache this if we have a way to detect updates.
+    # But e.g. group hooks monitoring for membership updates are only
+    # available in the "Premium tier" version of GitLab, not the open source one.
     def members(self):
         '''
         The members of a student group project are taken from these sources:
@@ -461,7 +483,28 @@ class GroupProject:
         ]))
 
     def repo_fetch(self):
+        '''
+        Make sure the local repository as up to date with respect to
+        the contents of the student repository on GitLab Chalmers.
+        '''
         self.lab.repo.remotes[self.remote].fetch()
+
+    def repo_tag_names(self):
+        '''
+        Read the local tags fetched from the student project on GitLab.
+        Returns a list of tag names.
+        '''
+        dir = Path(self.lab.repo.git_dir) / git_tools.refs / git_tools.remote_tags / self.remote
+        return [file.name for file in dir.iterdir()]
+
+    def repo_resolve_tag(tag_name):
+        '''
+        Read the commit in the local repository corresponding to a tag in the student project on GitLab.
+        '''
+        return git_tools.resolve_ref(
+            self.lab.repo,
+            git_tools.remote_tag(self.remote, tag_name)
+        )
 
     def hotfix_group(self, branch_hotfix, branch_group):
         '''
@@ -508,9 +551,52 @@ class GroupProject:
             force = False,
         ))
 
+    def hook_create(self, netloc):
+        '''
+        Create webhook in the student project on GitLab.
+        The hook is triggered if tags are updated or issues are changed.
+        This r
+
+        Note: Due to a GitLab bug, the hook is not called when an issue is deleted.
+              Thus, before deleting a response issue, you should first rename it
+              (triggering the hook)  so that it is no longer recognized as a response issue.
+        '''
+        url = 'https://' + print_parse.netloc.print(netloc)
+        self.logger.debug(f'Creating project hook with url {url}')
+        return self.project.lazy.hooks.create({
+            'url': url,
+            'enable_ssl_verification': 'false',
+            'token': self.course.config.gitlab_webhook_secret_token,
+            'issues_events': 'true',
+            'tag_push_events': 'true',
+        })
+
+    def hook_delete(self, hook):
+        ''' Delete a webhook in the student project on GitLab. '''
+        self.logger.debug(f'Deleting project hook with url {hook.url}')
+        hook.delete()
+
+    def delete_all_hooks(self):
+        '''
+        Delete all webhook in the student project on GitLab.
+        You should use this when previous program runs where killed or stopped
+        in a non-standard fashion that prevented cleanup and have left lingering webhooks.
+        '''
+        for hook in self.project.lazy.hooks.list(all = True):
+            self.hook_delete(hook)
+
+    @contextlib.contextmanager
+    def hook_manager(self, netloc):
+        ''' A context manager for creating a webhook. '''
+        hook = self.hook_create(netloc)
+        try:
+            yield hook
+        finally:
+            self.hook_delete(hook)
+
     def update_request_tags(self):
         '''
-        Update the request tags attribute from GitLab Chalmers.
+        Update the request tags attribute from Chalmers GitLab.
         Returns an object with request types as attributes and values indicating if there was an update.
         '''
         request_tags = self.course.parse_request_tags(self.project.get)
@@ -540,7 +626,7 @@ class GroupProject:
 
     def update_response_issues(self):
         '''
-        Update the stored response issues attribute from GitLab Chalmers.
+        Update the stored response issues attribute from Chalmers GitLab.
         Returns an object with request types as attributes and values indicating if there was an update.
         '''
         response_issues = self.course.parse_response_issues(self.project.get)
@@ -567,7 +653,7 @@ class GroupProject:
             if not x:
                 return None
 
-            (request, response) = list(x.items())[-1]
+            (request, response) = next(reversed(x.items()))
             return dict(
                 (request, self.response_key(response))
                 for (response_type, response) in response.__dict__.items()
@@ -594,35 +680,65 @@ class GroupProject:
             gitlab_tools.mention_str(self.members().values())
         ])
 
-    def post_issue(self, project, request_type, response_type, description, params):
+    def post_issue(self, project, request_type, request, response_type, description, params):
+        title = self.course.config.request.__dict__[request_type].issue.__dict__[response_type].print(
+            params | {'tag': request}
+        )
         self.logger.debug(general.join_lines([
             f'Title: {title}',
             'Description:',
         ]) + description)
-        title = self.course.config.request.__dict__[request_type].issue.__dict__[response_type].print(
-            params | {'tag': request}
-        )
         return project.lazy.issues.create({'title': title, 'description': description})
 
-    def create_response_issue(self, request_type, request, response_type, description, params = dict()):
+    def create_response_issue(
+        self,
+        request_type,
+        request,
+        response_type,
+        description,
+        params = dict(),
+        exist_ok = True
+    ):
+        '''
+        Create a response issue in the student project.
+        Also update the local response cache ('response') with this response.
+        If a response issue of the given response type already exists, do nothing if exist_ok holds.
+        Otherwise, raise an error.
+        '''
         self.logger.info(f'Creating {response_type} issue for {request_type} {request}.')
 
         response = self.requests_and_responses.__dict__[request_type][request]
         if response.__dict__[response_type]:
             raise ValueError(f'{response_type} issue for {request_type} {request} already exists.')
-
-        issue = post_issue(self.project, request_type, response_type, description + self.mention_paragraph(), params)
+        
+        description += self.mention_paragraph()
+        qualified_request = self.course.qualify_request.print((self.group_id, request))
+        issue = post_issue(self.project, request_type, qualified_request, response_type, description, params)
         response.__dict__[response_type] = (issue, params)
         return issue
 
-    def create_response_issue_in_grading_project(self, request_type, request, response_type, description, params = dict()):
+    def create_response_issue_in_grading_project(
+        self,
+        request_type,
+        request,
+        response_type,
+        description,
+        params = dict(),
+        exist_ok = True
+    ):
+        '''
+        Create a response issue in the grading project (only visible to graders).
+        Also update the local grading issue  cache ('grading_issue') with this response.
+        If a response issue of the given response type already exists, do nothing if exist_ok holds.
+        Otherwise, raise an error.
+        '''
+        key = (request, response_type)
         self.logger.info(f'Grading project: creating {response_type} issue for {request_type} {request}.')
 
-        key = (request, response_type)
         if key in self.grading_issues:
             raise ValueError(f'Grading project: {response_type} issue for {request_type} {request} already exists.')
 
-        issue = post_issue(self.lab.grading_project, request_type, response_type, description, params)
+        issue = post_issue(self.lab.grading_project, request_type, request, response_type, description, params)
         self.grading_issues[key] = (issue, params)
         return issue
 
@@ -648,33 +764,36 @@ class GroupProject:
         ).__dict__
 
         # Check the commit out.
-        with git_tools.with_checkout(self.lab.repo, git_tools.remote_tag(self.remote, request)) as src:
-            with tempfile.TemporaryDirectory() as bin:
-
-                # If a compiler is configured, compile first.
-                if self.lab.config.compiler:
-                    try:
-                        self.lab.config.compiler(src, bin)
-                    except SubmissionHandlingException as e:
-                        self.create_response_issue(**issue_params,
-                            response_type = 'compilation',
-                            description = e.markdown() + general.join_lines([
-                                '',
-                                'If you believe this is a mistake on our end, please contact the responsible teacher.'
-                            ]),
-                        )
-                        return
-
-                # Call the robograder.
+        with (
+            git_tools.with_checkout(self.lab.repo, git_tools.remote_tag(self.remote, request)) as src,
+            tempfile.TemporaryDirectory() as bin
+        ):
+            # If a compiler is configured, compile first.
+            if self.lab.config.compiler:
+                self.logger.info('* compiling')
                 try:
-                    r = self.lab.config.robograder.run(src, bin)
-                    description = r.report
+                    self.lab.config.compiler(src, bin)
                 except SubmissionHandlingException as e:
-                    description = e.markdown()
-                self.create_response_issue(**issue_params, 
-                    response_type = 'robograding',
-                    description = description,
-                )
+                    self.create_response_issue(**issue_params,
+                        response_type = 'compilation',
+                        description = e.markdown() + general.join_lines([
+                            '',
+                            'If you believe this is a mistake on our end, please contact the responsible teacher.'
+                        ]),
+                    )
+                    return
+
+            # Call the robograder.
+            try:
+                self.logger.info('* robograding')
+                r = self.lab.config.robograder.run(src, bin)
+                description = r.report
+            except SubmissionHandlingException as e:
+                description = e.markdown()
+            self.create_response_issue(**issue_params, 
+                response_type = 'robograding',
+                description = description,
+            )
 
     def process_robogradings(self):
         ''' Process all robograding requests. '''
@@ -685,12 +804,23 @@ class GroupProject:
         '''
         Process a submission request.
         '''
+        # Have we already handled this request?
+        if request in self.submissions_valid:
+            return
+
         # Get the response on record so far.
         response = self.requests_and_responses.robograding[request]
 
-        ## Have we already handled this request?
-        #if response.compilation or response.robograding:
-        #    return
+        # If compilation is required and there is already a compilation response,
+        # we record the submission as rejected. 
+        if all([
+            self.lab.config.compilation_requirement == CompilationRequirement.require,
+            response.compilation
+        ]):
+            self.submission_valid[request] = False
+            return
+
+        # Otherwise, 
 
         self.logger.info(f'Handling submission {request}')
         issue_params = types.SimpleNamespace(
@@ -698,57 +828,61 @@ class GroupProject:
             request = request,
         ).__dict__
 
+        has_grading_robograding = self.grading_issues.get((request, 'robograding'))
+        has_grading_compilation = self.grading_issues.get((request, 'compilation'))
+        has_grading_issue = has_grading_robograding or has_grading_compilation
+
+        require_compilation = not has_grading_issue or not has_
+
         # Check the commit out.
-        with git_tools.with_checkout(self.lab.repo, git_tools.remote_tag(self.remote, request)) as src:
-            with tempfile.TemporaryDirectory() as bin:
-                has_grading_robograding = self.grading_issues.get((request, 'robograding'))
-                has_grading_compilation = self.grading_issues.get((request, 'compilation'))
-                has_grading_issue = has_grading_robograding or has_grading_compilation
+        with (
+            git_tools.with_checkout(self.lab.repo, git_tools.remote_tag(self.remote, request)) as src,
+            tempfile.TemporaryDirectory() as bin,
+        ):
 
-                has_compilation: response.compilation
+            has_compilation: response.compilation
 
-                # If a compiler is configured, compile first, but only if actually needed.
-                if self.lab.config.compiler and not (response.compilation and has_grading_issue):
-                    try:
-                        self.lab.config.compiler(src, bin)
-                    except SubmissionHandlingException as e:
-                        # Only report problem if configured and not yet reported.
-                        message = self.lab.config.compilation_message.get(self.lab.config.compilation_requirement)
-                        if message != None and response.compilation == None:
-                            self.create_response_issue(**issue_params,
-                                response_type = 'compilation',
-                                description = str().join([
-                                    message,
-                                    general.join_lines([]),
-                                    e.markdown(),
-                                ])
-                            )
+            # If a compiler is configured, compile first, but only if actually needed.
+            compilation_okay = True
+            if self.lab.config.compiler and not (response.compilation and has_grading_issue):
+                self.logger.info('* compiling')
+                try:
+                    self.lab.config.compiler(src, bin)
+                except SubmissionHandlingException as e:
+                    compilation_okay = False
 
-                        # Stop if compilation is required.
-                        if self.lab.config.compilation_requirement == CompilationRequirement.require:
-                            return
+                    # Only report problem if configured and not yet reported.
+                    message = self.lab.config.compilation_message.get(self.lab.config.compilation_requirement)
+                    if message != None:
+                        self.create_response_issue(**issue_params,
+                            response_type = 'compilation',
+                            description = str().join([
+                                message,
+                                general.join_lines([]),
+                                e.markdown(),
+                            ])
+                        )
 
-                        # Report compilation problem in grading project.
-                        if not has_grading_compilation:
-                            self.create_response_issue(**issue_params,
-                                response_type = 'compilation',
-                                description = str().join([
-                                    message,
-                                    general.join_lines([]),
-                                    e.markdown(),
-                                ]),
-                                request = self.course.qualify_request.print((self.group_id, request))
-                            )
-                            
+                    # Stop if compilation is required.
+                    if self.lab.config.compilation_requirement == CompilationRequirement.require:
+                        self.submissions_valid[request] = False
+                        return
 
-                # Prepare robograding report for graders if configured.
-                if l
+                    # Report compilation problem in grading project.
+                    if not has_grading_compilation:
+                        self.create_response_issue_in_grading_project(**issue_params,
+                            response_type = 'compilation',
+                            description = e.markdown(),
+                        )
+
+            # Prepare robograding report for graders if configured.
+            if self.lab.config.robograder and compilation_okay:
                 try:
                     r = self.lab.config.robograder.run(src, bin)
                     description = r.report
                 except SubmissionHandlingException as e:
                     description = e.markdown()
-                self.create_response_issue(**issue_params, 
+                self.create_response_issue_in_grading_project(**issue_params, 
                     response_type = 'robograding',
                     description = description,
                 )
@@ -760,7 +894,7 @@ class GroupProject:
         if not x:
             return
 
-        process_submission(list(x.keys())[-1])
+        process_submission(next(reversed(x.keys())))
         
 
         # how do we know a submission has been processed?
@@ -830,3 +964,7 @@ if __name__ == "__main__":
     #x = g.requests_and_responses.robograding['test4141']
     #if x.robograding:
     #    x.robograding[0].delete()
+
+import timeit
+   
+

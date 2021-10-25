@@ -3,13 +3,18 @@ import logging
 
 from . import general
 
-logger = logging.getLogger('google_tools.drive')
+logger = logging.getLogger(__name__)
 
 class Drive:
     default_scopes = ['drive']
 
     def __init__(self, token):
-        self.drive = googleapiclient.discovery.build('drive', 'v3', credentials = token, cache_discovery = False)
+        self.drive = googleapiclient.discovery.build(
+            'drive',
+            'v3',
+            credentials = token,
+            cache_discovery = False
+        )
 
     def get_parent(self, id):
         return self.drive.files().get(fileId = id, fields = 'parents').execute()['parents'][0]
@@ -23,7 +28,12 @@ class Drive:
         self.drive.files().delete(fileId = id).execute()
 
     def move(self, id, target):
-        self.drive.files().update(fileId = id, removeParents = self.get_parent(id), addParents = target).execute()
+        self.drive.files().update(
+            fileId = id,
+            removeParents = self.get_parent(id),
+            addParents =
+            target
+        ).execute()
 
     def copy(self, id, name):
         return self.drive.files().copy(fileId = id, body = {'name': name}).execute()['id']

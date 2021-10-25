@@ -1,19 +1,21 @@
 import collections
-import dateutil.parser as date_parser
+import dateutil.parser
 import functools
 import general
 import gitlab
+import google_tools.general
+import google_tools.sheets
 import gspread
 import logging
 import operator
 from pathlib import Path, PurePosixPath
 import re
 import types
-
-import os
+import urllib.parse
 
 import canvas
 import gitlab_tools
+import gspread_tools
 from instance_cache import instance_cache
 import print_parse
 
@@ -26,50 +28,76 @@ def dict_sorted(xs):
 #===============================================================================
 # Course labs management
 
+def parse_issue(config, issue):
+    request_types = config.request.__dict__
+    for (request_type, spec) in request_types.items():
+        for (response_type, pp) in spec.issue.__dict__.items():
+            try:
+                return (request_type, response_type, pp.parse(issue.title))
+            except:
+                continue
+
 class Course:
     def __init__(self, config, *, canvas_use_cache = True, logger = logging.getLogger('course')):
         self.logger = logger
         self.config = config
 
-        self.canvas = canvas.Canvas(config.canvas.url, auth_token = config.canvas_auth_token)
-        self.canvas_course = canvas.Course(self.canvas, config.canvas.course_id, use_cache = canvas_use_cache)
-        self.canvas_group_set = canvas.GroupSet(self.canvas_course, config.canvas.group_set, use_cache = canvas_use_cache)
+        # Qualify a request by the full group id.
+        # Used as tag names in the grading repository of each lab.
+        self.qualify_request = print_parse.compose(
+            print_parse.on(general.component_tuple(0), self.config.group.full_id),
+            print_parse.qualify_with_slash
+        )
 
-        self.gl = gitlab.Gitlab(self.config.base_url, private_token = gitlab_tools.read_private_token(self.config.private_token))
-        self.gl.auth()
+    @functools.cached_property
+    def canvas(self):
+        return canvas.Canvas(config.canvas.url, auth_token = config.canvas_auth_token)
 
-        self.cached_params = types.SimpleNamespace(
+    @functools.cached_property
+    def canvas_group(self):
+        return canvas.Course(self.canvas, config.canvas.course_id, use_cache = canvas_use_cache)
+
+    @functools.cached_property
+    def canvas_group_set(self):
+        canvas.GroupSet(self.canvas_course, config.canvas.group_set, use_cache = canvas_use_cache)
+
+    @functools.cached_property
+    def gl(self):
+        r = gitlab.Gitlab(
+            self.config.base_url,
+            private_token = gitlab_tools.read_private_token(self.config.gitlab_private_token)
+        )
+        r.auth()
+        return r
+
+    def gitlab_url(self, path):
+        return urllib.parse.urljoin(self.config.base_url, str(path))
+
+    @functools.cached_property
+    def entity_cached_params(self):
+        return types.SimpleNamespace(
             gl = self.gl,
             logger = self.logger,
         ).__dict__
 
-        # Qualify a request by the full group id.
-        # Used as tag names in the grading repository of each lab.
-        self.qualify_request = print_parse.compose(
-            print_parse.on(0, self.config.group.full_id),
-            print_parse.qualify_with_slash
-        )
-
-    def gitlab_url(self, path):
-        return self.config.base_url + str(path)
 
     @functools.cached_property
     def labs_group(self):
-        return gitlab_tools.CachedGroup(**self.cached_params,
+        return gitlab_tools.CachedGroup(**self.entity_cached_params,
             path = self.config.path.labs,
             name = 'Labs',
         )
 
     @functools.cached_property
     def groups_group(self):
-        return gitlab_tools.CachedGroup(**self.cached_params,
+        return gitlab_tools.CachedGroup(**self.entity_cached_params,
             path = self.config.path.groups,
             name = 'Student groups',
         )
 
     @functools.cached_property
     def graders_group(self):
-        return gitlab_tools.CachedGroup(**self.cached_params,
+        return gitlab_tools.CachedGroup(**self.entity_cached_params,
             path = self.config.path.graders,
             name = 'Graders',
         )
@@ -84,13 +112,13 @@ class Course:
     @functools.cached_property
     def groups(self):
         return frozenset(
-            self.config.group.id.parse(group.path)
+            self.config.group.id_gitlab.parse(group.path)
             for group in self.groups_group.lazy.subgroups.list(all = True)
         )
 
     @instance_cache
     def group(self, group_id):
-        r = gitlab_tools.CachedGroup(**self.cached_params,
+        r = gitlab_tools.CachedGroup(**self.entity_cached_params,
             path = self.groups_group.path / self.config.lab.id.print(group_id),
             name = self.config.group.name.print(group_id),
         )
@@ -180,6 +208,8 @@ class Course:
             yield f'* URL: {url}'
         return general.join_lines(lines())
 
+    #def parse_request_tags(self, tags, tag_name = lambda tag: tag.name)
+
     def parse_request_tags(self, project):
         '''
         Parse the request tags of a project.
@@ -196,7 +226,7 @@ class Course:
         request_types = self.config.request.__dict__
         r = self.request_namespace(lambda x, y: list())
         for tag in project.tags.list(all = True):
-            tag.date = date_parser.parse(tag.commit['committed_date'])
+            tag.date = dateutil.parser.parse(tag.commit['committed_date'])
             for (request_type, spec) in request_types.items():
                 if re.fullmatch(spec.tag_regex, tag.name):
                     r.__dict__[request_type].append(tag)
@@ -239,37 +269,28 @@ class Course:
         '''
         self.logger.debug('Parsing response issues in project {project.path_with_namespace}')
 
-        request_types = self.config.request.__dict__
         r = self.request_namespace(lambda x, y: dict())
-        def parse_issue(issue):
-            for (request_type, spec) in request_types.items():
-                for (response_type, pp) in spec.issue.__dict__.items():
-                    try:
-                        u = pp.parse(issue.title)
-                    except:
-                        continue
-
-                    request_issues = r.__dict__[request_type]
-                    key = (u['tag'], response_type)
-                    prev = request_issues.get(key)
-                    if prev:
-                        (issue_prev, _) = prev
-                        self.logger.warning(
-                              general.join_lines([f'Duplicate response issue in project {project.path_with_namespace}.',])
-                            + self.format_issue_metadata(project, issue_prev, 'First issue:')
-                            + self.format_issue_metadata(project, issue, 'Second issue:')
-                            + general.join_lines(['Ignoring second issue.'])
-                        )
-                    else:
-                        request_issues[key] = (issue, u)
-                    return
-
-            self.logger.warning(self.format_issue_metadata(project, issue,
-                f'Response issue in project {project.path_with_namespace} with no matching request tag:'
-            ))
-            
         for issue in self.response_issues(project):
-            parse_issue(issue)
+            x = parse_issue(self.config, issue)
+            if x:
+                (request_type, response_type, u) = x
+                request_issues = r.__dict__[request_type]
+                key = (u['tag'], response_type)
+                prev = request_issues.get(key)
+                if prev:
+                    (issue_prev, _) = prev
+                    self.logger.warning(
+                          general.join_lines([f'Duplicate response issue in project {project.path_with_namespace}.',])
+                        + self.format_issue_metadata(project, issue_prev, 'First issue:')
+                        + self.format_issue_metadata(project, issue, 'Second issue:')
+                        + general.join_lines(['Ignoring second issue.'])
+                    )
+                else:
+                    request_issues[key] = (issue, u)
+            else:
+                self.logger.warning(self.format_issue_metadata(project, issue,
+                    f'Response issue in project {project.path_with_namespace} with no matching request tag:'
+                ))
         return r
 
     def merge_requests_and_responses(self, project, request_tags = None, response_issues = None):
@@ -306,73 +327,6 @@ class Course:
             merge(request_type, spec, request_tags.__dict__[request_type], response_issues.__dict__[request_type])
         )
 
-    @functools.cached_property
-    def google_client(self):
-        return gspread.service_account(filename = self.config.google_credentials_path)
-
-    GradingColumns = collections.namedtuple('GradingColumns', ['query', 'grader', 'score'])
-
-    class SheetParseException(Exception):
-        pass
-
-    def parse_grading_columns(self, row):
-        i = 0
-
-        def consume_header(value):
-            nonlocal i
-            if not (i != len(row) and row[i] == value):
-                raise Course.SheetParseException(f'expected header in column {i + 1}: {value}')
-            r = i
-            i += 1
-            return r
-
-        consume_header(self.config.grading_sheet_header.group)
-
-        r = list()
-        while i != len(row):
-            try:
-               j = self.config.grading_sheet_header.query.parse(row[i])
-            except:
-                i += 1
-                continue
-
-            if j != len(r):
-                raise ValueError(f'unexpected query header {row[i]}, expected {self.config.grading_sheet_header.query.parse(row[len(r)])}')
-
-            r.append(Course.GradingColumns(
-                query = consume_header(self.config.grading_sheet_header.query.print(len(r))),
-                grader = consume_header(self.config.grading_sheet_header.grader),
-                score = consume_header(self.config.grading_sheet_header.score),
-            ))
-
-        return r
-
-    def parse_group_rows(self, column):
-        r = dict()
-        for i in range(1, len(column)):
-            if column[i] != '':
-                n = int(column[i])
-                if n in r:
-                    raise Course.SheetParseException(f'Duplicate group {n}')
-                r[n] = i
-        return r
-
-    GradingSheet = collections.namedtuple('GradingSheet', ['group_rows', 'grading_columns', 'rows'])
-
-    def parse_grading_sheet(self, worksheet):
-        rows = worksheet.get_all_values(value_render_option = 'FORMULA')
-        return Course.GradingSheet(
-            group_rows = self.parse_group_rows([row[0] for row in rows]),
-            grading_columns = self.parse_grading_columns(rows[0]),
-            rows = rows,
-        )
-
-    # TODO: No idea how Google Sheets expects data to be escaped.
-    def sheet_value_link(url, label):
-        return '=HYPERLINK("{}", "{}")'.format(url, label)
-
-
-
 if __name__ == "__main__":
     logging.basicConfig()
     logging.root.setLevel(logging.DEBUG)
@@ -380,9 +334,9 @@ if __name__ == "__main__":
     import gitlab_config as config
 
     course = Course(config)
-    project = course.gl.projects.get('courses/DIT181/test/groups/00/lab-2')
-    r = course.merge_requests_and_responses(project)
-    print(r)
+    #project = course.gl.projects.get('courses/DIT181/test/groups/00/lab-2')
+    #r = course.merge_requests_and_responses(project)
+    #print(r)
 
     #cv = canvas.Canvas('chalmers.instructure.com', auth_token = config.canvas_auth_token)
     #cc = canvas.Course(cv, 10681)
