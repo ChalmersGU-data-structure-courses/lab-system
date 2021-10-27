@@ -1,5 +1,7 @@
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
+import json
+import google.auth.transport.requests
+import google.oauth2.service_account 
+import google_auth_oauthlib.flow
 import logging
 from pathlib import Path
 import pickle
@@ -19,6 +21,15 @@ this_dir = Path(__file__).parent
 def scope_url(scope):
     return 'https://www.googleapis.com/auth/' + urllib.parse.quote(scope)
 
+def load_secrets(path):
+    ''' Decode a secrets file (in JSON format) into a Python object. '''
+    with path.open() as file:
+        return json.load(file)
+
+def is_service_account(secrets):
+    ''' Determined if the given secrets object is for a service account. '''
+    return isinstance(secrets, dict) and secrets.get('type') == 'service_account'
+
 def get_token_for_scopes(
     scopes,
     credentials = this_dir / 'credentials.json',
@@ -27,24 +38,38 @@ def get_token_for_scopes(
 ):
     '''
     Get an access token for the desired scopes.
+    The function detects automatically if the credentials are client secrets for an app or a service account.
     The access token is optionally cached (if cached_token has a value) to avoid unnecessary authentication calls.
-    Unless prefix_url is False, the scopes must not be given as full URIs.
+    This is only applicable to client secrets.
+    The scopes should only be given as full URIs if prefix_url is False.
     '''
     if prefix_url:
         scopes = list(map(scope_url, scopes))
 
+    creds = load_secrets(credentials)
+    if is_service_account(creds):
+        return google.oauth2.service_account.Credentials.from_service_account_info(
+            info = creds,
+            scopes = scopes,
+        )
+
     token = None
     if cached_token and cached_token.exists():
         with cached_token.open('rb') as file:
-            token = pickle.load(file)
+            try:
+                token = pickle.load(file)
+            except Exception as e:
+                logger.warning('Failed to load cached authentication token')
 
     if token and token.has_scopes(scopes):
         if token.expired and token.refresh_token:
-            token.refresh(Request())
+            token.refresh(google.auth.transport.requests.Request())
         return token
 
-    flow = InstalledAppFlow.from_client_secrets_file(credentials, scopes)
-    token = flow.run_local_server(port = 0)
+    token = google_auth_oauthlib.flow.InstalledAppFlow.from_client_config(
+        creds,
+        scopes = scopes
+    ).run_local_server(port = 0)
     if cached_token:
         with cached_token.open('wb') as file:
             pickle.dump(token, file)

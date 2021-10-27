@@ -223,12 +223,37 @@ class Canvas:
     def file_set_locked(self, file_id, locked):
         self.put(['files', file_id], params = {'locked': Canvas.param_boolean(locked)})
 
+# On GU Canvas, the user id fields seem to mean the following:
+# * sis_user_id: 12-digit personnummer (could be a temporary one, which includes letter 'T'; probably even 'P')
+# if the user came from GU Canvas:
+# * login_id: <GU-id>
+# * integration_id: <GU-id>@gu.se
+# if the user came from Chalmers Canvas:
+# * login_id: <Chalmers-id>@chalmers.se
+# * integration_id: unknown, 12-digits, starts 9228...
+#
+# On Chalmers Canvas, they seem to mean the following:
+# * sis_user_id: 12-digit personnummer (could be a temporary one, which includes letter 'T'; probably even 'P')
+# if the user came from GU Canvas:
+# * login_id: not defined
+# * integration_id: <GU-id>@gu.se
+# if the user came from Chalmers Canvas:
+# * login_id: not defined
+# * integration_id: unknown, 12-digits, starts 9228...
+#
+# We cannot depend on the email field being the actual student email address.
+# So that's not a good way to extract the id.
 class Course:
     def __init__(self, canvas, course_id, use_cache = True):
+        logger.info(f'loading course {course_id}.')
+
         self.canvas = canvas
         self.course_id = course_id
         self.endpoint = ['courses', self.course_id]
 
+        # TODO: for future:
+        # * renaming 'user_*' to 'student_*'
+        # * modularize with 'teacher_*'.
         self.user_details = dict()
         self.user_name_to_id = dict()
         self.user_sortable_name_to_id = dict()
@@ -252,6 +277,30 @@ class Course:
 
                 self.user_by_integration_id[user.integration_id] = user
                 self.user_by_sis_id[user.sis_user_id] = user
+
+        self.teacher_details = dict()
+        self.teacher_name_to_id = dict()
+        self.teacher_sortable_name_to_id = dict()
+        self.teacher_integration_id_to_id = dict()
+        self.teacher_sis_id_to_id = dict()
+
+        # new style
+        self.teacher_by_integration_id = dict()
+        self.teacher_by_sis_id = dict()
+
+        for user in self.canvas.get_list(['courses', course_id, 'users'], params = {
+            'include[]': ['enrollments'],
+            'enrollment_state[]': ['active', 'invited', 'completed', 'inactive'],
+        }, use_cache = use_cache):
+            if any(e.role == 'TeacherEnrollment' for e in user.enrollments):
+                self.teacher_details[user.id] = user
+                self.teacher_name_to_id[user.name] = user.id
+                self.teacher_sortable_name_to_id[user.sortable_name] = user.id
+                self.teacher_integration_id_to_id[user.integration_id] = user.id
+                self.teacher_sis_id_to_id[user.sis_user_id] = user.id
+
+                self.teacher_by_integration_id[user.integration_id] = user
+                self.teacher_by_sis_id[user.sis_user_id] = user
 
         self.assignments_name_to_id = dict()
         self.assignment_details = dict()
@@ -400,6 +449,8 @@ class Course:
 
 class GroupSet:
     def __init__(self, course, group_set, use_cache = True):
+        logger.info(f'loading group set {group_set}.')
+
         self.canvas = course.canvas
         self.course = course
 
@@ -428,6 +479,14 @@ class GroupSet:
 
     def members_str(self, id):
         return self.course.users_str(self.group_users[id])
+
+    def create_group(self, name):
+        logger.info(f'Creating group with name {name} in group set {self.group_set.name}')
+        self.canvas.post(['group_categories', self.group_set.id, 'groups'], json = {
+            'name': name,
+#            'description': None,
+            'join_level': 'parent_context_auto_join',
+        })
 
 class Assignment:
     def __init__(self, course, assignment_id, use_cache = True):

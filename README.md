@@ -24,6 +24,7 @@ pip install -r requirements.txt
 ```
 
 Create an untracked copy of `gitlab_config_personal.py.template` and remove the suffix.
+This file stores personal configuration such as access keys and paths local to your filesystem.
 We will fill in the configuration values below.
 
 ### Canvas
@@ -120,50 +121,56 @@ If you find that information handled by the script is no longer up to date, you 
 ### Chalmers GitLab group structure
 
 The following is an overview of the group structure on Chalmers GitLab.
-You need to create the three top-level groups and invite all graders to the group called *graders*.
+You need to create the three top-level groups and invite all graders to the group *graders*.
 The remaining hierarchy will be created by the lab scripts.
 
+Note that the names of these groups are just placeholders.
+Their actual name is configured in a configuration file, as explained further down.
+
 ```
-graders              # Who should be allowed to grade?
-                     # Members of this group will have access to all lab groups and grading repositories.
-                     # TODO: write a script function that adds or, if not possible,
-                     #       sends invitation emails to all teachers in the Canvas course.
+graders             # Who should be allowed to grade?
+                    # Members of this group will have access to all lab groups and grading repositories.
+                    # TODO: write a script function that adds or, if not possible,
+                    #       sends invitation emails to all teachers in the Canvas course.
 
 labs
   ├── 1
-  │   ├──  official  # Official problem and solution repository.
-  │   │              # Contains a branch 'problem' with the initial lab problem.
-  │   │              # All lab group repositories are initially clones of the 'problem' branch.
-  │   │              # Also contains a branch 'solution' with the official lab solution.
-  │   │              # Can be created by the lab script from a given lab directory in the code repository.
-  │   │              # Used by the lab script to fork the individual lab group projects.
+  │   ├── official  # Official problem and solution repository.
+  │   │             # Contains a branch 'problem' with the initial lab problem.
+  │   │             # All lab group repositories are initially clones of the 'problem' branch.
+  │   │             # Also contains a branch 'solution' with the official lab solution.
+  │   │             # Can be created by the lab script from a given lab directory in the code repository.
+  │   │             # Used by the lab script to fork the individual lab group projects.
   │   │
-  │   └──  grading   # Grading repository, maintained by the lab scripts.
-  │                  # Fetches the official problem and solution branches and submissions from individual lab groups.
-  │                  # Contains merge commits needed to represent three-way diffs on the GitLab UI.
-  │                  # The individual submissions are available as tags of the form lab-group-XX/submissionYYY.
-  │                  #
-  │                  # If a grader wants to work seriously with submission files, they should clone this repository.
-  │                  # Example use cases:
-  │                  # - cd lab2-grading
-  │                  # - git checkout lab_group_13/submission1   to switch to a group's submission
-  │                  # - git diff problem                        changes compared to problem
-  │                  # - git diff solution                       changes compared to solution
-  │                  # - git diff lab_group_13/submission0       changes compared to last submission
-  │                  # - git diff problem answers.txt            changes in just one file
+  │   ├── staging   # Used as a temporary project from which fork the student lab projects.
+  │   │             # It is derived by the lab script from the official project.
+  │   │
+  │   └── grading   # Grading repository, maintained by the lab scripts.
+  │                 # Fetches the official problem and solution branches and submissions from individual lab groups.
+  │                 # Contains merge commits needed to represent three-way diffs on the GitLab UI.
+  │                 # The individual submissions are available as tags of the form lab-group-XX/submissionYYY.
+  │                 #
+  │                 # If a grader wants to work seriously with submission files, they should clone this repository.
+  │                 # Example use cases:
+  │                 # - cd lab2-grading
+  │                 # - git checkout lab_group_13/submission1   to switch to a group's submission
+  │                 # - git diff problem                        changes compared to problem
+  │                 # - git diff solution                       changes compared to solution
+  │                 # - git diff lab_group_13/submission0       changes compared to last submission
+  │                 # - git diff problem answers.txt            changes in just one file
   ├── 2
   ...
 
 lab-groups
-  ├── 0              # A student lab group.
-  │   │              # There is a script that will invite students to their group on Chalmers GitLab
-  │   │              # based on which assignment group they signed up for in Canvas.
+  ├── 0             # A student lab group.
+  │   │             # There is a script that will invite students to their group on Chalmers GitLab
+  │   │             # based on which assignment group they signed up for in Canvas.
   │   │
-  │   ├── lab1       # For mid-course group membership changes, membership can also
-  │   │              # be managed at the project level (only for the needed students).
-  │   │              # Remove them from their lab group and manually add them to the projects they should have access to.
-  │   │              # Example: A student may be part of lab1 and lab2 in group 13, but lab3 and lab4 in group 37.
-  │   │              #          In that case, they should neither be part of group 13 nor of group 37.
+  │   ├── lab1      # For mid-course group membership changes, membership can also
+  │   │             # be managed at the project level (only for the needed students).
+  │   │             # Remove them from their lab group and manually add them to the projects they should have access to.
+  │   │             # Example: A student may be part of lab1 and lab2 in group 13, but lab3 and lab4 in group 37.
+  │   │             #          In that case, they should neither be part of group 13 nor of group 37.
   │   │
   │   ├── lab2
   │   ├── lab3
@@ -181,7 +188,7 @@ We use Chalmers GitLab for submission and grading.
 To submit, a group creates a **tag** in their repository that references a specific commit.
 They can do this in two ways:
 * They create the tag locally in their Git repository and then push it to Chalmers GitLab.
-* The go the project overview page in Chamers GitLab, click on the "**+**" button, and select **New tag**.
+* They go the project overview page on Chamers GitLab, click on the "**+**" button, and select **New tag**.
 
 The tag name must have a specific form (by default, start with `submission`, e.g. `submission2`) and is case sensitive.
 The (optional) tag message serves as submission message.
@@ -230,7 +237,7 @@ Their purpose is two-fold:
   (In particular, the grader does *not* have to do this.)
 
 The grading sheet is **not** the official database of which groups have passed which labs.
-It merely reflects the grading issues in Chalmers GitLab.
+It merely reflects the grading issues on Chalmers GitLab.
 It is purely informational.
 It can also be used to collect notes and comments.
 
@@ -288,12 +295,18 @@ Its output is made available to the student group via a new issue in the Chalmer
 
 ## Configuration
 
-The lab scripts are configured via the file `gitlab_config.py`.
-To get started, create an untracked copy of `gitlab_config_personal.py.template` and remove the suffix.
-Fill in and/or change the configuration values according to your needs.
+The lab scripts take as argument a configuration module.
+A template for this module can be found in `gitlab_config.py.template`.
+It includes documentation for each configuration parameter in the form of comments.
+You should be able to follow these explanations after having read this document.
 
-The above template configuration file includes documentation for each parameter in the form of comments.
-After reading the current document, you should be able to make sense of these comments.
+Most options have default values that are generally suitable.
+Fill in and/or change them according to your needs.
+Note that this is a Python file, so you may use logic to dynamically generate configuration values.
+
+By default, personal configuration (as opposed to simply course-specific configuration) such as access keys and local directories is imported from the separate module `gitlab_config_personal.py`.
+We have filled out the access key options above.
+Fill out the remaining options according to their documentation.
 
 ## Running
 

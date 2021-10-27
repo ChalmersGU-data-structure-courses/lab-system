@@ -56,6 +56,10 @@ Lab-grading/invitations_sent
 # Secrets
 Lab-grading/auth_token
 Lab-grading/gitlab_config_personal.py
+Lab-grading/google_tools/credentials.json
+Lab-grading/google_tools/token.pickle
+Lab-grading/cert.pem
+Lab-grading/key.pem
 
 # Ignore directories called 'local'
 local
