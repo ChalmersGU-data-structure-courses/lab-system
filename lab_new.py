@@ -886,7 +886,6 @@ class GroupProject:
                     response_type = 'robograding',
                     description = description,
                 )
-                
 
     def process_submissions(self):
         ''' Processes the latest submission, if any. '''
@@ -947,24 +946,3 @@ class GroupProject:
         #     })
 
         # logger.log(logging.INFO, 'Robograded {}.'.format(with_remote(tag)))
-
-
-import gitlab_config as config
-
-if __name__ == "__main__":
-    logging.basicConfig()
-    logging.root.setLevel(logging.DEBUG)
-
-    c = course.Course(config)
-    lab = Lab(c, 2, Path('/home/noname/test'))
-    g = lab.student_group(0)
-    #print(g.update_request_tags())
-    #print(g.update_response_issues())
-    #print(g.update_requests_and_responses())
-    #x = g.requests_and_responses.robograding['test4141']
-    #if x.robograding:
-    #    x.robograding[0].delete()
-
-import timeit
-   
-

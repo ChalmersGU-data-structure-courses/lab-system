@@ -187,9 +187,6 @@ def invitation_delete(gitlab_client, entity, email):
         str(PurePosixPath('/') / entity_path_segment(entity) / 'invitations' / email),
     )
 
-        #general.print_json(self.gl.http_delete(str(path / 'sattler.christian@gmail.com')))
-
-
 if __name__ == '__main__':
     logging.basicConfig()
     logging.root.setLevel(logging.DEBUG)
