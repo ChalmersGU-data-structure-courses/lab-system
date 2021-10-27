@@ -22,6 +22,14 @@ class Dimension(enum.Enum):
     rows = 'ROWS'
     columns = 'COLUMNS'
 
+range_unbounded = (None, None)
+
+def range_in_dimension(dimension, range):
+    return (
+        range if dimension == Dimension.rows else range_unbounded,
+        range if dimension == Dimension.columns else range_unbounded,
+    )
+
 def dimension_range(sheet_id, dimension, start = None, end = None):
     r = {
         'sheetId': sheet_id,
@@ -57,15 +65,6 @@ def request_move_dimension(dimension_range, destination_index):
         }
     }
 
-def requests_duplicate_dimension(sheet_id, dimension, copy_from, copy_to):
-    dr = dimension_range(
-        sheet_id,
-        dimension,
-        *general.range_singleton(copy_from)
-    )
-    yield request_insert_dimension(dr)
-    yield request_move_dimension(dr, pp.skip_natural(copy_from).print(copy_to))
-
 def request_update_title(sheet_id, title):
     return  {
         'updateSheetProperties': {
@@ -76,6 +75,20 @@ def request_update_title(sheet_id, title):
             'fields': 'title',
         }
     }
+
+def grid_range(sheet_id, rect):
+    def g(name, value):
+        if value != None:
+            yield (name, value)
+
+    def f():
+        yield ('sheetId', sheet_id)
+        ((row_start, row_end), (column_start, column_end)) = rect
+        yield from g('startRowIndex', row_start)
+        yield from g('endRowIndex', row_end)
+        yield from g('startColumnIndex', column_start)
+        yield from g('endColumnIndex', column_end)
+    return dict(f())
 
 class PasteType(enum.Enum):
     normal = 'PASTE_NORMAL'
@@ -103,6 +116,41 @@ def request_copy_paste(source, destination, paste_type, paste_orientation = None
         }
     }
 
+def row_data(values):
+    return {
+        'values': values,
+    }
+
+def request_update_cells(rows, fields, start = None, range = None):
+    def f():
+        yield ('rows', rows)
+        yield ('fields', fields)
+        nonlocal start, range
+        if start != None:
+            yield ('start', start)
+            start = None
+        elif range != None:
+            yield ('range', range)
+            range = None
+        if not (start == None and range == None):
+            raise ValueError("Exactly one of 'start' and 'range' must be given")
+    return {
+        'updateCells': dict(f()),
+    }
+
+def requests_duplicate_dimension(sheet_id, dimension, copy_from, copy_to):
+    dr = dimension_range(
+        sheet_id,
+        dimension,
+        *general.range_singleton(copy_from)
+    )
+    yield request_insert_dimension(dr)
+    yield request_move_dimension(dr, pp.skip_natural(copy_from).print(copy_to))
+
+    def selection(i):
+        return grid_range(sheet_id, range_in_dimension(dimension, general.range_singleton(i)))
+    yield request_copy_paste(selection(copy_from), selection(copy_to), PasteType.normal)
+
 def spreadsheets(token):
     return googleapiclient.discovery.build(
         'sheets',
@@ -117,6 +165,26 @@ def redecode_json(s):
 
 SheetData = collections.namedtuple('Data', ['num_rows', 'num_columns', 'value'])
 
+def extended_value_string(s):
+    return {'stringValue': s}
+
+def cell_data(
+    userEnteredValue = None,
+    userEnteredFormat = None,
+    hyperlink = None,
+    note = None,
+):
+    def f():
+        if userEnteredValue != None:
+            yield ('userEnteredValue', userEnteredValue)
+        if userEnteredFormat != None:
+            yield ('userEnteredFormat', userEnteredFormat)
+        if hyperlink != None:
+            yield ('hyperlink', hyperlink)
+        if note != None:
+            yield ('note', note)
+    return dict(f())
+
 no_value = types.SimpleNamespace(
     userEnteredValue = types.SimpleNamespace(stringValue = ''),
     effectiveValue = types.SimpleNamespace(stringValue = ''),
@@ -125,9 +193,12 @@ no_value = types.SimpleNamespace(
 def sheet_data(sheet):
     def value(row, column):
         try:
-            return sheet.data[0].rowData[row].values[column]
+            r = sheet.data[0].rowData[row].values[column]
+            if r.__dict__:
+                return r
         except (AttributeError, IndexError):
-            return no_value
+            pass
+        return no_value
 
     return SheetData(
         num_rows = sheet.properties.gridProperties.rowCount,
@@ -136,8 +207,7 @@ def sheet_data(sheet):
     )
 
 def value_string(value):
-    if not value:
-        return ''
+    print(value)
     x = value.effectiveValue
     if hasattr(x, 'stringValue'):
         return x.stringValue

@@ -43,6 +43,14 @@ class SheetParseException(Exception):
     ''' Exception base type used for grading sheet parsing exceptions. '''
     pass
 
+def query_column_group_headers(config, query):
+    headers = config.grading_sheet.header
+    return QueryColumnGroup(
+        query = headers.query.print(query),
+        grader = headers.grader,
+        score = headers.score,
+    )
+
 def parse_grading_columns(config, header_row):
     '''
     Parse sheet headers.
@@ -77,8 +85,8 @@ def parse_grading_columns(config, header_row):
 
         if j != len(query_column_groups):
             raise SheetParseException(
-                f'enexpected query header {header_row[i]}, '
-                f'expected {config.grading_sheet.header.query.parse(header_row[len(query_column_groups)])}'
+                f'unexpected query header {value}, '
+                f'expected {config.grading_sheet.header.query.print(len(query_column_groups))}'
             )
 
         query_column_groups.append(QueryColumnGroup(
@@ -219,16 +227,34 @@ class GradingSheet:
 
     def add_query_column_group(self):
         column_group = self.sheet_parsed.query_column_groups[-1]
+        headers = query_column_group_headers(
+            self.grading_spreadsheet.config,
+            len(self.sheet_parsed.query_column_groups),
+        )
         range = general.range_of(column_group)
 
         request_buffer = self.grading_spreadsheet.update_request_buffer()
-        for column in column_group:
-            request_buffer.add(*google_tools.sheets.requests_duplicate_dimension(
-                self.sheet_properties.sheetId,
-                google_tools.sheets.Dimension.columns,
-                column,
-                column + general.len_range(range),
-            ))
+        for (column, header) in zip(column_group, headers):
+            column_new = column + general.len_range(range)
+            request_buffer.add(
+                *google_tools.sheets.requests_duplicate_dimension(
+                    self.sheet_properties.sheetId,
+                    google_tools.sheets.Dimension.columns,
+                    column,
+                    column_new,
+                ),
+                google_tools.sheets.request_update_cells(
+                    [google_tools.sheets.row_data([google_tools.sheets.cell_data(
+                        userEnteredValue = google_tools.sheets.extended_value_string(header)
+                    )])],
+                    'userEnteredValue',
+                    range = google_tools.sheets.grid_range(
+                        self.sheet_properties.sheetId,
+                        (google_tools.sheets.range_unbounded, general.range_singleton(column_new)),
+                    ),
+                ),
+            )
+
         request_buffer.flush()
 
 class GradingSpreadsheet:

@@ -2,7 +2,7 @@ import functools
 import general
 import gitlab
 import logging
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import time
 
 import git_tools
@@ -142,7 +142,70 @@ class CachedProject:
         with general.catch_attribute_error():
             del self.get
 
-def update_create(x, f):
-    create_old = x.create
-    x.create = lambda *args, **kwargs: f(create_old, *args, **kwargs)
-    return x
+def entity_path_segment(entity):
+    type_segment = {
+        gitlab.v4.objects.groups.Group: 'groups',
+        gitlab.v4.objects.projects.Project: 'projects',
+    }[entity.__class__]
+    return PurePosixPath(type_segment) / str(entity.id)
+
+def invitation_list(gitlab_client, entity):
+    return gitlab_client.http_list(
+        str(PurePosixPath('/') / entity_path_segment(entity) / 'invitations'),
+        all = True
+    )
+
+def invitation_create(gitlab_client, entity, email, access_level, exist_ok = False, **kwargs):
+    '''
+    Information on arguments:
+    * entity: A group or a project (can be lazy).
+    '''
+    r = gitlab_client.http_post(
+        str(PurePosixPath('/') / entity_path_segment(entity) / 'invitations'),
+        post_data = {
+            'email': email,
+            'access_level': access_level,
+            **kwargs
+        }
+    )
+
+    def exist(message):
+        if len(message) == 1:
+            msg = next(iter(message.values()))
+            for s in ['Member already invited', 'Already a member']:
+                if msg.startswith(s):
+                    return True
+        return False
+
+    if r['status'] == 'error':
+        message = r['message']
+        if not (exist_ok and exist(message)):
+            raise ValueError(str(message))
+
+def invitation_delete(gitlab_client, entity, email):
+    gitlab_client.http_delete(
+        str(PurePosixPath('/') / entity_path_segment(entity) / 'invitations' / email),
+    )
+
+        #general.print_json(self.gl.http_delete(str(path / 'REDACTED_EMAIL')))
+
+
+if __name__ == '__main__':
+    logging.basicConfig()
+    logging.root.setLevel(logging.DEBUG)
+   
+    print('asd')
+ 
+    import gitlab_config as config
+    from pathlib import PurePosixPath
+    
+    g = gitlab.Gitlab(
+        config.base_url,
+        private_token = read_private_token(config.gitlab_private_token)
+    )
+    g.auth()
+
+    root = PurePosixPath('/')
+
+    #g.http_list(root / 'projects' / )
+

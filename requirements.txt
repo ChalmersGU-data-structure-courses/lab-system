@@ -12,3 +12,4 @@ google_api_python_client==2.25.0
 protobuf==3.18.1
 PyPDF2==1.26.0
 python_dateutil==2.8.2
+atomicwrites==1.4.0

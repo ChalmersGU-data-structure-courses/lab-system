@@ -14,10 +14,13 @@ canvas = SimpleNamespace(
     # Standard values:
     # * 'canvas.gu.se' for GU courses
     # * 'chalmers.instructure.com' for Chalmers courses
-    url = 'canvas.gu.se',
+    url = 'chalmers.instructure.com',
+    #url = 'canvas.gu.se',
 
     # Integer id found in Canvas course URL.
-    course_id = 42575,
+    course_id = 16181, # DAT038+TDA417
+    #course_id = 15943, # DAT525
+    #course_id = 42575,
 
     # Name of Canvas group set where students sign up for lab groups.
     # We recommend to use a zero-based numerical naming scheme such as 'Lab group 0', 'Lab group 1', etc.
@@ -355,6 +358,14 @@ outside_canvas = []
 # Dictionary from stated name to full name on Canvas.
 # Giving a value of 'None' means that the student should be ignored.
 name_corrections = {}
+
+# Retrieve the Chalmers GitLab username for a user on Chalmers/GU Canvas.
+# This is needed to add students retrieved from Canvas to groups or projects on Chalmers GitLab.
+# Return None if not possible.
+# In that case, invitation emails are sent instead.
+def gitlab_username_from_canvas_user(user):
+    m = re.fullmatch('(.*)@(?:student\\.)chalmers\\.se', student.email)
+    return m.group(1) if m else None
 
 # TODO: implement functionality
 gitlab_webhook_secret_token = 'a not-so-well-chosen secret'
