@@ -1,5 +1,5 @@
 import chardet
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 import contextlib
 from datetime import datetime, timedelta, timezone
 import decimal
@@ -33,21 +33,40 @@ def flatten(*xss):
     return list(itertools.chain(*xss))
 
 def singleton(x):
-    return [x]
+    return (x,)
 
 def from_singleton(xs):
-    ys = list(xs)
-    assert(len(ys) >= 1)
-    assert(len(ys) <= 1)
-    return ys[0]
+    (x,) = xs
+    return x
+
+def ensure_empty(it):
+    try:
+        next(it)
+        raise ValueError('unexpected element')
+    except StopIteration:
+        return
 
 def from_singleton_maybe(xs):
-    ys = list(xs)
-    assert(len(ys) <= 1)
-    return ys[0] if ys else None
+    xs = iter(xs)
+    try:
+        r = next(xs)
+    except StopIteration:
+        return None
+    try:
+        ensure_empty(xs)
+    except ValueError:
+        raise ValueError('contains more than one element')
+    return r
 
 def choose_unique(f, xs):
     return from_singleton(filter(f, xs))
+
+def swap_pair(xs):
+    (a, b) = xs
+    return (b, a)
+
+def interchange(xss):
+    return tuple(zip(*xss))
 
 def last(xs, default = None, strict = False):
     for x in xs:
@@ -59,11 +78,24 @@ def last(xs, default = None, strict = False):
     assert(not strict)
     return default
 
+def with_special_case(f, key, value):
+    return lambda x: value if x == key else f(x)
+
+def check_return(pred):
+    def f(x):
+        if pred(x):
+            return x
+        raise ValueError(f'Forbidden value {x}')
+    return f
+
 def with_default(f, x, default):
     return f(x) if x != None else default
 
 def with_none(f, x):
     return with_default(f, x, None)
+
+def maybe(f):
+    return lambda x: with_none(f, x)
 
 def without_adjacent_dups(eq, xs):
     has_last = False
@@ -81,9 +113,6 @@ def unique_by(f, xs):
             rs.append(x)
 
     return rs
-
-def on(f, key):
-    return lambda x, y: f(key(x), key(y))
 
 def eq(x, y):
     return x == y
@@ -106,11 +135,13 @@ def starfilter(f, xs):
         if f(*x):
             yield x
 
-def sdict(xs):
+def sdict(xs, strict = True):
     r = dict()
-    for k, v in xs:
-        assert not k in r
-        r[k] = v
+    if strict:
+        for k, v in xs:
+            if k in r:
+                raise ValueError(f'duplicate entry for key {k}')
+            r[k] = v
     return r
 
 def multidict(xs):
@@ -167,17 +198,17 @@ on_fourth = functools.partial(on_component, 3)
 def ev(*x):
     return lambda f: f(*x)
 
-def tuple(*fs):
+def tupling(*fs):
     return lambda *x: tuple(map(ev(*x), fs))
 
 def zip_dicts_with(f, us, vs):
     for k, u in us.items():
         v = vs.get(k)
-        if v:
-            yield (k, f(u, vs[k]))
+        if v != None:
+            yield (k, f(u, v))
 
 def zip_dicts(us, vs):
-    return zip_dicts_with(tuple, us, vs)
+    return zip_dicts_with(tupling, us, vs)
 
 def group_by_unique(f, xs):
     return sdict(map_with_key(f, xs))
@@ -209,6 +240,9 @@ def join_null(lines):
 
 def doublequote(s):
     return '"' + s.replace('\\', '\\\\').replace('"', '\\"') + '"'
+
+def parens(s):
+    return f'({s})'
 
 class Timer:
     def __enter__(self):
@@ -462,16 +496,19 @@ def working_dir(path):
         os.chdir(old)
 
 def log_command(logger, cmd, working_dir = False):
-    logger.log(logging.DEBUG, 'running command{}:\n{}'.format(' in {}'.format(shlex.quote(os.getcwd())) if working_dir else '', shlex.join(cmd)))
+    logger.debug('running command{}:\n{}'.format(' in {}'.format(shlex.quote(os.getcwd())) if working_dir else '', shlex.join(cmd)))
 
 def wait_and_check(process, cmd):
     r = process.wait()
     if r != 0:
         raise subprocess.CalledProcessError(r, cmd)
 
-def clear_cached_property(object, attribute):
-    if attribute in object.__dict__:
-        delattr(object, attribute)
+@contextlib.contextmanager
+def catch_attribute_error():
+    try:
+        yield
+    except AttributeError:
+        pass
 
 # Detection seems not to be so good.
 # A Unicode file with 'Markus Järveläinen' is detected as EUC-KR.
@@ -531,3 +568,121 @@ class ScopedFiles:
     def __exit__(self, type, value, traceback):
         for file in reversed(self.files):
             file.unlink()
+
+Lens = namedtuple('Lens', ['get', 'set'])
+
+# For copyable collections such as list and dict.
+def component(key):
+    def set(u, value):
+        v = u.copy()
+        v[key] = value
+        return v
+
+    return Lens(
+        get = lambda u: u[key],
+        set = lambda u, value: set(u, key, value),
+    )
+
+def component_tuple(key):
+    def set(u, value):
+        v = list(u)
+        v[key] = value
+        return tuple(v)
+
+    return Lens(
+        get = lambda u: u[key],
+        set = set,
+    )
+
+def component_namedtuple(key):
+    return Lens(
+        get = lambda u: u[key],
+        set = lambda u, value: u._replace(key, value),
+    )
+
+def on(lens, f):
+    return lambda u: lens.set(u, f(lens.get(u)))
+
+# These functions take a collection of unary functions
+# and return a unary function acting on collections
+# of the same layout (e.g., same length, same keys).
+def combine_list(fs):
+    return lambda xs: list(f(x) for (f, x) in zip(fs, xs))
+
+def combine_tuple(fs):
+    return lambda xs: tuple(f(x) for (f, x) in zip(fs, xs))
+
+combine = combine_tuple
+
+def combine_dict(fs):
+    return lambda xs: dict((key, f(xs[key])) for (key, f) in fs.items())
+
+def combine_namedtuple(fs):
+    return lambda xs: fs.__class__._make(f(x) for (f, x) in zip(fs, xs))
+
+# Deduce the type of collections to work on from the collection type of the argument.
+def combine_generic(fs):
+    if isinstance(fs, (list, tuple)):
+        r = combine
+    elif isinstance(fs, dict):
+        r = combine_dict
+    elif hasattr(fs.__class__, '_make'):
+        r = combine_namedtuple
+    return r(fs)
+
+def remove_prefix(xs, prefix, strict = True):
+    if xs[:len(prefix)] == prefix:
+        return xs[len(prefix):]
+
+    if strict:
+        raise ValueError('{xs} does not have prefix {[refix}')
+    return xs
+
+def map_values(f, u):
+    return dict((key, f(value)) for (key, value) in u.items())
+
+def eq_on(x, y, f = identity):
+    return f(x) == f(y)
+
+def ne_on(x, y, f = identity):
+    return f(x) != f(y)
+
+def dict_union(us):
+    '''
+    The union of an iterable of dictionaries.
+    Later keys take precedence.
+    '''
+    r = dict()
+    for u in us:
+        r |= u
+    return r
+
+def normalize_list_index(n, i):
+    return i if i >= 0 else n + i
+
+def previous_items(collection, item):
+    ''' Returns a generator producing items in a collection prior to the given one in reverse order. '''
+    found = False
+    for i in reversed(collection):
+        if found:
+            yield i
+        if i == item:
+            found = True
+
+def range_of(xs):
+    xs = tuple(xs)
+    return (min(xs), max(xs) + 1)
+
+def len_range(range):
+    (start, end) = range
+    return end - start
+
+def range_from_size(i, n):
+    return (i, i + n)
+
+def range_singleton(i):
+    return range_from_size(i, 1)
+
+def is_range_singleton(range):
+    (start, end) = range
+    return end == start + 1
