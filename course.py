@@ -189,7 +189,7 @@ class Course:
             self.group_delete_all()
         groups_old = () if delete_existing else self.groups
         for (group_id, canvas_users) in self.groups_on_canvas.items():
-            if not group_id in groups_old and group_id < 4: # TODO: remove hack
+            if not group_id in groups_old:
                 self.group(group_id).create()
 
     @functools.cached_property
