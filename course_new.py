@@ -1,3 +1,4 @@
+import atomicwrites
 import collections
 import dateutil.parser
 import functools
@@ -6,10 +7,12 @@ import gitlab
 import google_tools.general
 import google_tools.sheets
 import gspread
+import json
 import logging
 import operator
 from pathlib import Path, PurePosixPath
 import re
+import shlex
 import types
 import urllib.parse
 
@@ -38,7 +41,7 @@ def parse_issue(config, issue):
                 continue
 
 class Course:
-    def __init__(self, config, *, canvas_use_cache = True, logger = logging.getLogger('course')):
+    def __init__(self, config, *, logger = logging.getLogger('course')):
         self.logger = logger
         self.config = config
 
@@ -49,19 +52,29 @@ class Course:
             print_parse.qualify_with_slash
         )
 
-        self.canvas_use_cache = True
-
     @functools.cached_property
     def canvas(self):
-        return canvas.Canvas(config.canvas.url, auth_token = config.canvas_auth_token)
+        return canvas.Canvas(self.config.canvas.url, auth_token = self.config.canvas_auth_token)
+
+    def canvas_course_get(self, use_cache):
+        return canvas.Course(self.canvas, self.config.canvas.course_id, use_cache = use_cache)
 
     @functools.cached_property
     def canvas_course(self):
-        return canvas.Course(self.canvas, config.canvas.course_id, use_cache = self.canvas_use_cache)
+        return self.canvas_course_get(True)
+
+    def canvas_course_refresh(self):
+        self.canvas_group_set = self.canvas_course_get(False)
+
+    def canvas_group_set_get(self, use_cache):
+        return canvas.GroupSet(self.canvas_course, self.config.canvas.group_set, use_cache = use_cache)
 
     @functools.cached_property
     def canvas_group_set(self):
-        return canvas.GroupSet(self.canvas_course, config.canvas.group_set, use_cache = self.canvas_use_cache)
+        return self.canvas_group_set_get(True)
+
+    def canvas_group_set_refresh(self):
+        self.canvas_group_set = self.canvas_group_set_get(False)
 
     @functools.cached_property
     def gl(self):
@@ -143,6 +156,23 @@ class Course:
         for group_id in self.groups:
             self.group(group_id).delete()
 
+    def create_groups_on_canvas(self, group_ids):
+        '''
+        Create (additional) additional groups with the given ids (e.g. range(50)) on Canvas.
+        This uses the configured Canvas group set where students sign up for lab groups.
+        Refreshes the Canvas cache and local cache of the group set (this part of the call may not be interrupted).
+        '''
+        group_names = general.sdict((group_id, self.config.group.name.print(group_id)) for group_id in group_ids)
+        for group_name in group_names.values():
+            if group_name in self.canvas_group_set.name_to_id:
+                raise ValueError(f'Group {group_name} already exists in Canvas group set {self.canvas_group_set.group_set.name}')
+
+        for group_name in group_names.values():
+            self.canvas_group_set.create_group(group_name)
+        self.canvas_group_set_refresh()
+        with general.catch_attribute_error():
+            del self.groups_on_canvas
+
     @functools.cached_property
     def groups_on_canvas(self):
         return dict(
@@ -160,6 +190,115 @@ class Course:
         for (group_id, canvas_users) in self.groups_on_canvas.items():
             if not group_id in groups_old and group_id < 4: # TODO: remove hack
                 self.group(group_id).create()
+
+    @functools.cached_property
+    def gitlab_users(self):
+        return dict((user.username, user) for user in self.gl.users.list(all = True))
+
+    def test(self):
+        import re
+        for student in course.canvas_course.user_details.values():
+            m = re.fullmatch('(.*)@(?:student\\.)chalmers\\.se', student.email)
+            if m:
+                cid = m.group(1)
+                gitlab_user = gitlab_users_by_username.get(cid)
+                if gitlab_user:
+                    print(f'{cid} found')
+                else:
+                    print(f'{cid} NOT FOUND')
+            else:
+                print(f'Student {student.name} does not have a Chalmers email address registered on Canvas.')
+
+    def test2(self):
+        path = PurePosixPath('/') / 'groups' / self.graders_group.lazy.id / 'invitations'
+
+        gitlab_tools.invitation_create(self.gl, self.graders_group.lazy, 'sattler@chalmers.se', gitlab.DEVELOPER_ACCESS, exist_ok = True)
+
+        #general.print_json(self.gl.http_delete(str(path / 'sattler.christian@gmail.com')))
+
+        return self.gl.http_list(str(path), all = True)
+
+    @contextlib.contextmanager
+    def invitation_history(path):
+        try:
+            with path.open() as file:
+                history = json.load(file)
+        except FileNotFoundError:
+            self.logger.warning(
+                f'Invitation history file {shlex.quote(str(invitation_history))} not found; '
+                'a new one while be created.'
+            )
+            history = dict()
+        try:
+            yield history
+        finally:
+            with atomicwrites.atomic_write(path, overwrite = True) as file:
+                json.dump(history, file)
+
+    def invite_students_to_gitlab(self, path_invitation_history):
+        '''
+        Invite students from Chalmers/GU Canvas signed up for lab groups
+        to the corresponding groups on Chalmers GitLab.
+        The argument 'invitation_history' is to a JSON file that is used
+        (read and written) by this method as a ledger of performed invitations.
+        This is necessary because Chalmers provides no way of connecting
+        a student on Chalmers/GU Canvas with a user on GitLab Chalmers.
+
+        For each student, we consider:
+        * the current group membership on Canvas,
+        * the past membership invitations according to invitation_history,
+        * which of the groups and projects in invitation_history they are still a member of on GitLab.
+
+        The invitation_history file is a dictionary mapping Canvas user id
+        '''
+
+        with self.invitation_history(path_invitation_history) as history:
+            for student in self.canvas_course.user_details.values():
+                history_student = history.setdefault(student, dict())
+
+                def group_id_from_canvas():
+                    canvas_group_id = self.canvas_group_set.user_to_group.get(student.id)
+                    if canvas_group_id == None:
+                        return None
+                    return self.config.group.name.parse(self.canvas_group_set.details[canvas_group_id].name)
+                group_id_current = group_id_from_canvas()
+
+                # an invitation action is one of:
+                # * sent invitations to group_id, email
+                # * cancelled invitation or checked that it is not longer there
+                # ...
+
+                # an invitation
+
+                for group_id
+                history_student.invitations
+
+
+                # cancel all invitations to other groups
+                # send invitation to current group
+
+                current_invitations # from history
+                old_invitations
+
+                student_history = history.get(student)
+                self.canvas_group_set.user_to_group.get(student.id)
+                # student.email
+
+                if not history_student:
+                    history.pop(student)
+
+        # For each student, we consider:
+        # * current membership status on gitlab
+        #   - too expensive to query all groups and projects
+        #   - only query the ones they used to be part of?
+        #   - or query all once
+        # * past invitations
+        # * current membership
+
+        #for (group_id, students) in self.group_on_canvas.items():
+        #    for student in students:    
+
+        #self.config.gitlab_username_from_canvas_user
 
     @functools.cached_property
     def graders(self):
@@ -331,7 +470,7 @@ class Course:
 
 if __name__ == "__main__":
     logging.basicConfig()
-    logging.root.setLevel(logging.DEBUG)
+    logging.root.setLevel(logging.INFO)
 
     import gitlab_config as config
 

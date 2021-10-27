@@ -1,7 +1,8 @@
 # Should only be imported qualified.
 import ast
-import re
+import builtins
 import collections
+import re
 import string
 import urllib.parse
 
@@ -23,7 +24,7 @@ def compose(x, y):
     )
 
 def compose_many(*xs):
-    xs = _tuple(xs)
+    xs = builtins.tuple(xs)
     return PrintParse(
         print = general.compose_many(*(x.print for x in xs)),
         parse = general.compose_many(*(x.parse for x in reversed(xs))),
@@ -53,8 +54,8 @@ singleton = PrintParse(
 #from_singleton = swap(singleton)
 
 reversal = PrintParse(
-    print = lambda xs: _tuple(reversed(xs)),
-    parse = lambda xs: _tuple(reversed(xs)),
+    print = lambda xs: builtins.tuple(reversed(xs)),
+    parse = lambda xs: builtins.tuple(reversed(xs)),
 )
 
 def on_print(print):
@@ -80,14 +81,14 @@ def on(lens, x):
 # These functions take collections of printer-parsers.
 def combine(xs):
     return PrintParse(
-        print = general.combine(_tuple(x.print for x in xs)),
-        parse = general.combine(_tuple(x.parse for x in xs)),
+        print = general.combine(builtins.tuple(x.print for x in xs)),
+        parse = general.combine(builtins.tuple(x.parse for x in xs)),
     )
 
 def combine_dict(xs):
     return PrintParse(
-        print = general.combine_dict(dict((key, x.print) for (key, x) in xs.items())),
-        parse = general.combine_dict(dict((key, x.parse) for (key, x) in xs.items())),
+        print = general.combine_dict(builtins.dict((key, x.print) for (key, x) in xs.items())),
+        parse = general.combine_dict(builtins.dict((key, x.parse) for (key, x) in xs.items())),
     )
 
 def combine_namedtuple(xs):
@@ -97,16 +98,13 @@ def combine_namedtuple(xs):
     )
 
 def combine_generic(fs):
-    if isinstance(fs, (_list, _tuple)):
+    if isinstance(fs, (builtins.list, builtins.tuple)):
         r = combine
-    elif isinstance(fs, dict):
+    elif isinstance(fs, builtins.dict):
         r = combine_dict
     elif hasattr(fs.__class__, '_make'):
         r = combine_namedtuple
     return r(fs)
-
-# Sidestep limitations of shadowing in Python.
-_list = list
 
 def list(x):
     return PrintParse(
@@ -114,13 +112,16 @@ def list(x):
         parse = lambda vs: [x.parse(v) for v in vs],
     )
 
-# Sidestep limitations of shadowing in Python.
-_tuple = tuple
-
 def tuple(x):
     return PrintParse(
-        print = lambda vs: _tuple(x.print(v) for v in vs),
-        parse = lambda vs: _tuple(x.parse(v) for v in vs),
+        print = lambda vs: builtins.tuple(x.print(v) for v in vs),
+        parse = lambda vs: builtins.tuple(x.parse(v) for v in vs),
+    )
+
+def dict(x):
+    return PrintParse(
+        print = lambda vs: builtins.dict((key, x.print(v)) for (key, v) in vs.items()),
+        parse = lambda vs: builtins.dict((key, x.parse(v)) for (key, v) in vs.items()),
     )
 
 def maybe(x):
@@ -218,7 +219,7 @@ def regex_keyed(holed_string, regexes_keyed, **kwargs):
         holed_string,
         regex_escaping_formatter.format(
             holed_string,
-            **dict((key, f'(?P<{key}>{regex})') for (key, regex) in regexes_keyed.items())
+            **builtins.dict((key, f'(?P<{key}>{regex})') for (key, regex) in regexes_keyed.items())
         ),
         **kwargs,
     )
@@ -236,7 +237,7 @@ qualify_with_slash = regex_many('{}/{}', ['[^/]*', '.*'])
 # The default semantics is strict, assuming that values and printings are unique.
 # If duplicates are allowed, use strict = False.
 def from_dict(xs, print_strict = True, parse_strict = True):
-    xs = _tuple(xs)
+    xs = builtins.tuple(xs)
     return PrintParse(
         print = general.sdict(((x, y) for (x, y) in xs), strict = print_strict).__getitem__,
         parse = general.sdict(((y, x) for (x, y) in xs), strict = parse_strict).__getitem__,

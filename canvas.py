@@ -245,6 +245,8 @@ class Canvas:
 # So that's not a good way to extract the id.
 class Course:
     def __init__(self, canvas, course_id, use_cache = True):
+        logger.info(f'loading course {course_id}.')
+
         self.canvas = canvas
         self.course_id = course_id
         self.endpoint = ['courses', self.course_id]
@@ -447,6 +449,8 @@ class Course:
 
 class GroupSet:
     def __init__(self, course, group_set, use_cache = True):
+        logger.info(f'loading group set {group_set}.')
+
         self.canvas = course.canvas
         self.course = course
 
@@ -475,6 +479,14 @@ class GroupSet:
 
     def members_str(self, id):
         return self.course.users_str(self.group_users[id])
+
+    def create_group(self, name):
+        logger.info(f'Creating group with name {name} in group set {self.group_set.name}')
+        self.canvas.post(['group_categories', self.group_set.id, 'groups'], json = {
+            'name': name,
+#            'description': None,
+            'join_level': 'parent_context_auto_join',
+        })
 
 class Assignment:
     def __init__(self, course, assignment_id, use_cache = True):

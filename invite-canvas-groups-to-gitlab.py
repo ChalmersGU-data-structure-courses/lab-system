@@ -81,7 +81,7 @@ print('Authenticating...')
 gl = gitlab.Gitlab('https://git.chalmers.se/', private_token = file_token.read_text())
 gl.auth()
 
-
+cou
 u = gl.users
 
 gitlab_users_by_username = dict((user.username, user) for user in u.list(all = True))
