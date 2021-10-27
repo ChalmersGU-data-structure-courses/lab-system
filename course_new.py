@@ -1,5 +1,6 @@
 import atomicwrites
 import collections
+import contextlib
 import dateutil.parser
 import functools
 import general
@@ -233,7 +234,7 @@ class Course:
             yield history
         finally:
             with atomicwrites.atomic_write(path, overwrite = True) as file:
-                json.dump(history, file)
+                json.dump(history, file, indent = 4)
 
     def invite_students_to_gitlab(self, path_invitation_history):
         '''
@@ -251,10 +252,17 @@ class Course:
 
         The invitation_history file is a dictionary mapping Canvas user id
         '''
+        self.logger.info('inviting students from Canvas groups to GitLab groups')
 
         with self.invitation_history(path_invitation_history) as history:
+            class InvitationStatus(enum.Enum):
+                TO_INVITE = 'to invite'
+                LIVE = 'live'
+                POSSIBLY_ACCEPTED = 'possibly accepted'
+
             for student in self.canvas_course.user_details.values():
                 history_student = history.setdefault(student, dict())
+                history_student['name'] = student.name
 
                 def group_id_from_canvas():
                     canvas_group_id = self.canvas_group_set.user_to_group.get(student.id)
@@ -270,35 +278,55 @@ class Course:
 
                 # an invitation
 
-                for group_id
-                history_student.invitations
+                # Include current group in the following iteration.
+                invitation_history = history_student['invitations']
+                if group_id_current != None:
+                    invitation_history.setdefault(group_id_current, dict())
 
+                for (group_id, invitations_by_email) in invitation_history.items():
+                    invitations = gitlab_tools.invitation_list(self.gl, self.group(group_id).lazy)
+                    def invitation_for(email):
+                        return general.from_singleton_maybe(filter(
+                            lambda invitation: invitation.email == email,
+                            invitations,
+                        ))
 
-                # cancel all invitations to other groups
-                # send invitation to current group
+                    # Check status of live invitations and revoke those for old emails or groups.
+                    for (email, status) in list(invitations_by_email.items()):
+                        if status == InvitationStatus.LIVE:
+                            invitation = invitation_for(email)
+                            if not invitation:
+                                self.logger.debug(f'marking invitation of {email} to {group_id} as possibly accepted')
+                                group_invitations[email] = InvitationStatus.POSSIBLY_ACCEPTED
+                            elif not (email == student.email and group_id == group_id_current):
+                                self.logger.debug(f'deleting outdated invitation of {email} to {group_id}')
+                                try:
+                                    gitlab_tools.delete(self.gl, self.group(group_id).lazy, email)
+                                    del group_invitations[email]
+                                except GitlabHttpError as e:
+                                    if f.response_code == 404:
+                                        group_invitations[email] = InvitationStatus.POSSIBLE_ACCEPTED
+                                    else:
+                                        raise
 
-                current_invitations # from history
-                old_invitations
+                    # Invite student to current group, if not already done.
+                    if group_id == group_id_current:
+                        if not student.email in invitations_by_email:
+                            self.logger.debug(f'creating invitation of {student.email} to {group_id}')
+                            gitlab_tools.invitation_create(
+                                self.gl,
+                                self.group(group_id).lazy,
+                                student.email,
+                                gitlab.DEVELOPER_ACCESS,
+                                exist_ok = True,
+                            )
+                            invitations_by_email[student.email] = InvitationStatus.LIVE
 
-                student_history = history.get(student)
-                self.canvas_group_set.user_to_group.get(student.id)
-                # student.email
+                    if not invitations_by_email:
+                        del invitation_history[group_id]
 
-                if not history_student:
+                if not invitation_history:
                     history.pop(student)
-
-        # For each student, we consider:
-        # * current membership status on gitlab
-        #   - too expensive to query all groups and projects
-        #   - only query the ones they used to be part of?
-        #   - or query all once
-        # * past invitations
-        # * current membership
-
-        #for (group_id, students) in self.group_on_canvas.items():
-        #    for student in students:    
-
-        #self.config.gitlab_username_from_canvas_user
 
     @functools.cached_property
     def graders(self):
@@ -467,20 +495,3 @@ class Course:
         return self.request_namespace(lambda request_type, spec:
             merge(request_type, spec, request_tags.__dict__[request_type], response_issues.__dict__[request_type])
         )
-
-if __name__ == "__main__":
-    logging.basicConfig()
-    logging.root.setLevel(logging.INFO)
-
-    import gitlab_config as config
-
-    course = Course(config)
-    #project = course.gl.projects.get('courses/DIT181/test/groups/00/lab-2')
-    #r = course.merge_requests_and_responses(project)
-    #print(r)
-
-    #cv = canvas.Canvas('chalmers.instructure.com', auth_token = config.canvas_auth_token)
-    #cc = canvas.Course(cv, 10681)
-    #for x in cc.user_details.values():
-    #    general.print_json(x)
-    #    break
