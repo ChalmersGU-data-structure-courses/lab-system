@@ -16,7 +16,7 @@ import tempfile
 import webbrowser
 
 import check_symlinks
-from course import *
+from course_old import *
 from general import *
 import get_feedback_helpers
 import java
