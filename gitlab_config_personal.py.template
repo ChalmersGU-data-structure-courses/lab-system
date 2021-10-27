@@ -18,10 +18,5 @@ canvas_auth_token = None
 # Path to Google service account credential file
 google_credentials_path = this_dir / 'google_tools' / 'credentials.json'
 
-# Path to local directory with labs.
-# This should be an absolute path.
-# Otherwise, it will be interpreted relative to the current directory.
-dir_labs = None  # Path('~/DIT181').expanduser()
-
 # Relative machine speed to calibrate the robograder.
 robograder_machine_speed = 1
