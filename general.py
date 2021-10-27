@@ -39,10 +39,24 @@ def from_singleton(xs):
     (x,) = xs
     return x
 
+def ensure_empty(it):
+    try:
+        next(it)
+        raise ValueError('unexpected element')
+    except StopIteration:
+        return
+
 def from_singleton_maybe(xs):
-    ys = list(xs)
-    assert(len(ys) <= 1)
-    return ys[0] if ys else None
+    xs = iter(xs)
+    try:
+        r = next(xs)
+    except StopIteration:
+        return None
+    try:
+        ensure_empty(xs)
+    except ValueError:
+        raise ValueError('contains more than one element')
+    return r
 
 def choose_unique(f, xs):
     return from_singleton(filter(f, xs))
