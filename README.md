@@ -24,6 +24,7 @@ pip install -r requirements.txt
 ```
 
 Create an untracked copy of `gitlab_config_personal.py.template` and remove the suffix.
+This file stores personal configuration such as access keys and paths local to your filesystem.
 We will fill in the configuration values below.
 
 ### Canvas
@@ -120,8 +121,11 @@ If you find that information handled by the script is no longer up to date, you 
 ### Chalmers GitLab group structure
 
 The following is an overview of the group structure on Chalmers GitLab.
-You need to create the three top-level groups and invite all graders to the group called *graders*.
+You need to create the three top-level groups and invite all graders to the group *graders*.
 The remaining hierarchy will be created by the lab scripts.
+
+Note that the names of these groups are just placeholders.
+Their actual name is configured in a configuration file, as explained further down.
 
 ```
 graders             # Who should be allowed to grade?
@@ -291,12 +295,18 @@ Its output is made available to the student group via a new issue in the Chalmer
 
 ## Configuration
 
-The lab scripts are configured via the file `gitlab_config.py`.
-To get started, create an untracked copy of `gitlab_config_personal.py.template` and remove the suffix.
-Fill in and/or change the configuration values according to your needs.
+The lab scripts take as argument a configuration module.
+A template for this module can be found in `gitlab_config.py.template`.
+It includes documentation for each configuration parameter in the form of comments.
+You should be able to follow these explanations after having read this document.
 
-The above template configuration file includes documentation for each parameter in the form of comments.
-After reading the current document, you should be able to make sense of these comments.
+Most options have default values that are generally suitable.
+Fill in and/or change them according to your needs.
+Note that this is a Python file, so you may use logic to dynamically generate configuration values.
+
+By default, personal configuration (as opposed to simply course-specific configuration) such as access keys and local directories is imported from the separate module `gitlab_config_personal.py`.
+We have filled out the access key options above.
+Fill out the remaining options according to their documentation.
 
 ## Running
 
