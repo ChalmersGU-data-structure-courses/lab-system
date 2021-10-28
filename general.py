@@ -503,13 +503,6 @@ def wait_and_check(process, cmd):
     if r != 0:
         raise subprocess.CalledProcessError(r, cmd)
 
-@contextlib.contextmanager
-def catch_attribute_error():
-    try:
-        yield
-    except AttributeError:
-        pass
-
 # Detection seems not to be so good.
 # A Unicode file with 'Markus Järveläinen' is detected as EUC-KR.
 def detect_encoding(files):

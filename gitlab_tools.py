@@ -1,3 +1,4 @@
+import contextlib
 import functools
 import general
 import gitlab
@@ -90,7 +91,7 @@ class CachedGroup:
         #self.get().delete()
         # Workaround:
         self.gl.groups.delete(str(self.path))
-        with general.catch_attribute_error():
+        with contextlib.suppress(AttributeError):
             del self.get
 
     def replace_create(self, f):
@@ -139,8 +140,40 @@ class CachedProject:
         #self.get().delete()
         # Workaround:
         self.gl.projects.delete(str(self.path))
-        with general.catch_attribute_error():
+        with contextlib.suppress(AttributeError):
             del self.get
+
+@contextlib.contextmanager
+def exist_ok():
+    try:
+        yield
+    except GitlabCreateError as e:
+        if not e.response_code == 409:
+            raise
+    except GitlabDeleteError as e:
+        if not e.response_code == 404:
+            raise
+
+def exist_ok_check(enabled = False):
+    return exist_ok() if enabled else contextlib.nullcontext()
+
+def users_dict(manager):
+    return dict((user.username, user) for user in manager.list(all = True))
+
+def members_dict(entity):
+    return users_dict(entity.members)
+
+def member_create(entity, user_id, access_level, exist_ok = False, **kwargs):
+    with exist_ok_check(exist_ok):
+        entity.members.create({
+            'user_id': user_id,
+            'access_level': access_level,
+            **kwargs,
+        })
+
+def member_delete(entity, user_id, exist_ok = False):
+    with exist_ok_check(exist_ok):
+        entity.members.delete(user_id)
 
 def entity_path_segment(entity):
     type_segment = {
@@ -155,11 +188,8 @@ def invitation_list(gitlab_client, entity):
         all = True
     )
 
-def invitation_create(gitlab_client, entity, email, access_level, exist_ok = False, **kwargs):
-    '''
-    Information on arguments:
-    * entity: A group or a project (can be lazy).
-    '''
+@gitlab.exceptions.on_http_error(gitlab.exceptions.GitlabCreateError)
+def invitation_create(gitlab_client, entity, email, access_level, **kwargs):
     r = gitlab_client.http_post(
         str(PurePosixPath('/') / entity_path_segment(entity) / 'invitations'),
         post_data = {
@@ -169,40 +199,15 @@ def invitation_create(gitlab_client, entity, email, access_level, exist_ok = Fal
         }
     )
 
-    def exist(message):
-        if len(message) == 1:
-            msg = next(iter(message.values()))
-            for s in ['Member already invited', 'Already a member']:
-                if msg.startswith(s):
-                    return True
-        return False
-
     if r['status'] == 'error':
-        message = r['message']
-        if not (exist_ok and exist(message)):
-            raise ValueError(str(message))
+        message = general.from_singleton(r['message'].values())
+        response_code = None
+        if any(message.startswith(prefix) for prefix in ['Member already invited', 'Already a member']):
+            response_code = 409
+        raise gitlab.exceptions.GitlabCreateError(message, response_code = response_code)
 
+@gitlab.exceptions.on_http_error(gitlab.exceptions.GitlabDeleteError)
 def invitation_delete(gitlab_client, entity, email):
     gitlab_client.http_delete(
         str(PurePosixPath('/') / entity_path_segment(entity) / 'invitations' / email),
     )
-
-if __name__ == '__main__':
-    logging.basicConfig()
-    logging.root.setLevel(logging.DEBUG)
-   
-    print('asd')
- 
-    import gitlab_config as config
-    from pathlib import PurePosixPath
-    
-    g = gitlab.Gitlab(
-        config.base_url,
-        private_token = read_private_token(config.gitlab_private_token)
-    )
-    g.auth()
-
-    root = PurePosixPath('/')
-
-    #g.http_list(root / 'projects' / )
-
