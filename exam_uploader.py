@@ -87,7 +87,7 @@ def write_test_instances(course, dir):
     for format in formats:
         dir_format = dir / format.extension
         dir_format.mkdir()
-        for user in course.user_details.values():
+        for user in course.students:
             r = random.Random(user.integration_id)
             i = r.choice(range(20))
             target = dir_format / add_extension(user.integration_id, format.extension)
@@ -105,7 +105,7 @@ def read_instances_format(course, format, dir):
                 yield (course.user_integration_id_to_id[file.stem], file)
 
     instances = dict(helper())
-    for user in course.user_details.values():
+    for user in course.students:
         assert user.id in instances, 'no exam instance of format {} found for student {} (integration id {})'.format(format.extension, course.user_str(user.id), user.integration_id)
 
     return instances
@@ -115,7 +115,7 @@ def read_instances(course, dir):
 
     def f(id):
         return dict((format.extension, by_format[format.extension][id]) for format in formats)
-    return dict((id, f(id)) for id in course.user_details.keys())
+    return dict((id, f(id)) for id in course.student_ids)
 
 #id = exam.get_dir_id(canvas_instance_dir, use_cache = False)
 #if id != None:
@@ -133,7 +133,7 @@ def get_student_versions(lookup):
 def upload_solutions(instances, lookup):
     student_versions = get_student_versions(lookup)
     def f():
-        for user in exam.user_details.values():
+        for user in exam.students:
             folder = exam.get_folder_by_path(canvas_instance_dir / integration_id_with_hash(user.integration_id))
 
             #exam.edit_folder(folder.id, unlock_at = None, lock_at = None, hidden = True)
@@ -175,7 +175,7 @@ For comparison, here are your original exam problems: {f(file_exam)}'''
 def create_canvas_instance_folder(instances, extra_time_students):
     folder = exam.create_folder(canvas_instance_dir, hidden = 'true')
     def f():
-        for user in exam.user_details.values():
+        for user in exam.students:
             hashed_and_locked = exam.create_folder(
                 canvas_instance_dir / integration_id_with_hash(user.integration_id),
                 unlock_at = start,
@@ -229,7 +229,7 @@ def post_assignments(extra_time_students, instances_on_canvas, users = None, ove
     from dominate.util import raw, text
 
     if users == None:
-        users = exam.user_details.values()
+        users = exam.students
 
     def e():
         for user in users:
@@ -286,7 +286,7 @@ def download_submissions(dir, use_cache = True):
 
 def write_lookup(course, submission_dir, lookup_file):
     lookup = dict((i, []) for i in range(20))
-    for user in course.user_details.values():
+    for user in course.students:
         #if (submissions_dir / user.integration_id).exists():
             r = random.Random(user.integration_id)
             i = r.choice(range(20))

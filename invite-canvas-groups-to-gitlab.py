@@ -68,9 +68,9 @@ exit()
 def username_from_email(s):
     return s.split('@')[0]
 
-users_by_keys = dict((user.name.split(' ')[0].lower(), user) for user in course.user_details.values())
+users_by_keys = dict((user.name.split(' ')[0].lower(), user) for user in course.students)
 
-for user in course.user_details.values():
+for user in course.students:
     if not username_from_email(user.email) == user.login_id:
         print_json(user)
 
