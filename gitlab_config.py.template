@@ -355,7 +355,9 @@ outside_canvas = []
 name_corrections = {}
 
 # Retrieve the Chalmers GitLab username for a user on Chalmers/GU Canvas.
-# This is needed to add students retrieved from Canvas to groups or projects on Chalmers GitLab.
+# This is needed to:
+# * add teachers as retrieved from Canvas to the grader group on GitLab,
+# * add students as retrieved from Canvas to groups or projects on GitLab.
 # Return None if not possible.
 def gitlab_username_from_canvas_user(user):
     m = re.fullmatch('(.*)@(?:student\\.)chalmers\\.se', student.email)
