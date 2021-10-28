@@ -249,6 +249,21 @@ class Canvas:
 # Retrieving the user's profile (canvas.get(['users', id, 'profile']) always includes the login_id.
 # The Chalmers login id might not be a valid email address (to confirm).
 class Course:
+    roles_student = ['StudentEnrollment']
+    roles_teacher = ['Examiner', 'TeacherEnrollment', 'TaEnrollment']
+
+    @staticmethod
+    def has_some_role(user, roles):
+        return any(enrollment.role in roles for enrollment in user.enrollments)
+
+    @staticmethod
+    def is_student(user):
+        return Course.has_some_role(user, Course.roles_student)
+
+    @staticmethod
+    def is_teacher(user):
+        return Course.has_some_role(user, Course.roles_teacher)
+
     def get_all_users(self, use_cache = True):
         return self.canvas.get_list(['courses', self.course_id, 'users'], params = {
             'include[]': ['enrollments'],
@@ -262,57 +277,41 @@ class Course:
         self.course_id = course_id
         self.endpoint = ['courses', self.course_id]
 
-        # TODO: for future:
-        # * renaming 'user_*' to 'student_*'
-        # * modularize with 'teacher_*'.
+        self.users = self.get_all_users(use_cache = use_cache)
+
         self.user_details = dict()
         self.user_name_to_id = dict()
         self.user_sortable_name_to_id = dict()
         self.user_integration_id_to_id = dict()
         self.user_sis_id_to_id = dict()
-
-        # new style
-        self.user_by_integration_id = dict()
-        self.user_by_sis_id = dict()
-
-        all_users = self.get_all_users(use_cache = use_cache)
-        for user in all_users:
-            if any(e.role == 'StudentEnrollment' for e in user.enrollments):
+        for user in self.users:
+            if Course.has_some_role(user, Course.roles_student + Course.roles_teacher):
                 self.user_details[user.id] = user
                 self.user_name_to_id[user.name] = user.id
                 self.user_sortable_name_to_id[user.sortable_name] = user.id
                 self.user_integration_id_to_id[user.integration_id] = user.id
                 self.user_sis_id_to_id[user.sis_user_id] = user.id
 
-                self.user_by_integration_id[user.integration_id] = user
-                self.user_by_sis_id[user.sis_user_id] = user
+        self.students = tuple(filter(Course.is_student, self.users))
+        self.student_details = dict((user.id, user) for user in self.students)
 
-        self.teacher_details = dict()
-        self.teacher_name_to_id = dict()
-        self.teacher_sortable_name_to_id = dict()
-        self.teacher_integration_id_to_id = dict()
-        self.teacher_sis_id_to_id = dict()
-
-        # new style
-        self.teacher_by_integration_id = dict()
-        self.teacher_by_sis_id = dict()
-
-        for user in all_users:
-            if any(e.role in ['Examiner', 'TeacherEnrollment', 'TaEnrollment'] for e in user.enrollments):
-                self.teacher_details[user.id] = user
-                self.teacher_name_to_id[user.name] = user.id
-                self.teacher_sortable_name_to_id[user.sortable_name] = user.id
-                self.teacher_integration_id_to_id[user.integration_id] = user.id
-                self.teacher_sis_id_to_id[user.sis_user_id] = user.id
-
-                self.teacher_by_integration_id[user.integration_id] = user
-                self.teacher_by_sis_id[user.sis_user_id] = user
+        self.teachers = tuple(filter(Course.is_teacher, self.users))
+        self.teacher_details = dict((user.id, user) for user in self.teachers)
 
         self.assignments_name_to_id = dict()
         self.assignment_details = dict()
         for assignment in self.get_assignments(use_cache = use_cache):
             self.assignment_details[assignment.id] = assignment
             self.assignments_name_to_id[assignment.name] = assignment.id
+
+    def _user_maybe(user_id):
+        return self.user_details[user_id] if user_id != None else None
+
+    def user_by_sis_id(self, sis_id):
+        return self._user_maybe(self.user_sis_id_to_id.get(sis_id))
+
+    def user_by_integration_id(self, integration_id):
+        return self._user_maybe(self.user_integration_id_to_id.get(integration_id))
 
     def user_str(self, id):
         return '{} (id {})'.format(self.user_details[id].name, id)
