@@ -844,7 +844,7 @@ body {
         if n != None:
             user_ids = self.get_canvas_group_users(n)
 
-        for user in self.course.canvas_course.user_details.values():
+        for user in self.course.canvas_course.students:
             if set(set(Lab.name_parts(name))).issubset(set(Lab.name_parts(user.name))):
                 if n == None or user.id in user_ids:
                     yield (user.name, user.id)
