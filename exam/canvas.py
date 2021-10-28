@@ -57,7 +57,7 @@ class Exam:
                 return self.exam_config.max_versions
 
         self.allocations = allocate_versions.allocate(
-            [user.sis_user_id for user in self.course.user_details.values()],
+            [user.sis_user_id for user in self.course.students],
             dict((self.exam_config.question_key(q), get_num_versions(v)) for q, v in self.exam_config.question_randomizers.items()),
             seed = self.exam_config.allocation_seed,
         )
@@ -65,7 +65,7 @@ class Exam:
         allocate_versions.write(
             self.exam_config.allocations_file,
             self.allocations,
-            lambda id: self.course.user_by_sis_id[id].name
+            lambda id: self.course.user_by_sis_id(id).name
         )
 
     def format_id(self, id):
@@ -172,7 +172,7 @@ class Exam:
         This automatically updates the links in already created assignments to point to the new files.
         '''
         if users == None:
-            users = self.course.user_details.values()
+            users = self.course.students
 
         for user in users:
             self.upload_instance(user, delete_old = delete_old, solution = solution)
@@ -254,13 +254,13 @@ class Exam:
         '''
         if users == None:
             assignments = self.get_assignments()
-            users = [user for user in self.course.user_details.values() if (user.id in assignments) == update]
+            users = [user for user in self.course.students if (user.id in assignments) == update]
 
         for user in users:
             self.create_assignment(user, publish = publish, update = update)
 
     def set_instances_availability(self):
-        for user in self.course.user_details.values():
+        for user in self.course.students:
             folder = self.course.get_folder_by_path(self.instance_folder_path(user))
             has_extra_time = user.id in self.extra_time_students
             self.course.edit_folder(
@@ -374,7 +374,7 @@ class Exam:
     def print_comments(self, file = sys.stdout, use_cache = True):
         for id in self.allocations:
             student, _ = self.allocations[id]
-            user = self.course.user_by_sis_id[student]
+            user = self.course.user_by_sis_id(student)
             if assignment := self.assignments.get(user.id):
                 submission = self.course.get_submissions(assignment.id, use_cache = use_cache)[0]
                 if submission.workflow_state != 'unsubmitted':
@@ -665,7 +665,7 @@ class Exam:
 
             return True
 
-        students = [user for user in self.course.user_details.values() if include(user)]
+        students = [user for user in self.course.students if include(user)]
         students.sort(key = operator.attrgetter('sortable_name'))
         self.write_grading_report_for_users(output, students)
 
@@ -718,7 +718,7 @@ class Exam:
 
     def upload_gradings(self, users = None, **args):
         if users == None:
-            users = self.course.user_details.values()
+            users = self.course.students
 
         for user in users:
             self.upload_grading(user, **args)

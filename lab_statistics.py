@@ -108,7 +108,7 @@ logging.getLogger().setLevel(logging.INFO if args.verbose else 25)
 canvas = Canvas(config.canvas_url, cache_dir = Path(args.cache_dir))
 course = Course(canvas, config.course_id, use_cache = not args.refresh_group_set)
 
-users = course.user_details.values()
+users = course.students
 
 def normalize_personnummer(p):
     return p.replace('-', '').strip()
@@ -120,7 +120,7 @@ if args.ladok_file:
         rows = list(namespaced(csv_reader))
     print_error('{} student(s) registered in Ladok.'.format(len(rows)))
 
-    us = group_by_unique(get_attr('sis_user_id'), course.user_details.values())
+    us = group_by_unique(get_attr('sis_user_id'), users)
     vs = group_by_unique(compose(get_attr('personnummer'), normalize_personnummer), rows)
 
     def check(x, us_name, vs_name):

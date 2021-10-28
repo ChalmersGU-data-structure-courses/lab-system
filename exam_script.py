@@ -24,7 +24,7 @@ exams = dict((key, Exam(exam_config)) for (key, exam_config) in exam_configs.ite
 
 def search_user(exam, pattern):
     def f():
-        for user in exam.course.user_details.values():
+        for user in exam.course.students:
             if pattern in user.name:
                 yield user
     return list(f())

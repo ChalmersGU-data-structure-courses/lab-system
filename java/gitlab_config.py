@@ -354,12 +354,28 @@ outside_canvas = []
 # Giving a value of 'None' means that the student should be ignored.
 name_corrections = {}
 
-# Retrieve the Chalmers GitLab username for a user on Chalmers/GU Canvas.
-# This is needed to add students retrieved from Canvas to groups or projects on Chalmers GitLab.
+# Format CID as email address (CID@chalmers.se).
+# This is not necessarily a valid email address for this user (e.g., not for non-staff).
+_cid = print_parse.regex('{}@chalmers.se')
+
+# Format GU ID as email address (GU-ID@gu.se).
+_gu_id = print_parse.regex('{}@gu.se')
+
+# Retrieve the Chalmers GitLab username for a user id on Chalmers/GU Canvas.
+# This is needed to:
+# * add teachers as retrieved from Canvas to the grader group on GitLab,
+# * add students as retrieved from Canvas to groups or projects on GitLab.
 # Return None if not possible.
-def gitlab_username_from_canvas_user(user):
-    m = re.fullmatch('(.*)@(?:student\\.)chalmers\\.se', student.email)
-    return m.group(1) if m else None
+# Takes the course object and the Canvas user object as arguments.
+def gitlab_username_from_canvas_user_id(course, user_id):
+    login_id = course.canvas_login_id(user_id)
+    try:
+        cid = _cid.parse(login_id)
+        if cid == 'peb':
+            return 'Peter.Ljunglof'
+        return cid
+    except ValueError:
+        pass
 
 # Used for programmatic push notifications on GitLab.
 # Value doesn't matter, but should not be guessable.
