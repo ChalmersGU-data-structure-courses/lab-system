@@ -200,13 +200,13 @@ class Course:
 
         def create():
             group = gitlab_tools.CachedGroup.create(r, self.groups_group.get)
-            with general.catch_attribute_error():
+            with contextlib.suppress(AttributeError):
                 del self.groups
         r.create = create
 
         def delete():
             gitlab_tools.CachedGroup.delete(r)
-            with general.catch_attribute_error():
+            with contextlib.suppress(AttributeError):
                 del self.groups
         r.delete = delete
 
@@ -230,7 +230,7 @@ class Course:
         for group_name in group_names.values():
             self.canvas_group_set.create_group(group_name)
         self.canvas_group_set_refresh()
-        with general.catch_attribute_error():
+        with contextlib.suppress(AttributeError):
             del self.groups_on_canvas
 
     @functools.cached_property
@@ -254,7 +254,7 @@ class Course:
     @functools.cached_property
     def gitlab_users(self):
         self.logger.info('Retrieving all users on Chalmers GitLab')
-        return dict((user.username, user) for user in self.gl.users.list(all = True))
+        return gitlab_tools.users_dict(self.gl.users)
 
     @contextlib.contextmanager
     def invitation_history(self, path):
@@ -273,22 +273,67 @@ class Course:
             with atomicwrites.atomic_write(path, overwrite = True) as file:
                 json.dump(history, file, ensure_ascii = False, indent = 4)
 
-    def get_invitation_for(self, entity):
+    def get_invitations(self, entity):
         '''
         The argument entity is a GitLab group or project object.
-        Returns a function resolving an email address to an invitation in entity (or None if none is found).
+        Returns a dictionary mapping email addresses to an invitation in entity.
         '''
-        invitations = gitlab_tools.invitation_list(self.gl, entity)
-        def invitation_for(email):
-            return general.from_singleton_maybe(filter(
-                lambda invitation: invitation['invite_email'] == email,
-                invitations,
-            ))
-        return invitation_for
+        return general.sdict(
+            (invitation['invite_email'], invitation)
+            for invitation in gitlab_tools.invitation_list(self.gl, entity)
+        )
+
+    def add_teachers_to_gitlab(self):
+        '''
+        Add or invite examiners, teachers, and TAs from Chalmers/GU Canvas to the graders group on Chalmers GitLab.
+        This only sends invitiations or adds users for new graders.
+        Existing members of the grader group not on Canvas are not removed.
+        Invitations to outdated emails are removed.
+
+        Improved version of invite_teachers_to_gitlab that uses gitlab username resolution from a Canvas user.
+        Does not need a ledger of past invitations.
+        '''
+        self.logger.info('adding teachers from Canvas to the grader group')
+
+        members = gitlab_tools.members_dict(self.graders_group.lazy)
+        invitations = self.get_invitations(self.graders_group.lazy)
+
+        # Returns the set of prior invitation emails still valid.
+        def invite():
+            for user in self.canvas_course.teachers:
+                gitlab_username = self.config.gitlab_username_from_canvas_user_id(self, user.id)
+                gitlab_user = self.gitlab_users.get(gitlab_username)
+                if not gitlab_username in members:
+                    if gitlab_user:
+                        self.logger.debug(f'adding {user.name}')
+                        with gitlab_tools.exist_ok:
+                            self.graders_group.lazy.members.create({
+                                'user_id': gitlab_user.id,
+                                'access_level': gitlab.OWNER_ACCESS,
+                            })
+                    else:
+                        invitation = invitations.get(user.email)
+                        if invitation:
+                            yield user.email
+                        else:
+                            self.logger.debug(f'inviting {user.name} via {user.email}')
+                            with gitlab_tools.exist_ok:
+                                gitlab_tools.invitation_create(
+                                    self.gl,
+                                    self.graders_group.lazy,
+                                    user.email,
+                                    gitlab.OWNER_ACCESS,
+                                    exist_ok = True,
+                                )
+
+        for email in invitations.keys() - invite():
+            self.logger.debug(f'deleting obsolete invitation of {user.name} via {email}')
+            with gitlab_tools.exist_ok:
+                gitlab_tools.delete(self.gl, self.graders_group.lazy, email)
 
     def invite_teachers_to_gitlab(self, path_invitation_history):
         '''
-        Update invitations of teachers and TAs from Chalmers/GU Canvas to the graders group on Chalmers GitLab.
+        Update invitations of examiners, teachers, TAs from Chalmers/GU Canvas to the graders group on Chalmers GitLab.
         The argument 'path_invitation_history' is to a pretty-printed JSON file that is used
         (read and written) by this method as a ledger of performed invitations.
         This is necessary because Chalmers provides no way of connecting
@@ -309,22 +354,24 @@ class Course:
         '''
         self.logger.info('inviting teachers from Canvas to the grader group')
 
-        invitation_for = self.get_invitation_for(self.graders_group.lazy)
+        invitations_prev = self.get_invitations(self.graders_group.lazy)
         with self.invitation_history(path_invitation_history) as history:
             for user in self.canvas_course.teacher_details.values():
                 history_user = history.setdefault(str(user.id), dict())
                 history_user['name'] = user.name
                 invitations_by_email = history_user.setdefault('invitations_by_email', dict())
 
+                gitlab_username = self.config.gitlab_username_from_canvas_user_id(self, user.id)
+
                 # Check status of live invitations and revoke those for old email addresses.
                 for (email, status) in list(invitations_by_email.items()):
                     if status == InvitationStatus.LIVE.value:
-                        invitation = invitation_for(email)
+                        invitation = invitations_prev.get(email)
                         if not invitation:
                             self.logger.debug(f'marking invitation of {email} as possibly accepted')
                             invitations_by_email[email] = InvitationStatus.POSSIBLY_ACCEPTED
                         elif not email == user.email:
-                            self.logger.debug(f'deleting outdated invitation of {email}')
+                            self.logger.debug(f'deleting obsolete invitation of {email}')
                             try:
                                 gitlab_tools.delete(self.gl, self.graders_group.lazy, email)
                                 del invitations_by_email[email]
@@ -397,12 +444,12 @@ class Course:
 
                 for (group_name, invitations_by_email) in stored_invitations.items():
                     group_id = self.config.group.name.parse(group_name)
-                    invitation_for = self.get_invitation_for(self.group(group_id).lazy)
+                    invitations_prev = self.get_invitations(self.group(group_id).lazy)
 
                     # Check status of live invitations and revoke those for email addresses or groups.
                     for (email, status) in list(invitations_by_email.items()):
                         if status == InvitationStatus.LIVE.value:
-                            invitation = invitation_for(email)
+                            invitation = invitations_prev.get(email)
                             if not invitation:
                                 self.logger.debug(f'marking invitation of {email} to {group_name} as possibly accepted')
                                 invitations_by_email[email] = InvitationStatus.POSSIBLY_ACCEPTED
