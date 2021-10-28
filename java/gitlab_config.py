@@ -358,6 +358,11 @@ name_corrections = {}
 # This is not necessarily a valid email address for this user (e.g., not for non-staff).
 _cid = print_parse.regex('{}@chalmers.se')
 
+_cid_gitlab_exceptions = print_parse.from_dict([
+    ('peb', 'Peter.Ljunglof'),
+    ('tcarlos', 'carlos.tome'),
+])
+
 # Format GU ID as email address (GU-ID@gu.se).
 _gu_id = print_parse.regex('{}@gu.se')
 
@@ -371,11 +376,12 @@ def gitlab_username_from_canvas_user_id(course, user_id):
     login_id = course.canvas_login_id(user_id)
     try:
         cid = _cid.parse(login_id)
-        if cid == 'peb':
-            return 'Peter.Ljunglof'
-        return cid
     except ValueError:
-        pass
+        return None
+    try:
+        return _cid_gitlab_exceptions.print(cid)
+    except KeyError:
+        return cid
 
 # Used for programmatic push notifications on GitLab.
 # Value doesn't matter, but should not be guessable.

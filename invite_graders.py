@@ -14,4 +14,4 @@ course = Course(config)
 course.logger.setLevel(logging.DEBUG)
 
 course.canvas_course_refresh()
-course.invite_teachers_to_gitlab(this_dir / 'teacher_invitations')
+course.add_teachers_to_gitlab()
