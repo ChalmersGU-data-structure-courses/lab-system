@@ -338,7 +338,7 @@ class Course:
         * 'invitations': a dictionary mapping group names to past invitation dictionaries.
         A past invitation dictionary maps email addresses of
         the student to values of the enumeration InvitationStatus.
-q
+
         You can manually inspect the invitation_history to see invitation statuses.
         When this method is not running, you can also manually edit the file according to the above format.
 
