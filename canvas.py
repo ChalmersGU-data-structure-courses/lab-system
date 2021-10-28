@@ -290,7 +290,7 @@ class Course:
         self.teacher_by_sis_id = dict()
 
         for user in all_users:
-            if any(e.role in ['TeacherEnrollment', 'TaEnrollment'] for e in user.enrollments):
+            if any(e.role in ['Examiner', 'TeacherEnrollment', 'TaEnrollment'] for e in user.enrollments):
                 self.teacher_details[user.id] = user
                 self.teacher_name_to_id[user.name] = user.id
                 self.teacher_sortable_name_to_id[user.sortable_name] = user.id
