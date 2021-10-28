@@ -241,9 +241,20 @@ class Canvas:
 # * login_id: not defined
 # * integration_id: unknown, 12-digits, starts 9228...
 #
+# Whether or not the login_id is shown may depend on the permissions of the querying user.
+#
 # We cannot depend on the email field being the actual student email address.
 # So that's not a good way to extract the id.
+#
+# Retrieving the user's profile (canvas.get(['users', id, 'profile']) always includes the login_id.
+# The Chalmers login id might not be a valid email address (to confirm).
 class Course:
+    def get_all_users(self, use_cache = True):
+        return self.canvas.get_list(['courses', self.course_id, 'users'], params = {
+            'include[]': ['enrollments'],
+            'enrollment_state[]': ['active', 'invited', 'completed', 'inactive'],
+        }, use_cache = use_cache)
+
     def __init__(self, canvas, course_id, use_cache = True):
         logger.info(f'loading course {course_id}.')
 
@@ -264,10 +275,7 @@ class Course:
         self.user_by_integration_id = dict()
         self.user_by_sis_id = dict()
 
-        all_users = self.canvas.get_list(['courses', course_id, 'users'], params = {
-            'include[]': ['enrollments'],
-            'enrollment_state[]': ['active', 'invited', 'completed', 'inactive'],
-        }, use_cache = use_cache)
+        all_users = self.get_all_users(use_cache = use_cache)
         for user in all_users:
             if any(e.role == 'StudentEnrollment' for e in user.enrollments):
                 self.user_details[user.id] = user
