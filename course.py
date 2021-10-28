@@ -257,7 +257,7 @@ class Course:
 
     def invite_teachers_to_gitlab(self, path_invitation_history):
         '''
-        Update invitations of teachers from Chalmers/GU Canvas to the graders group on Chalmers GitLab.
+        Update invitations of teachers and TAs from Chalmers/GU Canvas to the graders group on Chalmers GitLab.
         The argument 'path_invitation_history' is to a pretty-printed JSON file that is used
         (read and written) by this method as a ledger of performed invitations.
         This is necessary because Chalmers provides no way of connecting
