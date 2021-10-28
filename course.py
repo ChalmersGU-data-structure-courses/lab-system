@@ -92,6 +92,51 @@ class Course:
     def canvas_group_set_refresh(self):
         self.canvas_group_set = self.canvas_group_set_get(False)
 
+    def canvas_user_login_id(self, user):
+        return user._dict.get('login_id')
+
+    def canvas_profile_login_id(self, user):
+        return self.canvas.get(['users', user.id, 'profile'], use_cache = True).login_id
+
+    def canvas_login_id(self, canvas_user_id):
+        '''
+        Retrieve the login id for a user id on Canvas.
+        If this is a Chalmers user, this is CID@chalmers.
+        If this is a GU user, this is GU-ID@gu.se.
+
+        On Chalmers Canvas, you need the Examiner role for the login_id field to appear in user queries.
+        If this is not the case, we perform a workaround: querying the user profile.
+        This is more expensive (one call per user profile), but we use the local Canvas cache to record the result.
+        '''
+        user = self.canvas_course.user_details[canvas_user_id]
+        login_id = self.canvas_user_login_id(user)
+        if login_id != None:
+            return login_id
+
+        login_id = self.canvas_profile_login_id(user)
+        # Canvas BUG (report):
+        # The login_id for Abhiroop Sarkar is sarkara@chalmers.se,
+        # but shown as abhiroop when queried via profile or on GU Chalmers.
+        if login_id == 'abhiroop':
+            login_id = 'sarkara@chalmers.se'
+        return login_id
+
+    def canvas_login_id_check_consistency(self):
+        '''
+        Check whether the login_id field of the  user coincides with the login_id field of the profile of the user.
+        Reports mismatches as errors via the logger.
+        '''
+        for x in [course.canvas_course.teacher_details, course.canvas_course.user_details]:
+            for user in x.values():
+                user_login_id = self.canvas_user_login_id(user)
+                profile_login_id = self.canvas_profile_login_id(user)
+                if not user_login_id == profile_login_id:
+                    self.logger.error(general.join_lines([
+                        f'mismatch between login ids for user {user.name}:',
+                        f'* in user object: {user_login_id}',
+                        f'* in profile object: {profile_login_id}',
+                    ]))
+
     @functools.cached_property
     def gl(self):
         r = gitlab.Gitlab(
@@ -110,7 +155,6 @@ class Course:
             gl = self.gl,
             logger = self.logger,
         ).__dict__
-
 
     @functools.cached_property
     def labs_group(self):
@@ -209,21 +253,8 @@ class Course:
 
     @functools.cached_property
     def gitlab_users(self):
+        self.logger.info('Retrieving all users on Chalmers GitLab')
         return dict((user.username, user) for user in self.gl.users.list(all = True))
-
-    def test(self):
-        import re
-        for student in course.canvas_course.user_details.values():
-            m = re.fullmatch('(.*)@(?:student\\.)chalmers\\.se', student.email)
-            if m:
-                cid = m.group(1)
-                gitlab_user = gitlab_users_by_username.get(cid)
-                if gitlab_user:
-                    print(f'{cid} found')
-                else:
-                    print(f'{cid} NOT FOUND')
-            else:
-                print(f'Student {student.name} does not have a Chalmers email address registered on Canvas.')
 
     @contextlib.contextmanager
     def invitation_history(self, path):
