@@ -292,7 +292,7 @@ class Course:
             'include[]': ['enrollments'],
             'enrollment_state[]': ['active', 'invited', 'completed', 'inactive'],
         }, use_cache = use_cache):
-            if any(e.role == 'TeacherEnrollment' for e in user.enrollments):
+            if any(e.role in ['TeacherEnrollment', 'TaEnrollment'] for e in user.enrollments):
                 self.teacher_details[user.id] = user
                 self.teacher_name_to_id[user.name] = user.id
                 self.teacher_sortable_name_to_id[user.sortable_name] = user.id

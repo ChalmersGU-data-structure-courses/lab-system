@@ -2,6 +2,7 @@ import atomicwrites
 import collections
 import contextlib
 import dateutil.parser
+import enum
 import functools
 import general
 import gitlab
@@ -40,6 +41,20 @@ def parse_issue(config, issue):
                 return (request_type, response_type, pp.parse(issue.title))
             except:
                 continue
+
+class InvitationStatus(str, enum.Enum):
+    '''
+    An invitation status.
+    This is:
+    * LIVE: for a live invitation (not yet accepted),
+    * POSSIBLY_ACCEPTED: for an invitation that has disappeared on GitLab.
+    The script has no way of knowing whether the invitation email was accepted,
+    rejected, or deleted by another group/project owner.
+    GitLab sends status updates to the email address of the user creating the invitation.
+    It is not possible to query this via the API.
+    '''
+    LIVE = 'live'
+    POSSIBLY_ACCEPTED = 'possibly accepted'
 
 class Course:
     def __init__(self, config, *, logger = logging.getLogger('course')):
@@ -189,7 +204,7 @@ class Course:
             self.group_delete_all()
         groups_old = () if delete_existing else self.groups
         for (group_id, canvas_users) in self.groups_on_canvas.items():
-            if not group_id in groups_old and group_id < 4: # TODO: remove hack
+            if not group_id in groups_old:
                 self.group(group_id).create()
 
     @functools.cached_property
@@ -210,23 +225,14 @@ class Course:
             else:
                 print(f'Student {student.name} does not have a Chalmers email address registered on Canvas.')
 
-    def test2(self):
-        path = PurePosixPath('/') / 'groups' / self.graders_group.lazy.id / 'invitations'
-
-        gitlab_tools.invitation_create(self.gl, self.graders_group.lazy, 'sattler@chalmers.se', gitlab.DEVELOPER_ACCESS, exist_ok = True)
-
-        #general.print_json(self.gl.http_delete(str(path / 'sattler.christian@gmail.com')))
-
-        return self.gl.http_list(str(path), all = True)
-
     @contextlib.contextmanager
-    def invitation_history(path):
+    def invitation_history(self, path):
         try:
             with path.open() as file:
                 history = json.load(file)
         except FileNotFoundError:
             self.logger.warning(
-                f'Invitation history file {shlex.quote(str(invitation_history))} not found; '
+                f'Invitation history file {shlex.quote(str(path))} not found; '
                 'a new one while be created.'
             )
             history = dict()
@@ -234,13 +240,89 @@ class Course:
             yield history
         finally:
             with atomicwrites.atomic_write(path, overwrite = True) as file:
-                json.dump(history, file, indent = 4)
+                json.dump(history, file, ensure_ascii = False, indent = 4)
+
+    def get_invitation_for(self, entity):
+        '''
+        The argument entity is a GitLab group or project object.
+        Returns a function resolving an email address to an invitation in entity (or None if none is found).
+        '''
+        invitations = gitlab_tools.invitation_list(self.gl, entity)
+        def invitation_for(email):
+            return general.from_singleton_maybe(filter(
+                lambda invitation: invitation['invite_email'] == email,
+                invitations,
+            ))
+        return invitation_for
+
+    def invite_teachers_to_gitlab(self, path_invitation_history):
+        '''
+        Update invitations of teachers and TAs from Chalmers/GU Canvas to the graders group on Chalmers GitLab.
+        The argument 'path_invitation_history' is to a pretty-printed JSON file that is used
+        (read and written) by this method as a ledger of performed invitations.
+        This is necessary because Chalmers provides no way of connecting
+        a teacher on Chalmers/GU Canvas with a user on GitLab Chalmers.
+
+        The ledger path_invitation_history is different from the one used by the method invite_students_to_gitlab.
+        It also uses a different format.
+        TODO: possibly change to using a single ledger for GitLab invitations for this the whole Canvas course.
+
+        The file path_invitation_history is a JSON-encoded dictionary mapping Canvas user id to user entries.
+        A user entry is a dictionary with keys:
+        * 'name': the teacher name (only for informational purposes),
+        * 'invitations': a dictionary mapping email addresses of the teacher
+                         to values of the enumeration InvitationStatus.
+
+        You can manually inspect the invitation_history to see invitation statuses.
+        When this method is not running, you can also manually edit the file according to the above format.
+        '''
+        self.logger.info('inviting teachers from Canvas to the grader group')
+
+        invitation_for = self.get_invitation_for(self.graders_group.lazy)
+        with self.invitation_history(path_invitation_history) as history:
+            for user in self.canvas_course.teacher_details.values():
+                history_user = history.setdefault(str(user.id), dict())
+                history_user['name'] = user.name
+                invitations_by_email = history_user.setdefault('invitations_by_email', dict())
+
+                # Check status of live invitations and revoke those for old email addresses.
+                for (email, status) in list(invitations_by_email.items()):
+                    if status == InvitationStatus.LIVE.value:
+                        invitation = invitation_for(email)
+                        if not invitation:
+                            self.logger.debug(f'marking invitation of {email} as possibly accepted')
+                            invitations_by_email[email] = InvitationStatus.POSSIBLY_ACCEPTED
+                        elif not email == user.email:
+                            self.logger.debug(f'deleting outdated invitation of {email}')
+                            try:
+                                gitlab_tools.delete(self.gl, self.graders_group.lazy, email)
+                                del invitations_by_email[email]
+                            except GitlabHttpError as e:
+                                if f.response_code == 404:
+                                    invitations_by_email[email] = InvitationStatus.POSSIBLE_ACCEPTED
+                                else:
+                                    raise
+
+                # Invite teacher to current group, if not already done.
+                if not user.email in invitations_by_email:
+                    self.logger.debug(f'creating invitation of {user.email}')
+                    # gitlab_tools.invitation_create(
+                    #     self.gl,
+                    #     self.graders_group.lazy,
+                    #     user.email,
+                    #     gitlab.OWNER_ACCESS,
+                    #     exist_ok = True,
+                    # )
+                    invitations_by_email[user.email] = InvitationStatus.LIVE
+
+                if not invitations_by_email:
+                    history.pop(str(user.id))
 
     def invite_students_to_gitlab(self, path_invitation_history):
         '''
-        Invite students from Chalmers/GU Canvas signed up for lab groups
-        to the corresponding groups on Chalmers GitLab.
-        The argument 'invitation_history' is to a JSON file that is used
+        Update invitations of students from Chalmers/GU Canvas signed up
+        for lab groups to the corresponding groups on Chalmers GitLab.
+        The argument 'path_invitation_history' is to a pretty-printed JSON file that is used
         (read and written) by this method as a ledger of performed invitations.
         This is necessary because Chalmers provides no way of connecting
         a student on Chalmers/GU Canvas with a user on GitLab Chalmers.
@@ -248,85 +330,80 @@ class Course:
         For each student, we consider:
         * the current group membership on Canvas,
         * the past membership invitations according to invitation_history,
-        * which of the groups and projects in invitation_history they are still a member of on GitLab.
+        * which of the groups in invitation_history they are still a member of on GitLab.
 
-        The invitation_history file is a dictionary mapping Canvas user id
+        The file path_invitation_history is a JSON-encoded dictionary mapping Canvas user id to user entries.
+        A user entry is a dictionary with keys:
+        * 'name': the student name (only for informational purposes),
+        * 'invitations': a dictionary mapping group names to past invitation dictionaries.
+        A past invitation dictionary maps email addresses of
+        the student to values of the enumeration InvitationStatus.
+q
+        You can manually inspect the invitation_history to see invitation statuses.
+        When this method is not running, you can also manually edit the file according to the above format.
+
+        In the future, this method will be extended to allow for project-based membership
+        for students that change groups midway through the course.
         '''
         self.logger.info('inviting students from Canvas groups to GitLab groups')
 
         with self.invitation_history(path_invitation_history) as history:
-            class InvitationStatus(enum.Enum):
-                TO_INVITE = 'to invite'
-                LIVE = 'live'
-                POSSIBLY_ACCEPTED = 'possibly accepted'
-
-            for student in self.canvas_course.user_details.values():
-                history_student = history.setdefault(student, dict())
-                history_student['name'] = student.name
+            for user in self.canvas_course.user_details.values():
+                history_user = history.setdefault(str(user.id), dict())
+                history_user['name'] = user.name
 
                 def group_id_from_canvas():
-                    canvas_group_id = self.canvas_group_set.user_to_group.get(student.id)
+                    canvas_group_id = self.canvas_group_set.user_to_group.get(user.id)
                     if canvas_group_id == None:
                         return None
                     return self.config.group.name.parse(self.canvas_group_set.details[canvas_group_id].name)
                 group_id_current = group_id_from_canvas()
 
-                # an invitation action is one of:
-                # * sent invitations to group_id, email
-                # * cancelled invitation or checked that it is not longer there
-                # ...
-
-                # an invitation
-
                 # Include current group in the following iteration.
-                invitation_history = history_student['invitations']
+                stored_invitations = history_user.setdefault('invitations', dict())
                 if group_id_current != None:
-                    invitation_history.setdefault(group_id_current, dict())
+                    r = stored_invitations.setdefault(self.config.group.name.print(group_id_current), dict())
 
-                for (group_id, invitations_by_email) in invitation_history.items():
-                    invitations = gitlab_tools.invitation_list(self.gl, self.group(group_id).lazy)
-                    def invitation_for(email):
-                        return general.from_singleton_maybe(filter(
-                            lambda invitation: invitation.email == email,
-                            invitations,
-                        ))
+                for (group_name, invitations_by_email) in stored_invitations.items():
+                    group_id = self.config.group.name.parse(group_name)
+                    invitation_for = self.get_invitation_for(self.group(group_id).lazy)
 
-                    # Check status of live invitations and revoke those for old emails or groups.
+                    # Check status of live invitations and revoke those for email addresses or groups.
                     for (email, status) in list(invitations_by_email.items()):
-                        if status == InvitationStatus.LIVE:
+                        if status == InvitationStatus.LIVE.value:
                             invitation = invitation_for(email)
                             if not invitation:
-                                self.logger.debug(f'marking invitation of {email} to {group_id} as possibly accepted')
-                                group_invitations[email] = InvitationStatus.POSSIBLY_ACCEPTED
-                            elif not (email == student.email and group_id == group_id_current):
-                                self.logger.debug(f'deleting outdated invitation of {email} to {group_id}')
+                                self.logger.debug(f'marking invitation of {email} to {group_name} as possibly accepted')
+                                invitations_by_email[email] = InvitationStatus.POSSIBLY_ACCEPTED
+                            elif not (email == user.email and group_id == group_id_current):
+                                self.logger.debug(f'deleting outdated invitation of {email} to {group_name}')
                                 try:
                                     gitlab_tools.delete(self.gl, self.group(group_id).lazy, email)
                                     del group_invitations[email]
                                 except GitlabHttpError as e:
                                     if f.response_code == 404:
-                                        group_invitations[email] = InvitationStatus.POSSIBLE_ACCEPTED
+                                        invitations_by_email[email] = InvitationStatus.POSSIBLE_ACCEPTED
                                     else:
                                         raise
 
                     # Invite student to current group, if not already done.
                     if group_id == group_id_current:
-                        if not student.email in invitations_by_email:
-                            self.logger.debug(f'creating invitation of {student.email} to {group_id}')
+                        if not user.email in invitations_by_email:
+                            self.logger.debug(f'creating invitation of {user.email} to {group_name}')
                             gitlab_tools.invitation_create(
                                 self.gl,
                                 self.group(group_id).lazy,
-                                student.email,
+                                user.email,
                                 gitlab.DEVELOPER_ACCESS,
                                 exist_ok = True,
                             )
-                            invitations_by_email[student.email] = InvitationStatus.LIVE
+                            invitations_by_email[user.email] = InvitationStatus.LIVE
 
                     if not invitations_by_email:
-                        del invitation_history[group_id]
+                        del stored_invitations[group_name]
 
-                if not invitation_history:
-                    history.pop(student)
+                if not stored_invitations:
+                    history.pop(str(user.id))
 
     @functools.cached_property
     def graders(self):
