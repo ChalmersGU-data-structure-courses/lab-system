@@ -80,7 +80,7 @@ class Course:
         return self.canvas_course_get(True)
 
     def canvas_course_refresh(self):
-        self.canvas_group_set = self.canvas_course_get(False)
+        self.canvas_course = self.canvas_course_get(False)
 
     def canvas_group_set_get(self, use_cache):
         return canvas.GroupSet(self.canvas_course, self.config.canvas.group_set, use_cache = use_cache)

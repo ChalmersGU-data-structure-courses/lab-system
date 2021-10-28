@@ -264,10 +264,11 @@ class Course:
         self.user_by_integration_id = dict()
         self.user_by_sis_id = dict()
 
-        for user in self.canvas.get_list(['courses', course_id, 'users'], params = {
+        all_users = self.canvas.get_list(['courses', course_id, 'users'], params = {
             'include[]': ['enrollments'],
             'enrollment_state[]': ['active', 'invited', 'completed', 'inactive'],
-        }, use_cache = use_cache):
+        }, use_cache = use_cache)
+        for user in all_users:
             if any(e.role == 'StudentEnrollment' for e in user.enrollments):
                 self.user_details[user.id] = user
                 self.user_name_to_id[user.name] = user.id
@@ -288,10 +289,7 @@ class Course:
         self.teacher_by_integration_id = dict()
         self.teacher_by_sis_id = dict()
 
-        for user in self.canvas.get_list(['courses', course_id, 'users'], params = {
-            'include[]': ['enrollments'],
-            'enrollment_state[]': ['active', 'invited', 'completed', 'inactive'],
-        }, use_cache = use_cache):
+        for user in all_users:
             if any(e.role in ['TeacherEnrollment', 'TaEnrollment'] for e in user.enrollments):
                 self.teacher_details[user.id] = user
                 self.teacher_name_to_id[user.name] = user.id
