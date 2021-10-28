@@ -306,13 +306,13 @@ class Course:
                 # Invite teacher to current group, if not already done.
                 if not user.email in invitations_by_email:
                     self.logger.debug(f'creating invitation of {user.email}')
-                    # gitlab_tools.invitation_create(
-                    #     self.gl,
-                    #     self.graders_group.lazy,
-                    #     user.email,
-                    #     gitlab.OWNER_ACCESS,
-                    #     exist_ok = True,
-                    # )
+                    gitlab_tools.invitation_create(
+                        self.gl,
+                        self.graders_group.lazy,
+                        user.email,
+                        gitlab.OWNER_ACCESS,
+                        exist_ok = True,
+                    )
                     invitations_by_email[user.email] = InvitationStatus.LIVE
 
                 if not invitations_by_email:
