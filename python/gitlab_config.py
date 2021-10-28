@@ -269,7 +269,7 @@ compilation_message = {
 }
 
 # Root of the code repository.
-_code_root = this_dir.parent.parent
+_code_root = this_dir.parent
 
 # Example lab configuration (for purpose of documentation).
 _lab_config = SimpleNamespace(
