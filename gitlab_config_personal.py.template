@@ -4,7 +4,7 @@ this_dir = Path(__file__).parent
 
 # GitLab private token.
 # Can be given as a string or as a path to a file containing it.
-private_token = None
+gitlab_private_token = None
 
 # Here is the local directory structure:
 # dir_labs
@@ -19,4 +19,5 @@ canvas_auth_token = None
 google_credentials_path = this_dir / 'google_tools' / 'credentials.json'
 
 # Relative machine speed to calibrate the robograder.
+# A value of 1 corresponds to a decent 2013 desktop machine.
 robograder_machine_speed = 1
