@@ -306,7 +306,7 @@ class Course:
                 if not gitlab_username in members:
                     if gitlab_user:
                         self.logger.debug(f'adding {user.name}')
-                        with gitlab_tools.exist_ok:
+                        with gitlab_tools.exist_ok():
                             self.graders_group.lazy.members.create({
                                 'user_id': gitlab_user.id,
                                 'access_level': gitlab.OWNER_ACCESS,
@@ -317,18 +317,17 @@ class Course:
                             yield user.email
                         else:
                             self.logger.debug(f'inviting {user.name} via {user.email}')
-                            with gitlab_tools.exist_ok:
+                            with gitlab_tools.exist_ok():
                                 gitlab_tools.invitation_create(
                                     self.gl,
                                     self.graders_group.lazy,
                                     user.email,
                                     gitlab.OWNER_ACCESS,
-                                    exist_ok = True,
                                 )
 
         for email in invitations.keys() - invite():
             self.logger.debug(f'deleting obsolete invitation of {user.name} via {email}')
-            with gitlab_tools.exist_ok:
+            with gitlab_tools.exist_ok():
                 gitlab_tools.delete(self.gl, self.graders_group.lazy, email)
 
     def invite_teachers_to_gitlab(self, path_invitation_history):
@@ -389,7 +388,6 @@ class Course:
                         self.graders_group.lazy,
                         user.email,
                         gitlab.OWNER_ACCESS,
-                        exist_ok = True,
                     )
                     invitations_by_email[user.email] = InvitationStatus.LIVE
 
@@ -456,9 +454,9 @@ class Course:
                             elif not (email == user.email and group_id == group_id_current):
                                 self.logger.debug(f'deleting outdated invitation of {email} to {group_name}')
                                 try:
-                                    gitlab_tools.delete(self.gl, self.group(group_id).lazy, email)
+                                    gitlab_tools.invitation_delete(self.gl, self.group(group_id).lazy, email)
                                     del group_invitations[email]
-                                except GitlabHttpError as e:
+                                except gitlab.exceptions.GitlabDeleteError as e:
                                     if f.response_code == 404:
                                         invitations_by_email[email] = InvitationStatus.POSSIBLE_ACCEPTED
                                     else:
@@ -468,13 +466,13 @@ class Course:
                     if group_id == group_id_current:
                         if not user.email in invitations_by_email:
                             self.logger.debug(f'creating invitation of {user.email} to {group_name}')
-                            gitlab_tools.invitation_create(
-                                self.gl,
-                                self.group(group_id).lazy,
-                                user.email,
-                                gitlab.DEVELOPER_ACCESS,
-                                exist_ok = True,
-                            )
+                            with gitlab_tools.exist_ok():
+                                gitlab_tools.invitation_create(
+                                    self.gl,
+                                    self.group(group_id).lazy,
+                                    user.email,
+                                    gitlab.DEVELOPER_ACCESS,
+                                )
                             invitations_by_email[user.email] = InvitationStatus.LIVE
 
                     if not invitations_by_email:
