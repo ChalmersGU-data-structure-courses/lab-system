@@ -13,6 +13,18 @@ def read_private_token(x):
         x = x.read_text()
     return x
 
+# The default value of per_page seems to be 15.
+# This is incredibly slow.
+# We wish to retrieve as many items at once, so supply a large per_page parameter.
+# The maximum seems to be 100.
+list_all_args = {
+    'all': True,
+    'per_page': 1000,
+}
+
+def list_all(manager):
+    return manager.list(**list_all_args)
+
 def wait_for_fork(gl, project, fork_poll_interval = 0.5, check_immediately = True):
     # The GitLab API does not have a synchronous fork command.
     # This is the currently recommended workaround.
@@ -31,7 +43,7 @@ def protect_tags(gl, project_id, tags, delete_existing = False):
     if delete_existing:
         # Needs gitlab.v4.objects.projects.Project, not just gitlab.v4.objects.projects.ProjectFork.
         # Otherwise, the attribute protectedtags does not exist.
-        for x in project.protectedtags.list(all = True):
+        for x in list_all(project.protectedtags)
             x.delete()
     for pattern in tags:
         project.protectedtags.create({'name': pattern, 'create_access_level': gitlab.DEVELOPER_ACCESS})
@@ -41,7 +53,7 @@ def protect_branch(gl, project_id, branch):
     project.branches.get(branch, lazy = True).protect(developers_can_push = True, developers_can_merge = True)
 
 def members_from_access(entity, levels):
-    return dict((user.id, user) for user in entity.members.list(all = True) if user.access_level in levels)
+    return dict((user.id, user) for user in list_all(entity.members) if user.access_level in levels)
 
 def format_username(username):
     return '@' + username
@@ -159,18 +171,6 @@ def exist_ok():
 
 def exist_ok_check(enabled = False):
     return exist_ok() if enabled else contextlib.nullcontext()
-
-# The default value of per_page seems to be 15.
-# This is incredibly slow.
-# We wish to retrieve as many items at once, so supply a large per_page parameter.
-# The maximum seems to be 100.
-list_all_args = {
-    'all': True,
-    per_page: 1000,
-}
-
-def list_all(manager):
-    return manager.list(**list_all_args)
 
 def users_dict(manager):
     return dict((user.username, user) for user in list_all(manager))
