@@ -679,3 +679,7 @@ def range_singleton(i):
 def is_range_singleton(range):
     (start, end) = range
     return end == start + 1
+
+def when(condition, value):
+    # not condition or value
+    return value if condition else True
