@@ -43,7 +43,7 @@ def protect_tags(gl, project_id, tags, delete_existing = False):
     if delete_existing:
         # Needs gitlab.v4.objects.projects.Project, not just gitlab.v4.objects.projects.ProjectFork.
         # Otherwise, the attribute protectedtags does not exist.
-        for x in list_all(project.protectedtags)
+        for x in list_all(project.protectedtags):
             x.delete()
     for pattern in tags:
         project.protectedtags.create({'name': pattern, 'create_access_level': gitlab.DEVELOPER_ACCESS})
