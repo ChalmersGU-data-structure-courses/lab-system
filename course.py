@@ -136,6 +136,8 @@ class Course:
                         f'* in user object: {user_login_id}',
                         f'* in profile object: {profile_login_id}',
                     ]))
+                    general.print_json(user._dict)
+                    general.print_json(self.canvas.get(['users', user.id, 'profile'], use_cache = True)._dict)
 
     @functools.cached_property
     def gl(self):
@@ -181,14 +183,14 @@ class Course:
     def labs(self):
         return frozenset(
             self.config.lab.id.parse(lab.path)
-            for lab in self.labs_group.lazy.subgroups.list(all = True)
+            for lab in gitlab_tools.list_all(self.labs_group.lazy.subgroups)
         )
 
     @functools.cached_property
     def groups(self):
         return frozenset(
             self.config.group.id_gitlab.parse(group.path)
-            for group in self.groups_group.lazy.subgroups.list(all = True)
+            for group in gitlab_tools.list_all(self.groups_group.lazy.subgroups)
         )
 
     @instance_cache
@@ -252,9 +254,20 @@ class Course:
                 self.group(group_id).create()
 
     @functools.cached_property
-    def gitlab_users(self):
+    def _gitlab_users(self):
         self.logger.info('Retrieving all users on Chalmers GitLab')
         return gitlab_tools.users_dict(self.gl.users)
+
+    def gitlab_user(self, gitlab_username):
+        '''
+        Return the Chalmers GitLab user for a username, or None if none is found.
+
+        Currently, this method uses a cached call retrieving all users on Chalmers GitLab.
+        This takes about 1.5s.
+        If the number of users on Chalmers GitLab grows significantly,
+        it will be faster to switch to lookup calls for individual users.
+        '''
+        return self._gitlab_users.get(gitlab_username)
 
     @contextlib.contextmanager
     def invitation_history(self, path):
@@ -302,7 +315,7 @@ class Course:
         def invite():
             for user in self.canvas_course.teachers:
                 gitlab_username = self.config.gitlab_username_from_canvas_user_id(self, user.id)
-                gitlab_user = self.gitlab_users.get(gitlab_username)
+                gitlab_user = self.gitlab_user(gitlab_username)
                 if not gitlab_username in members:
                     if gitlab_user:
                         self.logger.debug(f'adding {user.name}')
@@ -350,6 +363,9 @@ class Course:
 
         You can manually inspect the invitation_history to see invitation statuses.
         When this method is not running, you can also manually edit the file according to the above format.
+
+        Deprecated.
+        Use add add_teachers_to_gitlab instead.
         '''
         self.logger.info('inviting teachers from Canvas to the grader group')
 
@@ -394,6 +410,140 @@ class Course:
                 if not invitations_by_email:
                     history.pop(str(user.id))
 
+    def sync_students_to_gitlab(self, *, add = True, remove = True, restrict_to_known = True):
+        '''
+        Synchronize Chalmers GitLab student group membership according to the group membership on Canvas.
+
+        If add is True, this adds missing members of groups on GitLab.
+        An invitation is sent if a GitLab account is not found.
+        If remove is True, this removes invitations and members not belonging to groups on GitLab.
+        If any of these are False, a warning is logged instead of performing the action.
+
+        If restrict_to_known is True, removals are restricted to invitations
+        and members recognized as belonging to students in the Canvas course.
+        This is recommended in case there are students participating
+        in the labs that are not registered in the Canvas course.
+        However, a registered student can then contrive to obtain duplicate group memberships
+        by changing their primary email address on Canvas prior to changing groups and accepting invitations.
+
+        This method is simpler than invite_students_to_gitlab.
+        It does not use a ledger of past invitations.
+        However, it only works properly if we can resolve Canvas students to Chalmers GitLab accounts.
+
+        Call sync_students_to_gitlab(all = False, remove = False, restrict_to_known = False)
+        to obtain (via logged warnings) a report of group membership deviations.
+        '''
+        self.logger.info('synchronizing students from Canvas groups to GitLab group')
+
+        # Resolve Canvas user ids to GitLab usernames and email addresses.
+        # If skip_email, is true, don't collect the email address if a GitLab username is found.
+        # Returns dictionaries mapping a key to a tuple whose first element is the Canvas user
+        # and whose remaining elements specify details of the key.
+        def resolve(user_ids, skip_email):
+            gitlab_usernames = dict()
+            emails = dict()
+            for user_id in user_ids:
+                user = self.canvas_course.user_details[user_id]
+                gitlab_username = self.config.gitlab_username_from_canvas_user_id(self, user_id)
+
+                # Only allow running with remove option if we can resolve GitLab student usernames.
+                if remove and gitlab_username == None:
+                    raise ValueError('called with remove option, but cannot resolve GitLab username of {user.name}')
+
+                gitlab_user = self.gitlab_user(gitlab_username)
+                if gitlab_user:
+                    gitlab_usernames[gitlab_user.username] = (user, gitlab_user, )
+                if not (gitlab_user and skip_email):
+                    emails[user.email] = (user, )
+            return (gitlab_usernames, emails)
+
+        (
+            student_gitlab_usernames,
+            student_emails,
+        ) = resolve(self.canvas_course.student_details, False)
+
+        def str_with_user_details(s, user_tuple):
+            details = user_tuple[0].name if user_tuple else 'unknown Canvas student'
+            return f'{s} ({details})'
+
+        def user_str_from_email(email):
+            return str_with_user_details(email, student_emails.get(email))
+
+        def user_str_from_gitlab_username(gitlab_username):
+            return str_with_user_details(
+                gitlab_tools.format_username(gitlab_username),
+                student_gitlab_usernames.get(gitlab_username)
+            )
+
+        for canvas_group in self.canvas_group_set.details.values():
+            group_id = self.config.group.name.parse(canvas_group.name)
+            users = self.canvas_group_set.group_users[canvas_group.id]
+
+            entity = self.group(group_id).lazy
+            entity_name = f'{self.config.group.name.print(group_id)} on GitLab'
+
+            # Current members and invitations.
+            # If restrict_to_known holds, restricts to gitlab users and email addresses
+            # recognized as belonging to Canvas students.
+            self.logger.debug(f'checking {entity_name}')
+            members = dict((gitlab_user.username, gitlab_user)
+                for gitlab_user in gitlab_tools.members_dict(entity).values()
+                if general.when(restrict_to_known, gitlab_user.username in student_gitlab_usernames)
+            )
+            invitations = set(email
+                for email in self.get_invitations(entity)
+                if general.when(restrict_to_known, email in student_emails)
+            )
+
+            # Desired members and invitations.
+            (
+                members_desired,
+                invitations_desired,
+            ) = resolve(users, True)
+
+            for email in invitations - invitations_desired.keys():
+                if remove:
+                    self.logger.warning(f'deleting invitation of {user_str_from_email(email)} to {entity_name}')
+                    with gitlab_tools.exist_ok():
+                        gitlab_tools.invitation_delete(self.gl, entity, email)
+                else:
+                    self.logger.warning(f'extra invitation of {user_str_from_email(email)} to {entity_name}')
+
+            for gitlab_username in members.keys() - members_desired.keys():
+                if remove:
+                    gitlab_user = members[gitlab_username]
+                    self.logger.warning(
+                        f'removing {user_str_from_gitlab_username(gitlab_username)} from {entity_name}'
+                    )
+                    with gitlab_tools.exist_ok():
+                        entity.members.delete(gitlab_user.id)
+                else:
+                    self.logger.warning(
+                        f'extra member {user_str_from_gitlab_username(gitlab_username)} of {entity_name}'
+                    )
+
+            for email in invitations_desired.keys() - invitations:
+                if add:
+                    self.logger.warning(f'inviting {user_str_from_email(email)} to {entity_name}')
+                    with gitlab_tools.exist_ok():
+                        gitlab_tools.invitation_create(self.gl, entity, email, gitlab.DEVELOPER_ACCESS)
+                else:
+                    self.logger.warning(f'missing invitation of {user_str_from_email(email)} to {entity_name}')
+
+            for gitlab_username in members_desired.keys() - members.keys():
+                if add:
+                    (_, gitlab_user, ) = members_desired[gitlab_username]
+                    self.logger.info(f'adding {user_str_from_gitlab_username(gitlab_username)} to {entity_name}')
+                    with gitlab_tools.exist_ok():
+                        entity.members.create({
+                            'user_id': gitlab_user.id,
+                            'access_level': gitlab.DEVELOPER_ACCESS,
+                        })
+                else:
+                    self.logger.warning(
+                        f'missing member {user_str_from_gitlab_username(gitlab_username)} of {entity_name}'
+                    )
+
     def invite_students_to_gitlab(self, path_invitation_history):
         '''
         Update invitations of students from Chalmers/GU Canvas signed up
@@ -418,8 +568,11 @@ class Course:
         You can manually inspect the invitation_history to see invitation statuses.
         When this method is not running, you can also manually edit the file according to the above format.
 
-        In the future, this method will be extended to allow for project-based membership
+        In the future, this method may be extended to allow for project-based membership
         for students that change groups midway through the course.
+
+        The method sync_students_to_gitlab provides a simpler alternative approach
+        that works under different assumptions.
         '''
         self.logger.info('inviting students from Canvas groups to GitLab groups')
 
@@ -547,7 +700,7 @@ class Course:
 
         request_types = self.config.request.__dict__
         r = self.request_namespace(lambda x, y: list())
-        for tag in project.tags.list(all = True):
+        for tag in gitlab_tools.list_all(project.tags):
             tag.date = dateutil.parser.parse(tag.commit['committed_date'])
             for (request_type, spec) in request_types.items():
                 if re.fullmatch(spec.tag_regex, tag.name):
@@ -578,7 +731,7 @@ class Course:
         A response issue is one created by a grader and matching an issue title in self.config.issue_title.
         These are used for grading and testing responses.
         '''
-        for issue in project.issues.list(all = True):
+        for issue in gitlab_tools.list_all(project.issues):
             if issue.author['id'] in self.graders:
                 yield issue
 
