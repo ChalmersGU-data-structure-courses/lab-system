@@ -43,8 +43,11 @@ def protect_branch(gl, project_id, branch):
 def members_from_access(entity, levels):
     return dict((user.id, user) for user in entity.members.list(all = True) if user.access_level in levels)
 
+def format_username(username):
+    return '@' + username
+
 def mention_str(users):
-    return ' '.join(sorted(['@' + user.username for user in users], key = str.casefold))
+    return ' '.join(sorted([format_username(user.username) for user in users], key = str.casefold))
 
 class CachedGroup:
     def __init__(self, gl, path, name, logger = None):
@@ -157,8 +160,20 @@ def exist_ok():
 def exist_ok_check(enabled = False):
     return exist_ok() if enabled else contextlib.nullcontext()
 
+# The default value of per_page seems to be 15.
+# This is incredibly slow.
+# We wish to retrieve as many items at once, so supply a large per_page parameter.
+# The maximum seems to be 100.
+list_all_args = {
+    'all': True,
+    per_page: 1000,
+}
+
+def list_all(manager):
+    return manager.list(**list_all_args)
+
 def users_dict(manager):
-    return dict((user.username, user) for user in manager.list(all = True))
+    return dict((user.username, user) for user in list_all(manager))
 
 def members_dict(entity):
     return users_dict(entity.members)
@@ -185,7 +200,7 @@ def entity_path_segment(entity):
 def invitation_list(gitlab_client, entity):
     return gitlab_client.http_list(
         str(PurePosixPath('/') / entity_path_segment(entity) / 'invitations'),
-        all = True
+        **list_all_args,
     )
 
 @gitlab.exceptions.on_http_error(gitlab.exceptions.GitlabCreateError)
