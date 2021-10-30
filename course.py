@@ -570,6 +570,9 @@ class Course:
 
         In the future, this method may be extended to allow for project-based membership
         for students that change groups midway through the course.
+
+        The method sync_students_to_gitlab provides a simpler alternative approach
+        that works under different assumptions.
         '''
         self.logger.info('inviting students from Canvas groups to GitLab groups')
 
