@@ -346,7 +346,10 @@ labs = dict([
 ])
 
 # Students taking part in labs who are not registered on Canvas.
-# List of full names on Canvas.
+# List of objects with the following attributes:
+# * name: full name,
+# * email: email address,
+# * gitlab_username: username on GitLab.
 outside_canvas = []
 
 # For translations from student provided answers files to student names on Canvas.
