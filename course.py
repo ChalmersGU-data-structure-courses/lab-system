@@ -524,7 +524,7 @@ class Course:
 
             for email in invitations_desired.keys() - invitations:
                 if add:
-                    self.logger.warning(f'inviting {user_str_from_email(email)} to {entity_name}')
+                    self.logger.info(f'inviting {user_str_from_email(email)} to {entity_name}')
                     with gitlab_tools.exist_ok():
                         gitlab_tools.invitation_create(self.gl, entity, email, gitlab.DEVELOPER_ACCESS)
                 else:
