@@ -30,10 +30,10 @@ def exist_ok():
     try:
         yield
     except gitlab.exceptions.GitlabCreateError as e:
-        if not e.response_code == 409:
+        if not e.response_code in [304, 409]:
             raise
     except gitlab.exceptions.GitlabDeleteError as e:
-        if not e.response_code == 404:
+        if not e.response_code in [304, 404]:
             raise
 
 def exist_ok_check(enabled = False):
