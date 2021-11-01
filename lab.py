@@ -20,7 +20,7 @@ from instance_cache import instance_cache
 import robograder_java
 
 class Lab:
-    def __init__(self, course, id, dir, config = None, logger = logging.getLogger('lab')):
+    def __init__(self, course, id, config = None, dir = None, logger = logging.getLogger('lab')):
         '''
         Initialize lab manager.
         Arguments:
@@ -35,7 +35,7 @@ class Lab:
         self.logger = logger
         self.course = course
         self.id = id
-        self.dir = dir
+        self.dir = Path(dir)
 
         self.config = config if config != None else self.course.config.labs[id]
 

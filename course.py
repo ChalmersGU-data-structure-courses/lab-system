@@ -57,15 +57,30 @@ class InvitationStatus(str, enum.Enum):
     POSSIBLY_ACCEPTED = 'possibly accepted'
 
 class Course:
-    def __init__(self, config, *, logger = logging.getLogger('course')):
+    def __init__(self, config, dir = None, *, logger = logging.getLogger('course')):
+        '''
+        Arguments:
+        * config: Course configuration, as documented in gitlab_config.py.template.
+        * dir: Local directory used by the Course and Lab objects for storing information.
+               Each local lab repository will be created as a subdirectory with full id as name (e.g. lab-3).
+               Only needed by certain methods that depend on state not recorded on Canvas or GitLab.
+               If given, should exist on filesystem.
+        '''
         self.logger = logger
         self.config = config
+        self.dir = Path(dir)
 
         # Qualify a request by the full group id.
         # Used as tag names in the grading repository of each lab.
         self.qualify_request = print_parse.compose(
             print_parse.on(general.component_tuple(0), self.config.group.full_id),
             print_parse.qualify_with_slash
+        )
+
+        import lab
+        self.labs = dict(
+            (lab_id, lab.Lab(self, lab_id, dir = self.dir / self.config.lab.full_id.print(lab_id)))
+            for lab_id in self.config.labs
         )
 
     @functools.cached_property
@@ -343,13 +358,16 @@ class Course:
             with gitlab_tools.exist_ok():
                 gitlab_tools.delete(self.gl, self.graders_group.lazy, email)
 
-    def invite_teachers_to_gitlab(self, path_invitation_history):
+    def invite_teachers_to_gitlab(self, path_invitation_history = None):
         '''
         Update invitations of examiners, teachers, TAs from Chalmers/GU Canvas to the graders group on Chalmers GitLab.
         The argument 'path_invitation_history' is to a pretty-printed JSON file that is used
         (read and written) by this method as a ledger of performed invitations.
         This is necessary because Chalmers provides no way of connecting
         a teacher on Chalmers/GU Canvas with a user on GitLab Chalmers.
+
+        If path_invitation_history is None, it defaults to self.dir / teacher_invitation_history
+        where self.dir is the directory for the course on the local filesystem (specified in the constructor).
 
         The ledger path_invitation_history is different from the one used by the method invite_students_to_gitlab.
         It also uses a different format.
@@ -368,6 +386,9 @@ class Course:
         Use add add_teachers_to_gitlab instead.
         '''
         self.logger.info('inviting teachers from Canvas to the grader group')
+
+        if path_invitation_history == None:
+            path_invitation_history = self.dir / 'teacher_invitation_history'
 
         invitations_prev = self.get_invitations(self.graders_group.lazy)
         with self.invitation_history(path_invitation_history) as history:
@@ -553,6 +574,9 @@ class Course:
         This is necessary because Chalmers provides no way of connecting
         a student on Chalmers/GU Canvas with a user on GitLab Chalmers.
 
+        If path_invitation_history is None, it defaults to self.dir / student_invitation_history
+        where self.dir is the directory for the course on the local filesystem (specified in the constructor).
+
         For each student, we consider:
         * the current group membership on Canvas,
         * the past membership invitations according to invitation_history,
@@ -575,6 +599,9 @@ class Course:
         that works under different assumptions.
         '''
         self.logger.info('inviting students from Canvas groups to GitLab groups')
+
+        if path_invitation_history == None:
+            path_invitation_history = self.dir / 'student_invitation_history'
 
         with self.invitation_history(path_invitation_history) as history:
             for user in self.canvas_course.user_details.values():
