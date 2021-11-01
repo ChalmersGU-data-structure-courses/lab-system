@@ -360,3 +360,17 @@ import <your course config> as config
 course = Course(config, dir = <local course directory>)
 ```
 The dictionary `course.lab` allows you to access Lab instances according to their id, for example `course.lab[3]` for the lab with id 3.
+
+In summary, a basic setup may look like this:
+```
+import logging
+logging.basicConfig()
+logging.getLogger().setLevel(logging.INFO)
+
+from course import Course
+import <your course config> as config
+course = Course(config, dir = <local course directory>)
+
+```
+You may wish to save this as a Python file `<my course>.py`.
+To operate on the course in the future, you can then start an interpreter with `python -i <my course>.py` with the object `course` preloaded.
