@@ -11,7 +11,7 @@ import types
 import urllib.parse
 
 from course_basics import SubmissionHandlingException
-import course_new as course
+import course
 import git_tools
 import gitlab_tools
 import grading_sheet
@@ -20,7 +20,7 @@ from instance_cache import instance_cache
 import robograder_java
 
 class Lab:
-    def __init__(self, course, id, dir, config = None, logger = logging.getLogger('lab')):
+    def __init__(self, course, id, config = None, dir = None, logger = logging.getLogger('lab')):
         '''
         Initialize lab manager.
         Arguments:
@@ -35,7 +35,7 @@ class Lab:
         self.logger = logger
         self.course = course
         self.id = id
-        self.dir = dir
+        self.dir = Path(dir)
 
         self.config = config if config != None else self.course.config.labs[id]
 
@@ -230,7 +230,11 @@ class Lab:
         This is used as staging for (pushes to) the grading project on Chalmers GitLab.
         It fetches from the official lab repository and student group repositories.
         '''
-        return git.Repo(self.dir)
+        try:
+            return git.Repo(self.dir)
+        except git.NoSuchPathError:
+            self.repo_init()
+            return self.repo
 
     def repo_add_remote(self, name, project, **kwargs):
         git_tools.add_tracking_remote(
@@ -250,7 +254,7 @@ class Lab:
         for group_id in self.course.groups:
             self.student_group(group_id).repo_add_remote(ignore_missing = True)
 
-    def repo_init(self, bare = True):
+    def repo_init(self, bare = False):
         '''
         Initialize the local grading repository.
         If the directory exists, we assume that all remotes are set up.
@@ -304,7 +308,7 @@ class Lab:
 
     def delete_group_projects(self):
         for group_id in self.course.groups:
-            self.group_project(group_id).project.delete()
+            self.student_group(group_id).project.delete()
 
     def create_group_projects_fast(self, only_missing = False):
         '''
@@ -408,7 +412,7 @@ class GroupProject:
 
     @functools.cached_property
     def gl(self):
-        return lab.gl
+        return self.lab.gl
 
     @functools.cached_property
     def project(self):
