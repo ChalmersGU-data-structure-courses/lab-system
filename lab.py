@@ -310,7 +310,7 @@ class Lab:
         for group_id in self.course.groups:
             self.student_group(group_id).project.delete()
 
-    def create_group_projects_fast(self, only_missing = False):
+    def create_group_projects_fast(self, exist_ok = False):
         '''
         Create all student projects for this lab.
         Each project is forked from the staging project and appropriately configured.
@@ -330,7 +330,7 @@ class Lab:
                             'name': c.name,
                         })
                     except gitlab.GitlabCreateError as e:
-                        if only_missing and e.response_code == 409:
+                        if exist_ok and e.response_code == 409:
                             if self.logger:
                                 self.logger.info('Skipping because project already exists')
                         else:
