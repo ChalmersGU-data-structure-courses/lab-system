@@ -310,4 +310,53 @@ Fill out the remaining options according to their documentation.
 
 ## Running
 
-TODO
+We describe here common workflows occuring throughout a course.
+We will do so at the level of an interactive Python environment.
+
+If a particular workflow needs to executed repeatedly, it can be time-saving to save it as a Python file, for example `do_this_and_that.py`.
+You can execute it using `python3 do_this_and_that.py`.
+(If `python` defaults to version 3 on your system, you may also write `python` instead of `python3`.)
+If you give it a header
+```
+#!/bin/python3
+```
+and executable permission, you may execute directly, e.g. `./do_this_and_that.py` in a shell.
+You can also execute it in interactive mode using `python3 -i do_this_and_that.py`.
+
+The classes relevant to our workflows are `Course` defined in `course.py` and `Lab` defined in `lab.py`.
+You must import these modules before you can use these classes, e.g.
+```
+from course import Course
+```
+
+### Logging
+
+The `Course` and `Lab` classes support logging.
+You may pass a customized logger as constructor arguments, otherwise a default logger is used.
+
+To globally setup logging via standard error, we do the following:
+```
+import logging
+logging.basicConfig()
+logging.getLogger().setLevel(logging.INFO)
+
+```
+Use log level `logging.DEBUG` for more detailed log messages.
+Use `logging.WARNING` if you only want to see messages for unexpected events.
+This is the recommended log level for commands invoked repeatedly over a long period.
+In a shell, you can run a script in a timed loop and collate its logging output as follows:
+```
+while [[ 1 ]]; do; ./script.py 2>>scipt.log; sleep 600; done
+```
+
+### Basic setup
+
+We initialize the course object by passing it a course configuration module derived from `gitlab_config.py.template` as described under Configuration.
+We may also pass it a local directory used by some course operations to store data locally.
+For example, each local git repository used by a Lab instance to manage remote repositories on GitLab Chalmers will be created as a subdirectory named according to their full id.
+An example is 
+```
+import <your course config> as config
+course = Course(config, dir = <local course directory>)
+```
+The dictionary `course.lab` allows you to access Lab instances according to their id, for example `course.lab[3]` for the lab with id 3.
