@@ -329,6 +329,10 @@ You must import these modules before you can use these classes, e.g.
 from course import Course
 ```
 
+All functions of `Course` and `Lab` objects discussed below come with their own documentation.
+This is the so-called docstring of the respective method in `course.py` and `lab.py`.
+You may look it up to for example get a full explanation of possible parameters.
+
 ### Logging
 
 The `Course` and `Lab` classes support logging.
@@ -374,3 +378,29 @@ course = Course(config, dir = <local course directory>)
 ```
 You may wish to save this as a Python file `<my course>.py`.
 To operate on the course in the future, you can then start an interpreter with `python -i <my course>.py` with the object `course` preloaded.
+
+### Adding graders on GitLab
+
+To add or invite teachers from Canvas to the GitLab graders group, run
+```
+course.add_teachers_to_gitlab()
+```
+Every examiner, teacher, and teaching assistant on Canvas counts as a teacher in this context.
+You can run this method repeatedly to add teachers who arrive on Canvas later.
+
+### Mirroring group category on on GitLab
+
+Suppose you have created a group set on Canvas.
+We assume you have configured this group set in your course configuration module.
+Then you can mirror the group structure on Canvas by calling
+```
+course.create_groups_from_canvas()
+```
+
+Suppose now that students have signed up for groups or were divided into them by teachers.
+Then you can add or invite students (depending on whether we recognize an account on Chalmers GitLab for them) as follows:
+```
+course.sync_students_to_gitlab()
+```
+You may wish to call this command repeatedly over the beginning part of your course.
+If students have changed group membership after the last invocation, they will be removed from their old group and added to the new one.
