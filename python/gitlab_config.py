@@ -340,9 +340,9 @@ def _lab_item(k, *args):
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
     _lab_item(1, 'sorting-complexity'  , False),
-    _lab_item(2, 'autocomplete'        , True ),
-    _lab_item(3, 'plagiarism-detection', True ),
-    _lab_item(4, 'path-finder'         , True ),
+#    _lab_item(2, 'autocomplete'        , True ),
+#    _lab_item(3, 'plagiarism-detection', True ),
+#    _lab_item(4, 'path-finder'         , True ),
 ])
 
 # Students taking part in labs who are not registered on Canvas.
