@@ -217,7 +217,7 @@ def invitation_create(gitlab_client, entity, email, access_level, **kwargs):
     if r['status'] == 'error':
         message = general.from_singleton(r['message'].values())
         response_code = None
-        if any(message.startswith(prefix) for prefix in ['Member already invited', 'Already a member']):
+        if any(message.startswith(prefix) for prefix in ['Member already invited', 'Already a member', 'Invite email has already been taken']):
             response_code = 409
         raise gitlab.exceptions.GitlabCreateError(message, response_code = response_code)
 
