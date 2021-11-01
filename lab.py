@@ -11,7 +11,7 @@ import types
 import urllib.parse
 
 from course_basics import SubmissionHandlingException
-import course_new as course
+import course
 import git_tools
 import gitlab_tools
 import grading_sheet
@@ -230,7 +230,11 @@ class Lab:
         This is used as staging for (pushes to) the grading project on Chalmers GitLab.
         It fetches from the official lab repository and student group repositories.
         '''
-        return git.Repo(self.dir)
+        try:
+            return git.Repo(self.dir)
+        except git.NoSuchPathError:
+            self.repo_init()
+            return self.repo
 
     def repo_add_remote(self, name, project, **kwargs):
         git_tools.add_tracking_remote(
