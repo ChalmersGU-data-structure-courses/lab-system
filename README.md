@@ -358,7 +358,7 @@ while [[ 1 ]]; do; ./script.py 2>>scipt.log; sleep 600; done
 We initialize the course object by passing it a course configuration module derived from `gitlab_config.py.template` as described under Configuration.
 We may also pass it a local directory used by some course operations to store data locally.
 For example, each local git repository used by a Lab instance to manage remote repositories on GitLab Chalmers will be created as a subdirectory named according to their full id.
-An example is 
+An example is:
 ```
 import <your course config> as config
 course = Course(config, dir = <local course directory>)
@@ -379,9 +379,12 @@ course = Course(config, dir = <local course directory>)
 You may wish to save this as a Python file `<my course>.py`.
 To operate on the course in the future, you can then start an interpreter with `python -i <my course>.py` with the object `course` preloaded.
 
+The Python interpreter supports autocompletion.
+To get help on (e.g., course or lab) function `f`, run `help(f)`.
+
 ### Adding graders on GitLab
 
-To add or invite teachers from Canvas to the GitLab graders group, run
+To add or invite teachers from Canvas to the GitLab graders group, run:
 ```
 course.add_teachers_to_gitlab()
 ```
@@ -392,7 +395,7 @@ You can run this method repeatedly to add teachers who arrive on Canvas later.
 
 Suppose you have created a group set on Canvas.
 We assume you have configured this group set in your course configuration module.
-Then you can mirror the group structure on Canvas by calling
+Then you can mirror the group structure on Canvas by calling:
 ```
 course.create_groups_from_canvas()
 ```
@@ -404,3 +407,63 @@ course.sync_students_to_gitlab()
 ```
 You may wish to call this command repeatedly over the beginning part of your course.
 If students have changed group membership after the last invocation, they will be removed from their old group and added to the new one.
+
+### Creating labs on GitLab
+
+Suppose we want to create on GitLab the lab with id 3.
+Let us select this lab as a variable:
+```
+lab = course.lab[3].
+```
+
+We run
+```
+lab.official_project.create()
+```
+to create the official project with problem and solution branches.
+This will take its content from the local directory specified in the lab configuration and add a suitable `.gitignore` file if configured.
+If we wanted to delete the official project to start again, we would call the `delete` method instead.
+
+Double-check that the official project has the correct content.
+The student projects will be derived from it.
+
+Initialize the local grading repository using
+```
+lab.repo_init()
+```
+This pulls from the official project.
+You may add an argument `bare = True` to make it a so-called bare git repository.
+This is useful for automated task that don't need a repository with an actual working directory.
+
+Create student projects by running:
+```
+lab.create_group_projects_fast()
+```
+If you made a mistake, you can delete them again by running
+```
+lab.delete_group_projects()
+```
+
+Alternatively, you can access a single group's lab project using
+```
+lab.group(<group_id>).project
+```
+and create and delete it using the `create` and `delete` methods, respectively.
+
+### Hotfixing labs
+
+If you notice in mistake in the lab, but students may have already begun working on it, you can *hotfix* the student projects.
+For this, create a hotfix branch in the local grading repository that has the problem branch as ancestor.
+Then call:
+```
+lab.hotfix_groups(<hotfix branch>)
+```
+This will only attempt to apply a patch commit to the main branch of each student lab repository.
+It does nothing for groups for which this patch is empty (e.g., because it has already been applied).
+In some cases, the merge may not be possible automatic.
+For those student projects you will have to manually merge the hotfix branch into the main branch.
+You can use
+```
+lab.group(<group_id>.hotfix_group(<hotfix branch>, <group branch>)
+```
+to hotfix branches other than the main branch for an individual group.
