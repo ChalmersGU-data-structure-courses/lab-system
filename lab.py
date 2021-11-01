@@ -254,7 +254,7 @@ class Lab:
         for group_id in self.course.groups:
             self.student_group(group_id).repo_add_remote(ignore_missing = True)
 
-    def repo_init(self, bare = True):
+    def repo_init(self, bare = False):
         '''
         Initialize the local grading repository.
         If the directory exists, we assume that all remotes are set up.
