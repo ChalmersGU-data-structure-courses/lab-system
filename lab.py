@@ -339,9 +339,9 @@ class Lab:
                 for (group_id, project) in tuple(projects.items()):
                     project = self.course.configure_student_project(project)
                     project.delete_fork_relation()
-                    self.groups(group_id).project.get = project
+                    self.student_group(group_id).project.get = project
                     del projects[group_id]
-                    self.groups(group_id).repo_add_remote()
+                    self.student_group(group_id).repo_add_remote()
             except:
                 for project in projects.values():
                     project.delete()
