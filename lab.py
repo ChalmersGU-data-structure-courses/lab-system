@@ -308,7 +308,7 @@ class Lab:
 
     def delete_group_projects(self):
         for group_id in self.course.groups:
-            self.group_project(group_id).project.delete()
+            self.student_group(group_id).project.delete()
 
     def create_group_projects_fast(self, only_missing = False):
         '''
@@ -412,7 +412,7 @@ class GroupProject:
 
     @functools.cached_property
     def gl(self):
-        return lab.gl
+        return self.lab.gl
 
     @functools.cached_property
     def project(self):
