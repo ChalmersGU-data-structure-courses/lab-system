@@ -86,6 +86,13 @@ base_url = 'https://git.chalmers.se/'
 #     ├── 1
 #     ...
 
+# Regarding group and project names on GitLab, we are constrained by the following.
+# (This has been last checked at version 14.4).
+# > Name can contain only letters, digits, emojis, '_', '.', dash, space.
+# > It must start with letter, digit, emoji or '_'.
+# This also applies to the content of the name file for each lab.
+# This is because it is currently used to form the full name of a lab on Chalmers Gitlab.
+
 _course_path = PurePosixPath('courses/XXX')
 
 # Absolute paths on Chalmers GitLab to the groups described above.
