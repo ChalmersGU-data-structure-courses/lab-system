@@ -267,7 +267,7 @@ class Course:
     def get_all_users(self, use_cache = True):
         return self.canvas.get_list(['courses', self.course_id, 'users'], params = {
             'include[]': ['enrollments'],
-            'enrollment_state[]': ['active', 'invited', 'completed', 'inactive'],
+            'enrollment_state[]': ['active', 'completed', 'inactive'],
         }, use_cache = use_cache)
 
     def __init__(self, canvas, course_id, use_cache = True):
