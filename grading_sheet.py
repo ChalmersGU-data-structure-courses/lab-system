@@ -225,7 +225,7 @@ class GradingSheet:
     def sheet_parsed(self):
         return parse(self.grading_spreadsheet.config, self.sheet_data)
 
-    def add_query_column_group(self):
+    def add_query_column_group(self, request_buffer = None):
         column_group = self.sheet_parsed.query_column_groups[-1]
         headers = query_column_group_headers(
             self.grading_spreadsheet.config,
@@ -233,29 +233,23 @@ class GradingSheet:
         )
         range = general.range_of(column_group)
 
-        request_buffer = self.grading_spreadsheet.update_request_buffer()
-        for (column, header) in zip(column_group, headers):
-            column_new = column + general.len_range(range)
-            request_buffer.add(
-                *google_tools.sheets.requests_duplicate_dimension(
+        def f():
+            for (column, header) in zip(column_group, headers):
+                column_new = column + general.len_range(range)
+                yield from google_tools.sheets.requests_duplicate_dimension(
                     self.sheet_properties.sheetId,
                     google_tools.sheets.Dimension.columns,
                     column,
                     column_new,
-                ),
-                google_tools.sheets.request_update_cells(
-                    [google_tools.sheets.row_data([google_tools.sheets.cell_data(
-                        userEnteredValue = google_tools.sheets.extended_value_string(header)
-                    )])],
-                    'userEnteredValue',
+                )
+                yield google_tools.sheets.request_update_cells_user_entered_value(
+                    [[google_tools.sheets.extended_value_string(header)]],
                     range = google_tools.sheets.grid_range(
                         self.sheet_properties.sheetId,
                         (google_tools.sheets.range_unbounded, general.range_singleton(column_new)),
                     ),
-                ),
-            )
-
-        request_buffer.flush()
+                )
+        self.grading_sheet.feed_update_request_buffer(request_buffer, f())
 
 class GradingSpreadsheet:
     def __init__(self, config, logger = logger):
@@ -299,12 +293,22 @@ class GradingSpreadsheet:
         ''' A dictionary sending lab ids to grading sheets. '''
         return dict(self.parse_worksheets())
 
+    def batch_update(self, requests):
+        google_tools.sheets.batch_update(
+            self.google,
+            self.config.grading_sheet.spreadsheet,
+            requests
+        )
+
     def update_request_buffer(self):
         ''' Create a request buffer for batch updates. '''
         return google_tools.sheets.UpdateRequestBuffer(
             self.google,
             self.config.grading_sheet.spreadsheet,
         )
+
+    def feed_update_request_buffer(self, request_buffer, requests):
+        (request_buffer.add if request_buffer else self.batch_update)(requests)
 
     def format_group(group_id, group_link):
         value = self.config.group.id.print(group_id)
@@ -347,7 +351,7 @@ class GradingSpreadsheet:
         * exist_ok: Do not raise an error if the lab already has a worksheet.
                     Instead, do nothing.
         * request_buffer: An optional buffer for update requests to use.
-                          If given, it will end up in a flushed state if this methiod completes successfully.
+                          If given, it will end up in a flushed state if this method completes successfully.
         '''
         self.logger.info(f'Creating grading sheet for {self.config.lab.name.print(lab_id)}')
 
@@ -546,7 +550,7 @@ class GradingSpreadsheet:
 if __name__ == '__main__':
     import google_tools.general
     import gspread
-    import gitlab_config as config
+    import gitlab_config_dit181 as config
 
     logging.basicConfig()
     logging.root.setLevel(logging.DEBUG)
