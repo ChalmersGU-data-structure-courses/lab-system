@@ -144,7 +144,7 @@ def request_update_cells_user_entered_value(rows, start = None, range = None):
     * rows: Iterable (of rows) of iterables (of cells) of user entered values (API type ExtendedValue). 
     '''
     return request_update_cells(
-        [row_data(cell_data(userEnteredValue = cell) for cell in row) for row in rows]
+        [row_data(cell_data(userEnteredValue = cell) for cell in row) for row in rows],
         'userEnteredValue',
         start = start,
         range = range,
