@@ -316,7 +316,7 @@ class Course:
         Add or invite examiners, teachers, and TAs from Chalmers/GU Canvas to the graders group on Chalmers GitLab.
         This only sends invitiations or adds users for new graders.
         Existing members of the grader group not on Canvas are not removed.
-        Invitations to outdated emails are removed.
+        Outdated or unrecognized invitations are removed.
 
         Improved version of invite_teachers_to_gitlab that uses gitlab username resolution from a Canvas user.
         Does not need a ledger of past invitations.
@@ -354,7 +354,7 @@ class Course:
                                 )
 
         for email in invitations.keys() - invite():
-            self.logger.debug(f'deleting obsolete invitation of {user.name} via {email}')
+            self.logger.debug(f'deleting obsolete invitation of {email}')
             with gitlab_tools.exist_ok():
                 gitlab_tools.delete(self.gl, self.graders_group.lazy, email)
 
