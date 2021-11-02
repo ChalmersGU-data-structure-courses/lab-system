@@ -35,7 +35,7 @@ class Lab:
         self.logger = logger
         self.course = course
         self.id = id
-        self.dir = Path(dir)
+        self.dir = Path(dir) if dir != None else None
 
         self.config = config if config != None else self.course.config.labs[id]
 
