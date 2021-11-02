@@ -25,6 +25,20 @@ list_all_args = {
 def list_all(manager):
     return manager.list(**list_all_args)
 
+@contextlib.contextmanager
+def exist_ok():
+    try:
+        yield
+    except gitlab.exceptions.GitlabCreateError as e:
+        if not e.response_code in [304, 409]:
+            raise
+    except gitlab.exceptions.GitlabDeleteError as e:
+        if not e.response_code in [304, 404]:
+            raise
+
+def exist_ok_check(enabled = False):
+    return exist_ok() if enabled else contextlib.nullcontext()
+
 def wait_for_fork(gl, project, fork_poll_interval = 0.5, check_immediately = True):
     # The GitLab API does not have a synchronous fork command.
     # This is the currently recommended workaround.
@@ -38,15 +52,25 @@ def wait_for_fork(gl, project, fork_poll_interval = 0.5, check_immediately = Tru
         project = gl.projects.get(project.id)
     return project
 
-def protect_tags(gl, project_id, tags, delete_existing = False):
+def protect_tags(gl, project_id, patterns, delete_existing = False, exist_ok = True):
     project = gl.projects.get(project_id, lazy = True)
+    if delete_existing or exist_ok:
+        protected_prev = list_all(project.protectedtags)
     if delete_existing:
         # Needs gitlab.v4.objects.projects.Project, not just gitlab.v4.objects.projects.ProjectFork.
         # Otherwise, the attribute protectedtags does not exist.
-        for x in list_all(project.protectedtags):
+        for x in protected_prev:
             x.delete()
-    for pattern in tags:
-        project.protectedtags.create({'name': pattern, 'create_access_level': gitlab.DEVELOPER_ACCESS})
+        protected_prev = list()
+    if exist_ok:
+        patterns_prev = set(protect.name
+            for protect in protected_prev
+            if [level['access_level'] for level in protect.create_access_levels] == [30]
+        )
+        patterns = set(patterns) - patterns_prev
+    for pattern in patterns:
+        with exist_ok_check(exist_ok):
+            project.protectedtags.create({'name': pattern, 'create_access_level': gitlab.DEVELOPER_ACCESS})
 
 def protect_branch(gl, project_id, branch):
     project = gl.projects.get(project_id, lazy = True)
@@ -157,20 +181,6 @@ class CachedProject:
         self.gl.projects.delete(str(self.path))
         with contextlib.suppress(AttributeError):
             del self.get
-
-@contextlib.contextmanager
-def exist_ok():
-    try:
-        yield
-    except gitlab.exceptions.GitlabCreateError as e:
-        if not e.response_code == 409:
-            raise
-    except gitlab.exceptions.GitlabDeleteError as e:
-        if not e.response_code == 404:
-            raise
-
-def exist_ok_check(enabled = False):
-    return exist_ok() if enabled else contextlib.nullcontext()
 
 def users_dict(manager):
     return dict((user.username, user) for user in list_all(manager))
