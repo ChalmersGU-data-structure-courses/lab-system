@@ -138,6 +138,18 @@ def request_update_cells(rows, fields, start = None, range = None):
         'updateCells': dict(f()),
     }
 
+def request_update_cells_user_entered_value(rows, start = None, range = None):
+    '''
+    Convenience specialization of request_update_cells_user for updating the user entered valued.
+    * rows: Iterable (of rows) of iterables (of cells) of user entered values (API type ExtendedValue). 
+    '''
+    return request_update_cells(
+        [row_data(cell_data(userEnteredValue = cell) for cell in row) for row in rows]
+        'userEnteredValue',
+        start = start,
+        range = range,
+    )
+
 def requests_duplicate_dimension(sheet_id, dimension, copy_from, copy_to):
     dr = dimension_range(
         sheet_id,
@@ -226,6 +238,8 @@ def get(spreadsheets, id, fields = None, ranges = None):
     ).execute()
 
 def batch_update(spreadsheets, id, requests):
+    requests = list(requests)
+
     def msg():
         yield f'Performing batch update of spreadsheet f{id} with requests:'
         for request in requests:
