@@ -260,7 +260,7 @@ class Course:
             for canvas_group in self.canvas_group_set.details.values()
         )
 
-    def create_groups_from_canvas(self, delete_existing = True):
+    def create_groups_from_canvas(self, delete_existing = False):
         if delete_existing:
             self.group_delete_all()
         groups_old = () if delete_existing else self.groups
