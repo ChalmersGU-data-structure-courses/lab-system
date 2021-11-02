@@ -68,7 +68,7 @@ class Course:
         '''
         self.logger = logger
         self.config = config
-        self.dir = Path(dir)
+        self.dir = Path(dir) if dir != None else None
 
         # Qualify a request by the full group id.
         # Used as tag names in the grading repository of each lab.
