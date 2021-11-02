@@ -90,7 +90,7 @@ _course_path = PurePosixPath('courses/dat525')
 
 # Absolute paths on Chalmers GitLab to the groups described above.
 path = SimpleNamespace(
-    graders = _course_path / 'graders',
+    graders = _course_path.parent / 'dat038-tda417' / 'graders',
     labs    = _course_path / 'labs',
     groups  = _course_path / 'groups',
 )
