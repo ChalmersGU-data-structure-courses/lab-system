@@ -79,7 +79,7 @@ class Course:
 
         import lab
         self.labs = dict(
-            (lab_id, lab.Lab(self, lab_id, dir = self.dir / self.config.lab.full_id.print(lab_id)))
+            (lab_id, lab.Lab(self, lab_id, dir = self.dir / self.config.lab.full_id.print(lab_id) if self.dir != None else None))
             for lab_id in self.config.labs
         )
 
