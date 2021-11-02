@@ -183,18 +183,6 @@ second = component(1)
 third  = component(2)
 fourth = component(3)
 
-def on_component(i, f):
-    def h(xs):
-        ys = copy(xs)
-        ys[i] = f(xs[i])
-        return ys
-    return h
-
-on_first  = functools.partial(on_component, 0)
-on_second = functools.partial(on_component, 1)
-on_third  = functools.partial(on_component, 2)
-on_fourth = functools.partial(on_component, 3)
-
 def ev(*x):
     return lambda f: f(*x)
 
