@@ -68,7 +68,7 @@ class Course:
         '''
         self.logger = logger
         self.config = config
-        self.dir = Path(dir)
+        self.dir = Path(dir) if dir != None else None
 
         # Qualify a request by the full group id.
         # Used as tag names in the grading repository of each lab.
@@ -79,7 +79,7 @@ class Course:
 
         import lab
         self.labs = dict(
-            (lab_id, lab.Lab(self, lab_id, dir = self.dir / self.config.lab.full_id.print(lab_id)))
+            (lab_id, lab.Lab(self, lab_id, dir = self.dir / self.config.lab.full_id.print(lab_id) if self.dir != None else None))
             for lab_id in self.config.labs
         )
 
