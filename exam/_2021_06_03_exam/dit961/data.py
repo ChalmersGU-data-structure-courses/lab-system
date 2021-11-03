@@ -39,8 +39,7 @@ def canvas_assignment_description(resource_for_format):
 
     link_for_format is a function returning a pair of filename and URL to the exam version for a given format extension.
     '''
-    from dominate.tags import strong, a, div, p, ul, li, span, style, td, th, thead, tr
-    from dominate.util import raw, text
+    from dominate.tags import strong, a, div, p, ul, li
 
     def f(extension, description):
         (filename, link) = resource_for_format(extension)
@@ -61,7 +60,7 @@ def question_key(q):
 def question_name(q):
     return f'Question {q}'
 
-def question_name_parse(q):
+def question_name_parse(s):
     m = re.fullmatch('Question (\\d+)', s)
     return int(m.group(1)) if m else None
 

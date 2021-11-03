@@ -7,8 +7,6 @@ import argparse
 from pathlib import Path
 import shlex
 
-import lab_assignment_constants
-
 default_labs = [1, 2, 3, 4]
 
 dir_script = Path(__file__).parent
@@ -87,9 +85,9 @@ except ModuleNotFoundError:
 args = p.parse_args()
 # Argument parsing is done: expensive initialization can start now.
 
-from collections import defaultdict, namedtuple
+from collections import namedtuple
 import csv
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 import itertools
 from functools import partial
 import logging
@@ -97,9 +95,9 @@ from pathlib import Path
 import sys
 from types import SimpleNamespace
 
-from canvas import Canvas, Course, Assignment
+from canvas import Canvas, Course
 import config
-from general import *
+from general import namespaced, print_error, group_by_unique, get_attr, compose, multidict, map_with_val, partition, group_by,  group_by_, list_get, dict_from_fun
 from lab_assignment import LabAssignment
 
 logging.basicConfig()
@@ -245,7 +243,7 @@ def print_readable(file):
         print(f'{program.description} ({len(program.users)} student(s)):', file = file)
         for lab in args.labs:
             stats_lab = stats[lab]
-            assignment = assignments[lab]
+            #assignment = assignments[lab]
             print('* Lab {}: {:3} in groups, {:2} not, {:3} ungraded | total {} | {}'.format(
                 lab,
                 len(stats_lab.in_group),
@@ -281,7 +279,7 @@ def print_csv(file):
         stats = statistics(program.users)
         for lab in args.labs:
             stats_lab = stats[lab]
-            assignment = assignments[lab]
+            #assignment = assignments[lab]
 
             def generate_attempt(stats):
                 for v in attempt_fields.values():

@@ -5,6 +5,8 @@ from pathlib import Path
 import shlex
 import subprocess
 
+import general
+
 logger = logging.getLogger('java')
 
 @functools.cache
@@ -59,7 +61,7 @@ class CompileError(Exception):
 def compile_java(files, force_recompile = False, detect_enc = False, **kwargs):
     def is_up_to_date(file_java):
         file_class = Path(file_java).with_suffix('.class')
-        return file_class.exists() and os.path.getmtime(file_class) > get_recursive_modification_time(file_java)
+        return file_class.exists() and os.path.getmtime(file_class) > general.get_recursive_modification_time(file_java)
 
     if force_recompile:
         recompile = True
@@ -71,11 +73,11 @@ def compile_java(files, force_recompile = False, detect_enc = False, **kwargs):
 
     if recompile:
         if detect_enc:
-            encoding = detect_encoding(files)
+            encoding = general.detect_encoding(files)
             logger.log(logging.DEBUG, 'Detected encoding {}'.format(encoding))
             kwargs['encoding'] = encoding
         cmd = list(javac_cmd(files, options = javac_standard_options, **kwargs))
-        log_command(logger, cmd, True)
+        general.log_command(logger, cmd, True)
         process = subprocess.run(cmd, stderr = subprocess.PIPE, encoding = 'utf-8')
         if process.returncode != 0:
             raise CompileError(process.stderr)
@@ -91,7 +93,7 @@ def compile_java_dir(dir, **kwargs):
 
 def policy_permission(type, args = []):
     return 'permission {};'.format(
-        ' '.join([type] + ([', '.join(java_string_encode(str(arg)) for arg in args)] if args else []))
+        ' '.join([type] + ([', '.join(general.java_string_encode(str(arg)) for arg in args)] if args else []))
     )
 
 permission_all = ('java.security.AllPermission', [])
@@ -101,7 +103,7 @@ def permission_file_descendants_read(dir):
 
 def policy_grant(path, permissions):
     return general.join_lines([
-        ' '.join(['grant'] + (['codeBase', java_string_encode('file:' + str(path))] if path != None else [])) + ' {',
+        ' '.join(['grant'] + (['codeBase', general.java_string_encode('file:' + str(path))] if path != None else [])) + ' {',
         *('  ' + policy_permission(*permission) for permission in permissions),
         '};',
         ''

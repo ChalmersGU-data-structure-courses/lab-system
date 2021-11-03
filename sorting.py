@@ -1,4 +1,3 @@
-import general
 import random
 
 def swap(xs, i, j):
@@ -118,10 +117,6 @@ class QuestionQuicksort:
             yield (f'quick_sol_partition_{i}', ', '.join(map(str, partitions[i])))
 
 class QuestionMergeSort:
-    def is_good(self):
-        ys = list(self.array)
-        pivot = ys[0]
-
     def __init__(self, seed):
         # these patterns enforce that the following zip-solution cannot work:
         # for x,y in zip(xs,ys): insert min(x,y) + max(x,y)

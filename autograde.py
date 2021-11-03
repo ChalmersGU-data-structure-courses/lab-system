@@ -1,7 +1,6 @@
 
 import json
 import difflib
-import sys
 import re
 import os
 import os.path
@@ -10,7 +9,6 @@ import shutil
 import subprocess
 import argparse
 from glob import glob
-import signal
 
 # Set this to False if you haven't installed diff2html-cli:
 #   https://www.npmjs.com/package/diff2html-cli

@@ -1,10 +1,7 @@
-import csv
-from collections import namedtuple
-from pathlib import Path
 import logging
 
-from general import print_json, print_error
-from canvas import Canvas, Course, Groups, Assignment
+from general import print_json
+from canvas import Canvas, Course, Assignment
 import config
 
 logging.basicConfig()

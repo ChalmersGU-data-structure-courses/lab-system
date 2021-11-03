@@ -45,7 +45,6 @@ def merge_sort_bottom_up_step(xss):
     it = iter(xss)
     while True:
         tss = []
-        stop = False
         try:
             for i in range(2):
                 tss.append(next(it))

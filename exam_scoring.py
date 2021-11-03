@@ -3,7 +3,6 @@ import csv
 import itertools
 import gspread
 import logging
-from pathlib import Path
 import re
 
 import canvas
@@ -101,7 +100,7 @@ def get_results():
     return dict((lookup[id], process(id, x)) for (id, x) in data.items())
 
 def results_by_user_id(course, use_cache = True):
-    return dict((exam.user_integration_id_to_id[integration_id], result) for (integration_id, result) in get_results().items())
+    return dict((course.user_integration_id_to_id[integration_id], result) for (integration_id, result) in get_results().items())
 
 def results_for_grading_protocol(input, output, use_cache = True):
     c = canvas.Canvas(config.canvas_url)
@@ -193,6 +192,7 @@ def analysis():
     count_basic = 0
     count_advanced = 0
 
+    data = load_data()
     for (id, x) in data.items():
         scores_basic = [score_value(x[q][0]) for q in questions_basic]
         scores_advanced = [score_value(x[q][0]) for q in questions_advanced]

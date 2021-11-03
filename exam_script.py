@@ -1,6 +1,5 @@
-import general
 import logging
-from  pathlib import Path
+#from  pathlib import Path
 
 import exam._2021_08_27.dit181.data as exam_config_dit181
 import exam._2021_08_27.let375.data as exam_config_let375

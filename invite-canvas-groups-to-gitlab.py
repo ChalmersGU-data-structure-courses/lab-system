@@ -4,8 +4,8 @@ import json
 import gitlab
 from pathlib import Path
 
-from general import *
-from canvas import *
+from general import print_json
+from canvas import Canvas, Course, GroupSet
 
 canvas_url = 'canvas.gu.se'
 course_id = 42575
@@ -81,7 +81,5 @@ print('Authenticating...')
 gl = gitlab.Gitlab('https://git.chalmers.se/', private_token = file_token.read_text())
 gl.auth()
 
-cou
 u = gl.users
-
 gitlab_users_by_username = dict((user.username, user) for user in u.list(all = True))

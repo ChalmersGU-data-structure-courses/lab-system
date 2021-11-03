@@ -19,6 +19,7 @@ def test_unique_path(weights, path):
 def question6(seed = None, solution = False):
     rnd = random.Random(seed)
     weights = None
+    path = None  # Only there because of limitations of pyflakes.
     while not (weights and test_unique_path(weights, path)):
         # numbers 1 2 ... 9
         weights = list(range(1, NCHEAP + NEDGES))

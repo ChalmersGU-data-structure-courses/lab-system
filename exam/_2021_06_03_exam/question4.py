@@ -1,5 +1,4 @@
 
-import itertools
 import random
 
 SIZE = 10 # size of the array
@@ -38,10 +37,10 @@ def question4(seed = None, solution = False):
                        HOLE_INC   if i in HOLES or parent(i) in HOLES else
                        INCREASE)
             increase = rnd.choice(choices)
-            array.append(array[parent(i)] + increase)
+            array.append(prev + increase)
 
-    min_insert_val = array[parent(INSERT)] + 1
-    max_insert_val = array[INSERT] - 1
+    #min_insert_val = array[parent(INSERT)] + 1
+    #max_insert_val = array[INSERT] - 1
     unique_choice_insert_val = min(v for f in [leftchild, rightchild] for v in [array[f(parent(INSERT))]] if v != None) - 1
 
     #answer = {'solution': {
@@ -53,9 +52,9 @@ def question4(seed = None, solution = False):
     for i, val in enumerate(array):
         solval = val
         if i in HOLES:
-            parentval = array[parent(i)] if i > 0 else -1
-            leftval = array[leftchild(i)] if leftchild(i) < len(array) else 100
-            rightval = array[rightchild(i)] if rightchild(i) < len(array) else 100
+            #parentval = array[parent(i)] if i > 0 else -1
+            #leftval = array[leftchild(i)] if leftchild(i) < len(array) else 100
+            #rightval = array[rightchild(i)] if rightchild(i) < len(array) else 100
             # not all choices valid because of uniqueness constraint
             #solval = f"{parentval+1}..{min(leftval,rightval)-1}"
             val = '?'

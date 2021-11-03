@@ -8,7 +8,6 @@ import fcntl
 import functools
 import itertools
 import json
-import logging
 from pathlib import Path
 import re
 import tempfile
@@ -97,8 +96,12 @@ def with_none(f, x):
 def maybe(f):
     return lambda x: with_none(f, x)
 
+# Bug in pyflakes (TODO: report):
+# ./general.py:102:28 local variable 'last' defined in enclosing scope on line 70 referenced before assignment
+# ./general.py:106:9 local variable 'last' is assigned to but never used
 def without_adjacent_dups(eq, xs):
     has_last = False
+    last = None  # Only there to work around bug in pyflakes.
     for x in xs:
         if has_last and eq(last, x):
             continue

@@ -1,5 +1,4 @@
 import csv
-from pathlib import Path
 import PyPDF2
 import shlex
 import shutil
@@ -127,13 +126,6 @@ def extract_from_pdf(source, target, ranges):
 
 def solution_file(i):
     return sol_dir / str(i) / 'test.pdf'
-
-#selectors = calculate_selectors()
-print(selectors['gusaxtcha@gu.se'])
-
-for (i, j, integration_id, name) in read_lookup():
-    if integration_id == 'gusaxtcha@gu.se':
-        print(i, j)
 
 def package_submissions():
     #solution_selectors = dict((i, find_selectors(solution_file(i))) for i in range(20))
