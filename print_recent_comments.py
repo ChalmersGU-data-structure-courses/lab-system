@@ -7,8 +7,6 @@ import argparse
 from pathlib import Path
 import shlex
 
-import lab_assignment_constants
-
 dir_script = Path(__file__).parent
 cache_dir_default = dir_script / 'cache'
 file_auth_token_default = dir_script / 'auth_token'
@@ -61,16 +59,12 @@ args = p.parse_args()
 
 import datetime
 import logging
-import os
-import shutil
 import webbrowser
 
 from dominate import document
-from dominate.tags import *
-from dominate.util import raw, text
+from dominate.tags import div, pre, ul, li
 
-from general import print_error, print_json
-from canvas import Canvas, GroupSet, Course, Assignment
+from canvas import Canvas, GroupSet
 from lab_assignment import LabAssignment
 import config
 

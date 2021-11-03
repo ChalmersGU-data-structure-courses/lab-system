@@ -7,8 +7,6 @@ import argparse
 from pathlib import Path
 import shlex
 
-import lab_assignment_constants
-
 dir_script = Path(__file__).parent
 cache_dir_default = dir_script / 'cache'
 file_auth_token_default = dir_script / 'auth_token'
@@ -113,12 +111,10 @@ args = p.parse_args()
 from collections import namedtuple
 import csv
 import logging
-import os
 import re
-import shutil
 
-from general import print_error, add_to_path, join_lines, multidict, from_singleton
-from canvas import Canvas, GroupSet, Course, Assignment
+from general import print_error, multidict, from_singleton
+from canvas import Canvas, Course
 from lab_assignment import LabAssignment
 import config
 
@@ -170,8 +166,6 @@ for a in guessing:
         h = select_header(a.metavar, one_required, optional if use_filename else [], headers)
         print_error('guessing header {}: {}'.format(a.metavar, h))
         setattr(args, a.dest, h)
-
-filter_groups = None # Optional list of groups (as on the spreadsheet) to grade
 
 canvas = Canvas(config.canvas_url)
 course = Course(canvas, config.course_id, use_cache = not args.refresh_group_set)
@@ -251,18 +245,14 @@ print()
 if args.dry_run:
     args.check_dir.mkdir()
 else:
-    assert args.check_dir.is_dir(), 'The check directory {} does not exist: run with check_run=False first.'.format(shlex.quote(str(check_dir)))
+    assert args.check_dir.is_dir(), 'The check directory {} does not exist: run with check_run=False first.'.format(shlex.quote(str(args.check_dir)))
 
 # Also submit grades for users who have not submitted as part of their group.
 print('Submitting grades (and comments)...')
 for user in course.user_details:
     if user in group_set.user_to_group:
         group = group_set.user_to_group[user]
-        if filter_groups:
-            to_grade = group_set.details[group].name in map (lambda n: header_group_formatter.format(n), filter_groups)
-        else:
-            to_grade = group in group_grading
-        if to_grade:
+        if group in group_grading:
             grading = group_grading[group]
             if grading.comment or grading.grade:
                 grading = group_grading[group]

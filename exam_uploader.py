@@ -1,7 +1,6 @@
 import collections
 import csv
 import datetime
-import dominate
 import hashlib
 import itertools
 import logging
@@ -173,7 +172,7 @@ For comparison, here are your original exam problems: {f(file_exam)}'''
         c.put(endpoint, params = {'comment[text_comment]': comment})
 
 def create_canvas_instance_folder(instances, extra_time_students):
-    folder = exam.create_folder(canvas_instance_dir, hidden = 'true')
+    exam.create_folder(canvas_instance_dir, hidden = 'true')
     def f():
         for user in exam.students:
             hashed_and_locked = exam.create_folder(
@@ -189,13 +188,6 @@ def create_canvas_instance_folder(instances, extra_time_students):
                     yield (format.extension, id)
             yield (user.id, dict(g()))
     return dict(f())
-
-lookup = read_lookup(lookup_file)
-instances = read_instances(exam, instance_dir)
-#extra_time_students = get_extra_time_students(use_cache = True)
-#instances_on_canvas = create_canvas_instance_folder(instances, extra_time_students)
-
-solutions = upload_solutions(instances, lookup)
 
 def print_folders():
     for x in exam.list_folders(use_cache = False):
@@ -220,13 +212,8 @@ def update_assignment_times():
         print(a.overrides[0].lock_at + ', ' + user.name)
         continue
 
-        if 'Muntasir' in user.name:
-            print(user.name)
-            post_assignments(extra_time_students, instances_on_canvas, users = [user], overwrite_id = x.id)
-
 def post_assignments(extra_time_students, instances_on_canvas, users = None, overwrite_id = None):
-    from dominate.tags import strong, a, div, p, ul, li, span, style, td, th, thead, tr
-    from dominate.util import raw, text
+    from dominate.tags import strong, a, div, p, ul, li
 
     if users == None:
         users = exam.students
@@ -301,3 +288,10 @@ def read_lookup(lookup_file):
         return list((int(i), int(j), integration_id, name) for (i, j, integration_id, name) in csv.reader(file))
 
 #x = post_assignments(extra_time_students, instances_on_canvas)
+
+lookup = read_lookup(lookup_file)
+instances = read_instances(exam, instance_dir)
+#extra_time_students = get_extra_time_students(use_cache = True)
+#instances_on_canvas = create_canvas_instance_folder(instances, extra_time_students)
+
+solutions = upload_solutions(instances, lookup)

@@ -1,6 +1,4 @@
 import graphviz
-import heapq
-import itertools
 import math
 import random
 import os

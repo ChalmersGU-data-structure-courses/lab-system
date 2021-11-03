@@ -1,5 +1,4 @@
 import canvas
-import general
 
 import gitlab_config as config
 

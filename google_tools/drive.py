@@ -1,8 +1,6 @@
 import googleapiclient.discovery
 import logging
 
-from . import general
-
 logger = logging.getLogger(__name__)
 
 class Drive:

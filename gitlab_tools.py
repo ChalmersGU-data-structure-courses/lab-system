@@ -2,11 +2,8 @@ import contextlib
 import functools
 import general
 import gitlab
-import logging
 from pathlib import Path, PurePosixPath
 import time
-
-import git_tools
 
 def read_private_token(x):
     if isinstance(x, Path):
