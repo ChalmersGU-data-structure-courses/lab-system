@@ -38,7 +38,7 @@ class CompileException(SubmissionHandlingException):
     def __str__(self):
         return self.e.compile_errors
 
-def compile(src, bin):
+def compile(src, bin = None):
     # For now: ignoring bin.
     # TODO: use bin as target directory.
 
@@ -93,7 +93,7 @@ class Robograder:
         self.classpath_resolved = [dir.resolve() for dir in self.classpath]
         self.entrypoint = 'Robograder'
 
-    def setup(self, src, bin):
+    def setup(self, src, bin = None):
         # For now.
         bin = src
 
@@ -104,7 +104,7 @@ class Robograder:
             classpath = [bin.resolve()] + self.classpath_resolved
         )
 
-    def run(self, src, bin):
+    def run(self, src, bin = None):
         # For now.
         bin = src
 
