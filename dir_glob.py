@@ -1,8 +1,7 @@
-import glob
 import itertools
 from pathlib import Path
 
-from general import join_null
+from general import join_lines
 
 def read_patterns(file, missing_ok = False):
     if missing_ok and not file.exists():
@@ -11,7 +10,7 @@ def read_patterns(file, missing_ok = False):
     return (Path(line) for line in file.read_text().splitlines())
 
 def write_patterns(file, patterns):
-    file.write_text(join_lines(map(str, paths)))
+    file.write_text(join_lines(map(str, patterns)))
 
 root = Path('/')
 children = Path('*')

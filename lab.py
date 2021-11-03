@@ -8,16 +8,13 @@ from pathlib import Path
 import shutil
 import tempfile
 import types
-import urllib.parse
 
-from course_basics import SubmissionHandlingException
-import course
+from course_basics import CompilationRequirement, SubmissionHandlingException
 import git_tools
 import gitlab_tools
 import grading_sheet
 from instance_cache import instance_cache
-
-import robograder_java
+import print_parse
 
 class Lab:
     def __init__(self, course, id, config = None, dir = None, logger = logging.getLogger('lab')):
@@ -200,7 +197,7 @@ class Lab:
 
     @contextlib.contextmanager
     def with_staging_project(self):
-        r = self.staging_project.create()
+        self.staging_project.create()
         try:
             yield self.staging_project.get
         finally:
@@ -456,7 +453,7 @@ class GroupProject:
         If 'ignore_missing' holds, no error is raised if the project is missing.
         '''
         try:
-            lab.repo_add_remote(
+            self.lab.repo_add_remote(
                 self.remote,
                 self.project.get,
                 fetch_branches = [(git_tools.Namespacing.remote, git_tools.wildcard)],
@@ -466,7 +463,7 @@ class GroupProject:
         except gitlab.GitlabGetError as e:
             if ignore_missing and e.response_code == 404 and e.error_message == '404 Project Not Found':
                 if self.logger:
-                    self.logger.debug(f'Not adding remote {remote} because project is missing')
+                    self.logger.debug(f'Not adding remote {self.remote} because project is missing')
             else:
                 raise e
 
@@ -501,7 +498,7 @@ class GroupProject:
         dir = Path(self.lab.repo.git_dir) / git_tools.refs / git_tools.remote_tags / self.remote
         return [file.name for file in dir.iterdir()]
 
-    def repo_resolve_tag(tag_name):
+    def repo_resolve_tag(self, tag_name):
         '''
         Read the commit in the local repository corresponding to a tag in the student project on GitLab.
         '''
@@ -527,7 +524,7 @@ class GroupProject:
             self.logger.warn('Hotfixing: hotfix identical to problem.')
             return
 
-        master = git_tools.remote_branch(remote, branch_group)
+        master = git_tools.remote_branch(self.remote, branch_group)
         index = git.IndexFile.from_tree(self.lab.repo, problem, master, hotfix, i = '-i')
         merge = index.write_tree()
         diff = merge.diff(master)
@@ -549,7 +546,7 @@ class GroupProject:
             commit_date = hotfix.committed_datetime,
         )
 
-        return self.repo.remote(remote).push(git_tools.refspec(
+        return self.lab.repo.remote(self.remote).push(git_tools.refspec(
             commit.hexsha,
             self.course.config.branch.master,
             force = False,
@@ -717,7 +714,7 @@ class GroupProject:
         
         description += self.mention_paragraph()
         qualified_request = self.course.qualify_request.print((self.group_id, request))
-        issue = post_issue(self.project, request_type, qualified_request, response_type, description, params)
+        issue = self.post_issue(self.project, request_type, qualified_request, response_type, description, params)
         response.__dict__[response_type] = (issue, params)
         return issue
 
@@ -742,7 +739,7 @@ class GroupProject:
         if key in self.grading_issues:
             raise ValueError(f'Grading project: {response_type} issue for {request_type} {request} already exists.')
 
-        issue = post_issue(self.lab.grading_project, request_type, request, response_type, description, params)
+        issue = self.post_issue(self.lab.grading_project, request_type, request, response_type, description, params)
         self.grading_issues[key] = (issue, params)
         return issue
 
@@ -836,7 +833,7 @@ class GroupProject:
         has_grading_compilation = self.grading_issues.get((request, 'compilation'))
         has_grading_issue = has_grading_robograding or has_grading_compilation
 
-        require_compilation = not has_grading_issue or not has_
+        #require_compilation = not has_grading_issue or False # Unfinished
 
         # Check the commit out.
         with (
@@ -897,7 +894,7 @@ class GroupProject:
         if not x:
             return
 
-        process_submission(next(reversed(x.keys())))
+        self.process_submission(next(reversed(x.keys())))
         
 
         # how do we know a submission has been processed?

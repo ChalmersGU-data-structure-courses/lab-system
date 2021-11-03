@@ -28,7 +28,7 @@ class SimpleCache:
 
     @staticmethod
     def timestamp(path):
-        return datetime.fromtimestamp(os.path.getmtime(p), tz = timezone.utc)
+        return datetime.fromtimestamp(os.path.getmtime(path), tz = timezone.utc)
 
 #    def read(self, path, reader):
 #        with open(self.__get_path(path), 'r') as file:

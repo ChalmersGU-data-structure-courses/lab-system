@@ -1,15 +1,11 @@
 
-import json
 import difflib
-import sys
 import re
 import os
 from os.path import relpath
 import shutil
 import subprocess
 import argparse
-from glob import glob
-import signal
 
 from pathlib import Path
 

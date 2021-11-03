@@ -7,8 +7,6 @@ import argparse
 from pathlib import Path
 import shlex
 
-import lab_assignment_constants
-
 dir_script = Path(__file__).parent
 cache_dir_default = dir_script / 'cache'
 file_auth_token_default = dir_script / 'auth_token'
@@ -64,18 +62,13 @@ except ModuleNotFoundError:
 args = p.parse_args()
 # Argument parsing is done: expensive initialization can start now.
 
-from collections import namedtuple
-import csv
 import logging
-import os
-import re
-import shutil
 import tempfile
 
-from general import print_error, add_to_path, join_lines, multidict, from_singleton, fix_encoding, multidict
-from canvas import Canvas, GroupSet, Course, Assignment
+from general import multidict, fix_encoding
+from canvas import Canvas, Course, Assignment
 from lab_assignment import LabAssignment
-from get_feedback_helpers import *
+from get_feedback_helpers import parse_answers
 import config
 
 logging.basicConfig()

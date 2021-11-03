@@ -162,11 +162,10 @@ args = p.parse_args()
 # Argument parsing is done: expensive initialization can start now.
 
 import logging
-import os
 import shutil
 
 from general import print_error, add_to_path, join_lines
-from canvas import Canvas, GroupSet, Course
+from canvas import Canvas, Course
 from lab_assignment import LabAssignment
 import config
 

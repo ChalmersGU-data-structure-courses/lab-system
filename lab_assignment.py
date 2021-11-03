@@ -12,11 +12,11 @@ from types import SimpleNamespace
 import webbrowser
 
 from dominate import document
-from dominate.tags import *
+from dominate.tags import meta, link, title, script, style, h1, h2, div, pre, p, span, del_, button, table, thead, tbody, th, tr, td, a
 from dominate.util import raw, text
 
-from general import compose_many, from_singleton, ilen, Timer, print_error, print_json, mkdir_fresh, exec_simple, link_dir_contents, add_suffix, modify, format_with_rel_prec, format_timespan, sorted_directory_list, copy_tree_fresh, java_string_encode, get_recursive_modification_time
-from canvas import Canvas, Course, Assignment
+from general import from_singleton, ilen, Timer, print_error, mkdir_fresh, exec_simple, link_dir_contents, add_suffix, modify, format_with_rel_prec, format_timespan, sorted_directory_list, copy_tree_fresh, java_string_encode, get_recursive_modification_time
+from canvas import Assignment
 import lab_assignment_constants
 import submission_fix_lib
 import test_lib
@@ -308,7 +308,6 @@ class LabAssignment(Assignment):
 
     def unpack_linked(self, dir_files, dir, rel_dir_files, submissions, unhandled = None):
         logger.log(logging.INFO, 'unpacking: {}'.format(shlex.quote(str(dir))))
-        unhandled_any = False
         dir.mkdir()
 
         def unhandled_warn(id, name):
@@ -319,7 +318,7 @@ class LabAssignment(Assignment):
             return name_unhandled
 
         files = Assignment.get_files(submissions, Assignment.name_handler(self.files_solution, self.name_handlers, unhandled_warn))
-        file_mapping = self.create_submission_dir_linked(dir_files, dir, rel_dir_files, submissions[-1], files, content_handlers = self.content_handlers)
+        self.create_submission_dir_linked(dir_files, dir, rel_dir_files, submissions[-1], files, content_handlers = self.content_handlers)
 
     # static
     stages = {
@@ -375,7 +374,6 @@ class LabAssignment(Assignment):
             mkdir_fresh(dir_group)
             for previous, rel_dir in LabAssignment.stages.items():
                 submissions = Assignment.get_submissions(self.submissions[group], previous)
-                dir_group_submission = dir_group / rel_dir
                 if submissions:
                     #self.unpack(dir_group_submission, submissions, unhandled = unhandled if not previous else None, write_ids = write_ids)
                     self.unpack_linked(
@@ -905,8 +903,8 @@ pre { margin: 0px; white-space: pre-wrap; }
             ungraded_comments = Assignment.ungraded_comments(self.submissions[group])
             row_data.new_comments = cell(pre('\n'.join(Assignment.format_comments(ungraded_comments)))) if ungraded_comments else None
 
-        def build_index_files_entry(rel_base_dir, folder_name):
-            return ('Vs. {}'.format(folder_name), lambda group: build_index_files(group, rel_base_dir(group), folder_name))
+        #def build_index_files_entry(rel_base_dir, folder_name):
+        #    return ('Vs. {}'.format(folder_name), lambda group: build_index_files(group, rel_base_dir(group), folder_name))
 
         T = namedtuple('KeyData', ['title', 'style'], defaults = [None])
 

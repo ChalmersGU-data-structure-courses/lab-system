@@ -1,9 +1,8 @@
-import itertools
 import gitlab
 from pathlib import Path
+import subprocess
 
-from general import *
-from this_dir import this_dir
+from general import from_singleton, from_singleton_maybe
 
 id_group_dit = 1319
 
@@ -90,7 +89,7 @@ def fork_lab_project(lab, groups):
     for group in groups:
         print('forking {} to {}...'.format(p.name, group.name))
         try:
-            q = p.forks.create({'namespace': group.id})
+            p.forks.create({'namespace': group.id})
             print('forked {} to {}'.format(p.name, group.name))
         except gitlab.exceptions.GitlabCreateError:
             print('skipping already created project for group {}'.format(group.name))

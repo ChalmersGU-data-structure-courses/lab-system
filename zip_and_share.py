@@ -7,8 +7,6 @@ import argparse
 from pathlib import Path
 import shlex
 
-import lab_assignment_constants
-
 dir_script = Path(__file__).parent
 cache_dir_default = dir_script / 'cache'
 file_auth_token_default = dir_script / 'auth_token'
@@ -83,15 +81,12 @@ args = p.parse_args()
 
 from collections import namedtuple
 import logging
-import os
 import shutil
-import subprocess
 
-from general import print_error, add_to_path
-from canvas import Canvas, GroupSet, Course
+from general import print_error
+from canvas import Canvas, Course
 import compression
 import config
-from lab_assignment import LabAssignment
 
 logger = logging.getLogger("zip_and_share")
 

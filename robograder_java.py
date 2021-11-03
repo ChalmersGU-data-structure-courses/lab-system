@@ -39,9 +39,8 @@ class CompileException(SubmissionHandlingException):
         return self.e.compile_errors
 
 def compile(src, bin):
-    # For now.
+    # For now: ignoring bin.
     # TODO: use bin as target directory.
-    bin = src
 
     try:
         check_symlinks.check_self_contained(src)
@@ -115,7 +114,7 @@ class Robograder:
                 files = list(Path('.').rglob('*.class'))
             for file in files:
                 if (bin / file).exists():
-                    raise robograder.FileConflict(file)
+                    raise FileConflict(file)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create policy file.
@@ -138,7 +137,7 @@ class Robograder:
                 encoding = 'utf-8'
             )
             if process.returncode != 0:
-                raise robograder.ExecutionError(process.stderr)
+                raise ExecutionError(process.stderr)
 
             logger.debug('pregrading output of {}:\n'.format(self.entrypoint) + process.stdout)
             return types.SimpleNamespace(

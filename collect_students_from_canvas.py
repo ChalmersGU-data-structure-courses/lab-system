@@ -3,6 +3,8 @@ import sys
 import requests
 import pathlib
 
+from general import print_error
+
 # Put your Canvas access token in AUTH_TOKEN
 auth_file = pathlib.Path('AUTH_TOKEN')
 try:

@@ -1,5 +1,4 @@
-from collections import defaultdict, namedtuple
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 import logging
 import http_logging
 import json
@@ -13,7 +12,7 @@ import subprocess
 import types
 import urllib.parse
 
-from general import from_singleton, unique_by, group_by, doublequote, JSONObject, json_encoder, print_json, print_error, add_suffix, write_lines, set_modification_time, OpenWithModificationTime, OpenWithNoModificationTime, modify_no_modification_time, fix_encoding, on, eq, without_adjacent_dups
+from general import from_singleton, group_by, doublequote, JSONObject, json_encoder, print_error, add_suffix, write_lines, set_modification_time, OpenWithModificationTime, modify_no_modification_time, fix_encoding, on, eq, without_adjacent_dups
 import simple_cache
 from submission_fix_lib import HandlerException
 
@@ -304,7 +303,7 @@ class Course:
             self.assignment_details[assignment.id] = assignment
             self.assignments_name_to_id[assignment.name] = assignment.id
 
-    def _user_maybe(user_id):
+    def _user_maybe(self, user_id):
         return self.user_details[user_id] if user_id != None else None
 
     def user_by_sis_id(self, sis_id):
