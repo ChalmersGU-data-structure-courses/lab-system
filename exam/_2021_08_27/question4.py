@@ -47,11 +47,9 @@ def analyze_removal(xs, start = None, step = None, end = None):
         return k < len(heap)
 
     j = 0
-    msgs = list()
     while True:
         l = 2 * j + 1
         r = 2 * j + 2
-        ambiguous = False
         if not valid(l):
             next = -1
         elif not valid(r):

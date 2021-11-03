@@ -1,12 +1,9 @@
 import hashlib
-import itertools
 import logging
-from pathlib import Path
 import types
 
 import general
 import google_tools.general
-from google_tools.documents import Documents
 from google_tools.drive import Drive
 
 logger = logging.getLogger('exam.instantiate_template')

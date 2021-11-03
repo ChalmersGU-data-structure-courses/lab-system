@@ -58,7 +58,7 @@ def get_token_for_scopes(
         with cached_token.open('rb') as file:
             try:
                 token = pickle.load(file)
-            except Exception as e:
+            except Exception:
                 logger.warning('Failed to load cached authentication token')
 
     if token and token.has_scopes(scopes):
@@ -125,7 +125,7 @@ def generate_from_template_document(
             # Perform the replacements as a single batch request.
             logger.log(logging.DEBUG, f'Performing replacements:\n{requests}\n...')
             if requests:
-                r = docs.batch_update(id_copy, requests)
+                docs.batch_update(id_copy, requests)
 
         # Export the document in the requested file types.
         for suffix, path in output_paths.items():

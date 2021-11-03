@@ -1,5 +1,4 @@
 import csv
-from pathlib import Path
 import random
 
 def allocate_versions(n, num_versions, r):

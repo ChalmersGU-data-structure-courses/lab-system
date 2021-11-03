@@ -1,14 +1,10 @@
 import atomicwrites
-import collections
 import contextlib
 import dateutil.parser
 import enum
 import functools
 import general
 import gitlab
-import google_tools.general
-import google_tools.sheets
-import gspread
 import json
 import logging
 import operator
@@ -20,7 +16,6 @@ import urllib.parse
 
 import canvas
 import gitlab_tools
-import gspread_tools
 from instance_cache import instance_cache
 import print_parse
 
@@ -141,7 +136,7 @@ class Course:
         Check whether the login_id field of the  user coincides with the login_id field of the profile of the user.
         Reports mismatches as errors via the logger.
         '''
-        for x in [course.canvas_course.teacher_details, course.canvas_course.user_details]:
+        for x in [self.canvas_course.teacher_details, self.canvas_course.user_details]:
             for user in x.values():
                 user_login_id = self.canvas_user_login_id(user)
                 profile_login_id = self.canvas_profile_login_id(user)
@@ -216,7 +211,7 @@ class Course:
         )
 
         def create():
-            group = gitlab_tools.CachedGroup.create(r, self.groups_group.get)
+            gitlab_tools.CachedGroup.create(r, self.groups_group.get)
             with contextlib.suppress(AttributeError):
                 del self.groups
         r.create = create
@@ -397,8 +392,6 @@ class Course:
                 history_user['name'] = user.name
                 invitations_by_email = history_user.setdefault('invitations_by_email', dict())
 
-                gitlab_username = self.config.gitlab_username_from_canvas_user_id(self, user.id)
-
                 # Check status of live invitations and revoke those for old email addresses.
                 for (email, status) in list(invitations_by_email.items()):
                     if status == InvitationStatus.LIVE.value:
@@ -409,10 +402,10 @@ class Course:
                         elif not email == user.email:
                             self.logger.debug(f'deleting obsolete invitation of {email}')
                             try:
-                                gitlab_tools.delete(self.gl, self.graders_group.lazy, email)
+                                gitlab_tools.invitation_delete(self.gl, self.graders_group.lazy, email)
                                 del invitations_by_email[email]
-                            except GitlabHttpError as e:
-                                if f.response_code == 404:
+                            except gitlab.exceptions.GitlabCreateError as e:
+                                if e.response_code == 404:
                                     invitations_by_email[email] = InvitationStatus.POSSIBLE_ACCEPTED
                                 else:
                                     raise
@@ -618,7 +611,7 @@ class Course:
                 # Include current group in the following iteration.
                 stored_invitations = history_user.setdefault('invitations', dict())
                 if group_id_current != None:
-                    r = stored_invitations.setdefault(self.config.group.name.print(group_id_current), dict())
+                    stored_invitations.setdefault(self.config.group.name.print(group_id_current), dict())
 
                 for (group_name, invitations_by_email) in stored_invitations.items():
                     group_id = self.config.group.name.parse(group_name)
@@ -635,9 +628,9 @@ class Course:
                                 self.logger.debug(f'deleting outdated invitation of {email} to {group_name}')
                                 try:
                                     gitlab_tools.invitation_delete(self.gl, self.group(group_id).lazy, email)
-                                    del group_invitations[email]
+                                    del invitations_by_email[email]
                                 except gitlab.exceptions.GitlabDeleteError as e:
-                                    if f.response_code == 404:
+                                    if e.response_code == 404:
                                         invitations_by_email[email] = InvitationStatus.POSSIBLE_ACCEPTED
                                     else:
                                         raise

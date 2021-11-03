@@ -181,7 +181,6 @@ class Exam:
         def f(assignment):
             if assignment.overrides and assignment.overrides[0].student_ids:
                 user_id = assignment.overrides[0].student_ids[0]
-                user = self.course.user_details[user_id]
                 yield (user_id, assignment)
 
         return dict(
@@ -637,7 +636,7 @@ class Exam:
             output = [user.sis_user_id, user.sortable_name]
             output.append('{:.5g}'.format(self.exam_config.points_basic(grading)) if grading else '-')
             output.append('{:.5g}'.format(self.exam_config.points_advanced(grading)) if grading else '-')
-            output.append('{result.grade}'.format(self.exam_config.grade(grading)) if grading else '-')
+            output.append('{}'.format(self.exam_config.grade(grading)) if grading else '-')
             return output
 
         with output.open('w') as file:

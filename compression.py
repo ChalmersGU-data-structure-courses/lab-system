@@ -6,7 +6,7 @@ import subprocess
 import sys
 
 import dir_glob
-from general import flatten, join_null, print_error
+from general import flatten
 
 logger = logging.getLogger("compression")
 

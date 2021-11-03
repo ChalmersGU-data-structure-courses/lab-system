@@ -2,7 +2,6 @@ import bisect
 import collections
 import functools
 import logging
-import sys
 
 import general
 import gspread_tools
@@ -413,7 +412,7 @@ class GradingSpreadsheet:
             if not (not worksheet_parsed and general.is_range_singleton(1)):
                 request_buffer.add(
                     google_tools.sheets.request_insert_dimension(range_param(
-                        range_singleton(group_start)
+                        general.range_singleton(group_start)
                     )),
                     google_tools.sheets.request_delete_dimension(range_param(
                         i + 1 for i in group_range
@@ -431,6 +430,13 @@ class GradingSpreadsheet:
         ''' Internal method. '''
         if not request_buffer:
             request_buffer = self.update_request_buffer()
+
+        def range_param(range):
+            return google_tools.sheets.dimension_range(
+                worksheet.id,
+                google_tools.sheets.Dimension.rows,
+                *range,
+            )
 
         # Create group rows.
         if groups:

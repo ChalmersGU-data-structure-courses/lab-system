@@ -3,7 +3,6 @@ import ast
 import builtins
 import collections
 import re
-import string
 import urllib.parse
 
 from escaping_formatter import regex_escaping_formatter
