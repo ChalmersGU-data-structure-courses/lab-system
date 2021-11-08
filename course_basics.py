@@ -10,14 +10,23 @@ class CompilationRequirement(Enum):
 class SubmissionHandlingException(Exception):
     # Return a markdown-formatted error message for use within a Chalmers GitLab issue.
     # This method should be overwritten in descendant classes.
+    #
+    # String formatting via str(exception) continues to be used in other places,
+    # so should also be supported.
     def markdown(self):
         return markdown.escape_code_block(str(self))
 
 class Tester:
-    def setup(self, src, bin):
+    def setup(self, lab, src, bin):
         '''Setup tester.
 
         Arguments:
+        * lab (input):
+            Lab instance.
+            Can be used to retrieve lab configuration via lab.config.
+            See _lab_config in gitlab_config.py.template for the available fields.
+            For example, you may use lab.config.path_source to find the lab source directory.
+            This may be used to store testing files in a subfolder.
         * src (input):
             Source directory of the official problem.
         * bin (input):
@@ -29,6 +38,15 @@ class Tester:
         The minimum is the lifespan of the Tester object.
         This operation should be idempotent.
         '''
+        pass
+
+    def tag_component(self):
+        '''Path component to append to a tag to name the test output commit.
+
+        For example, for a submission tagged group-3/submission2,
+        the test commit might be tagged group-3/submission2/test.
+        '''
+        return 'test'
 
     def test(self, src, bin, out):
         '''Test a submission (student submission or official solution).
@@ -54,6 +72,8 @@ class Tester:
 
         Returns an instance of dominate.tags.div.
         '''
+        import dominate.tags
+        return dominate.tags.div('Testing')
 
     def index_div_diff_summary(self, gold, test, get_diff_link):
         '''Summarize test output diff for use in the submission index HTML table.
