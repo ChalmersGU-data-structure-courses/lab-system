@@ -130,16 +130,17 @@ _score = print_parse.compose(
 
 # Types of requests that student groups can make in a lab project on GitLab Chalmers.
 # These are initiated by the creation of a tag in the project repository.
-# Each request type mus define:
+# Each request type must define:
 # * tag_regex: Regex with which to recognize the request tag.
 # * tag_protection: List of wildcard pattern used to protect request tags from modification by students.
 # * issue: A simple namespace of issue title printer-parsers that identify project issues as responses to requests.
 #          All printer-parsers here must go from dictionaries with a key 'tag'.
 #          This is to identify the originating request.
+# Request tags may not contain the path component separator '/'.
 request = SimpleNamespace(
     # A submission.
     submission = SimpleNamespace(
-        tag_regex = '(?:s|S)ubmission[^: ]*',
+        tag_regex = '(?:s|S)ubmission[^/: ]*',
         tag_protection = ['submission*', 'Submission*'],
         issue = SimpleNamespace(
             grading = print_parse.compose(
@@ -160,7 +161,7 @@ request = SimpleNamespace(
 
     # A robograding request.
     robograding = SimpleNamespace(
-        tag_regex = '(?:t|T)est[^: ]*',
+        tag_regex = '(?:t|T)est[^/: ]*',
         tag_protection = ['test*', 'Test*'],
         issue = SimpleNamespace(
             robograding = print_parse.regex_keyed(
