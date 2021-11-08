@@ -14,6 +14,22 @@ class SubmissionHandlingException(Exception):
         return markdown.escape_code_block(str(self))
 
 class Tester:
+    def setup(self, src, bin):
+        '''Setup tester.
+
+        Arguments:
+        * src (input):
+            Source directory of the official problem.
+        * bin (input):
+            Compiled directory of the official problem.
+            Not used for interpreted languages.
+
+        Use this to perform setup operations, for example compilation of the tester source code.
+        How persistent this setup is up to the implementation.
+        The minimum is the lifespan of the Tester object.
+        This operation should be idempotent.
+        '''
+
     def test(self, src, bin, out):
         '''Test a submission (student submission or official solution).
 
