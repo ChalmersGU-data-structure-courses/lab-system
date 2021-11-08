@@ -28,7 +28,7 @@ class Tester:
         '''
         raise NotImplementedError()
 
-    def diff_links_as_div(gold, test, get_diff_link):
+    def summarize_diff_as_div(gold, test, get_diff_link):
         '''Summarize diffs as a div for use in the submission index HTML document.
 
         Arguments:
