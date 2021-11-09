@@ -539,8 +539,11 @@ class Course:
             for email in invitations_desired.keys() - invitations:
                 if add:
                     self.logger.info(f'inviting {user_str_from_email(email)} to {entity_name}')
-                    with gitlab_tools.exist_ok():
-                        gitlab_tools.invitation_create(self.gl, entity, email, gitlab.DEVELOPER_ACCESS)
+                    try:
+                        with gitlab_tools.exist_ok():
+                            gitlab_tools.invitation_create(self.gl, entity, email, gitlab.DEVELOPER_ACCESS)
+                    except gitlab.exceptions.GitlabCreateError e:
+                        self.logger.error(str(e))
                 else:
                     self.logger.warning(f'missing invitation of {user_str_from_email(email)} to {entity_name}')
 
