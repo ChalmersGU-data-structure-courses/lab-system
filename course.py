@@ -542,7 +542,7 @@ class Course:
                     try:
                         with gitlab_tools.exist_ok():
                             gitlab_tools.invitation_create(self.gl, entity, email, gitlab.DEVELOPER_ACCESS)
-                    except gitlab.exceptions.GitlabCreateError e:
+                    except gitlab.exceptions.GitlabCreateError as e:
                         self.logger.error(str(e))
                 else:
                     self.logger.warning(f'missing invitation of {user_str_from_email(email)} to {entity_name}')
