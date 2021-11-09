@@ -1,20 +1,29 @@
 from collections import namedtuple
 import re
 
+import general
 import markdown
 import print_parse
 
 class SubmissionHandlingException(Exception):
-    # Return a markdown-formatted error message for use within a Chalmers GitLab issue.
-    # This method should be overwritten in descendant classes.
-    #
-    # String formatting via str(exception) continues to be used in other places,
-    # so should also be supported.
+    '''
+    Interface to use for all errors arising from submissions
+    in the handler interfaces defined in this module.
+    '''
+
     def markdown(self):
+        '''
+        Return a markdown-formatted error message for use within a Chalmers GitLab issue.
+        This method should be overwritten in descendant classes.
+
+        String formatting via str(exception) continues to be used in other places,
+        so should also be supported.
+        '''
         return markdown.escape_code_block(str(self))
 
 class RequestMatcher:
-    '''Interface defining a matcher for request tag names.
+    '''
+    Interface defining a matcher for request tag names.
 
     Required attributes:
     * protection_patterns:
@@ -24,16 +33,19 @@ class RequestMatcher:
 
     TODO once GitLab imeplements regex patterns for tag protection: replace interface by a single regex.
     '''
-    def match(self, tag):
-        '''Determines whether the given tag string matches this request matcher.
 
-        Note that tags containing the path component separator '/' are never considered as a request.
+    def match(self, tag):
+        '''
+        Determines whether the given tag string matches this request matcher.
+
+        Note that tags containing the path component separator '/' are never considered as requests.
         '''
         raise NotImplementedError()
 
 class RegexRequestMatcher(RequestMatcher):
     def __init__(self, regex, protection_patterns, regex_flags = 0):
-        '''Build a request matcher from a specified regex.
+        '''
+        Build a request matcher from a specified regex.
 
         Arguments:
         * regex:
@@ -53,9 +65,10 @@ class RegexRequestMatcher(RequestMatcher):
 CompilationRequirement = namedtuple(
     'CompilationRequirement',
     ['required', 'response_title', 'response_prefix'],
-    [None, None]
+    defaults = [None, None],
 )
-CompilationRequirement.__doc__ = '''Interface defining a compilation requirement specification.
+CompilationRequirement.__doc__ = '''
+    Interface defining a compilation requirement specification.
 
     Required attributes:
     * required:
@@ -105,14 +118,16 @@ compilation_requirement_require = CompilationRequirement(
 )
 
 class Compiler:
-    '''Interface defining a submission compiler.
+    '''
+    Interface defining a submission compiler.
 
     Required attributes:
     * requirement: value of type CompilationRequirement.
     '''
 
     def setup(self, lab):
-        '''Setup compiler.
+        '''
+        Setup compiler.
 
         Arguments:
         * lab (input):
@@ -125,7 +140,8 @@ class Compiler:
         pass
 
     def compile(src, bin):
-        '''Compile a submission (student submission or official problem/solution).
+        '''
+        Compile a submission (student submission or official problem/solution).
 
         Arguments:
         * src (input):
@@ -141,11 +157,11 @@ class Compiler:
         '''
 
 class SubmissionHandler:
-    '''Interface defining a submission handler (after compilation).
-    '''
+    '''Interface defining a submission handler (after compilation).'''
 
     def setup(self, lab, src, bin):
-        '''Setup submission handler.
+        '''
+        Setup submission handler.
 
         Arguments:
         * lab (input):
@@ -168,7 +184,8 @@ class SubmissionHandler:
         pass
 
 class Tester(SubmissionHandler):
-    '''Interface defining a tester.
+    '''
+    Interface defining a tester.
 
     Testers run the submission with predetermined input.
     The test output is recorded in output files.
@@ -176,7 +193,8 @@ class Tester(SubmissionHandler):
     '''
 
     def tag_component(self):
-        '''Path component to append to a tag to name the test output commit.
+        '''
+        Path component to append to a tag to name the test output commit.
 
         For example, for a submission tagged group-3/submission2,
         the test commit might be tagged group-3/submission2/test.
@@ -184,7 +202,8 @@ class Tester(SubmissionHandler):
         return 'test'
 
     def test(self, src, bin, out):
-        '''Test a submission (student submission or official problem/solution).
+        '''
+        Test a submission (student submission or official problem/solution).
 
         Arguments:
         * src (input):
@@ -201,7 +220,8 @@ class Tester(SubmissionHandler):
         raise NotImplementedError()
 
     def index_div_column_title(self):
-        '''Generate column title in submission index HTML table.
+        '''
+        Generate column title in submission index HTML table.
 
         Returns an instance of dominate.tags.div.
         '''
@@ -209,7 +229,8 @@ class Tester(SubmissionHandler):
         return dominate.tags.div('Testing')
 
     def index_div_column_entry(self, gold, test, get_diff_link):
-        '''Summarize test output diff for use in the submission index HTML table.
+        '''
+        Summarize test output diff for use in the submission index HTML table.
 
         Arguments:
         * gold (input):
@@ -227,7 +248,8 @@ class Tester(SubmissionHandler):
         raise NotImplementedError()
 
 class Robograder(SubmissionHandler):
-    '''Interface defining a robograder.
+    '''
+    Interface defining a robograder.
 
     Required attributes:
     * response_title:
@@ -238,6 +260,7 @@ class Robograder(SubmissionHandler):
     * SubmissionGradingRobograder (submission-grading robograder),
     * StudentCallableRobograder (student-callable robograder).
     '''
+
     def __init__(self):
         '''Provides a default implementation of self.response_title.'''
         self.response_title = print_parse.regex_keyed(
@@ -247,7 +270,8 @@ class Robograder(SubmissionHandler):
         ),
 
     def robograde(self, src, bin):
-        '''Robograde a submission (student submission or official problem/solution).
+        '''
+        Robograde a submission (student submission or official problem/solution).
 
         Arguments:
         * src (input):
@@ -264,7 +288,8 @@ class Robograder(SubmissionHandler):
         raise NotImplementedError()
 
 class SubmissionGradingRobograder(Robograder):
-    '''Interface defining a submission-grading robograder.
+    '''
+    Interface defining a submission-grading robograder.
 
     Required attributes:
     * post_in_student_repo:
@@ -274,12 +299,15 @@ class SubmissionGradingRobograder(Robograder):
     This is triggered by a submission.
     '''
     def post_in_student_repo(self):
-        '''Returns a Boolean value indicating whether to post the robograding
-        in the student project as opposed to the grading project.'''
+        '''
+        Returns a Boolean value indicating whether to post the robograding
+        in the student project as opposed to the grading project.
+        '''
         return False
 
     def index_div_column_title(self):
-        '''Generate column title in submission index HTML table.
+        '''
+        Generate column title in submission index HTML table.
 
         Returns an instance of dominate.tags.div.
         '''
@@ -287,7 +315,8 @@ class SubmissionGradingRobograder(Robograder):
         return dominate.tags.div('Robograding')
 
     def index_div_column_entry(self, response_issue_link):
-        '''Summarize robograding for use in the submission index HTML table.
+        '''
+        Summarize robograding for use in the submission index HTML table.
 
         Arguments:
         * response_issue_link: URL to Chalmers GitLab issue with the robograding.
@@ -298,11 +327,13 @@ class SubmissionGradingRobograder(Robograder):
         '''
         
 class StudentCallableRobograder(Robograder):
-    '''Interface defining a student-callable robograder.
+    '''
+    Interface defining a student-callable robograder.
 
     Required attributes:
     * request_matcher: Request matcher for student robograding requests.
     '''
+
     def __init__(self):
         '''Provides a default implementation of self.request_matcher.'''
         self.request_matcher = RegexRequestMatcher('(?:t|T)est[^: ]*', ['test*', 'Test*'])
