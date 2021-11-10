@@ -424,6 +424,34 @@ class Course:
                 if not invitations_by_email:
                     history.pop(str(user.id))
 
+    def recreate_student_invitations(self, keep_after = None):
+        '''
+        Recreate student invitations to groups on Chalmers GitLab.
+        Since GitLab does not expose an API for resending invitations,
+        we delete and recreate invitations instead.
+
+        If the date keep_after is given (instance of datetime.datetime),
+        only those invitations are recreated that have been created before the given date.
+        '''
+        earlier_than = '' if keep_after == None else f' earlier than {keep_after}'
+        self.logger.info(f'recreating student invitations{earlier_than}.')
+
+        for group_id in self.groups:
+            entity = self.group(group_id).lazy
+            entity_name = f'{self.config.group.name.print(group_id)} on GitLab'
+            for invitation in self.get_invitations(entity).values():
+                created_at = dateutil.parser.parse(invitation['created_at'])
+                if keep_after == None or created_at < keep_after:
+                    email = invitation['invite_email']
+                    self.logger.info(f'Recreating invitation from {created_at} of {email} to {entity_name}.')
+                    with gitlab_tools.exist_ok():
+                        gitlab_tools.invitation_delete(self.gl, entity, email)
+                    try:
+                        with gitlab_tools.exist_ok():
+                            gitlab_tools.invitation_create(self.gl, entity, email, gitlab.DEVELOPER_ACCESS)
+                    except gitlab.exceptions.GitlabCreateError as e:
+                        self.logger.error(str(e))
+
     def sync_students_to_gitlab(self, *, add = True, remove = True, restrict_to_known = True):
         '''
         Synchronize Chalmers GitLab student group membership according to the group membership on Canvas.
@@ -539,8 +567,11 @@ class Course:
             for email in invitations_desired.keys() - invitations:
                 if add:
                     self.logger.info(f'inviting {user_str_from_email(email)} to {entity_name}')
-                    with gitlab_tools.exist_ok():
-                        gitlab_tools.invitation_create(self.gl, entity, email, gitlab.DEVELOPER_ACCESS)
+                    try:
+                        with gitlab_tools.exist_ok():
+                            gitlab_tools.invitation_create(self.gl, entity, email, gitlab.DEVELOPER_ACCESS)
+                    except gitlab.exceptions.GitlabCreateError as e:
+                        self.logger.error(str(e))
                 else:
                     self.logger.warning(f'missing invitation of {user_str_from_email(email)} to {entity_name}')
 
