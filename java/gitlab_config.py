@@ -264,7 +264,7 @@ class _LabConfig:
         #self.compiler = robograder_java.compile
         self.submission_handlers = []
 
-        has_robograder = self.path_source.pregrade.id_dir()
+        has_robograder = (self.path_source / 'pregrade').is_dir()
         #self.robograder = robograder_java.Robograder(self.path_source, machine_speed = 1) if has_robograder else None
 
 def _lab_item(k, *args):
