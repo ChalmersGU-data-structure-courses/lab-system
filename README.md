@@ -408,16 +408,6 @@ course.sync_students_to_gitlab()
 You may wish to call this command repeatedly over the beginning part of your course.
 If students have changed group membership after the last invocation, they will be removed from their old group and added to the new one.
 
-You can resend old invitations that haven't been accepted on the webinterface of Chalmers GitLab.
-Unfortunately, this functionality is not exposed via GitLab's API.
-However, you may use the following to recreate old invitations, for example older than a week:
-```
-import datetime
-course.recreate_student_invitations(
-    keep_after = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days = 7)
-)
-```
-
 ### Creating labs on GitLab
 
 Suppose we want to create on GitLab the lab with id 3.
