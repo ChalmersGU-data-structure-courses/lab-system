@@ -42,39 +42,36 @@ def dimension_range(sheet_id, dimension, start = None, end = None):
         r['endIndex'] = end
     return r
 
-def request_insert_dimension(dimension_range, inherit_from_before = False):
+def request(name, /, **params):
     return {
-        'insertDimension': {
-            'range': dimension_range,
-            'inheritFromBefore': inherit_from_before,
-        }
+        name: params
     }
+
+def request_insert_dimension(dimension_range, inherit_from_before = False):
+    return request('insertDimension',
+        range = dimension_range,
+        inheritFromBefore = inherit_from_before,
+    )
 
 def request_delete_dimension(dimension_range):
-    return {
-        'deleteDimension': {
-            'range': dimension_range,
-        }
-    }
+    return request('deleteDimension',
+        range = dimension_range,
+    )
 
 def request_move_dimension(dimension_range, destination_index):
-    return {
-        'moveDimension': {
-            'source': dimension_range,
-            'destinationIndex': destination_index,
-        }
-    }
+    return request('moveDimension',
+        source = dimension_range,
+        destinationIndex = destination_index,
+    )
 
 def request_update_title(sheet_id, title):
-    return  {
-        'updateSheetProperties': {
-            'properties': {
-                'sheetId': sheet_id,
-                'title': title,
-            },
-            'fields': 'title',
-        }
-    }
+    return request('updateSheetProperties',
+        properties = {
+            'sheetId': sheet_id,
+            'title': title,
+        },
+        fields = 'title',
+    )
 
 def grid_range(sheet_id, rect):
     def g(name, value):
@@ -107,18 +104,16 @@ def request_copy_paste(source, destination, paste_type, paste_orientation = None
     if paste_orientation == None:
         paste_orientation = PasteOrientation.normal
 
-    return {
-        'copyPaste': {
-            'source': source,
-            'destination': destination,
-            'pasteType': paste_type.value,
-            'pasteOrientation': paste_orientation.value,
-        }
-    }
+    return request('copyPaste',
+        source = source,
+        destination = destination,
+        pasteType = paste_type.value,
+        pasteOrientation = paste_orientation.value,
+    )
 
 def row_data(values):
     return {
-        'values': values,
+        'values': list(values),
     }
 
 def request_update_cells(rows, fields, start = None, range = None):
@@ -134,9 +129,7 @@ def request_update_cells(rows, fields, start = None, range = None):
             range = None
         if not (start == None and range == None):
             raise ValueError("Exactly one of 'start' and 'range' must be given")
-    return {
-        'updateCells': dict(f()),
-    }
+    return request('updateCells', **dict(f()))
 
 def request_update_cells_user_entered_value(rows, start = None, range = None):
     '''
@@ -163,6 +156,19 @@ def requests_duplicate_dimension(sheet_id, dimension, copy_from, copy_to):
         return grid_range(sheet_id, range_in_dimension(dimension, general.range_singleton(i)))
     yield request_copy_paste(selection(copy_from), selection(copy_to), PasteType.normal)
 
+def request_duplicate_sheet(id, new_index, new_id = None, new_name = None):
+    def f():
+        yield ('sourceSheetId', id)
+        yield ('insertSheetIndex', new_index)
+        if new_id != None:
+            yield ('newSheetId', new_id)
+        if new_name != None:
+            yield ('newSheetName', new_name)
+    return request('duplicateSheet', **dict(f()))
+
+def request_delete_sheet(id):
+    return request('deleteSheet', sheetId = id)
+
 def spreadsheets(token):
     return googleapiclient.discovery.build(
         'sheets',
@@ -179,6 +185,21 @@ SheetData = collections.namedtuple('Data', ['num_rows', 'num_columns', 'value'])
 
 def extended_value_string(s):
     return {'stringValue': s}
+
+def extended_value_formula(s):
+    return {'formulaValue': s}
+
+# TODO: No idea how Google Sheets expects data to be escaped.
+hyperlink = pp.compose_many(
+    pp.tuple(pp.doublequote),
+    pp.regex_many('=HYPERLINK({}, {})', ['"(?:\\\\.|[^"\\\\])*"'] * 2),
+)
+
+def value_link(s, url):
+    return '=HYPERLINK("{}", "{}")'.format(url, s)
+
+def extended_value_link(s, url):
+    return extended_value_formula(value_link(s, url))
 
 def cell_data(
     userEnteredValue = None,
@@ -273,15 +294,6 @@ def copy_to(spreadsheets, id_from, id_to, sheet_id):
 
 def is_formula(s):
     return s.startswith('=')
-
-# TODO: No idea how Google Sheets expects data to be escaped.
-hyperlink = pp.compose_many(
-    pp.tuple(pp.doublequote),
-    pp.regex_many('=HYPERLINK({}, {})', ['"(?:\\\\.|[^"\\\\])*"'] * 2),
-)
-
-def value_link(url, label):
-    return '=HYPERLINK("{}", "{}")'.format(url, label)
 
 # The list-of-digits encoding:
 # * 0 is ()

@@ -661,6 +661,10 @@ def len_range(range):
     (start, end) = range
     return end - start
 
+def range_is_empty(range):
+    (start, end) = range
+    return start != None and end != None and start >= end
+
 def range_from_size(i, n):
     return (i, i + n)
 
