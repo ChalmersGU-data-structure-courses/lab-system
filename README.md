@@ -148,16 +148,16 @@ labs
   │   └── grading   # Grading repository, maintained by the lab scripts.
   │                 # Fetches the official problem and solution branches and submissions from individual lab groups.
   │                 # Contains merge commits needed to represent three-way diffs on the GitLab UI.
-  │                 # The individual submissions are available as tags of the form lab-group-XX/submissionYYY.
+  │                 # The individual submissions are available as tags of the form group-XX/submissionYYY.
   │                 #
   │                 # If a grader wants to work seriously with submission files, they should clone this repository.
   │                 # Example use cases:
   │                 # - cd lab2-grading
-  │                 # - git checkout lab_group_13/submission1   to switch to a group's submission
-  │                 # - git diff problem                        changes compared to problem
-  │                 # - git diff solution                       changes compared to solution
-  │                 # - git diff lab_group_13/submission0       changes compared to last submission
-  │                 # - git diff problem answers.txt            changes in just one file
+  │                 # - git checkout group-13/submission1   to switch to a group's submission
+  │                 # - git diff problem                    changes compared to problem
+  │                 # - git diff solution                   changes compared to solution
+  │                 # - git diff group-13/submission0       changes compared to last submission
+  │                 # - git diff problem answers.txt        changes in just one file
   ├── 2
   ...
 
@@ -429,10 +429,12 @@ lab = course.lab[3].
 We run
 ```
 lab.official_project.create()
-```
+lab.grading_project.create()`
+``
 to create the official project with problem and solution branches.
 This will take its content from the local directory specified in the lab configuration and add a suitable `.gitignore` file if configured.
 If we wanted to delete the official project to start again, we would call the `delete` method instead.
+Similarly, this creates the grading repository that graders can later clone and pull from to get up-to-date submissions and derived information such as test output.
 
 Double-check that the official project has the correct content.
 The student projects will be derived from it.
@@ -442,6 +444,7 @@ Initialize the local grading repository using
 lab.repo_init()
 ```
 This pulls from the official project.
+It also needs the student group projects and grading project to exist so that the configuration of fetching from student repositories and pushing to the grading repository can be confirmed
 You may add an argument `bare = True` to make it a so-called bare git repository.
 This is useful for automated task that don't need a repository with an actual working directory.
 
