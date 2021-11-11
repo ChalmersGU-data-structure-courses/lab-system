@@ -181,6 +181,9 @@ lab = SimpleNamespace(
 
     # Actual name.
     name = print_parse.regex_int('Lab {}', flags = re.IGNORECASE),
+
+    # May be used for sorting in the future.
+    sort_key = lambda id: id,
 )
 
 # Parsing and printing of informal grader names.
