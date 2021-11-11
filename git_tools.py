@@ -1,5 +1,6 @@
 import contextlib
 from enum import Enum, auto
+import functools
 import git
 import logging
 from pathlib import PurePosixPath, Path
@@ -25,33 +26,34 @@ master = 'master'
 def remove_prefix(path, prefix, **kwargs):
     return PurePosixPath(**general.remove_prefix(path.parts, prefix.parts), **kwargs)
 
-def local_branch(branch):
-    return refs / heads / branch
+def local_ref(is_tag, reference):
+    return refs / (tags if is_tag else heads) / reference
 
-def local_tag(tag):
-    return refs / tags / tag
+local_branch = functools.partial(local_ref, False)
+local_tag = functools.partial(local_ref, True)
 
-def remote_branch(remote, branch):
-    return refs / remotes / remote / branch
+def qualify(remote, reference):
+    return PurePosixPath(remote) / reference
 
-def remote_tag(remote, tag):
-    return refs / remote_tags / remote / tag
+def remote_ref(is_tag, remote, reference):
+    return refs / (remote_tags if is_tag else remotes) / qualify(remote, reference)
+
+remote_branch = functools.partial(remote_ref, False)
+remote_tag = functools.partial(remote_ref, True)
 
 class Namespacing(Enum):
     local = auto()
+    qualified = auto()
     remote = auto()
 
-def namespaced_branch(remote, namespacing, branch):
-    return {
-        Namespacing.local: local_branch(branch),
-        Namespacing.remote: remote_branch(remote, branch),
-    }[namespacing]
+def namespaced_ref(is_tag, namespacing, remote, reference):
+    if namespacing == Namespacing.qualified:
+        reference = qualify(remote, reference)
+    f = remote_ref if namespacing == Namespacing.remote else local_ref
+    return f(is_tag, remote = remote, reference = reference)
 
-def namespaced_tag(remote, namespacing, tag):
-    return {
-        Namespacing.local: local_tag(tag),
-        Namespacing.remote: remote_tag(remote, tag),
-    }[namespacing]
+namespaced_branch = functools.partial(namespaced_ref, False)
+namespaced_tag = functools.partial(namespaced_ref, True)
 
 resolve_ref = lambda repo, ref: git.refs.reference.Reference(repo, ref).commit
 
@@ -123,6 +125,8 @@ def add_tracking_remote(
     Specified fetched references are lists of pairs where:
     * the first component specifies the namespacing:
       - Namespacing.local: let local references mirror the remote ones,
+      - Namespacing.qualified: put remote references in their corresponding local namespace,
+                               but qualify them by their remote,
       - Namespacing.remote: put remote references in their own 'refs' namespace
                             ('remotes' for branches and 'remote-tags' for tags).
     * the second component gives the reference.
@@ -180,7 +184,7 @@ def checkout(repo, dir, ref):
     general.wait_and_check(tar, cmd)
 
 @contextlib.contextmanager
-def with_checkout(repo, ref):
+def checkout_manager(repo, ref):
     ''' Context manager for a temporary directory containing a checkout. '''
     with tempfile.TemporaryDirectory() as dir:
         dir = Path(dir)
