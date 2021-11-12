@@ -1,7 +1,9 @@
 import contextlib
+import dateutil
 import functools
 import general
 import gitlab
+import operator
 from pathlib import Path, PurePosixPath
 import time
 
@@ -239,3 +241,10 @@ def invitation_delete(gitlab_client, entity, email):
     gitlab_client.http_delete(
         str(PurePosixPath('/') / entity_path_segment(entity) / 'invitations' / email),
     )
+
+def get_tags_sorted_by_date(self, project):
+    tags = gitlab_tools.list_all(self.project.tags)
+    for tag in tags:
+        tag.date = dateutil.parser.parse(tag.commit['committed_date'])
+    tags.sort(key = operator.attrgetter('date'))
+    return tags

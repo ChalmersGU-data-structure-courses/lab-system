@@ -196,7 +196,7 @@ hyperlink = pp.compose_many(
 )
 
 def value_link(s, url):
-    return '=HYPERLINK("{}", "{}")'.format(url, s)
+    return f'=HYPERLINK("{url}", "{s}")'
 
 def extended_value_link(s, url):
     return extended_value_formula(value_link(s, url))
@@ -239,8 +239,16 @@ def sheet_data(sheet):
         value = value,
     )
 
+def sheet_data_table(sheet_data):
+    return [
+        [
+            sheet_data.value(row, column)
+            for column in range(sheet_data.num_columns)
+        ]
+        for row in range(sheet_data.num_rows)
+    ]
+
 def value_string(value):
-    print(value)
     x = value.effectiveValue
     if hasattr(x, 'stringValue'):
         return x.stringValue
@@ -248,6 +256,9 @@ def value_string(value):
         if hasattr(x, attr):
             return str(getattr(x, attr))
     raise ValueError(f'Cannot interpret as string value: {x}')
+
+def is_cell_non_empty(cell):
+    return bool(value_string(cell))
 
 def get(spreadsheets, id, fields = None, ranges = None):
     logger.debug(f'Retrieving data of spreadsheet f{id} with fields {fields} and ranges {ranges}')
@@ -281,9 +292,13 @@ class UpdateRequestBuffer:
     def add(self, *requests):
         self.requests.extend(requests)
 
+    def non_empty(self):
+        return bool(self.requests)
+
     def flush(self):
-        batch_update(self.spreadsheets, self.id, self.requests)
-        self.requests = []
+        if self.non_empty():
+            batch_update(self.spreadsheets, self.id, self.requests)
+            self.requests = []
 
 def copy_to(spreadsheets, id_from, id_to, sheet_id):
     return spreadsheets.sheets().copyTo(

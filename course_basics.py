@@ -27,11 +27,11 @@ class RequestMatcher:
 
     Required attributes:
     * protection_patterns:
-        A multi-iterable of wildcard pattern used to protect request tags
+        An iterable collection of wildcard pattern used to protect request tags
         on GitLab Chalmers from modification by developers (students).
         The union of these patterns must cover all strings for which the match method returns True.
 
-    TODO once GitLab imeplements regex patterns for tag protection: replace interface by a single regex.
+    TODO once GitLab implements regex patterns for tag protection: replace interface by a single regex.
     '''
 
     def match(self, tag):
