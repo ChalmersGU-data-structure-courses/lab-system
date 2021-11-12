@@ -15,6 +15,7 @@ import gitlab_tools
 import grading_sheet
 from instance_cache import instance_cache
 import print_parse
+import google_tools.sheets
 
 class Lab:
     def __init__(self, course, id, config = None, dir = None, logger = logging.getLogger('lab')):
@@ -192,7 +193,7 @@ class Lab:
                 r.delete()
                 raise
         r.create = create
-            
+
         return r
 
     @contextlib.contextmanager
@@ -217,7 +218,7 @@ class Lab:
         def create():
             gitlab_tools.CachedProject.create(r, self.group.get)
         r.create = create
-            
+
         return r
 
     @functools.cached_property
@@ -261,6 +262,9 @@ class Lab:
         '''
         repo = git.Repo.init(self.dir, bare = bare)
         try:
+            with repo.config_writer() as c:
+                c.add_value('advice', 'detachedHead', 'false')
+
             branches = [self.course.config.branch.problem, self.course.config.branch.solution]
             self.repo_add_remote(
                 self.course.config.path_lab.official,
@@ -291,7 +295,7 @@ class Lab:
     def repo_push_grading(self):
         '''
         Push the local grading repository to the grading repository on Chalmers GitLab.
-        
+
         '''
         self.repo.remotes[self.course.config.path_lab.grading].push()
 
@@ -353,27 +357,96 @@ class Lab:
         for group in self.course.groups:
             self.hotfix_group(branch_hotfix, group, self.course.config.branch.master)
 
-    def setup_robograder(self):
+    @contextlib.contextmanager
+    def checkout_with_empty_bin_manager(self, commit):
         '''
-        This method sets up the robograder.
-        Call before any robograding happens.
-        Once needs to be called (for the local installation, not each program run).
+        Context manager for a checked out commit and an empty directory
+        that is used for transient results such as compilation products.
         '''
-        with git_tools.with_checkout(self.repo, git_tools.local_branch(self.course.config.branch.problem)) as src:
+        with git_tools.checkout_manager(self.repo, commit) as src:
             with tempfile.TemporaryDirectory() as bin:
-                bin = Path(bin)
-                if self.config.compiler:
-                    self.config.compiler(src, bin)
-                if self.config.robograder:
-                    self.config.robograder.setup(src, bin)
+                yield (src, Path(bin))
 
-    def repo_compile(self, ref):
-        with git_tools.with_checkout(self.repo, ref) as src:
-            self.config.compiler(src, src)
+    def commit_problem(self):
+        return git_tools.local_branch(self.course.config.branch.problem)
 
-    @functools.cached_property
-    def grading_sheet(self):
-        return grading_sheet.GradingSheet(self.course, self.config)
+    def commit_solution(self):
+        return git_tools.local_branch(self.course.config.branch.solution)
+
+    # def submission_handlers_of_type(self, klass = object):
+    #     def f(x):
+    #         (handler_id, submission_handler) = x
+    #         return isinstance(submission_handler, klass)
+    #     return dict(filter(f, self.config.submission_handlers.items()))
+
+    # def testers(self):
+    #     return self.submission_handlers_of_type(course_basics.Tester)
+
+    # def submission_grading_robograders(self):
+    #     return self.submission_handlers_of_type(course_basics.SubmissionGradingRobograders)
+
+    # def student_callable_robograders(self):
+    #     return self.submission_handlers_of_type(course_basics.StudentCallableRobograder)
+
+    # def setup_submission_handlers(self):
+    #     '''
+    #     Set up the submission handlers.
+    #     Call before any submission handling happens.
+    #     It is up to each submission handler how much of their setup
+    #     they want to handle via the setup callback method.
+    #     Some handlers may prefer initialization via their constructor
+    #     or even separate compilation setup outside the scope of this script.
+    #     '''
+    #     self.grading_issue_parsers = []
+    #     self.issue_parsers = []
+    #     self.tag_parsers = []
+
+    #     with self.checkout_with_empty_bin_manager(self.commit_problem) as (src, bin):
+    #         if self.config.compiler:
+    #             compiler.setup(self)
+    #             compiler.compile(src, bin)
+    #         for submission_handler in self.config.submission_handlers:
+    #             submission_handler.setup(self, src, bin)
+
+    # A grading issue is parsed to:
+    # * group_id
+    # * request tag
+    # * submission handler key
+    # * some handler-specific data
+
+    # A response issue is parsed to a request tag and
+    # * a grading response
+    # or
+    # * submission handler key
+    # * some handler-specific data
+
+    # Every process is still indexed by the request tag.
+    # Use group_id and request tag as keys.
+    # Use submission handler keys + manual grading as sub-keys
+    # Grading issues are never inputs, only outputs.
+    # So we could avoid scanning them.
+    # But that's inefficient.
+
+    # mapping sending request tag to:
+    # * tag in repo
+    # * handler key: ...
+
+    # mapping sending submission tag to:
+    # * tag in repo
+    # * grading response
+    # * handler key: ...
+
+    # Ignore submission handlers for now.
+
+    def parse_issue(self, issue):
+        request_types = self.config.request.__dict__
+        for (request_type, spec) in request_types.items():
+            for (response_type, pp) in spec.issue.__dict__.items():
+                try:
+                    return (request_type, response_type, pp.parse(issue.title))
+                except:
+                    continue
+
 
     def parse_grading_issues(self):
         for group_id in self.course.groups(self):
@@ -384,6 +457,35 @@ class Lab:
             (group_id, request) = self.course.qualify_with_slash.parse(request)
             self.student_group(group_id).grading_issues[(request, response_type)] = value
 
+    @functools.cached_property
+    def grading_sheet(self):
+        return self.course.grading_spreadsheet.ensure_grading_sheet(
+            self.id,
+            self.course.groups,
+            lambda group_id: self.student_group(group_id).project.get.web_url
+        )
+
+    def update_grading_sheet(self, deadline = None):
+        num_queries = max(
+            [
+                general.ilen(self.student_group(group_id).relevant_submissions(deadline))
+                for group_id in self.course.groups
+            ],
+            default = 0
+        )
+        self.grading_sheet.ensure_num_queries(num_queries)
+        request_buffer = self.course.grading_spreadsheet.create_request_buffer()
+        for group_id in self.course.groups:
+            group = self.student_group(group_id)
+            for (query, (tag, grading)) in enumerate(group.relevant_submissions(deadline)):
+                self.grading_sheet.write_submission(
+                    request_buffer,
+                    group_id,
+                    query,
+                    google_tools.sheets.extended_value_link(tag.name, group.project.get.web_url + '/-/tree/' + tag.name)
+                )
+        request_buffer.flush()
+
 class GroupProject:
     def __init__(self, lab, group_id, logger = logging.getLogger('group-project')):
         self.course = lab.course
@@ -393,12 +495,12 @@ class GroupProject:
 
         self.remote = self.course.config.group.full_id.print(group_id)
 
-        def f(x):
-            return self.course.request_namespace(lambda request_type, spec: x)
+        #def f(x):
+        #    return self.course.request_namespace(lambda request_type, spec: x)
 
-        self.request_tags = self.course.request_namespace(lambda x, y: dict())
-        self.response_issues = self.course.request_namespace(lambda x, y: dict())
-        self.requests_and_responses = self.course.request_namespace(lambda x, y: dict())
+        #self.request_tags = self.course.request_namespace(lambda x, y: dict())
+        #self.response_issues = self.course.request_namespace(lambda x, y: dict())
+        #self.requests_and_responses = self.course.request_namespace(lambda x, y: dict())
 
         # Map from submissions to booleans.
         # Values mean the following:
@@ -457,7 +559,7 @@ class GroupProject:
                 self.remote,
                 self.project.get,
                 fetch_branches = [(git_tools.Namespacing.remote, git_tools.wildcard)],
-                fetch_tags = [(git_tools.Namespacing.remote, git_tools.wildcard)],
+                fetch_tags = [(git_tools.Namespacing.qualified, git_tools.wildcard)],
                 prune = True,
             )
         except gitlab.GitlabGetError as e:
@@ -595,6 +697,33 @@ class GroupProject:
         finally:
             self.hook_delete(hook)
 
+    @functools.cached_property
+    def submissions_and_gradings(self):
+        return self.course.parse_submissions_and_gradings(self.project.lazy)
+
+    def submissions_and_gradings_before(self, deadline = None):
+        return dict(filter(
+            lambda x: deadline == None or x[1][0].date < deadline,
+            self.submissions_and_gradings.items()
+        ))
+
+    def graded_submissions(self, deadline = None):
+        for entry in self.submissions_and_gradings_before(deadline).items():
+            if entry[1][1] != None:
+                yield entry[1]
+
+    def current_submission(self, deadline = None):
+        x = list(self.submissions_and_gradings_before(deadline).items())
+        if x and x[-1][1][1] == None:
+            return x[-1][1]
+        return None
+
+    def relevant_submissions(self, deadline = None):
+        yield from self.graded_submissions(deadline)
+        x = self.current_submission(deadline)
+        if x != None:
+            yield x
+
     def update_request_tags(self):
         '''
         Update the request tags attribute from Chalmers GitLab.
@@ -609,7 +738,7 @@ class GroupProject:
             )
         )
         self.request_tags = request_tags
- 
+
         if any(updated.__dict__.values()):
             self.repo_fetch()
         return updated
@@ -711,7 +840,7 @@ class GroupProject:
         response = self.requests_and_responses.__dict__[request_type][request]
         if response.__dict__[response_type]:
             raise ValueError(f'{response_type} issue for {request_type} {request} already exists.')
-        
+
         description += self.mention_paragraph()
         qualified_request = self.course.qualify_request.print((self.group_id, request))
         issue = self.post_issue(self.project, request_type, qualified_request, response_type, description, params)
@@ -791,7 +920,7 @@ class GroupProject:
                 description = r.report
             except SubmissionHandlingException as e:
                 description = e.markdown()
-            self.create_response_issue(**issue_params, 
+            self.create_response_issue(**issue_params,
                 response_type = 'robograding',
                 description = description,
             )
@@ -813,7 +942,7 @@ class GroupProject:
         response = self.requests_and_responses.robograding[request]
 
         # If compilation is required and there is already a compilation response,
-        # we record the submission as rejected. 
+        # we record the submission as rejected.
         if all([
             self.lab.config.compilation_requirement == CompilationRequirement.require,
             response.compilation
@@ -821,7 +950,7 @@ class GroupProject:
             self.submission_valid[request] = False
             return
 
-        # Otherwise, 
+        # Otherwise,
 
         self.logger.info(f'Handling submission {request}')
         issue_params = types.SimpleNamespace(
@@ -883,7 +1012,7 @@ class GroupProject:
                     description = r.report
                 except SubmissionHandlingException as e:
                     description = e.markdown()
-                self.create_response_issue_in_grading_project(**issue_params, 
+                self.create_response_issue_in_grading_project(**issue_params,
                     response_type = 'robograding',
                     description = description,
                 )
@@ -895,7 +1024,7 @@ class GroupProject:
             return
 
         self.process_submission(next(reversed(x.keys())))
-        
+
 
         # how do we know a submission has been processed?
         # ultimately, we can never know: we might have crashed.
