@@ -38,6 +38,12 @@ def qualify(remote, reference):
 def remote_ref(is_tag, remote, reference):
     return refs / (remote_tags if is_tag else remotes) / qualify(remote, reference)
 
+def local_or_remote_ref(is_tag, remote, reference):
+    '''If remote is None, then we assume that the reference is local.'''
+    if remote == None:
+        return local_ref(is_tag, reference)
+    return remote_ref(is_tag, remote, reference)
+
 remote_branch = functools.partial(remote_ref, False)
 remote_tag = functools.partial(remote_ref, True)
 
@@ -49,8 +55,7 @@ class Namespacing(Enum):
 def namespaced_ref(is_tag, namespacing, remote, reference):
     if namespacing == Namespacing.qualified:
         reference = qualify(remote, reference)
-    f = remote_ref if namespacing == Namespacing.remote else local_ref
-    return f(is_tag, remote = remote, reference = reference)
+    return local_or_remote_ref(is_tag, remote if namespacing == Namespacing.remote else None, reference)
 
 namespaced_branch = functools.partial(namespaced_ref, False)
 namespaced_tag = functools.partial(namespaced_ref, True)
