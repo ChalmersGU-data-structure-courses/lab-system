@@ -6,7 +6,9 @@ import logging
 import operator
 
 import general
+import gspread
 import gspread_tools
+import google_tools.general
 import google_tools.sheets
 
 logger = logging.getLogger(__name__)
@@ -162,11 +164,14 @@ def get_group_range(worksheet_parsed):
     rows = worksheet_parsed.group_rows.values()
     return (min(rows), max(rows) + 1) if rows else None
 
-def is_row_empty(row):
+def is_row_non_empty(sheet_data, row):
     ''' Does this row only contain empty values? '''
-    return all(not(cell) for cell in row)
+    return any(
+        google_tools.sheets.is_cell_non_empty(sheet_data.value(row, column))
+        for column in range(sheet_data.num_columns)
+    )
 
-def guess_group_row_range(rows, num_rows):
+def guess_group_row_range(sheet_data):
     '''
     Guess the group row range in a worksheet that does not have any group rows.
     Returns the first contiguous range of empty rows.
@@ -175,19 +180,19 @@ def guess_group_row_range(rows, num_rows):
     '''
     start = None
     end = None
-    for (i, row) in enumerate(rows):
-        if is_row_empty(row):
-            if start == None:
-                start = i
-        else:
+    for row in range(sheet_data.num_rows):
+        if is_row_non_empty(sheet_data, row):
             if start != None:
-                end = i
+                end = row
                 break
+        else:
+            if start == None:
+                start = row
 
     if start == None:
-        start = len(rows)
+        start = sheet_data.num_rows
     if end == None:
-        end = num_rows
+        end = sheet_data.num_rows
     if start == end:
         raise ValueError('unable to guess group row range')
     return (start, end)
@@ -227,7 +232,7 @@ class GradingSheet:
         # TODO: replace by .index once next version of gspread releases
         return self.gspread_worksheet._properties['index']
 
-    def sheet_clear_cache(self):
+    def clear_cache(self):
         for x in ['sheet', 'gspread_worksheet', 'sheet_properties', 'sheet_data', 'sheet_parsed', 'group_range']:
             with contextlib.suppress(AttributeError):
                 delattr(self, x)
@@ -246,7 +251,7 @@ class GradingSheet:
 
     @functools.cached_property
     def gspread_worksheet(self):
-        return gspread.Worksheet(self.gspread_spreadsheet, self.sheet[0])
+        return gspread.Worksheet(self.grading_spreadsheet.gspread_spreadsheet, self.sheet[0])
 
     @functools.cached_property
     def sheet_properties(self):
@@ -264,7 +269,7 @@ class GradingSheet:
     def group_range(self):
         r = get_group_range(self.sheet_parsed)
         if not r:
-            r = guess_group_row_range(self.sheet_parsed.rows, self.sheet_data.num_rows)
+            r = guess_group_row_range(self.sheet_data)
         return r
 
     def row_range_param(self, range):
@@ -288,14 +293,15 @@ class GradingSheet:
         # Delete existing group rows (including trailing empty rows).
         # Leave an empty group row for retaining formatting.
         # TODO: test if deleting an empty range triggers an error.
-        request_buffer.add(
-            google_tools.sheets.request_insert_dimension(self.row_range_param(
-                general.range_singleton(group_start)
-            )),
-            google_tools.sheets.request_delete_dimension(self.row_range_param(
-                i + 1 for i in self.group_range
-            )),
-        )
+        if not (not self.sheet_parsed.group_rows and is_range_singleton(self.group_range)):
+            request_buffer.add(
+                google_tools.sheets.request_insert_dimension(self.row_range_param(
+                    general.range_singleton(group_start)
+                )),
+                google_tools.sheets.request_delete_dimension(self.row_range_param(
+                    i + 1 for i in self.group_range
+                )),
+            )
 
         self.sheet_parsed.group_rows = []
         self.group_range = general.range_singleton(group_start)
@@ -319,7 +325,7 @@ class GradingSheet:
         all cached values except for group_range are invalid.
         '''
         self.logger.info(
-            f'Creating rows for potentially new groups'
+            f'Creating rows for potentially new groups '
             f'in grading sheet for {self.grading_spreadsheet.config.lab.name.print(self.lab_id)}'
         )
 
@@ -333,11 +339,6 @@ class GradingSheet:
         # TODO: remove for Python 3.10
         groups_old_sort_key = [sort_key(group_id) for group_id in groups_old]
 
-        print(groups)
-        print(groups_old)
-        print(groups_new)
-        print(self.group_range)
-
         # Compute the insertion locations for the new group rows.
         # Sends pairs of an insertion location and a boolean indicating whether to
         # inherit the formatting from the following (False) or previous (True) row
@@ -348,11 +349,9 @@ class GradingSheet:
             # TODO: use this line instead of the next for Python 3.10
             #i = bisect.bisect_left(groups_old, group_id, key = sort_key)
             i = bisect.bisect_left(groups_old_sort_key, sort_key(group_id))
-            print(i, groups_start)
             insertions[(i, i == len(groups_old))].append((group_id, groups_start + i + offset))
 
         # Perform the insertion requests and update the group column values.
-        print(insertions.items())
         for ((_, inherit_from_before), xs) in insertions.items():
             (_, start) = xs[0]
             range = general.range_from_size(start, len(xs))
@@ -369,6 +368,11 @@ class GradingSheet:
                     ),
                 ),
             )
+
+    def flush(self, request_buffer):
+        if request_buffer.non_empty():
+            request_buffer.flush()
+            self.clear_cache()
 
     def setup_groups(self, groups, group_link = None, delete_previous = False):
         '''
@@ -387,8 +391,7 @@ class GradingSheet:
         if delete_previous:
             self.delete_existing_groups(request_buffer)
         self.insert_groups(groups, group_link, request_buffer)
-        request_buffer.flush()
-        self.sheet_clear_cache()
+        self.flush(request_buffer)
 
     def add_query_column_group(self, request_buffer = None):
         '''
@@ -428,7 +431,36 @@ class GradingSheet:
 
         self.grading_spreadsheet.feed_request_buffer(request_buffer, *f())
         if not request_buffer:
-            self.sheet_clear_cache()
+            self.clear_cache()
+
+    def ensure_num_queries(self, n):
+        while len(self.sheet_parsed.query_column_groups) < n:
+            self.add_query_column_group()
+
+    def write_submission(self, request_buffer, group_id, query, submission, grader = None, score = None):
+        request_buffer.add(google_tools.sheets.request_update_cells_user_entered_value(
+            [[submission]],
+            range = google_tools.sheets.grid_range(self.sheet_properties.sheetId, (
+                general.range_singleton(self.sheet_parsed.group_rows[group_id]),
+                general.range_singleton(self.sheet_parsed.query_column_groups[query].query),
+            )),
+        ))
+        if grader != None:
+            request_buffer.add(google_tools.sheets.request_update_cells_user_entered_value(
+                [[grader]],
+                range = google_tools.sheets.grid_range(self.sheet_properties.sheetId, (
+                    general.range_singleton(self.sheet_parsed.group_rows[group_id]),
+                    general.range_singleton(self.sheet_parsed.query_column_groups[query].grader),
+                ))
+            ))
+        if score != None:
+            request_buffer.add(google_tools.sheets.request_update_cells_user_entered_value(
+                [[score]],
+                range = google_tools.sheets.grid_range(self.sheet_properties.sheetId, (
+                    general.range_singleton(self.sheet_parsed.group_rows[group_id]),
+                    general.range_singleton(self.sheet_parsed.query_column_groups[query].score),
+                ))
+            ))
 
 class GradingSpreadsheet:
     def __init__(self, config, logger = logger):
@@ -472,7 +504,7 @@ class GradingSpreadsheet:
         '''A dictionary sending lab ids to grading sheets.'''
         return general.sdict(self.load_grading_sheets())
 
-    def refresh_grading_sheets(self):
+    def clear_cache(self):
         '''Refresh the cached grading sheets.'''
         with contextlib.suppress(AttributeError):
             del self.grading_sheets
@@ -533,7 +565,7 @@ class GradingSpreadsheet:
         )
 
         with contextlib.ExitStack() as stack:
-            stack.enter(self.sheet_manager(sheet_properties['sheetId']))
+            stack.enter_context(self.sheet_manager(sheet_properties['sheetId']))
             self.update(google_tools.sheets.request_update_title(sheet_properties.id, title))
             stack.pop_all()
             return sheet_properties
@@ -577,7 +609,7 @@ class GradingSpreadsheet:
             worksheet = gspread.Worksheet(self.gspread_spreadsheet, self.create_grading_sheet_from_template())
 
         with contextlib.ExitStack() as stack:
-            stack.enter(self.sheet_manager(worksheet.id()))
+            stack.enter_context(self.sheet_manager(worksheet.id()))
 
             grading_sheet = GradingSheet(self, lab_id = lab_id)
 
@@ -588,3 +620,10 @@ class GradingSpreadsheet:
             
             stack.pop_all()
             self.grading_sheets[lab_id] = grading_sheet
+
+    def ensure_grading_sheet(self, lab_id, groups = [], group_link = None):
+        if not lab_id in self.grading_sheets:
+            self.grading_sheet_create(lab_id, groups, group_link, exist_ok = True)
+        grading_sheet = self.grading_sheets[lab_id]
+        grading_sheet.setup_groups(groups, group_link)
+        return grading_sheet
