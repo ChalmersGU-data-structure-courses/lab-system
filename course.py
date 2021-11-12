@@ -16,6 +16,7 @@ import urllib.parse
 
 import canvas
 import gitlab_tools
+import grading_sheet
 from instance_cache import instance_cache
 import print_parse
 
@@ -27,15 +28,6 @@ def dict_sorted(xs):
 
 #===============================================================================
 # Course labs management
-
-def parse_issue(config, issue):
-    request_types = config.request.__dict__
-    for (request_type, spec) in request_types.items():
-        for (response_type, pp) in spec.issue.__dict__.items():
-            try:
-                return (request_type, response_type, pp.parse(issue.title))
-            except:
-                continue
 
 class InvitationStatus(str, enum.Enum):
     '''
@@ -718,11 +710,9 @@ class Course:
         gitlab_tools.protect_branch(self.gl, project.id, self.config.branch.master)
         return project
 
-    def request_namespace(self, f):
-        return types.SimpleNamespace(**dict(
-            (request_type, f(request_type, spec))
-            for (request_type, spec) in self.config.request.__dict__.items()
-        ))
+    @functools.cached_property
+    def grading_spreadsheet(self):
+        return grading_sheet.GradingSpreadsheet(self.config)
 
     def format_tag_metadata(self, project, tag, description = None):
         def lines():
@@ -734,7 +724,94 @@ class Course:
             yield f'* URL: {url}'
         return general.join_lines(lines())
 
-    #def parse_request_tags(self, tags, tag_name = lambda tag: tag.name)
+    def format_issue_metadata(self, project, issue, description = None):
+        def lines():
+            if description:
+                yield description
+            yield f'* title: {issue.title}'
+            author = issue.author['name']
+            yield f'* author: {author}'
+            yield f'* URL: {issue.web_url}'
+        return general.join_lines(lines())
+
+
+
+    def response_issues(self, project):
+        '''
+        Retrieve the response issues in a project.
+        A response issue is one created by a grader and matching an issue title in self.config.issue_title.
+        These are used for grading and testing responses.
+        '''
+        for issue in gitlab_tools.list_all(project.issues):
+            if issue.author['id'] in self.graders:
+                yield issue
+
+    def parse_submission_tags(self, tags):
+        '''
+        Parse the submission tags of a project.
+        The form of submission tags is configured in self.config.submission_request.
+        Returns a pair (tags_submission, tags_remaining) where:
+        * tags_submission is the list of submission tags in the argument iterable tags,
+        * tags_remaining is the remainings tags.
+        The order of tags is perserved.
+        '''
+        tags_submission = []
+        tags_remaining = []
+
+        for tag in tags:
+            if self.config.submission_request.match(tag.name):
+                tags_submission.append(tag)
+            else:
+                tags_remaining.append(tag)
+        return (tags_submission, tags_remaining)
+
+    def parse_grading_issues(self, issues):
+        '''
+        Parse the grading issues of a student project.
+        The form of a grading response issue titletags is configured in self.config.grading_response.
+        Returns a pair (issues_grading, issues_remaining) where:
+        * issues_grading is a dictionary mapping submission tags to pairs of an issue and the parsed issue title.
+        * issues_remaining is the remainings issues.
+        The order of issues is perserved.
+        '''
+        issues_grading = dict()
+        issues_remaining = []
+
+        for issue in issues:
+            try:
+                 r = self.config.grading_response.parse(issue.title)
+            except:
+                issues_remaining.append(r)
+                continue
+            issues_grading[r['tag']] = (issue, r)
+        return (issues_grading, issues_remaining)
+
+    def parse_submissions_and_gradings(self, project):
+        self.logger.debug('Parsing submissions and gradings in project {project.path_with_namespace}')
+
+        issues_grading = self.parse_grading_issues(self.response_issues(project))[0]
+
+        tags = gitlab_tools.list_all(project.tags)
+        for tag in tags:
+            tag.date = dateutil.parser.parse(tag.commit['committed_date'])
+        tags.sort(key = operator.attrgetter('date'))
+        tags_submission = self.parse_submission_tags(tags)[0]
+
+        r = dict()
+        for submission in tags_submission:
+            r[submission.name] = (submission, issues_grading.pop(submission.name, None))
+
+        for (issue, r) in issues_grading.values():
+            self.logger.warning(self.format_issue_metadata(project, issue,
+                f'Response issue in project {project.path_with_namespace} with no matching request tag:'
+            ))
+        return r
+
+    def request_namespace(self, f):
+        return types.SimpleNamespace(**dict(
+            (request_type, f(request_type, spec))
+            for (request_type, spec) in self.config.request.__dict__.items()
+        ))
 
     def parse_request_tags(self, project):
         '''
@@ -765,26 +842,6 @@ class Course:
         for xs in r.__dict__.values():
             xs.sort(key = operator.attrgetter('date'))
         return r
-
-    def format_issue_metadata(self, project, issue, description = None):
-        def lines():
-            if description:
-                yield description
-            yield f'* title: {issue.title}'
-            author = issue.author['name']
-            yield f'* author: {author}'
-            yield f'* URL: {issue.web_url}'
-        return general.join_lines(lines())
-
-    def response_issues(self, project):
-        '''
-        Retrieve the response issues in a project.
-        A response issue is one created by a grader and matching an issue title in self.config.issue_title.
-        These are used for grading and testing responses.
-        '''
-        for issue in gitlab_tools.list_all(project.issues):
-            if issue.author['id'] in self.graders:
-                yield issue
 
     def parse_response_issues(self, project):
         '''
