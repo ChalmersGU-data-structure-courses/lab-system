@@ -340,7 +340,7 @@ class GradingSheet:
         After calling this method (modulo executing the request buffer),
         all cached values except for group_range are invalid.
         '''
-        self.logger.debug('creating rows for potentially new groups')
+        self.logger.debug('creating rows for potentially new groups...')
 
         sort_key = self.grading_spreadsheet.config.group.sort_key
         groups = sorted(groups, key = sort_key)
@@ -396,6 +396,7 @@ class GradingSheet:
             request_buffer.add(
                 google_tools.sheets.request_delete_dimension(self.row_range_param(range)),
             )
+        self.logger.debug('creating rows for potentially new groups: done')
 
     def ensure_num_queries(self, num_queries = None):
         '''
@@ -415,10 +416,11 @@ class GradingSheet:
         sufficient query columns to accomodate the requests.
         This is based on records of previous calls to cell writing methods.
         '''
-        self.logger.debug('flushing request buffer')
+        self.logger.debug('flushing request buffer...')
         if request_buffer.non_empty():
             request_buffer.flush()
             self.clear_cache()
+        self.logger.debug('flushing request buffer: done')
 
     def setup_groups(self, groups, group_link = None, delete_previous = False):
         '''
@@ -434,13 +436,13 @@ class GradingSheet:
         * delete_previous:
             Delete all previous group rows.
         '''
-        logger.log(logging.INFO, 'setting up groups')
-
+        logger.info('setting up groups...')
         request_buffer = self.grading_spreadsheet.create_request_buffer()
         if delete_previous:
             self.delete_existing_groups(request_buffer)
         self.insert_groups(groups, group_link, request_buffer)
         self.flush(request_buffer)
+        logger.info('setting up groups: done')
 
     def add_query_column_group(self, request_buffer = None):
         '''
@@ -454,6 +456,7 @@ class GradingSheet:
             If not given, then requests will be executed immediately and the sheet's
             cache will be cleared to allow for the new columns to be parsed.
         '''
+        logger.debug('adding query column group...')
         column_group = self.sheet_parsed.query_column_groups[-1]
         headers = query_column_group_headers(
             self.grading_spreadsheet.config,
@@ -481,6 +484,7 @@ class GradingSheet:
         self.grading_spreadsheet.feed_request_buffer(request_buffer, *f())
         if not request_buffer:
             self.clear_cache()
+        logger.debug('adding query column group: done')
 
     def _cell_coords(self, group_id, query, field):
         '''
@@ -733,7 +737,7 @@ class GradingSpreadsheet:
 
         Returns the created instance of GradingSheet.
         '''
-        self.logger.info(f'creating grading sheet for {self.config.lab.name.print(lab_id)}')
+        self.logger.info(f'creating grading sheet for {self.config.lab.name.print(lab_id)}...')
 
         if lab_id in self.grading_sheets:
             msg = f'grading sheet for {self.config.lab.name.print(lab_id)} already exists'
@@ -765,13 +769,16 @@ class GradingSpreadsheet:
 
             stack.pop_all()
             self.grading_sheets[lab_id] = grading_sheet
-            return grading_sheet
+
+        self.logger.info(f'creating grading sheet for {self.config.lab.name.print(lab_id)}: done')
+        return grading_sheet
 
     def ensure_grading_sheet(self, lab_id, groups = [], group_link = None):
-        self.logger.info(f'ensuring grading sheet for {self.config.lab.name.print(lab_id)}')
+        self.logger.info(f'ensuring grading sheet for {self.config.lab.name.print(lab_id)}...')
         grading_sheet = self.grading_sheets.get(lab_id)
         if grading_sheet:
             grading_sheet.setup_groups(groups, group_link)
         else:
             grading_sheet = self.grading_sheet_create(lab_id, groups, group_link, exist_ok = True)
+        self.logger.info(f'ensuring grading sheet for {self.config.lab.name.print(lab_id)}: done')
         return grading_sheet
