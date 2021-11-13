@@ -581,7 +581,7 @@ def component_tuple(key):
 def component_namedtuple(key):
     return Lens(
         get = lambda u: u[key],
-        set = lambda u, value: u._replace(key, value),
+        set = lambda u, value: u._replace(**{key: value}),
     )
 
 def on(lens, f):
