@@ -143,19 +143,17 @@ def request_update_cells_user_entered_value(rows, start = None, range = None):
         range = range,
     )
 
-def request_update_cell_user_entered_value(rows, sheet_id, row, column):
+def request_update_cell_user_entered_value(value, sheet_id, row, column):
     '''
     Convenience specialization of request_update_cells_user for updating the user entered valued.
     * rows: Iterable (of rows) of iterables (of cells) of user entered values (API type ExtendedValue). 
     '''
-    return request_update_cells(
-        [row_data(cell_data(userEnteredValue = cell) for cell in row) for row in rows],
-        'userEnteredValue',
-        range = grid_range(
-            sheet_id,
-            general.singleton_range(row),
-            general.singleton_range(column),
-        ),
+    return request_update_cells_user_entered_value(
+        [[value]],
+        range = grid_range(sheet_id, (
+            general.range_singleton(row),
+            general.range_singleton(column),
+        )),
     )
 
 def requests_duplicate_dimension(sheet_id, dimension, copy_from, copy_to):
