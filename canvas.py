@@ -318,6 +318,9 @@ class Course:
     def users_str(self, ids):
         return ', '.join(self.user_str(id) for id in ids) if ids else '[no users]'
 
+    def user_str_informal(self, id):
+        return self.user_details[id].sortable_name.split(',')[-1].strip()
+
     def get_assignments(self, include = None, use_cache = True):
         params = dict()
         if include:
