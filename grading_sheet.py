@@ -13,16 +13,20 @@ import google_tools.sheets
 
 logger = logging.getLogger(__name__)
 
-QueryColumnGroup = collections.namedtuple('QueryColumnGroup', ['submission', 'grader', 'score'])
-QueryColumnGroup.__doc__ = '''
-    A named tuple specifying column indices (zero-based) of a query column group in a grading sheet.
-    The columns are required to appear in this order:
+Query = collections.namedtuple(
+    'Query',
+    ['submission', 'grader', 'score'],
+    defaults = [None, None, None]
+)
+Query.__doc__ = '''
+    A named tuple specifying values or metadata of a query column group in a grading sheet.
+    In each query column group, the columns are required to appear in this order:
     * submission:
-        The column index of the submission column.
+        The submission column.
         Entries in this column specify submission requests.
         They link to the commit in the student repository corresponding to the submission.
     * grader:
-        The column index of the grader column.
+        The grader column.
         Graders write their name here before they start grading
         to avoid other graders taking up the same submission.
         When a grader creates a grading issue for this submission,
@@ -30,13 +34,16 @@ QueryColumnGroup.__doc__ = '''
         config field graders_informal documented in gitlab_config.py.template)
         and makes it link to the grading issue.
     * score:
-        The column index of the score column.
+        The score (outcome) column.
         This should not be filled in by graders.
         It is automatically filled in by the lab script from the grading issue created by the grader.
         It is used only for informative purposes (not input to the lab script).
     '''
 
-GradingSheetData = collections.namedtuple('GradingSheetData', ['sheet_data', 'group_column', 'group_rows', 'query_column_groups'])
+GradingSheetData = collections.namedtuple(
+    'GradingSheetData',
+    ['sheet_data', 'group_column', 'group_rows', 'query_column_groups']
+)
 GradingSheetData.__doc__ = '''
     A parsed grading sheet.
 
@@ -44,7 +51,9 @@ GradingSheetData.__doc__ = '''
     * sheet_data: A value of type google_tools.sheets.SheetData.
     * group_rows: A dictionary mapping group ids to row indices.
     * group_column: The index of the group column (zero-based).
-    * query_column_groups: A list of instances of QueryColumnGroup corresponding to successive queries.
+    * query_column_groups:
+        A list of instances of Query corresponding to successive queries.
+        Each value in each instance specifies the corresponding (zero-based) column index in the spreadsheet.
     '''
 
 class SheetParseException(Exception):
@@ -53,7 +62,7 @@ class SheetParseException(Exception):
 
 def query_column_group_headers(config, query):
     headers = config.grading_sheet.header
-    return QueryColumnGroup(
+    return Query(
         submission = headers.query.print(query),
         grader = headers.grader,
         score = headers.score,
@@ -65,7 +74,7 @@ def parse_grading_columns(config, header_row):
     Takes an iterable of pairs of a row index and a header string value.
     Returns a pair of:
     * The column index of the group id column.
-    * A list of instances of QueryColumnGroup corresponding to successive queries.
+    * A list of instances of Query corresponding to successive queries.
     '''
     def consume(value_expected):
         try:
@@ -97,14 +106,14 @@ def parse_grading_columns(config, header_row):
                 f'expected {config.grading_sheet.header.query.print(len(query_column_groups))}'
             )
 
-        query_column_groups.append(QueryColumnGroup(
+        query_column_groups.append(Query(
             submission = column,
             grader = consume(headers.grader),
             score = consume(headers.score),
         ))
 
     if not query_column_groups:
-        raise SheetParseException('excepted at least once query column group')
+        raise SheetParseException('excepted at least one query column group')
 
     return (group_column, query_column_groups)
 
@@ -205,7 +214,7 @@ class GradingSheet:
         *,
         lab_id = None,
         name = None,
-        logger = logger
+        logger = logger,
     ):
         '''
         Exactly one of lab_id and name must be specified.
@@ -224,6 +233,9 @@ class GradingSheet:
         else:
             self.lab_id = lab_id
             self.name = pp.print(lab_id)
+
+        # Updated in write_query_cell.
+        self.needed_num_queries = 0
 
     def delete(self):
         self.grading_spreadsheet.gspread_spreadsheet.del_worksheet(self.gspread_worksheet)
@@ -381,14 +393,30 @@ class GradingSheet:
 
         # If we have at least one group row now and did not before, delete empty formatting rows.
         if groups_new and empty:
-            self.logger.debug(f'deleting empty formatting rows')
+            range = general.range_shift(self.group_range, len(groups_new))
+            self.logger.debug(f'deleting empty formatting rows {range}')
             request_buffer.add(
-                google_tools.sheets.request_delete_dimension(self.row_range_param(
-                    general.range_shift(self.group_range, len(groups_new))
-                )),
+                google_tools.sheets.request_delete_dimension(self.row_range_param(range)),
             )
 
+    def ensure_num_queries(self, num_queries = None):
+        '''
+        Ensure that the grading sheet has sufficient number of query column groups.
+        If num_queries is not given, the value is calculated from preceding calls to cell writing methods.
+        Automatically called in the flush method before executing a request buffer.
+        '''
+        if num_queries == None:
+            num_queries = self.needed_num_queries
+        while len(self.sheet_parsed.query_column_groups) < num_queries:
+            self.add_query_column_group()
+
     def flush(self, request_buffer):
+        '''
+        Flush the given request buffer.
+        Before flushing, makes sure that the grading sheet has
+        sufficient query columns to accomodate the requests.
+        This is based on records of previous calls to cell writing methods.
+        '''
         self.logger.debug('flushing request buffer')
         if request_buffer.non_empty():
             request_buffer.flush()
@@ -400,7 +428,8 @@ class GradingSheet:
 
         Arguments:
         * groups:
-            Create rows for the given groups, ignoring those who already have a row if delete_previous is not set.
+            Create rows for the given groups, ignoring those
+            who already have a row if delete_previous is not set.
         * group_link:
             An optional function taking a group id and returning a URL to their lab project.
             If not None, the group ids are made into links.
@@ -455,24 +484,99 @@ class GradingSheet:
         if not request_buffer:
             self.clear_cache()
 
-    def ensure_num_queries(self, n):
-        while len(self.sheet_parsed.query_column_groups) < n:
-            self.add_query_column_group()
-
-    def write_query_cell(self, request_buffer, group_id, query, field, value):
-        request_buffer.add(google_tools.sheets.request_update_cells_user_entered_value(
-            [[value]],
-            self.sheet_properties.sheetId,
+    def _cell_coords(self, group_id, query, field):
+        '''
+        The coordinates in the grading sheet for the given lab group, query, and field.
+        Returns a pair of the form (row, column).
+        '''
+        return (
             self.sheet_parsed.group_rows[group_id],
-            self.sheet_parsed.query_column_groups[query].__dict__[field],
+            self.sheet_parsed.query_column_groups[query]._asdict()[field],
+        )
+
+    def get_query_cell(self, group_id, query, field):
+        '''
+        Get a cell value in the grading sheet.
+        Returns a value of CellData (JSON deserialized into SimpleNamespace) as per the Google Sheets API.
+
+        Arguments:
+        * group_id: the student lab group.
+        * query: the query (indexed sequentially from 0).
+        * field: the field to get (one of 'submission', 'grader', 'score')
+        '''
+        return self.sheet_data.values(*self._cell_coord(group_id, query, field))
+
+    def write_query_cell(self, request_buffer, group_id, query, field, value, force = False):
+        '''
+        Add a request to the given request buffer to write a cell in the grading sheet.
+        Only proceeds if the given value is different from the previous one.
+        Logs a warning if the cell already contained a value (unless force is set).
+
+        You should use the flush method of this instance instead of that of the request buffer
+        to ensure that the grading sheet has sufficient number of query column groups.
+
+        Arguments:
+        * request_buffer: The request buffer into which to add the request.
+        * group_id: The student lab group.
+        * query: The query (indexed sequentially from 0).
+        * field: The field to write (one of 'submission', 'grader', 'score')
+        * value: Value as specified by CellData in the Google Sheets API.
+        * force:
+            Add request even if previous value is the same as given one.
+            Disables warning for a different previous value.
+        '''
+        coords = self._cell_coords(group_id, query, field)
+        value_prev = self.sheet_data.value(*coords).userEnteredValue
+        if not force:
+            if value == value_prev: # TODO: fix
+                return
+            if value_prev:
+                group_name = self.grading_spreadsheet.config.group.id.print(group_id)
+                query_name = self.grading_spreadsheet.config.grading_sheet.header.query.print(query)
+                self.logger.warn(general.join_lines([
+                    f'overwriting existing value for {group_name}, query {query_name}, field {field}:',
+                    f'* previous: {value_prev}',
+                    f'* current: {value}',
+                ]))
+        self.needed_num_queries = max(self.needed_num_queries, query + 1)
+        request_buffer.add(google_tools.sheets.request_update_cell_user_entered_value(
+            value, self.sheet_properties.sheetId, *coords
         ))
 
-    def write_submission(self, request_buffer, group_id, query, submission, grader = None, score = None):
-        self.write_query_cell(request_buffer, group_id, query, 'submission', submission)
-        if grader != None:
-            self.write_query_cell(request_buffer, group_id, query, 'grader', grader)
-        if score != None:
-            self.write_query_cell(request_buffer, group_id, query, 'score', score)
+    def write_query(
+        self,
+        request_buffer,
+        group_id,
+        query,
+        query_values,
+        force = False,
+    ):
+        '''
+        Add a request to the given request buffer to write query data in the grading sheet.
+        Makes a call to write_query_cell for each given query field value.
+
+        You should use the flush method of this instance instead of that of the request buffer
+        to ensure that the grading sheet has sufficient number of query column groups.
+
+        Arguments:
+        * request_buffer: The request buffer into which to add the request.
+        * group_id: The student lab group.
+        * query: The query index (zero-based).
+        * query_values:
+            The values for the columns in the column group of the query.
+            Of type Query, with field values as specified by CellData in the Google Sheets API.
+            Values that are None are ignored (not written).
+        * force: Passed on to each call of write_query_cell.
+        '''
+        for field in Query._fields:
+            self.write_query_cell(
+                request_buffer,
+                group_id,
+                query,
+                field,
+                query_values._asdict()[field],
+                force = force,
+            )
 
 class GradingSpreadsheet:
     def __init__(self, config, logger = logger):
