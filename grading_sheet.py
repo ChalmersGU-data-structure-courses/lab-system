@@ -299,11 +299,11 @@ class GradingSheet:
                     general.range_singleton(group_start)
                 )),
                 google_tools.sheets.request_delete_dimension(self.row_range_param(
-                    i + 1 for i in self.group_range
+                    general.range_shift(self.group_range, 1)
                 )),
             )
 
-        self.sheet_parsed.group_rows = []
+        self.sheet_parsed = self.sheet_parsed._replace(group_rows = [])
         self.group_range = general.range_singleton(group_start)
 
     def insert_groups(self, groups, group_link, request_buffer):

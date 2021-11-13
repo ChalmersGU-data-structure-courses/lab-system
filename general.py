@@ -675,6 +675,10 @@ def is_range_singleton(range):
     (start, end) = range
     return end == start + 1
 
+def range_shift(range, offset):
+    (start, end) = range
+    return (start + offset, end + offset)
+
 def when(condition, value):
     # not condition or value
     return value if condition else True
