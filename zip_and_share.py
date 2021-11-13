@@ -88,7 +88,7 @@ from canvas import Canvas, Course
 import compression
 import config
 
-logger = logging.getLogger("zip_and_share")
+logger = logging.getLogger(__name__)
 
 # Handle verbosity.
 logging.basicConfig()
