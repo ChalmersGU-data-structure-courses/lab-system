@@ -8,7 +8,7 @@ import sys
 import dir_glob
 from general import flatten
 
-logger = logging.getLogger("compression")
+logger = logging.getLogger(__name__)
 
 def close_unless_special(fd):
     if not (fd == subprocess.PIPE or fd == subprocess.DEVNULL or fd == sys.stderr):
