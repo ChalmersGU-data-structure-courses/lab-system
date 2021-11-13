@@ -577,6 +577,8 @@ class GradingSpreadsheet:
         * request_buffer:
             An optional buffer for update requests to use.
             If given, it will end up in a flushed state if this method completes successfully.
+
+        Returns the created instance of GradingSheet.
         '''
         self.logger.info(f'Creating grading sheet for {self.config.lab.name.print(lab_id)}')
 
@@ -602,18 +604,16 @@ class GradingSpreadsheet:
             stack.enter_context(self.sheet_manager(worksheet.id()))
 
             grading_sheet = GradingSheet(self, lab_id = lab_id)
+            grading_sheet.setup_groups(groups, group_link, delete_previous = True)
 
-            request_buffer = self.create_request_buffer()
-            grading_sheet.delete_existing_groups(request_buffer)
-            grading_sheet.insert_groups(groups, group_link, request_buffer)
-            request_buffer.flush()
-            
             stack.pop_all()
             self.grading_sheets[lab_id] = grading_sheet
+            return grading_sheet
 
     def ensure_grading_sheet(self, lab_id, groups = [], group_link = None):
-        if not lab_id in self.grading_sheets:
-            self.grading_sheet_create(lab_id, groups, group_link, exist_ok = True)
-        grading_sheet = self.grading_sheets[lab_id]
-        grading_sheet.setup_groups(groups, group_link)
+        grading_sheet = self.grading_sheets.get(lab_id)
+        if grading_sheet:
+            grading_sheet.setup_groups(groups, group_link)
+        else:
+            grading_sheet = self.grading_sheet_create(lab_id, groups, group_link, exist_ok = True)
         return grading_sheet
