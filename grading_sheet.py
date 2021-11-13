@@ -48,7 +48,7 @@ GradingSheetData.__doc__ = '''
     '''
 
 class SheetParseException(Exception):
-    ''' Exception base type used for grading sheet parsing exceptions. '''
+    '''Exception base type used for grading sheet parsing exceptions.'''
     pass
 
 def query_column_group_headers(config, query):
@@ -165,7 +165,7 @@ def get_group_range(worksheet_parsed):
     return (min(rows), max(rows) + 1) if rows else None
 
 def is_row_non_empty(sheet_data, row):
-    ''' Does this row only contain empty values? '''
+    '''Does this row only contain empty values?'''
     return any(
         google_tools.sheets.is_cell_non_empty(sheet_data.value(row, column))
         for column in range(sheet_data.num_columns)
@@ -287,13 +287,13 @@ class GradingSheet:
         After calling this method (modulo executing the request buffer),
         all cached values except for sheet_parsed and group_range are invalid.
         '''
-
         (group_start, _) = self.group_range
 
         # Delete existing group rows (including trailing empty rows).
         # Leave an empty group row for retaining formatting.
         # TODO: test if deleting an empty range triggers an error.
         if not (not self.sheet_parsed.group_rows and general.is_range_singleton(self.group_range)):
+            self.logger.debug(f'deleting existing group rows {self.group_range}')
             request_buffer.add(
                 google_tools.sheets.request_insert_dimension(self.row_range_param(
                     general.range_singleton(group_start)
@@ -324,10 +324,7 @@ class GradingSheet:
         After calling this method (modulo executing the request buffer),
         all cached values except for group_range are invalid.
         '''
-        self.logger.info(
-            f'Creating rows for potentially new groups '
-            f'in grading sheet for {self.grading_spreadsheet.config.lab.name.print(self.lab_id)}'
-        )
+        self.logger.debug('creating rows for potentially new groups')
 
         sort_key = self.grading_spreadsheet.config.group.sort_key
         groups = sorted(groups, key = sort_key)
@@ -349,7 +346,10 @@ class GradingSheet:
             # TODO: use this line instead of the next for Python 3.10
             #i = bisect.bisect_left(groups_old, group_id, key = sort_key)
             i = bisect.bisect_left(groups_old_sort_key, sort_key(group_id))
-            insertions[(i, i == len(groups_old))].append((group_id, groups_start + i + offset))
+            row_insert = groups_start + i + offset
+            group_name = self.grading_spreadsheet.config.group.name.print(group_id)
+            self.logger.debug(f'adding row {row_insert} for {group_name}')
+            insertions[(i, i == len(groups_old))].append((group_id, row_insert))
 
         # Perform the insertion requests and update the group column values.
         for ((_, inherit_from_before), xs) in insertions.items():
@@ -370,6 +370,7 @@ class GradingSheet:
             )
 
     def flush(self, request_buffer):
+        self.logger.debug('flushing request buffer')
         if request_buffer.non_empty():
             request_buffer.flush()
             self.clear_cache()
@@ -387,6 +388,8 @@ class GradingSheet:
         * delete_previous:
             Delete all previous group rows.
         '''
+        logger.log(logging.INFO, 'setting up groups')
+
         request_buffer = self.grading_spreadsheet.create_request_buffer()
         if delete_previous:
             self.delete_existing_groups(request_buffer)
@@ -511,7 +514,7 @@ class GradingSpreadsheet:
         try:
             yield
         except:
-            self.update(google_tools.request_delete_sheet(sheet_id))
+            self.update(google_tools.sheets.request_delete_sheet(sheet_id))
 
     def create_request_buffer(self):
         ''' Create a request buffer for batch updates. '''
@@ -532,7 +535,7 @@ class GradingSpreadsheet:
 
     @functools.cached_property
     def template_grading_sheet_qualified_id(self):
-        ''' Takes config.grading_sheet.template and resolves the worksheet identifier to an id. '''
+        '''Takes config.grading_sheet.template and resolves the worksheet identifier to an id.'''
         (template_id, template_worksheet) = self.config.grading_sheet.template
         template_worksheet_id = gspread_tools.resolve_worksheet_id(
             self.gspread_client,
@@ -580,10 +583,10 @@ class GradingSpreadsheet:
 
         Returns the created instance of GradingSheet.
         '''
-        self.logger.info(f'Creating grading sheet for {self.config.lab.name.print(lab_id)}')
+        self.logger.info(f'creating grading sheet for {self.config.lab.name.print(lab_id)}')
 
         if lab_id in self.grading_sheets:
-            msg = f'Grading sheet for {self.config.lab.name.print(lab_id)} already exists'
+            msg = f'grading sheet for {self.config.lab.name.print(lab_id)} already exists'
             if exist_ok:
                 self.logger.debug(msg)
                 return
@@ -591,13 +594,13 @@ class GradingSpreadsheet:
 
         if self.grading_sheets:
             grading_sheet = max(self.grading_sheets.values(), key = operator.attrgetter('index'))
-            self.logger.debug('Using grading sheet {grading_sheet.name} as template')
+            self.logger.debug('using grading sheet {grading_sheet.name} as template')
             worksheet = grading_sheet.gspread_worksheet.duplicate(
                 insert_sheet_index = grading_sheet.index() + 1,
                 new_sheet_name = self.config.lab.name.print(lab_id),
             )
         else:
-            self.logger.debug('Using template document as template')
+            self.logger.debug('using template document as template')
             worksheet = gspread.Worksheet(self.gspread_spreadsheet, self.create_grading_sheet_from_template())
 
         with contextlib.ExitStack() as stack:
@@ -611,6 +614,7 @@ class GradingSpreadsheet:
             return grading_sheet
 
     def ensure_grading_sheet(self, lab_id, groups = [], group_link = None):
+        self.logger.info(f'ensuring grading sheet for {self.config.lab.name.print(lab_id)}')
         grading_sheet = self.grading_sheets.get(lab_id)
         if grading_sheet:
             grading_sheet.setup_groups(groups, group_link)
