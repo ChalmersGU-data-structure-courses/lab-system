@@ -13,19 +13,19 @@ import google_tools.sheets
 
 logger = logging.getLogger(__name__)
 
-QueryColumnGroup = collections.namedtuple('QueryColumnGroup', ['query', 'grader', 'score'])
+QueryColumnGroup = collections.namedtuple('QueryColumnGroup', ['submission', 'grader', 'score'])
 QueryColumnGroup.__doc__ = '''
     A named tuple specifying column indices (zero-based) of a query column group in a grading sheet.
     The columns are required to appear in this order:
-    * query:
-        The column index of the query column.
+    * submission:
+        The column index of the submission column.
         Entries in this column specify submission requests.
         They link to the commit in the student repository corresponding to the submission.
     * grader:
         The column index of the grader column.
         Graders write their name here before they start grading
         to avoid other graders taking up the same submission.
-        When a grader creates a grading issue for this query (submission request),
+        When a grader creates a grading issue for this submission,
         the lab script automatically fills in the graders name (as per the
         config field graders_informal documented in gitlab_config.py.template)
         and makes it link to the grading issue.
@@ -54,7 +54,7 @@ class SheetParseException(Exception):
 def query_column_group_headers(config, query):
     headers = config.grading_sheet.header
     return QueryColumnGroup(
-        query = headers.query.print(query),
+        submission = headers.query.print(query),
         grader = headers.grader,
         score = headers.score,
     )
@@ -98,7 +98,7 @@ def parse_grading_columns(config, header_row):
             )
 
         query_column_groups.append(QueryColumnGroup(
-            query = column,
+            submission = column,
             grader = consume(headers.grader),
             score = consume(headers.score),
         ))
@@ -293,7 +293,7 @@ class GradingSheet:
         # Delete existing group rows (including trailing empty rows).
         # Leave an empty group row for retaining formatting.
         # TODO: test if deleting an empty range triggers an error.
-        if not (not self.sheet_parsed.group_rows and is_range_singleton(self.group_range)):
+        if not (not self.sheet_parsed.group_rows and general.is_range_singleton(self.group_range)):
             request_buffer.add(
                 google_tools.sheets.request_insert_dimension(self.row_range_param(
                     general.range_singleton(group_start)
@@ -437,30 +437,20 @@ class GradingSheet:
         while len(self.sheet_parsed.query_column_groups) < n:
             self.add_query_column_group()
 
-    def write_submission(self, request_buffer, group_id, query, submission, grader = None, score = None):
+    def write_query_cell(self, request_buffer, group_id, query, field, value):
         request_buffer.add(google_tools.sheets.request_update_cells_user_entered_value(
-            [[submission]],
-            range = google_tools.sheets.grid_range(self.sheet_properties.sheetId, (
-                general.range_singleton(self.sheet_parsed.group_rows[group_id]),
-                general.range_singleton(self.sheet_parsed.query_column_groups[query].query),
-            )),
+            [[value]],
+            self.sheet_properties.sheetId,
+            self.sheet_parsed.group_rows[group_id],
+            self.sheet_parsed.query_column_groups[query].__dict__[field],
         ))
+
+    def write_submission(self, request_buffer, group_id, query, submission, grader = None, score = None):
+        self.write_query_cell(request_buffer, group_id, query, 'submission', submission)
         if grader != None:
-            request_buffer.add(google_tools.sheets.request_update_cells_user_entered_value(
-                [[grader]],
-                range = google_tools.sheets.grid_range(self.sheet_properties.sheetId, (
-                    general.range_singleton(self.sheet_parsed.group_rows[group_id]),
-                    general.range_singleton(self.sheet_parsed.query_column_groups[query].grader),
-                ))
-            ))
+            self.write_query_cell(request_buffer, group_id, query, 'grader', grader)
         if score != None:
-            request_buffer.add(google_tools.sheets.request_update_cells_user_entered_value(
-                [[score]],
-                range = google_tools.sheets.grid_range(self.sheet_properties.sheetId, (
-                    general.range_singleton(self.sheet_parsed.group_rows[group_id]),
-                    general.range_singleton(self.sheet_parsed.query_column_groups[query].score),
-                ))
-            ))
+            self.write_query_cell(request_buffer, group_id, query, 'score', score)
 
 class GradingSpreadsheet:
     def __init__(self, config, logger = logger):
