@@ -78,12 +78,6 @@ def protect_branch(gl, project_id, branch):
 def members_from_access(entity, levels):
     return dict((user.id, user) for user in list_all(entity.members) if user.access_level in levels)
 
-def format_username(username):
-    return '@' + username
-
-def mention_str(users):
-    return ' '.join(sorted([format_username(user.username) for user in users], key = str.casefold))
-
 class CachedGroup:
     def __init__(self, gl, path, name, logger = None):
         self.gl = gl
@@ -248,3 +242,20 @@ def get_tags_sorted_by_date(self, project):
         tag.date = dateutil.parser.parse(tag.commit['committed_date'])
     tags.sort(key = operator.attrgetter('date'))
     return tags
+
+def format_username(username):
+    return '@' + username
+
+# TODO:
+# Add web_url attribute to lazy project instances when we can cheaply compute them.
+# Then these two methods become callable on them.
+#
+# BUG:
+# GitLab does not provide any way to disambiguate between a branch and a tag.
+# Currently, these links seem to prefer tags over branches.
+# How to make sure (otherwise, exploitable by students)?
+def url_tree(project, ref):
+    return f'{project.web_url}/-/tree/{ref}'
+
+def url_compare(project, source, target):
+    return f'{project.web_url}/-/compare/{source}...{target}?w=1'
