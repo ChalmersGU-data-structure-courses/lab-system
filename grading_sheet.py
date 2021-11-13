@@ -601,7 +601,7 @@ class GradingSpreadsheet:
             worksheet = gspread.Worksheet(self.gspread_spreadsheet, self.create_grading_sheet_from_template())
 
         with contextlib.ExitStack() as stack:
-            stack.enter_context(self.sheet_manager(worksheet.id()))
+            stack.enter_context(self.sheet_manager(worksheet.id))
 
             grading_sheet = GradingSheet(self, lab_id = lab_id)
             grading_sheet.setup_groups(groups, group_link, delete_previous = True)
