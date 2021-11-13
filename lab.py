@@ -477,9 +477,9 @@ class Lab:
                     request_buffer,
                     group_id,
                     query,
-                    grading_sheet.Query(submission = google_tools.sheets.extended_value_link(
+                    grading_sheet.Query(submission = (google_tools.sheets.extended_value_link(
                         tag.name, group.project.get.web_url + '/-/tree/' + tag.name
-                    )),
+                    ), tag.name)),
                 )
         request_buffer.flush()
 
