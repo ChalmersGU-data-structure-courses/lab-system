@@ -4,7 +4,7 @@ from pathlib import Path, PurePath
 import json
 import logging
 
-logger = logging.getLogger("simple_cache")
+logger = logging.getLogger(__name__)
 
 class SimpleCache:
     __filename = "_value"

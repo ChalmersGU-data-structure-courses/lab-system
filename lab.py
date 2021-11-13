@@ -18,7 +18,7 @@ import print_parse
 import google_tools.sheets
 
 class Lab:
-    def __init__(self, course, id, config = None, dir = None, logger = logging.getLogger('lab')):
+    def __init__(self, course, id, config = None, dir = None, logger = logging.getLogger(__name__)):
         '''
         Initialize lab manager.
         Arguments:

@@ -16,7 +16,7 @@ from general import from_singleton, group_by, doublequote, JSONObject, json_enco
 import simple_cache
 from submission_fix_lib import HandlerException
 
-logger = logging.getLogger("canvas")
+logger = logging.getLogger(__name__)
 
 # This class manages requests to Canvas and their caching.
 # Caching is important to maintain quick execution time of higher level scripts on repeat invocation.

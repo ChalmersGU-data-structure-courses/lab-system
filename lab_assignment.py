@@ -21,7 +21,7 @@ import lab_assignment_constants
 import submission_fix_lib
 import test_lib
 
-logger = logging.getLogger("lab_assignment")
+logger = logging.getLogger(__name__)
 
 def get_java_version():
     p = subprocess.run(['java', '-version'], stdin = subprocess.DEVNULL, stdout = subprocess.DEVNULL, stderr = subprocess.PIPE, encoding = 'utf-8', check = True)

@@ -44,7 +44,7 @@ class InvitationStatus(str, enum.Enum):
     POSSIBLY_ACCEPTED = 'possibly accepted'
 
 class Course:
-    def __init__(self, config, dir = None, *, logger = logging.getLogger('course')):
+    def __init__(self, config, dir = None, *, logger = logging.getLogger(__name__)):
         '''
         Arguments:
         * config: Course configuration, as documented in gitlab_config.py.template.
