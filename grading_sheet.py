@@ -102,10 +102,10 @@ def parse_grading_columns(config, header_row):
             grader = consume(headers.grader),
             score = consume(headers.score),
         ))
-    
+
     if not query_column_groups:
         raise SheetParseException('excepted at least once query column group')
-    
+
     return (group_column, query_column_groups)
 
 def parse_group_rows(config, values):
@@ -267,6 +267,12 @@ class GradingSheet:
 
     @functools.cached_property
     def group_range(self):
+        '''
+        The group range is the range of group rows.
+        If there are no group rows, it is a non-empty range of empty rows.
+        At least one empty row is needed here to obtain the formatting of group rows from.
+        As soon as a group row is inserted, the empty rows in the group range are deleted.
+        '''
         r = get_group_range(self.sheet_parsed)
         if not r:
             r = guess_group_row_range(self.sheet_data)
@@ -333,6 +339,10 @@ class GradingSheet:
         groups_old = sorted(self.sheet_parsed.group_rows, key = sort_key)
         groups_new = tuple(filter(lambda group_id: group_id not in self.sheet_parsed.group_rows, groups))
 
+        # Are there no previous group rows?
+        # In that case, self.group_range denotes a non-empty range of empty formatting rows.
+        empty = not self.sheet_parsed.group_rows
+
         # TODO: remove for Python 3.10
         groups_old_sort_key = [sort_key(group_id) for group_id in groups_old]
 
@@ -349,7 +359,7 @@ class GradingSheet:
             row_insert = groups_start + i + offset
             group_name = self.grading_spreadsheet.config.group.name.print(group_id)
             self.logger.debug(f'adding row {row_insert} for {group_name}')
-            insertions[(i, i == len(groups_old))].append((group_id, row_insert))
+            insertions[(i, i == len(groups_old) and not empty)].append((group_id, row_insert))
 
         # Perform the insertion requests and update the group column values.
         for ((_, inherit_from_before), xs) in insertions.items():
@@ -367,6 +377,15 @@ class GradingSheet:
                         (range, general.range_singleton(self.sheet_parsed.group_column)),
                     ),
                 ),
+            )
+
+        # If we have at least one group row now and did not before, delete empty formatting rows.
+        if groups_new and empty:
+            self.logger.debug(f'deleting empty formatting rows')
+            request_buffer.add(
+                google_tools.sheets.request_delete_dimension(self.row_range_param(
+                    general.range_shift(self.group_range, len(groups_new))
+                )),
             )
 
     def flush(self, request_buffer):
@@ -559,8 +578,10 @@ class GradingSpreadsheet:
         )
 
         with contextlib.ExitStack() as stack:
-            stack.enter_context(self.sheet_manager(sheet_properties['sheetId']))
-            self.update(google_tools.sheets.request_update_title(sheet_properties.id, title))
+            id = sheet_properties['sheetId']
+            stack.enter_context(self.sheet_manager(id))
+            self.update(google_tools.sheets.request_update_title(id, title))
+            sheet_properties['title'] = title
             stack.pop_all()
             return sheet_properties
 
@@ -593,16 +614,20 @@ class GradingSpreadsheet:
                 return
             raise ValueError(msg)
 
+        name = self.config.lab.name.print(lab_id)
         if self.grading_sheets:
             grading_sheet = max(self.grading_sheets.values(), key = operator.attrgetter('index'))
             self.logger.debug('using grading sheet {grading_sheet.name} as template')
             worksheet = grading_sheet.gspread_worksheet.duplicate(
                 insert_sheet_index = grading_sheet.index() + 1,
-                new_sheet_name = self.config.lab.name.print(lab_id),
+                new_sheet_name = name
             )
         else:
             self.logger.debug('using template document as template')
-            worksheet = gspread.Worksheet(self.gspread_spreadsheet, self.create_grading_sheet_from_template())
+            worksheet = gspread.Worksheet(
+                self.gspread_spreadsheet,
+                self.create_grading_sheet_from_template(name)
+            )
 
         with contextlib.ExitStack() as stack:
             stack.enter_context(self.sheet_manager(worksheet.id))
