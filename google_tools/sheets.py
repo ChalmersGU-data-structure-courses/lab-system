@@ -143,6 +143,19 @@ def request_update_cells_user_entered_value(rows, start = None, range = None):
         range = range,
     )
 
+def request_update_cell_user_entered_value(value, sheet_id, row, column):
+    '''
+    Convenience specialization of request_update_cells_user for updating the user entered valued.
+    * rows: Iterable (of rows) of iterables (of cells) of user entered values (API type ExtendedValue). 
+    '''
+    return request_update_cells_user_entered_value(
+        [[value]],
+        range = grid_range(sheet_id, (
+            general.range_singleton(row),
+            general.range_singleton(column),
+        )),
+    )
+
 def requests_duplicate_dimension(sheet_id, dimension, copy_from, copy_to):
     dr = dimension_range(
         sheet_id,
@@ -218,24 +231,27 @@ def cell_data(
             yield ('note', note)
     return dict(f())
 
-no_value = types.SimpleNamespace(
-    userEnteredValue = types.SimpleNamespace(stringValue = ''),
-    effectiveValue = types.SimpleNamespace(stringValue = ''),
-)
+string_value_empty = {
+    'stringValue': '',
+}
+
+cell_value_empty = {
+    'userEnteredValue': string_value_empty,
+    'effectiveValue': string_value_empty,
+}
 
 def sheet_data(sheet):
     def value(row, column):
         try:
-            r = sheet.data[0].rowData[row].values[column]
-            if r.__dict__:
-                return r
-        except (AttributeError, IndexError):
+            return sheet['data'][0]['rowData'][row]['values'][column]
+        except (KeyError, IndexError):
             pass
-        return no_value
+        return cell_value_empty
 
+    grid_properties = sheet['properties']['gridProperties']
     return SheetData(
-        num_rows = sheet.properties.gridProperties.rowCount,
-        num_columns = sheet.properties.gridProperties.columnCount,
+        num_rows = grid_properties['rowCount'],
+        num_columns = grid_properties['columnCount'],
         value = value,
     )
 
@@ -248,17 +264,19 @@ def sheet_data_table(sheet_data):
         for row in range(sheet_data.num_rows)
     ]
 
-def value_string(value):
-    x = value.effectiveValue
-    if hasattr(x, 'stringValue'):
-        return x.stringValue
+def cell_as_string(cell_value):
+    x = cell_value['effectiveValue']
+    y = x.get('stringValue')
+    if y != None:
+        return y
     for attr in ['numberValue', 'boolValue']:
-        if hasattr(x, attr):
-            return str(getattr(x, attr))
+        y = x.get(atr)
+        if y != None:
+            return str(y)
     raise ValueError(f'Cannot interpret as string value: {x}')
 
 def is_cell_non_empty(cell):
-    return bool(value_string(cell))
+    return bool(cell_as_string(cell))
 
 def get(spreadsheets, id, fields = None, ranges = None):
     logger.debug(f'Retrieving data of spreadsheet f{id} with fields {fields} and ranges {ranges}')

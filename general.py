@@ -581,7 +581,7 @@ def component_tuple(key):
 def component_namedtuple(key):
     return Lens(
         get = lambda u: u[key],
-        set = lambda u, value: u._replace(key, value),
+        set = lambda u, value: u._replace(**{key: value}),
     )
 
 def on(lens, f):
@@ -674,6 +674,10 @@ def range_singleton(i):
 def is_range_singleton(range):
     (start, end) = range
     return end == start + 1
+
+def range_shift(range, offset):
+    (start, end) = range
+    return (start + offset, end + offset)
 
 def when(condition, value):
     # not condition or value

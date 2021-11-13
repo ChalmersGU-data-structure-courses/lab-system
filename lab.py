@@ -466,23 +466,20 @@ class Lab:
         )
 
     def update_grading_sheet(self, deadline = None):
-        num_queries = max(
-            [
-                general.ilen(self.student_group(group_id).relevant_submissions(deadline))
-                for group_id in self.course.groups
-            ],
-            default = 0
-        )
-        self.grading_sheet.ensure_num_queries(num_queries)
+        # Ensure grading sheet exists.
+        self.grading_sheet
+
         request_buffer = self.course.grading_spreadsheet.create_request_buffer()
         for group_id in self.course.groups:
             group = self.student_group(group_id)
             for (query, (tag, grading)) in enumerate(group.relevant_submissions(deadline)):
-                self.grading_sheet.write_submission(
+                self.grading_sheet.write_query(
                     request_buffer,
                     group_id,
                     query,
-                    google_tools.sheets.extended_value_link(tag.name, group.project.get.web_url + '/-/tree/' + tag.name)
+                    grading_sheet.Query(submission = (google_tools.sheets.extended_value_link(
+                        tag.name, group.project.get.web_url + '/-/tree/' + tag.name
+                    ), tag.name)),
                 )
         request_buffer.flush()
 
