@@ -515,6 +515,7 @@ class GradingSpreadsheet:
             yield
         except:
             self.update(google_tools.sheets.request_delete_sheet(sheet_id))
+            raise
 
     def create_request_buffer(self):
         ''' Create a request buffer for batch updates. '''
