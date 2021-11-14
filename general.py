@@ -564,7 +564,7 @@ def component(key):
 
     return Lens(
         get = lambda u: u[key],
-        set = lambda u, value: set(u, key, value),
+        set = lambda u, value: set(u, value),
     )
 
 def component_tuple(key):
