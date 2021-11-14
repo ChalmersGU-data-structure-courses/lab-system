@@ -1,0 +1,23 @@
+th.sortable {
+  cursor: pointer;
+}
+
+th.sortable:hover::after {
+  color: inherit;
+  content: ' \025B8';
+}
+
+th.sortable::after {
+  color: transparent;
+  content: ' \025B8';
+}
+
+th.sortable.sortable-order-asc::after {
+  color: inherit;
+  content: ' \025BE';
+}
+
+th.sortable.sortable-order-desc::after {
+  color: inherit;
+  content: ' \025B4';
+}
