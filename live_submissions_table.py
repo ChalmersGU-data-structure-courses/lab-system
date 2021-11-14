@@ -423,9 +423,7 @@ class SubmissionDiffPreviousColumn(Column):
             group.repo_tag(tag_prev),
             tag_prev.name
         )
-        grader_informal = self.course.canvas_course.user_str_informal(
-            self.course.canvas_user_by_gitlab_username(issue_prev.author['username']).id
-        )
+        grader_informal = self.course.issue_author_informal(issue_prev)
         return SubmissionDiffColumnValue(
             (tag.name + '..', gitlab_tools.url_compare(
                 self.lab.grading_project.get,
