@@ -373,8 +373,10 @@ class Course:
 
     def get_folder_by_path(self, canvas_dir, use_cache = True):
         canvas_dir = PurePosixPath(canvas_dir)
+        if canvas_dir.is_absolute():
+            canvas_dir = canvas_dir.relative_to('/')
         try:
-            return self.canvas.get_list(self.endpoint + ['folders', 'by_path', canvas_dir.relative_to('/')], use_cache = use_cache)[-1]
+            return self.canvas.get_list(self.endpoint + ['folders', 'by_path', canvas_dir], use_cache = use_cache)[-1]
         except requests.HTTPError as e:
             if e.response.status_code == 404:
                 return None
