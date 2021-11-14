@@ -382,6 +382,11 @@ class Lab:
         for group in self.course.groups:
             self.hotfix_group(branch_hotfix, group, self.course.config.branch.master)
 
+    def update_submissions_and_gradings(self, reload = False):
+        self.logger.info('Updating submissions and gradings.')
+        for group in self.student_groups:
+            group.update_submissions_and_gradings(reload = reload)
+
     @contextlib.contextmanager
     def checkout_with_empty_bin_manager(self, commit):
         '''
@@ -588,6 +593,7 @@ class Lab:
 
         Passes the deadline parameters to the methods update_grading_sheet and update_live_submissions_table.
         '''
+        self.update_submissions_and_gradings(reload = True)
         self.repo_fetch_all()
         self.update_grading_sheet(deadline = deadline)
         self.update_live_submissions_table(deadline = deadline)
@@ -814,6 +820,12 @@ class GroupProject:
     @functools.cached_property
     def submissions_and_gradings(self):
         return self.course.parse_submissions_and_gradings(self.project.lazy)
+
+    def update_submissions_and_gradings(self, reload = False):
+        if reload:
+            with contextlib.suppress(AttributeError):
+                del self.submissions_and_gradings
+        self.submissions_and_gradings
 
     def submissions_and_gradings_before(self, deadline = None):
         return dict(filter(
