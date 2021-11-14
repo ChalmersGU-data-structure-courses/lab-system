@@ -567,6 +567,17 @@ class Lab:
                 )
         request_buffer.flush()
 
+    def update_grading_sheet_and_live_submissions_table(self, deadline = None):
+        '''
+        Does what its name says.
+
+        Passes the deadline parameters to the methods update_grading_sheet and update_live_submissions_table.
+        '''
+        self.repo_fetch_all()
+        self.update_grading_sheet(deadline = deadline)
+        self.update_live_submissions_table(deadline = deadline)
+        self.repo_push()
+
 class GroupProject:
     def __init__(self, lab, id, logger = logging.getLogger('group-project')):
         self.course = lab.course
