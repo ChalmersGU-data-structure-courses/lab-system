@@ -260,11 +260,13 @@ class Lab:
         Fetching remotes are given by the official repository and student group repositories.
         Pushing remotes are just the grading repository.
         '''
+        self.logger.info('Initializing local grading repository.')
         repo = git.Repo.init(self.dir, bare = bare)
         try:
             with repo.config_writer() as c:
                 c.add_value('advice', 'detachedHead', 'false')
 
+            # Configure and fetch official repository.
             branches = [self.course.config.branch.problem, self.course.config.branch.solution]
             self.repo_add_remote(
                 self.course.config.path_lab.official,
@@ -272,13 +274,15 @@ class Lab:
                 fetch_branches = [(git_tools.Namespacing.local, b) for b in branches],
                 fetch_tags = [(git_tools.Namespacing.local, git_tools.wildcard)],
             )
+            self.repo_fetch_official()
+
+            # Configure offical grading repository and student group
             self.repo_add_remote(
                 self.course.config.path_lab.grading,
                 self.grading_project.get,
                 push_branches = branches,
                 push_tags = [git_tools.wildcard],
             )
-            self.repo.remote(self.course.config.path_lab.official).fetch()
             self.repo_add_groups_remotes(ignore_missing = True)
         except:
             shutil.rmtree(self.dir)
@@ -290,7 +294,8 @@ class Lab:
         Fetch problem and solution branches from the offical
         repository on Chalmers GitLab to the local grading repository.
         '''
-        self.repo.remotes[self.course.config.path_lab.official].fetch()
+        self.logger.info('Fetching from official repository.')
+        self.repo.remote(self.course.config.path_lab.official).fetch('--update-head-ok')
 
     def repo_push_grading(self):
         '''
