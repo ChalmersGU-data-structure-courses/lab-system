@@ -284,6 +284,25 @@ class Course:
                     yield (self.config.gitlab_username_from_canvas_user_id(self, user.id), user)
         return general.sdict(f())
 
+    def canvas_user_informal_name(self, user):
+        '''
+        Find the informal name of a user on Chalmers.
+        Uses self.config.names_informal.
+        Defaults to the first name as given on Canvas.
+        '''
+        try:
+            return self.config.names_informal.print(user.name)
+        except KeyError:
+            return self.canvas_course.user_str_informal(user.id)
+
+    def issue_author_informal(self, issue):
+        '''
+        Finds the informal name of an author of an issue on GitLab Chalmers.
+        '''
+        return self.canvas_user_informal_name(
+            self.canvas_user_by_gitlab_username[issue.author['username']]
+        )
+
     @contextlib.contextmanager
     def invitation_history(self, path):
         try:
@@ -794,6 +813,8 @@ class Course:
             try:
                  r = self.config.grading_response.parse(issue.title)
             except:
+                import traceback
+                print(traceback.format_exc())
                 issues_remaining.append(issue)
                 continue
             issues_grading[r['tag']] = (issue, r)
@@ -802,13 +823,17 @@ class Course:
     def parse_submissions_and_gradings(self, project):
         self.logger.debug('Parsing submissions and gradings in project {project.path_with_namespace}')
 
-        issues_grading = self.parse_grading_issues(self.response_issues(project))[0]
+        (issues_grading, issues_remaining) = self.parse_grading_issues(self.response_issues(project))
+        for issue in issues_remaining:
+            self.logger.warning(self.format_issue_metadata(project, issue,
+                f'Unrecognized issue in project {project.path_with_namespace}:'
+            ))
 
         tags = gitlab_tools.list_all(project.tags)
         for tag in tags:
             tag.date = dateutil.parser.parse(tag.commit['committed_date'])
         tags.sort(key = operator.attrgetter('date'))
-        tags_submission = self.parse_submission_tags(tags)[0]
+        (tags_submission, _) = self.parse_submission_tags(tags)
 
         r = dict()
         for submission in tags_submission:
@@ -819,6 +844,7 @@ class Course:
                 f'Response issue in project {project.path_with_namespace} with no matching request tag:'
             ))
         return r
+
 
     def request_namespace(self, f):
         return types.SimpleNamespace(**dict(

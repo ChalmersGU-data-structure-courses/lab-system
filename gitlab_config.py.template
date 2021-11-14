@@ -186,14 +186,16 @@ lab = SimpleNamespace(
     sort_key = lambda id: id,
 )
 
-# Parsing and printing of informal grader names.
-# This associates usernames on Chalmers GitLab with informal names.
-# It is only used in the grading spreadsheet.
-# Fill in for all graders.
-graders_informal = print_parse.from_dict([
-    ('Peter.Ljunglof', 'Peter'),
-    ('nicsma', 'Nick'),
-    ('sattler', 'Christian'),
+# Parsing and printing of informal names.
+# This associates a name on Canvas with an informal names.
+# It is only used for graders in the grading spreadsheet and live submissions table.
+#
+# For users not in this list, we use the first name as given on Canvas.
+# This is usually fine, except if:
+# * a graer wants to go by a different informal name,
+# * there are two graders with the same first name.
+names_informal = print_parse.from_dict([
+    ('Christian Sattler', 'Christian'),
 ])
 
 # Configuration exclusively related to grading sheets.

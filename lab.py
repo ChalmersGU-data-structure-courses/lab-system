@@ -558,13 +558,27 @@ class Lab:
         for group_id in self.course.groups:
             group = self.student_group(group_id)
             for (query, (tag, grading)) in enumerate(group.relevant_submissions(deadline)):
+                if grading == None:
+                    grader = None
+                    score = None
+                else:
+                    (issue, response) = grading
+                    informal_name = self.course.issue_author_informal(issue)
+                    grader = grading_sheet.link_with_display(informal_name, issue.web_url)
+                    score = google_tools.sheets.extended_value_string(str(response['score']))
+
                 self.grading_sheet.write_query(
                     request_buffer,
                     group_id,
                     query,
-                    grading_sheet.Query(submission = (google_tools.sheets.extended_value_link(
-                        tag.name, group.project.get.web_url + '/-/tree/' + tag.name
-                    ), tag.name)),
+                    grading_sheet.Query(
+                        submission = grading_sheet.link_with_display(
+                            tag.name,
+                            group.project.get.web_url + '/-/tree/' + tag.name,
+                        ),
+                        grader = grader,
+                        score = score,
+                    ),
                 )
         request_buffer.flush()
 
