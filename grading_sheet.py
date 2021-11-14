@@ -206,6 +206,14 @@ def guess_group_row_range(sheet_data):
         raise ValueError('unable to guess group row range')
     return (start, end)
 
+def link_with_display(s, url):
+    '''
+    Returns a pair of an extended value (formula link) and the effective string.
+
+    For use with specifying query fields in write_query.
+    '''
+    return (google_tools.sheets.extended_value_link(s, url), s)
+
 class GradingSheet:
     def __init__(
         self,
