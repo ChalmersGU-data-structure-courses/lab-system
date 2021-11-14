@@ -556,13 +556,13 @@ class Lab:
         request_buffer.flush()
 
 class GroupProject:
-    def __init__(self, lab, group_id, logger = logging.getLogger('group-project')):
+    def __init__(self, lab, id, logger = logging.getLogger('group-project')):
         self.course = lab.course
         self.lab = lab
-        self.group_id = group_id
+        self.id = id
         self.logger = logger
 
-        self.remote = self.course.config.group.full_id.print(group_id)
+        self.remote = self.course.config.group.full_id.print(id)
 
         #def f(x):
         #    return self.course.request_namespace(lambda request_type, spec: x)
@@ -591,13 +591,13 @@ class GroupProject:
         '''
         r = gitlab_tools.CachedProject(
             gl = self.gl,
-            path = self.course.group(self.group_id).path / self.course.config.lab.full_id.print(self.lab.id),
+            path = self.course.group(self.id).path / self.course.config.lab.full_id.print(self.lab.id),
             name = self.lab.name_full,
             logger = self.logger,
         )
 
         def create():
-            project = gitlab_tools.CachedProject.create(r, self.course.group(self.group_id).get)
+            project = gitlab_tools.CachedProject.create(r, self.course.group(self.id).get)
             try:
                 self.lab.repo.git.push(
                     project.ssh_url_to_repo,
@@ -650,7 +650,7 @@ class GroupProject:
         In both cases, we restrict to users with developer or maintainer rights.
         '''
         return general.dict_union(map(self.course.student_members, [
-            self.course.group(self.group_id),
+            self.course.group(self.id),
             self.project
         ]))
 
@@ -918,7 +918,7 @@ class GroupProject:
             raise ValueError(f'{response_type} issue for {request_type} {request} already exists.')
 
         description += self.mention_paragraph()
-        qualified_request = self.course.qualify_request.print((self.group_id, request))
+        qualified_request = self.course.qualify_request.print((self.id, request))
         issue = self.post_issue(self.project, request_type, qualified_request, response_type, description, params)
         response.__dict__[response_type] = (issue, params)
         return issue
