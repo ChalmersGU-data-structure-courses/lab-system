@@ -682,3 +682,17 @@ def range_shift(range, offset):
 def when(condition, value):
     # not condition or value
     return value if condition else True
+
+def canonical_keys(items, key = None):
+    '''
+    Canonicalize sort keys.
+    Takes an iterable of unique items.
+    Returns a dictionary mapping items to sort keys from an interval starting at 0.
+    If key is given, it is used as key function for sorting the items.
+    Note that the items are not required to be unique under the key function.
+    '''
+    def f():
+        for (out_key, (_, xs)) in enumerate(itertools.groupby(sorted(items, key = key), key = key)):
+            for x in xs:
+                yield (x, out_key)
+    return dict(f())
