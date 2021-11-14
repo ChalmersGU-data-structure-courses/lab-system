@@ -564,7 +564,12 @@ class GradingSheet:
                     f'* previous: {value_prev["userEnteredValue"]}',
                     f'* current: {value}',
                 ]))
+        # TODO:
+        # This does nothing for now.
+        # If query is not smaller than needed_num_queries,
+        # then the call computing coords will have triggered an exception.
         self.needed_num_queries = max(self.needed_num_queries, query + 1)
+
         request_buffer.add(google_tools.sheets.request_update_cell_user_entered_value(
             value, self.sheet_properties.sheetId, *coords
         ))
