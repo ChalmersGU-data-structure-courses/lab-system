@@ -271,6 +271,19 @@ class Course:
         '''
         return self._gitlab_users.get(gitlab_username)
 
+    @functools.cached_property
+    def canvas_user_by_gitlab_username(self):
+        '''
+        A dictionary mapping usernames on Chalmers GitLab to Canvas users.
+        '''
+        self.logger.debug('Creating dictionary mapping GitLab usernames to Canvas users')
+        def f():
+            user_sources = [self.canvas_course.student_details, self.canvas_course.teacher_details]
+            for user in self.canvas_course.user_details.values():
+                if any(user.id in user_source for user_source in user_sources):
+                    yield (self.config.gitlab_username_from_canvas_user_id(self, user.id), user)
+        return general.sdict(f())
+
     @contextlib.contextmanager
     def invitation_history(self, path):
         try:
