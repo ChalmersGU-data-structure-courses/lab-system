@@ -195,8 +195,10 @@ class Canvas:
         r = self.post(endpoint, {
             'name': name,
             'size': size,
-            'locked': True,
-            'lock': True,
+            # Why were these options given?
+            # Can't find documentation for them.
+            #'locked': True,
+            #'lock': True,
             'parent_folder_id': folder_id,
             'on_duplicate': 'overwrite', # There should be an 'error' option
         })
