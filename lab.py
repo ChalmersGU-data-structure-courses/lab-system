@@ -556,8 +556,11 @@ class Lab:
         )
 
     def update_grading_sheet(self, deadline = None):
-        # Ensure grading sheet exists.
-        self.grading_sheet
+        # Ensure grading sheet exists and has sufficient query group columns.
+        self.grading_sheet.ensure_num_queries(max(
+            (len(group.relevant_submissions(deadline)) for group in self.student_groups),
+            default = 0,
+        ))
 
         request_buffer = self.course.grading_spreadsheet.create_request_buffer()
         for group_id in self.course.groups:
@@ -847,10 +850,12 @@ class GroupProject:
         return None
 
     def relevant_submissions(self, deadline = None):
-        yield from self.graded_submissions(deadline)
-        x = list(self.submissions_and_gradings_before(deadline).items())
-        if x and x[-1][1][1] == None:
-            yield x[-1][1]
+        def f():
+            yield from self.graded_submissions(deadline)
+            x = list(self.submissions_and_gradings_before(deadline).items())
+            if x and x[-1][1][1] == None:
+                yield x[-1][1]
+        return list(f())
 
     def update_request_tags(self):
         '''
