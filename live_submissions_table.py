@@ -425,7 +425,7 @@ class SubmissionDiffPreviousColumn(Column):
         )
         grader_informal = self.course.issue_author_informal(issue_prev)
         return SubmissionDiffColumnValue(
-            (tag.name + '..', gitlab_tools.url_compare(
+            (tag_prev.name + '..', gitlab_tools.url_compare(
                 self.lab.grading_project.get,
                 tag_prev.name,
                 tag_after.name,
