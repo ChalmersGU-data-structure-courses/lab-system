@@ -454,8 +454,9 @@ class Lab:
             table.build(path, deadline = deadline)
             self.repo_push()
             self.logger.info('Posting live submissions table to Canvas')
-            folder = self.course.canvas_course.get_folder_by_path(self.config.canvas_path_awaiting_grading.parent)
-            self.course.canvas_course.post_file(path, folder.id, path.name)
+            target = self.config.canvas_path_awaiting_grading
+            folder = self.course.canvas_course.get_folder_by_path(target.parent)
+            self.course.canvas_course.post_file(path, folder.id, target.name)
 
     # def submission_handlers_of_type(self, klass = object):
     #     def f(x):
