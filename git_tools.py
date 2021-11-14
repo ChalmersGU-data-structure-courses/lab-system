@@ -60,7 +60,60 @@ def namespaced_ref(is_tag, namespacing, remote, reference):
 namespaced_branch = functools.partial(namespaced_ref, False)
 namespaced_tag = functools.partial(namespaced_ref, True)
 
-resolve_ref = lambda repo, ref: git.refs.reference.Reference(repo, ref).commit
+def normalize_branch(repo, branch):
+    '''
+    Construct a head in the given repository from a given branch name.
+
+    Arguments:
+    * repo: Instance of git.Repository.
+    * branch:
+        An instance of git.Head, PurePosixPath, or str describing the branch.
+        All paths are interpreted relative to refs / heads.
+
+    Returns an instance of git.Head.
+    This method will not raise an exception if the tag does not exist.
+    '''
+    if isinstance(branch, git.Head):
+        return branch
+    branch = PurePosixPath(branch)
+    return git.Head(repo, str(refs / heads / branch))
+
+def normalize_tag(repo, tag):
+    '''
+    Construct a tag in the given repository from a given tag name.
+
+    Arguments:
+    * repo: Instance of git.Repository.
+    * tag:
+        An instance of git.Tag, PurePosixPath, or str describing the tag.
+        All paths are interpreted relative to refs / tags.
+
+    Returns an instance of git.Tag.
+    This method will not raise an exception if the tag does not exist.
+    '''
+    if isinstance(tag, git.Tag):
+        return tag
+    tag = PurePosixPath(tag)
+    return repo.tag(str(tag))
+
+def resolve(repo, ref):
+    '''
+    Resolve a reference in the given repository to a commit.
+
+    Arguments:
+    * repo: Instance of git.Repository.
+    * ref:
+        An instance of git.Commit, git.Reference, PurePosixPath, or str describing the commit.
+        All paths are interpreted absolutely with respect to the repository.
+
+    Return an instance of git.Commit.
+    Raises a ValueError is the reference cannot be resolved.
+    '''
+    if isinstance(ref, git.Commit):
+        return ref
+    if not isinstance(ref, git.Reference):
+        ref = git.Reference(repo, str(ref))
+    return ref.commit
 
 # Refspecs
 
@@ -137,10 +190,9 @@ def add_tracking_remote(
     * the second component gives the reference.
     For example, to fetch or pull all branches, use wildcard as reference.
     '''
-
     fetch_refspecs = [refspec(
-        namespaced(remote, Namespacing.local, ref),
-        namespaced(remote, namespacing, ref),
+        namespaced(Namespacing.local, remote, ref),
+        namespaced(namespacing, remote, ref),
         force = force,
     ) for (namespaced, namespaced_refs) in [
         (namespaced_branch, fetch_branches),
@@ -173,10 +225,10 @@ def onesided_merge(repo, commit, new_parent):
     )
 
 # Only creates a new commit if necessary.
-def tag_onesided_merge(repo, tag, commit, new_parent):
+def tag_onesided_merge(repo, tag_name, commit, new_parent):
     if not repo.is_ancestor(new_parent, commit):
         commit = onesided_merge(repo, commit, new_parent)
-    return repo.create_tag(tag, commit)
+    return repo.create_tag(tag_name, commit)
 
 def checkout(repo, dir, ref):
     ''' Checkout a reference into the given directory. '''
