@@ -4,7 +4,7 @@ import general
 import git
 import gitlab
 import logging
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import shutil
 import tempfile
 import types
@@ -391,11 +391,59 @@ class Lab:
             with tempfile.TemporaryDirectory() as bin:
                 yield (src, Path(bin))
 
-    def commit_problem(self):
-        return git_tools.local_branch(self.course.config.branch.problem)
+    @functools.cached_property
+    def head_problem(self):
+        return git_tools.normalize_branch(self.repo, self.course.config.branch.problem)
 
-    def commit_solution(self):
-        return git_tools.local_branch(self.course.config.branch.solution)
+    @functools.cached_property
+    def head_solution(self):
+        return git_tools.normalize_branch(self.repo, self.course.config.branch.solution)
+
+    def make_tag_after(self, tag, commit_prev, prev_name):
+        '''
+        Given a tag tag and a commit commit_prev in the grading repository,
+        make a tag tag_after whose commit is a descendant of both tag and ref_prev,
+        but has tree (content) identical to that of tag.
+        The name of tag must be of the form tag_core / 'tag'.
+        The name of tag_after will be 'merge' / tag_core / 'after' / prev_name.
+        If tag is a descendant of commit_prev, then tag_after is a synonym for tag.
+        Otherwise, it is constructed as a one-sided merge.
+        Returns the tag tag_after (an instance of git.Tag).
+
+        First tries to retrieve an existing tag tag_after.
+        If none exists, we create it and mark the repository as updated.
+
+        Arguments:
+        * tag:
+            An instance of git.Tag, PurePosixPath, or str.
+            All paths are interpreted relative to refs / tags.
+        * commit_prev:
+            An instance of git.Commit, git.Reference, PurePosixPath, or str.
+            All paths are interpreted absolutely with respect to the repository.
+        * prev_name:
+            An instance of PurePosixPath or str.
+        '''
+        # Resolve inputs.
+        tag = git_tools.normalize_tag(self.repo, tag)
+        commit_prev = git_tools.resolve(self.repo, commit_prev)
+
+        tag_name = PurePosixPath(tag.name)
+        if not tag_name.name == 'tag':
+            raise ValueError(f'Tag name does not end with component "tag": {str(tag_name)}')
+        tag_after_name = str('merge' / tag_name.parent / 'after' / prev_name)
+
+        try:
+            tag_after = self.repo.tag(tag_after_name)
+            tag_after.commit  # Ensure that the reference exists.
+        except ValueError:
+            tag_after = git_tools.tag_onesided_merge(
+                self.repo,
+                tag_after_name,
+                tag.commit,
+                commit_prev,
+            )
+            self.repo_updated = True
+        return tag_after
 
     # def submission_handlers_of_type(self, klass = object):
     #     def f(x):
@@ -580,7 +628,7 @@ class GroupProject:
                 self.remote,
                 self.project.get,
                 fetch_branches = [(git_tools.Namespacing.remote, git_tools.wildcard)],
-                fetch_tags = [(git_tools.Namespacing.qualified, git_tools.wildcard)],
+                fetch_tags = [(git_tools.Namespacing.qualified_suffix_tag, git_tools.wildcard)],
                 prune = True,
             )
         except gitlab.GitlabGetError as e:
@@ -611,24 +659,30 @@ class GroupProject:
         Make sure the local repository as up to date with respect to
         the contents of the student repository on GitLab Chalmers.
         '''
-        self.lab.repo.remotes[self.remote].fetch()
+        self.logger.info(f'Fetching from student repository, remote {self.remote}.')
+        self.lab.repo.remote(self.remote).fetch('--update-head-ok')
 
-    def repo_tag_names(self):
-        '''
-        Read the local tags fetched from the student project on GitLab.
-        Returns a list of tag names.
-        '''
-        dir = Path(self.lab.repo.git_dir) / git_tools.refs / git_tools.remote_tags / self.remote
-        return [file.name for file in dir.iterdir()]
+    # def repo_tag_names(self):
+    #     '''
+    #     Read the local tags fetched from the student project on GitLab.
+    #     Returns a list of tag names.
+    #     '''
+    #     dir = Path(self.lab.repo.git_dir) / git_tools.refs / git_tools.remote_tags / self.remote
+    #     return [file.name for file in dir.iterdir()]
 
-    def repo_resolve_tag(self, tag_name):
+    def repo_tag(self, tag_name):
         '''
-        Read the commit in the local repository corresponding to a tag in the student project on GitLab.
+        Construct the tag (instance of git.Tag) in the grading repository
+        corresponding to the tag with given name in the student repository.
+        This will have the group's remote prefixed.
+
+        Arguments:
+        * tag_name: Instance of PurePosixPath, str, or gitlab.v4.objects.tags.ProjectTag.
         '''
-        return git_tools.resolve_ref(
-            self.lab.repo,
-            git_tools.remote_tag(self.remote, tag_name)
-        )
+        if isinstance(tag_name, gitlab.v4.objects.tags.ProjectTag):
+            tag_name = tag_name.name
+        tag_name = git_tools.qualify(self.remote, tag_name) / 'tag'
+        return git_tools.normalize_tag(self.lab.repo, tag_name)
 
     def hotfix_group(self, branch_hotfix, branch_group):
         '''
@@ -639,10 +693,11 @@ class GroupProject:
         '''
         self.logger.info(f'Hotfixing {branch_group} in f{self.project.path}')
 
-        self.lab.repo.remote(self.remote).fetch()
+        # Make sure our local mirror of the student branches is as up to date as possible.
+        self.repo_fetch()
 
-        problem = git_tools.resolve_ref(self.lab.repo, git_tools.local_branch(self.course.config.branch.problem))
-        hotfix = git_tools.resolve_ref(self.lab.repo, git_tools.local_branch(branch_hotfix))
+        problem = self.lab.head_problem
+        hotfix = git_tools.normalize_branch(self.repo, branch_hotfix)
         if problem == hotfix:
             self.logger.warn('Hotfixing: hotfix identical to problem.')
             return
@@ -661,7 +716,7 @@ class GroupProject:
             self.lab.repo,
             merge,
             hotfix.message,
-            parent_commits = [git_tools.resolve_ref(self.lab.repo, master)],
+            parent_commits = [git_tools.resolve(self.lab.repo, master)],
             head = False,
             author = hotfix.author,
             committer = hotfix.committer,

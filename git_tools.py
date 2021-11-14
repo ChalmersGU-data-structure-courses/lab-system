@@ -50,11 +50,14 @@ remote_tag = functools.partial(remote_ref, True)
 class Namespacing(Enum):
     local = auto()
     qualified = auto()
+    qualified_suffix_tag = auto()  # Hack, for now.
     remote = auto()
 
 def namespaced_ref(is_tag, namespacing, remote, reference):
-    if namespacing == Namespacing.qualified:
+    if namespacing in [Namespacing.qualified, Namespacing.qualified_suffix_tag]:
         reference = qualify(remote, reference)
+        if namespacing == Namespacing.qualified_suffix_tag:
+            reference = reference / 'tag'
     return local_or_remote_ref(is_tag, remote if namespacing == Namespacing.remote else None, reference)
 
 namespaced_branch = functools.partial(namespaced_ref, False)
