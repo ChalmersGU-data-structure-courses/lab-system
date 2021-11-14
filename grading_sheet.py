@@ -652,7 +652,7 @@ class GradingSpreadsheet:
         for worksheet in self.gspread_spreadsheet.worksheets():
             try:
                 lab_id = self.config.lab.name.parse(worksheet.title)
-                yield (lab_id, GradingSheet(self, name = worksheet.title))
+                yield (lab_id, GradingSheet(self, name = worksheet.title, gspread_worksheet = worksheet))
             except:
                 pass
 
@@ -678,6 +678,8 @@ class GradingSpreadsheet:
         try:
             yield
         except:
+            import traceback
+            print(traceback.format_exc())
             self.update(google_tools.sheets.request_delete_sheet(sheet_id))
             raise
 
@@ -722,13 +724,14 @@ class GradingSpreadsheet:
             template_worksheet_id
         )
 
-        with contextlib.ExitStack() as stack:
-            id = sheet_properties['sheetId']
-            stack.enter_context(self.sheet_manager(id))
+        id = sheet_properties['sheetId']
+        try:
             self.update(google_tools.sheets.request_update_title(id, title))
             sheet_properties['title'] = title
-            stack.pop_all()
             return sheet_properties
+        except:
+            self.update(google_tools.sheets.request_delete_sheet(id))
+            raise
 
     def grading_sheet_create(self, lab_id, groups = [], group_link = None, exist_ok = False):
         '''
@@ -774,15 +777,14 @@ class GradingSpreadsheet:
                 self.create_grading_sheet_from_template(name)
             )
 
-        with contextlib.ExitStack() as stack:
-            stack.enter_context(self.sheet_manager(worksheet.id))
-
-            grading_sheet = GradingSheet(self, lab_id = lab_id)
+        try:
+            grading_sheet = GradingSheet(self, lab_id = lab_id, gspread_worksheet = worksheet)
             grading_sheet.setup_groups(groups, group_link, delete_previous = True)
+        except:
+            self.update(google_tools.sheets.request_delete_sheet(worksheet.id))
+            raise
 
-            stack.pop_all()
-            self.grading_sheets[lab_id] = grading_sheet
-
+        self.grading_sheets[lab_id] = grading_sheet
         self.logger.info(f'creating grading sheet for {self.config.lab.name.print(lab_id)}: done')
         return grading_sheet
 
