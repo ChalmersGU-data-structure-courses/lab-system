@@ -12,10 +12,11 @@ import types
 from course_basics import CompilationRequirement, SubmissionHandlingException
 import git_tools
 import gitlab_tools
+import google_tools.sheets
 import grading_sheet
 from instance_cache import instance_cache
+import live_submissions_table
 import print_parse
-import google_tools.sheets
 
 class Lab:
     def __init__(self, course, id, config = None, dir = None, logger = logging.getLogger(__name__)):
@@ -444,6 +445,17 @@ class Lab:
             )
             self.repo_updated = True
         return tag_after
+
+    def update_live_submissions_table(self, deadline = None):
+        self.logger.info('Updating live submissions table')
+        table = live_submissions_table.LiveSubmissionsTable(self)
+        with tempfile.TemporaryDirectory() as dir:
+            path = Path(dir) / 'index.html'
+            table.build(path, deadline = deadline)
+            self.repo_push()
+            self.logger.info('Posting live submissions table to Canvas')
+            folder = self.course.canvas_course.get_folder_by_path(self.config.canvas_path_awaiting_grading.parent)
+            self.course.canvas_course.post_file(path, folder.id, path.name)
 
     # def submission_handlers_of_type(self, klass = object):
     #     def f(x):
