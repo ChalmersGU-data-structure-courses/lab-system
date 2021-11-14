@@ -46,6 +46,10 @@ class Lab:
         # Gitlab config
         self.path = self.course.config.path.labs / self.id_str
 
+        # Whether we have updated the grading repository
+        # and it needs to be pushed.
+        self.repo_updated = False
+
     @functools.cached_property
     def gl(self):
         return self.course.gl
@@ -297,16 +301,31 @@ class Lab:
         self.logger.info('Fetching from official repository.')
         self.repo.remote(self.course.config.path_lab.official).fetch('--update-head-ok')
 
-    def repo_push_grading(self):
+    def repo_push(self):
         '''
         Push the local grading repository to the grading repository on Chalmers GitLab.
-
+        Only push if changes have been recorded.
         '''
-        self.repo.remotes[self.course.config.path_lab.grading].push()
+        if self.repo_updated:
+            self.logger.info('Pushing to grading repository.')
+            self.repo.remote(self.course.config.path_lab.grading).push()
+            self.repo_updated = False
 
     @instance_cache
     def student_group(self, group_id):
         return GroupProject(self, group_id)
+
+    @functools.cached_property
+    def student_groups(self):
+        return [self.student_group(group_id) for group_id in self.course.groups]
+
+    def repo_fetch_all(self):
+        '''
+        Fetch from the official repository and all student repositories.
+        '''
+        self.repo_fetch_official()
+        for group in self.student_groups:
+            group.repo_fetch()
 
     def create_group_projects(self):
         for group_id in self.course.groups:
