@@ -427,7 +427,7 @@ class SubmissionDiffPreviousColumn(Column):
         return SubmissionDiffColumnValue(
             (tag_prev.name + '..', gitlab_tools.url_compare(
                 self.lab.grading_project.get,
-                tag_prev.name,
+                group.repo_tag(tag_prev),
                 tag_after.name,
             )),
             (grader_informal, issue_prev.web_url),
