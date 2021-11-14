@@ -784,21 +784,23 @@ class GroupProject:
         ))
 
     def graded_submissions(self, deadline = None):
-        for entry in self.submissions_and_gradings_before(deadline).items():
-            if entry[1][1] != None:
-                yield entry[1]
+        def f():
+            for entry in self.submissions_and_gradings_before(deadline).items():
+                if entry[1][1] != None:
+                    yield entry[1]
+        return list(f())
 
     def current_submission(self, deadline = None):
         x = list(self.submissions_and_gradings_before(deadline).items())
         if x and x[-1][1][1] == None:
-            return x[-1][1]
+            return x[-1][1][0]
         return None
 
     def relevant_submissions(self, deadline = None):
         yield from self.graded_submissions(deadline)
-        x = self.current_submission(deadline)
-        if x != None:
-            yield x
+        x = list(self.submissions_and_gradings_before(deadline).items())
+        if x and x[-1][1][1] == None:
+            yield x[-1][1]
 
     def update_request_tags(self):
         '''
