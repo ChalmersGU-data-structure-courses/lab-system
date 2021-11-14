@@ -1,0 +1,57 @@
+/* Emulating Canvas. */
+body {
+  font-family: 'Lato Extended',Lato,'Helvetica Neue',Helvetica,Arial,sans-serif;
+}
+
+/* Not used at the moment. */
+.controls {
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+#results {
+  border-collapse: collapse;
+  border: 1px black solid;
+}
+#results th, #results td {
+  border-top: 1px black solid;
+  border-bottom: 1px black solid;
+  border-left: 1px black solid;
+  padding: 6px;
+  vertical-align: top;
+}
+#results p {
+  margin: 0px;
+}
+#results pre {
+  font-size: smaller;
+  margin: 0px;
+  white-space: pre-wrap;
+}
+
+/* Not used at the moment. */
+#results .files {
+  border-collapse: collapse
+}
+#results .files td {
+  border: 0px;
+  padding: 0px;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.extension-column {
+  border-left-color: lightgrey;
+}
+.grayed-out {
+  opacity: 0.5;
+}
+.error {
+  color: #af0000;
+}
+.hidden {
+  display: none;
+}
+.to-load {
+  background-color: #eeeeee;
+}
