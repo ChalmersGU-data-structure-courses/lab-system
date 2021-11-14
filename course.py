@@ -794,7 +794,7 @@ class Course:
             try:
                  r = self.config.grading_response.parse(issue.title)
             except:
-                issues_remaining.append(r)
+                issues_remaining.append(issue)
                 continue
             issues_grading[r['tag']] = (issue, r)
         return (issues_grading, issues_remaining)
