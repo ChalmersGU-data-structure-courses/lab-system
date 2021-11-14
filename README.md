@@ -89,7 +89,7 @@ For this reason, we recommend using connection sharing.
 Add the following to your SSH configuration file (default: `.ssh/config`):
 
 ```
-Hostname git.chalmers.se
+Host git.chalmers.se
 ControlPath /tmp/%r@%h:%p
 ```
 
