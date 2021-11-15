@@ -837,7 +837,7 @@ class Course:
         for submission in tags_submission:
             r[submission.name] = (submission, issues_grading.pop(submission.name, None))
 
-        for (issue, r) in issues_grading.values():
+        for (issue, _) in issues_grading.values():
             self.logger.warning(self.format_issue_metadata(project, issue,
                 f'Response issue in project {project.path_with_namespace} with no matching request tag:'
             ))
