@@ -804,7 +804,7 @@ class Course:
                 tags_remaining.append(tag)
         return (tags_submission, tags_remaining)
 
-    def parse_grading_issues(self, issues):
+    def parse_grading_issues(self, project, issues):
         '''
         Parse the grading issues of a student project.
         The form of a grading response issue titletags is configured in self.config.grading_response.
@@ -822,13 +822,24 @@ class Course:
             except:
                 issues_remaining.append(issue)
                 continue
-            issues_grading[r['tag']] = (issue, r)
+
+            key = r['tag']
+            (issue_prev, _) = issues_grading.get(key)
+            if key in issues_grading:
+                self.logger.warning(
+                      general.join_lines([f'Duplicate response issue in project {project.path_with_namespace}.',])
+                    + self.format_issue_metadata(project, issue_prev, 'First issue:')
+                    + self.format_issue_metadata(project, issue, 'Second issue:')
+                    + general.join_lines(['Ignoring second issue.'])
+                )
+            else:
+                issues_grading[key] = (issue, r)
         return (issues_grading, issues_remaining)
 
     def parse_submissions_and_gradings(self, project):
-        self.logger.debug('Parsing submissions and gradings in project {project.path_with_namespace}')
+        self.logger.debug(f'Parsing submissions and gradings in project {project.path_with_namespace}')
 
-        (issues_grading, issues_remaining) = self.parse_grading_issues(self.response_issues(project))
+        (issues_grading, issues_remaining) = self.parse_grading_issues(project, self.response_issues(project))
         for issue in issues_remaining:
             self.logger.warning(self.format_issue_metadata(project, issue,
                 f'Unrecognized issue in project {project.path_with_namespace}:'
@@ -840,16 +851,15 @@ class Course:
         tags.sort(key = operator.attrgetter('date'))
         (tags_submission, _) = self.parse_submission_tags(tags)
 
-        r = dict()
+        result = dict()
         for submission in tags_submission:
-            r[submission.name] = (submission, issues_grading.pop(submission.name, None))
+            result[submission.name] = (submission, issues_grading.pop(submission.name, None))
 
         for (issue, _) in issues_grading.values():
             self.logger.warning(self.format_issue_metadata(project, issue,
                 f'Response issue in project {project.path_with_namespace} with no matching request tag:'
             ))
-        return r
-
+        return result
 
     def request_namespace(self, f):
         return types.SimpleNamespace(**dict(
