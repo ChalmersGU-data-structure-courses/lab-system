@@ -812,13 +812,14 @@ class Course:
         * issues_grading is a dictionary mapping submission tags to pairs of an issue and the parsed issue title.
         * issues_remaining is the remainings issues.
         The order of issues is perserved.
+        The argument project is purely used for formatting log messages.
         '''
         issues_grading = dict()
         issues_remaining = []
 
         for issue in issues:
             try:
-                 r = self.config.grading_response.parse(issue.title)
+                r = self.config.grading_response.parse(issue.title)
             except:
                 issues_remaining.append(issue)
                 continue
@@ -827,7 +828,7 @@ class Course:
             (issue_prev, _) = issues_grading.get(key)
             if key in issues_grading:
                 self.logger.warning(
-                      general.join_lines([f'Duplicate response issue in project {project.path_with_namespace}.',])
+                      general.join_lines([f'Duplicate grading issue in project {project.path_with_namespace}.',])
                     + self.format_issue_metadata(project, issue_prev, 'First issue:')
                     + self.format_issue_metadata(project, issue, 'Second issue:')
                     + general.join_lines(['Ignoring second issue.'])
@@ -835,6 +836,38 @@ class Course:
             else:
                 issues_grading[key] = (issue, r)
         return (issues_grading, issues_remaining)
+
+    def parse_grading_response_template_issue(self, project, issues):
+        '''
+        Parse the grading template issue in the given official project.
+        The grading template issue title is configured in self.config.grading_response_template.
+        Returns a pair (issue_grading_template, issues_remaining) where:
+        * issues_grading_template is the grading template issue, or None if it is not found,
+        * issues_remaining is the remainings issues.
+        The order of issues is perserved.
+        The argument project is purely used for formatting log messages.
+        '''
+        issue_grading_template = None
+        issues_remaining = []
+
+        for issue in issues:
+            try:
+                self.config.grading_response_template.parse(issue.title)
+            except:
+                issues_remaining.append(issue)
+                continue
+
+            if issue_grading_template != None:
+                self.logger.warning(
+                      general.join_lines([f'Duplicate grading template issue in project {project.path_with_namespace}.',])
+                    + self.format_issue_metadata(project, issue_grading_template, 'First issue:')
+                    + self.format_issue_metadata(project, issue, 'Second issue:')
+                    + general.join_lines(['Ignoring second issue.'])
+                )
+            else:
+                issue_grading_template = issue
+
+        return (issue_grading_template, issues_remaining)
 
     def parse_submissions_and_gradings(self, project):
         self.logger.debug(f'Parsing submissions and gradings in project {project.path_with_namespace}')
