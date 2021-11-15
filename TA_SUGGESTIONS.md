@@ -24,6 +24,11 @@
 	 the script will then have their GitLab notifications be made worthless
 	 as GitLab will think they participated in every thread.
 
+   * [Christian]
+     I found a way to do it using GET URL parameters!
+	 Added "open issue" links to the live submissions.
+	 These retrieve default content from a template issue in the official grading repository of the lab.
+
 2. All labs should have some automatic tests:
    Maybe for next iteration there should be, I am grading a group
    whose code doesn't compile and is a bit hard to spot by just
