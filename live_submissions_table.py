@@ -21,9 +21,10 @@ def format_url(text_with_url):
     '''
     Creates a value of dominate.tags.a from a pair of two strings.
     The first string is the text to display, the second the URL.
+    Configure it to open the link a new tab/window.
     '''
     (text, url) = text_with_url
-    return dominate.tags.a(text, href = url)
+    return dominate.tags.a(text, href = url, target = '_blank')
 
 path_data = Path(__file__).parent / 'live-submissions-table'
 path_data_default_css = path_data / 'default.css'
