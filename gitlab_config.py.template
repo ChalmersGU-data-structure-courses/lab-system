@@ -192,7 +192,7 @@ lab = SimpleNamespace(
 #
 # For users not in this list, we use the first name as given on Canvas.
 # This is usually fine, except if:
-# * a graer wants to go by a different informal name,
+# * a grader wants to go by a different informal name,
 # * there are two graders with the same first name.
 names_informal = print_parse.from_dict([
     ('Christian Sattler', 'Christian'),
