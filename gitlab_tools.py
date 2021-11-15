@@ -6,6 +6,7 @@ import gitlab
 import operator
 from pathlib import Path, PurePosixPath
 import time
+import urllib.parse
 
 def read_private_token(x):
     if isinstance(x, Path):
@@ -246,16 +247,55 @@ def get_tags_sorted_by_date(self, project):
 def format_username(username):
     return '@' + username
 
+def project_url(project, path_segments = [], query_params = dict()):
+    '''
+    Format a URL for a project request.
+
+    Arguments:
+    * project: Project in which to make the request in.
+    * path_segments:
+        Iterable of path segments to append to
+        the projects path to give the desired endpoint.
+    * query: Query parameters represented as a dictionary mapping strings to strings.
+    '''
+    url = urllib.parse.urlparse(project.web_url)
+    url = url._replace(path = str(PurePosixPath(url.path) / PurePosixPath(*path_segments)))
+    url = url._replace(query = urllib.parse.urlencode(query_params))
+    return urllib.parse.urlunparse(url)
+
 # TODO:
 # Add web_url attribute to lazy project instances when we can cheaply compute them.
 # Then these two methods become callable on them.
-#
+
 # BUG:
 # GitLab does not provide any way to disambiguate between a branch and a tag.
 # Currently, these links seem to prefer tags over branches.
 # How to make sure (otherwise, exploitable by students)?
 def url_tree(project, ref):
-    return f'{project.web_url}/-/tree/{ref}'
+    return project_url(project, ['-', 'tree', str(ref)])
 
+# BUG:
+# GitLab gets confused when references contain slashes ('/').
+# Although the diff shows correctly, links back to the project are broken.
 def url_compare(project, source, target):
-    return f'{project.web_url}/-/compare/{source}...{target}?w=1'
+    return project_url(
+        project,
+        ['-', 'compare', str(source) + '...' + str(target)], {'w': '1'}
+    )
+
+def url_issues_new(project, **kwargs):
+    '''
+    Format a URL for opening a new issue in a project.
+
+    Arguments:
+    * project: Relevant project.
+    * kwargs:
+        Parameters to initialize the issue with.
+        Values should be strings.
+        Commonly used keys are 'title' and 'description'.
+    '''
+    return project_url(
+        project,
+        ['-', 'issues', 'new'],
+        dict((f'issue[{key}]', value) for (key, value) in kwargs.items())
+    )
