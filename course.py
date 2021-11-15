@@ -813,8 +813,6 @@ class Course:
             try:
                  r = self.config.grading_response.parse(issue.title)
             except:
-                import traceback
-                print(traceback.format_exc())
                 issues_remaining.append(issue)
                 continue
             issues_grading[r['tag']] = (issue, r)
