@@ -382,6 +382,14 @@ class Lab:
         for group in self.course.groups:
             self.hotfix_group(branch_hotfix, group, self.course.config.branch.master)
 
+    @functools.cached_property
+    def grading_template_issue(self):
+        issues_grading_template = dict()
+        self.course.parse_all_response_issues(self.official_project.lazy, [
+            self.course.grading_template_issue_parser(issues_grading_template)
+        ])
+        return issues_grading_template.get(())
+
     def update_submissions_and_gradings(self, reload = False):
         self.logger.info('Updating submissions and gradings.')
         for group in self.student_groups:
