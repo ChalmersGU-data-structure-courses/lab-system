@@ -253,12 +253,12 @@ Duplicate the included worksheet as needed (e.g., *Lab 1*, *Lab 2*, etc.).
 We recommend creating an unpublished module (viewable only by teachers) on Canvas with grading-related information.
 Here, you can record grading instructions and put the link to the grading sheet.
 
-The lab scripts maintain a **submission table** of submissions in needs of grading on Canvas.
+The lab scripts maintain a **live submissions table** of submissions in needs of grading on Canvas.
 This table is in the form of an html file.
 The upload location can be configured.
 Its parent directory should exist and be unpublished.
 
-The submission table includes information useful to graders:
+The live submissions table includes information useful to graders:
 * A link to the submission (the lab repository of the group at the commit of the submission tag).
 * Diffs on Chalmers GitLab between a submission, the previous submission, the original problem, the official solution.
 * The number of previous attempts.
@@ -268,7 +268,7 @@ The submission table includes information useful to graders:
   If a lab group has not run the robograder themselves, graders may find it useful to copy fragments of the robograder's evaluation into their own grading feedback.
 * The submission message, if any.
 
-We recommend including the submission table in the grading information module.
+We recommend including the live submissions table in the grading information module.
 It can be embedded as follows.
 Create an empty page in the grading information module with appropriate title (e.g. *Lab 3: submissions awaiting grading*).
 Create an empty placeholder html file in the above upload location and note its file id.
@@ -281,7 +281,7 @@ If the defined height does not suffice, an annoying scroll wheel for the iframe 
 
 *Note*: Files overwritten by upload to the same location will not retain the old id.
 However, Canvas automatically updates links to overwritten course files with the new id.
-Thus, when the lab scripts upload a new submission table, the Canvas page will reflect the update.
+Thus, when the lab scripts upload a new submissions table, the Canvas page will reflect the update.
 
 ### Robograder
 
@@ -480,3 +480,18 @@ You can use
 lab.student_group(<group_id>).hotfix_group(<hotfix branch>, <group branch>)
 ```
 to hotfix branches other than the main branch for an individual group.
+
+### Issue template for grading
+
+You may provide a *grading issue template* for each lab.
+For this, go to the official repository for the lab and open an issue with title "Grading template" (configurable in the configuration module).
+Edit the description as you please.
+
+When the "open issue" links in the live submissions table are prepared, they are configured to open an issue on Chalmers GitLab with description copies from the grading issue (and mentions of student group project members appended).
+
+Using a template has several benefits:
+* It is nice to have a common structure, using the same formatting for headers.
+  It also makes it harder to miss aspects of the grading.
+  Each key aspect can have a template placeholder in the template.
+* It saves the graders some work for each grading because they do not have to re-enter the document structure of the grading issue.
+* It can teach the graders how to use Markdown for various formatting (headers, code (blocks), block quotes, emphasis).
