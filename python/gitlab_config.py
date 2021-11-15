@@ -141,6 +141,14 @@ grading_response = print_parse.compose(
     )
 )
 
+# Printer-parser for grading template issue title in official project.
+# Used in the live submissions table as template for grading issues.
+# The domain of the printer-parser is empty tuples.
+grading_response_template = print_parse.regex_many('Grading template', [], flags = re.IGNORECASE)
+
+# Used to initialize grading template instances.
+grading_response_default_score = 0
+
 # Parsing and printing of references to a lab group.
 group = SimpleNamespace(
     # Human-readable id.
