@@ -773,18 +773,6 @@ class Course:
             yield f'* URL: {issue.web_url}'
         return general.join_lines(lines())
 
-
-
-    def response_issues(self, project):
-        '''
-        Retrieve the response issues in a project.
-        A response issue is one created by a grader and matching an issue title in self.config.issue_title.
-        These are used for grading and testing responses.
-        '''
-        for issue in gitlab_tools.list_all(project.issues):
-            if issue.author['id'] in self.graders:
-                yield issue
-
     def parse_submission_tags(self, tags):
         '''
         Parse the submission tags of a project.
@@ -804,35 +792,118 @@ class Course:
                 tags_remaining.append(tag)
         return (tags_submission, tags_remaining)
 
-    def parse_grading_issues(self, issues):
-        '''
-        Parse the grading issues of a student project.
-        The form of a grading response issue titletags is configured in self.config.grading_response.
-        Returns a pair (issues_grading, issues_remaining) where:
-        * issues_grading is a dictionary mapping submission tags to pairs of an issue and the parsed issue title.
-        * issues_remaining is the remainings issues.
-        The order of issues is perserved.
-        '''
-        issues_grading = dict()
-        issues_remaining = []
 
+    def response_issues(self, project):
+        '''
+        Generator function retrieving the response issues in a project.
+        A response issue is one created by a grader and matching an issue title in self.config.issue_title.
+        These are used for grading and testing responses.
+        '''
+        for issue in gitlab_tools.list_all(project.issues):
+            if issue.author['id'] in self.graders:
+                yield issue
+
+    def parse_issues(self, name, parser, parsed_issues, project, issues):
+        '''
+        Parse issues using a given parser.
+
+        Arguments:
+        * name:
+            Name of the type of issues to be parsed.
+            Only used for formatting log messages.
+        * parser:
+            Parser called on each issue.
+            On successful parse, returns a pair (key, value).
+            On parse failure, raises an exception.
+        * parsed_issues:
+            The dictionary to populate with pairs (key, (issue, value)).
+        * project:
+            Source of the issues.
+            Only used for formatting log messages.
+        * issues: Iterable of issues to parse.
+
+        This is a generator function that returns yields all unparsed issues.
+        The generator must be exhausted for all parsable issues to have been parsed.
+
+        If an issue with key existing in parsed_issues is parsed, it is ignored.
+        When that happens, a warning is logged.
+
+        You may chain calls to parse_issues to parse several issue types at the same time.
+        '''
         for issue in issues:
             try:
-                 r = self.config.grading_response.parse(issue.title)
+                (key, value) = parser(issue)
             except:
-                issues_remaining.append(issue)
+                yield issue
                 continue
-            issues_grading[r['tag']] = (issue, r)
-        return (issues_grading, issues_remaining)
 
-    def parse_submissions_and_gradings(self, project):
-        self.logger.debug('Parsing submissions and gradings in project {project.path_with_namespace}')
+            r = parsed_issues.get(key)
+            if r != None:
+                (issue_prev, _) = r
+                self.logger.warning(
+                      general.join_lines([f'Duplicate {name} issue in project {project.path_with_namespace}.'])
+                    + self.format_issue_metadata(project, issue_prev, 'First issue:')
+                    + self.format_issue_metadata(project, issue, 'Second issue:')
+                    + general.join_lines(['Ignoring second issue.'])
+                )
+            else:
+                parsed_issues[key] = value
 
-        (issues_grading, issues_remaining) = self.parse_grading_issues(self.response_issues(project))
-        for issue in issues_remaining:
+    def log_unrecognized_issues(self, project, issues):
+        '''
+        Log warnings for unrecognized issues.
+
+        Arguments:
+        * project:
+            Source of the issues.
+            Only used for formatting log messages.
+        * issues: Iterable of issues to log.
+        '''
+        for issue in issues:
             self.logger.warning(self.format_issue_metadata(project, issue,
                 f'Unrecognized issue in project {project.path_with_namespace}:'
             ))
+
+    def parse_all_response_issues(self, project, parse_elements):
+        '''
+        Parse all response issues in a project using the given parse functions.
+        Logs warnings for unrecognized issues.
+
+        Arguments:
+        * project: GitLab Project to retrieve the issues from.
+        * parse_elements:
+            Iterable of parse generator functions to chain.
+            Each element takes as arguments a project and an iterable
+            of issues and returns an iterable of issues it could not parse.
+        '''
+        issues = self.response_issues(project)
+        for parse_element in parse_elements:
+            issues = parse_element(project, issues)
+        self.log_unrecognized_issues(project, issues)
+
+    def grading_issue_parser(self, parsed_issues):
+        '''Specialization of parse_issues for grading issues.'''
+        def parser(issue):
+            r = self.config.grading_response.parse(issue.title)
+            return (r['tag'], (issue, r))
+
+        return functools.partial(self.parse_issues, 'grading', parser, parsed_issues)
+
+    def grading_template_issue_parser(self, parsed_issues):
+        '''Specialization of parse_issues for the grading template issue.'''
+        def parser(issue):
+            self.config.grading_response_template.parse(issue.title)
+            return ((), issue)
+
+        return functools.partial(self.parse_issues, 'grading template', parser, parsed_issues)
+
+    def parse_submissions_and_gradings(self, project):
+        self.logger.debug(f'Parsing submissions and gradings in project {project.path_with_namespace}')
+
+        issues_grading = dict()
+        self.parse_all_response_issues(project, [
+            self.grading_issue_parser(issues_grading)
+        ])
 
         tags = gitlab_tools.list_all(project.tags)
         for tag in tags:
@@ -840,16 +911,15 @@ class Course:
         tags.sort(key = operator.attrgetter('date'))
         (tags_submission, _) = self.parse_submission_tags(tags)
 
-        r = dict()
+        result = dict()
         for submission in tags_submission:
-            r[submission.name] = (submission, issues_grading.pop(submission.name, None))
+            result[submission.name] = (submission, issues_grading.pop(submission.name, None))
 
         for (issue, _) in issues_grading.values():
             self.logger.warning(self.format_issue_metadata(project, issue,
                 f'Response issue in project {project.path_with_namespace} with no matching request tag:'
             ))
-        return r
-
+        return result
 
     def request_namespace(self, f):
         return types.SimpleNamespace(**dict(
@@ -907,7 +977,7 @@ class Course:
                 if prev:
                     (issue_prev, _) = prev
                     self.logger.warning(
-                          general.join_lines([f'Duplicate response issue in project {project.path_with_namespace}.',])
+                          general.join_lines([f'Duplicate response issue in project {project.path_with_namespace}.'])
                         + self.format_issue_metadata(project, issue_prev, 'First issue:')
                         + self.format_issue_metadata(project, issue, 'Second issue:')
                         + general.join_lines(['Ignoring second issue.'])

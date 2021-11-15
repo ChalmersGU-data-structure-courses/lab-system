@@ -17,13 +17,12 @@ def add_class(element, class_name):
     x = element.attributes.get('class', '')
     element.set_attribute('class', x + ' ' + class_name if x else class_name)
 
-def format_url(text_with_url):
+def format_url(text, url):
     '''
     Creates a value of dominate.tags.a from a pair of two strings.
     The first string is the text to display, the second the URL.
     Configure it to open the link a new tab/window.
     '''
-    (text, url) = text_with_url
     return dominate.tags.a(text, href = url, target = '_blank')
 
 path_data = Path(__file__).parent / 'live-submissions-table'
@@ -70,7 +69,7 @@ Config.__doc__ = '''
     Configuration and data sources for a live submissions table.
     * course: The relevant course instance (course.Course).
     * lab: The relevant lab instance (lab.Lab).
-    * deadline: 
+    * deadline:
         The deadline to which to restrict submissions to.
         An instance of datetime.datetime.
         None if all submissions are to be taken into account.
@@ -244,10 +243,10 @@ class MembersColumn(Column):
     def format_header_cell(self, cell):
         with cell:
             dominate.tags.attr(style = 'text-align: center;')
-            dominate.util.text('Members (to mention)')
+            dominate.util.text('Members on record')
 
     class Value(ColumnValue):
-        def __init__(self, members):
+        def __init__(self, members, logger):
             '''
             Members is a list of pairs (gitlab_username, canvas_user) where:
             * gitlab_user is a user on Chalmers GitLab (as per gitlab-python),
@@ -255,22 +254,29 @@ class MembersColumn(Column):
               Can be None if no such user is found.
             '''
             self.members = members
+            self.logger = logger
 
         def has_content(self):
             return bool(self.members)
 
+        def fill_in_member(self, gitlab_user, canvas_user):
+            dominate.util.text(gitlab_tools.format_username(gitlab_user.username))
+            if canvas_user != None:
+                dominate.util.text(': ')
+                if canvas_user.enrollments:
+                    format_url(canvas_user.name, canvas_user.enrollments[0].html_url)
+                else:
+                    self.logger.warn(general.join_lines([
+                        f'Canvas course student {canvas_user.name} (id {canvas_user.id}) is missing an enrollment.',
+                        'Please inform the script designer that this case is possible.',
+                    ]))
+                    dominate.util.text(canvas_user.name)
+
         def format_cell(self, cell):
             with cell:
-                first = True
-                for (gitlab_user, canvas_user) in self.members:
-                    if first:
-                        first = False
-                    else:
-                        dominate.util.text(' ')
-                    with dominate.tags.span():
-                        dominate.util.text(gitlab_tools.format_username(gitlab_user.username))
-                        if canvas_user != None:
-                            dominate.tags.attr(title = '\n'.join([canvas_user.name, canvas_user.email]))
+                for member in self.members:
+                    with dominate.tags.p():
+                        self.fill_in_member(*member)
 
     def get_value(self, group_id):
         group = super().get_value(group_id)
@@ -279,7 +285,7 @@ class MembersColumn(Column):
             for member in group.members().values()
         ]
         members.sort(key = lambda x: str.casefold(x[0].username))
-        return MembersColumn.Value(members)
+        return MembersColumn.Value(members, self.logger)
 
 
 # TODO: implement deadlines in lab config.
@@ -362,17 +368,41 @@ class SubmissionFilesColumn(Column):
         float_left_and_right(cell, 'Submission', ' vs:')
 
     class Value(ColumnValue):
-        def __init__(self, linked_name):
+        def __init__(self, linked_name, linked_open_grading_issue):
             self.linked_name = linked_name
+            self.linked_open_grading_issue = linked_open_grading_issue
 
         def format_cell(self, cell):
-            cell.add(format_url(self.linked_name))
+            with cell:
+                with dominate.tags.p():
+                    format_url(*self.linked_name)
+                with dominate.tags.p():
+                    format_url(*self.linked_open_grading_issue)
 
     def get_value(self, group_id):
         group = super().get_value(group_id)
         tag = group.current_submission(deadline = self.deadline)
+
+        def f():
+            try:
+                return self.lab.grading_template_issue.description
+            except AttributeError:
+                return ''
+        issue_description = ''.join([f(), '\n\n', ' '.join(
+            gitlab_tools.format_username(member.username)
+            for member in group.members().values()),
+        ])
+
         return SubmissionFilesColumn.Value(
-            (tag.name, gitlab_tools.url_tree(group.project.get, tag.name))
+            (tag.name, gitlab_tools.url_tree(group.project.get, tag.name)),
+            ('open issue', gitlab_tools.url_issues_new(
+                group.project.get,
+                title = self.course.config.grading_response.print({
+                    'tag': tag.name,
+                    'score': self.course.config.grading_response_default_score,
+                }),
+                description = issue_description,
+            ))
         )
 
 
@@ -390,7 +420,7 @@ class SubmissionDiffColumnValue(ColumnValue):
             add_class(cell, 'extension-column')
             with cell:
                 with dominate.tags.p():
-                    format_url(self.linked_name)
+                    format_url(*self.linked_name)
                     if self.is_same:
                         dominate.tags.attr(_class = 'grayed-out')
                 if self.is_same:
@@ -399,7 +429,7 @@ class SubmissionDiffColumnValue(ColumnValue):
                 if self.linked_grader != None:
                     with dominate.tags.p():
                         dominate.util.text('graded by ')
-                        format_url(self.linked_grader)
+                        format_url(*self.linked_grader)
 
 class SubmissionDiffPreviousColumn(Column):
     def __init__(self, config):
