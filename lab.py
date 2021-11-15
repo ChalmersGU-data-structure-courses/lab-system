@@ -698,7 +698,7 @@ class GroupProject:
         '''
         return general.dict_union(map(self.course.student_members, [
             self.course.group(self.id),
-            self.project
+            self.project,
         ]))
 
     def repo_fetch(self):
