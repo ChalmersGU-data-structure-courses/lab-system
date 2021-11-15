@@ -199,6 +199,9 @@ SheetData = collections.namedtuple('Data', ['num_rows', 'num_columns', 'value'])
 def extended_value_string(s):
     return {'stringValue': s}
 
+def extended_value_number(s):
+    return {'numberValue': s}
+
 def extended_value_formula(s):
     return {'formulaValue': s}
 
@@ -243,10 +246,12 @@ cell_value_empty = {
 def sheet_data(sheet):
     def value(row, column):
         try:
-            return sheet['data'][0]['rowData'][row]['values'][column]
+            r = sheet['data'][0]['rowData'][row]['values'][column]
+            if r == dict():
+                r = cell_value_empty
+            return r
         except (KeyError, IndexError):
-            pass
-        return cell_value_empty
+            return cell_value_empty
 
     grid_properties = sheet['properties']['gridProperties']
     return SheetData(
@@ -270,7 +275,7 @@ def cell_as_string(cell_value):
     if y != None:
         return y
     for attr in ['numberValue', 'boolValue']:
-        y = x.get(atr)
+        y = x.get(attr)
         if y != None:
             return str(y)
     raise ValueError(f'Cannot interpret as string value: {x}')
