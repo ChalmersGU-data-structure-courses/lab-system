@@ -505,11 +505,18 @@ class Course:
         # If skip_email, is true, don't collect the email address if a GitLab username is found.
         # Returns dictionaries mapping a key to a tuple whose first element is the Canvas user
         # and whose remaining elements specify details of the key.
+        #
+        # This skips user ids that cannot be resolved to Canvas users.
+        # Such a case can happen if a student joins a group and then later leaves the course
+        # or has enrollment status reset to "pending" (that happened one, not sure how?).
         def resolve(user_ids, skip_email):
             gitlab_usernames = dict()
             emails = dict()
             for user_id in user_ids:
-                user = self.canvas_course.user_details[user_id]
+                try:
+                    user = self.canvas_course.user_details[user_id]
+                except KeyError:
+                    continue
                 gitlab_username = self.config.gitlab_username_from_canvas_user_id(self, user_id)
 
                 # Only allow running with remove option if we can resolve GitLab student usernames.

@@ -268,6 +268,9 @@ class Course:
     def get_all_users(self, use_cache = True):
         return self.canvas.get_list(['courses', self.course_id, 'users'], params = {
             'include[]': ['enrollments'],
+            # We used to also include 'invited' below,
+            # but that causes problems.
+            # An invited user lacks several fields a script may require (email, login_id).
             'enrollment_state[]': ['active', 'completed', 'inactive'],
         }, use_cache = use_cache)
 
