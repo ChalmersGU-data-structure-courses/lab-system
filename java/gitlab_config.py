@@ -185,6 +185,7 @@ lab = SimpleNamespace(
 # * a graer wants to go by a different informal name,
 # * there are two graders with the same first name.
 names_informal = print_parse.from_dict([
+    ('Nicholas Smallbone', 'Nick')
 ])
 
 # Configuration exclusively related to grading sheets.
