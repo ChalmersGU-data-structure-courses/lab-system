@@ -11,12 +11,12 @@ body {
 
 #results {
   border-collapse: collapse;
-  border: 1px black solid;
+  border: 1px solid;
 }
 #results th, #results td {
-  border-top: 1px black solid;
-  border-bottom: 1px black solid;
-  border-left: 1px black solid;
+  border-top: 1px solid;
+  border-bottom: 1px solid;
+  border-left: 1px solid;
   padding: 6px;
   vertical-align: top;
 }
@@ -40,18 +40,18 @@ body {
   white-space: nowrap;
 }
 
-.extension-column {
+#results .extension-column {
   border-left-color: lightgrey;
 }
-.grayed-out {
+#results .grayed-out {
   opacity: 0.5;
 }
-.error {
+#results .error {
   color: #af0000;
 }
-.hidden {
+#results .hidden {
   display: none;
 }
-.to-load {
+#results .to-load {
   background-color: #eeeeee;
 }
