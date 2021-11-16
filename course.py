@@ -284,6 +284,15 @@ class Course:
                     yield (self.config.gitlab_username_from_canvas_user_id(self, user.id), user)
         return general.sdict(f())
 
+    def gitlab_user_by_canvas_id(self, canvas_id):
+        '''Returns the Chalmers GitLab user for a given Canvas user id .'''
+        return self.gitlab_user(self.config.gitlab_username_from_canvas_user_id(self, canvas_id))
+
+    def gitlab_user_by_canvas_name(self, canvas_name):
+        '''returns the Chalmers GitLab user for a given full name on Canvas.'''
+        canvas_id = self.canvas_course.user_name_to_id[canvas_name]
+        return self.gitlab_user_by_canvas_id(canvas_id)
+
     def canvas_user_informal_name(self, user):
         '''
         Find the informal name of a user on Chalmers.
