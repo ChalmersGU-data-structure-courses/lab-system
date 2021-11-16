@@ -116,8 +116,9 @@ branch = SimpleNamespace(
 # Value of type RequestMatcher.
 # Determines what tag name students can use to make a submission in their lab project on GitLab Chalmers.
 submission_request = course_basics.RegexRequestMatcher(
+    'submission',
+    ['submission*', 'Submission*'],
     '(?:s|S)ubmission[^/: ]*',
-    ['submission*', 'Submission*']
 )
 
 _score = print_parse.compose(
