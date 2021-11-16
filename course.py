@@ -184,7 +184,7 @@ class Course:
     @functools.cached_property
     def labs(self):
         return frozenset(
-            self.config.lab.id.parse(lab.path)
+            self.config.lab.id_gitlab.parse(lab.path)
             for lab in gitlab_tools.list_all(self.labs_group.lazy.subgroups)
         )
 
@@ -198,7 +198,7 @@ class Course:
     @instance_cache
     def group(self, group_id):
         r = gitlab_tools.CachedGroup(**self.entity_cached_params,
-            path = self.groups_group.path / self.config.lab.id.print(group_id),
+            path = self.groups_group.path / self.config.group.id_gitlab.print(group_id),
             name = self.config.group.name.print(group_id),
         )
 
