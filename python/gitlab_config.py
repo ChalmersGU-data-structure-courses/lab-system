@@ -174,15 +174,21 @@ group = SimpleNamespace(
 
 # Parsing and printing of references to a lab.
 lab = SimpleNamespace(
+    # Human-readable id.
+    id = print_parse.int_str(),
+
     # Used as relative path on Chalmers GitLab in the labs group.
     # Needs to have length at least 2.
-    id = print_parse.int_str(format = '02'),
+    id_gitlab = print_parse.int_str(format = '02'),
 
     # Used as relative path on Chalmers GitLab in each student group.
     full_id = print_parse.regex_int('lab-{}'),
 
     # Actual name.
     name = print_parse.regex_int('Lab {}', flags = re.IGNORECASE),
+
+    # May be used for sorting in the future.
+    sort_key = lambda id: id,
 )
 
 # Parsing and printing of informal names.
