@@ -855,14 +855,17 @@ class Course:
             tags = parse_element(project, tags)
         self.log_unrecognized_tags(project, tags)
 
+    def request_tag_parser(self, request_matcher, parsed_tags):
+        '''Specialization of parse_tags for a request matcher.'''
+        def parser(tag):
+            if not request_matcher.parse(tag.name):
+                raise ValueError(f'not a {request_matcher.name} tag: {tag.name}')
+            return (tag.name, tag)
+        return functools.partial(self.parse_tags, request_matcher.name, parser, parsed_tags)
+
     def submission_tag_parser(self, parsed_tags):
         '''Specialization of parse_tags for submission tags.'''
-        def parser(tag):
-            if not self.config.submission_request.match(tag.name):
-                raise ValueError(f'not a submission tag: {tag.name}')
-            return (tag.name, tag)
-
-        return functools.partial(self.parse_tags, 'submission', parser, parsed_tags)
+        return self.request_tag_parser(self.config.submission_request, parsed_tags)
 
     def format_issue_metadata(self, project, issue, description = None):
         def lines():

@@ -26,6 +26,10 @@ class RequestMatcher:
     Interface defining a matcher for request tag names.
 
     Required attributes:
+    * name:
+        Name (string) of this kind of request.
+        For example, 'submission'.
+        Used for log messages.
     * protection_patterns:
         An iterable collection of wildcard pattern used to protect request tags
         on GitLab Chalmers from modification by developers (students).
@@ -34,33 +38,35 @@ class RequestMatcher:
     TODO once GitLab implements regex patterns for tag protection: replace interface by a single regex.
     '''
 
-    def match(self, tag):
+    def parse(self, tag_name):
         '''
-        Determines whether the given tag string matches this request matcher.
+        Determines whether the given tag name matches this request matcher.
+        If it matches, returns an implementation-specific value different from None.
+        Otherwise, returns None.
 
-        Note that tags containing the path component separator '/' are never considered as requests.
+        Tags with name containing the path component separator '/' are never considered as requests.
+        They are sorted out before this method is called.
         '''
         raise NotImplementedError()
 
 class RegexRequestMatcher(RequestMatcher):
-    def __init__(self, regex, protection_patterns, regex_flags = 0):
+    def __init__(self, name, protection_patterns, regex, regex_flags = 0):
         '''
         Build a request matcher from a specified regex.
 
         Arguments:
-        * regex:
-            Regex with which to match the request tag.
+        * name:
+            Name of this kind of request.
         * protection:
             Iterable of wildcard pattern used to protect request tags from modification by students.
+        * regex:
+            Regex with which to match the request tag.
         * regex_flags:
             Flags to use for regex matching.
         '''
-        self.regex = regex
-        self.regex_flags = regex_flags
+        self.name = name
         self.protection_patterns = list(protection_patterns)
-
-    def match(self, tag):
-        return re.fullmatch(self.regex, tag, self.regex_flags) != None
+        self.parse = lambda tag: re.fullmatch(regex, tag, regex_flags)
 
 CompilationRequirement = namedtuple(
     'CompilationRequirement',
