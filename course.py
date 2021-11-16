@@ -758,8 +758,7 @@ class Course:
             if description:
                 yield description
             yield f'* name: {tag.name}'
-            path = PurePosixPath(project.path_with_namespace)
-            url = self.gitlab_url(path / '-' / 'tags' / tag.name)
+            url = gitlab_tools.url_tag(project, tag)
             yield f'* URL: {url}'
         return general.join_lines(lines())
 
