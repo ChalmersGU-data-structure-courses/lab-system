@@ -260,7 +260,7 @@ class MembersColumn(Column):
             return bool(self.members)
 
         def fill_in_member(self, gitlab_user, canvas_user):
-            dominate.util.text(gitlab_tools.format_username(gitlab_user.username))
+            dominate.util.text(gitlab_tools.format_username(gitlab_user))
             if canvas_user != None:
                 dominate.util.text(': ')
                 if canvas_user.enrollments:
@@ -282,7 +282,7 @@ class MembersColumn(Column):
         group = super().get_value(group_id)
         members = [
             (member, self.course.canvas_user_by_gitlab_username.get(member.username))
-            for member in group.members().values()
+            for member in group.members
         ]
         members.sort(key = lambda x: str.casefold(x[0].username))
         return MembersColumn.Value(members, self.logger)
@@ -388,10 +388,7 @@ class SubmissionFilesColumn(Column):
                 return self.lab.grading_template_issue.description
             except AttributeError:
                 return ''
-        issue_description = ''.join([f(), '\n\n', ' '.join(
-            gitlab_tools.format_username(member.username)
-            for member in group.members().values()),
-        ])
+        issue_description = group.append_mentions(f())
 
         return SubmissionFilesColumn.Value(
             (tag.name, gitlab_tools.url_tree(group.project.get, tag.name)),

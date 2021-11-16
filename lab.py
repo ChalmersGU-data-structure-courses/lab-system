@@ -693,10 +693,7 @@ class GroupProject:
             else:
                 raise e
 
-    # TODO.
-    # We could cache this if we have a way to detect updates.
-    # But e.g. group hooks monitoring for membership updates are only
-    # available in the "Premium tier" version of GitLab, not the open source one.
+    @functools.cached_property
     def members(self):
         '''
         The members of a student group project are taken from these sources:
@@ -707,7 +704,24 @@ class GroupProject:
         return general.dict_union(map(self.course.student_members, [
             self.course.group(self.id),
             self.project,
-        ]))
+        ])).values()
+
+    # TODO.
+    # We could improve caching of members if we had a way to detect updates.
+    # But e.g. group hooks monitoring for membership updates are only
+    # available in the "Premium tier" version of GitLab, not the open source one.
+    def members_clear(self):
+        with contextlib.suppress(AttributeError):
+            del self.members
+
+    def append_mentions(self, text):
+        '''
+        Append a mentions paragraph to a given Markdown text.
+        This will mention all the student members.
+        Under standard notification settings, it will trigger notifications
+        when the resulting text is posted in an issue or comment.
+        '''
+        return gitlab_tools.append_mentions(text, self.members)
 
     def repo_fetch(self):
         '''
@@ -944,12 +958,6 @@ class GroupProject:
         )
         self.requests_and_responses = requests_and_responses
         return updated
-
-    def mention_paragraph(self):
-        return general.join_lines([
-            '',
-            gitlab_tools.mention_str(self.members().values())
-        ])
 
     def post_issue(self, project, request_type, request, response_type, description, params):
         title = self.course.config.request.__dict__[request_type].issue.__dict__[response_type].print(

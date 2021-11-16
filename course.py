@@ -739,7 +739,7 @@ class Course:
         '''
         return gitlab_tools.members_from_access(
             cached_entity.lazy,
-            [gitlab.DEVELOPER_ACCESS, gitlab.MAINTAINER_ACCESS, gitlab.OWNER_ACCESS] # TODO: delete owner case
+            [gitlab.DEVELOPER_ACCESS, gitlab.MAINTAINER_ACCESS]
         )
 
     def configure_student_project(self, project):
