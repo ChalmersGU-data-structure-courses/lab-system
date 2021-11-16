@@ -283,6 +283,9 @@ def url_compare(project, source, target):
         ['-', 'compare', str(source) + '...' + str(target)], {'w': '1'}
     )
 
+def url_tag(project, tag):
+    return project_url(project, ['-', 'tags', str(tag)])
+
 def url_issues_new(project, **kwargs):
     '''
     Format a URL for opening a new issue in a project.
