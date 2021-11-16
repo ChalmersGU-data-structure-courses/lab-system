@@ -45,7 +45,7 @@ class Lab:
         self.name_full = '{} — {}'.format(self.name, self.name_semantic)
 
         # Gitlab config
-        self.path = self.course.config.path.labs / self.id_str
+        self.path = self.course.config.path.labs / self.course.config.lab.id_gitlab.print(self.id)
 
         # Whether we have updated the grading repository
         # and it needs to be pushed.
