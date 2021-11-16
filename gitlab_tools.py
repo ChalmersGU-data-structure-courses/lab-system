@@ -244,8 +244,30 @@ def get_tags_sorted_by_date(project):
     tags.sort(key = operator.attrgetter('date'))
     return tags
 
-def format_username(username):
-    return '@' + username
+def format_username(user):
+    '''
+    Format username of a GitLab user.
+    This prepends the character '@'.
+    '''
+    return '@' + user.username
+
+def mentions(users):
+    '''
+    Get mentions string for an iterable of users.
+    Including this in an issue or comment will typically
+    trigger notification to the mentioned users.
+    '''
+    return ' '.join(map(format_username, users))
+
+def append_mentions(text, users):
+    '''Append a mentions paragraph to a given Markdown text.'''
+    lines = text.splitlines()
+    def f():
+        if len(lines) != 0:
+            yield from lines
+            yield ''
+        yield mentions(users)
+    return general.join_lines(f())
 
 def project_url(project, path_segments = [], query_params = dict()):
     '''
