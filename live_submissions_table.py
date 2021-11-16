@@ -282,7 +282,7 @@ class MembersColumn(Column):
         group = super().get_value(group_id)
         members = [
             (member, self.course.canvas_user_by_gitlab_username.get(member.username))
-            for member in group.members()
+            for member in group.members
         ]
         members.sort(key = lambda x: str.casefold(x[0].username))
         return MembersColumn.Value(members, self.logger)
