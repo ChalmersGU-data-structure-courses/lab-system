@@ -385,7 +385,7 @@ class Lab:
     @functools.cached_property
     def grading_template_issue(self):
         issues_grading_template = dict()
-        self.course.parse_all_response_issues(self.official_project.lazy, [
+        self.course.parse_all_response_issues(self.official_project.get, [
             self.course.grading_template_issue_parser(issues_grading_template)
         ])
         return issues_grading_template.get(())
@@ -830,7 +830,7 @@ class GroupProject:
 
     @functools.cached_property
     def submissions_and_gradings(self):
-        return self.course.parse_submissions_and_gradings(self.project.lazy)
+        return self.course.parse_submissions_and_gradings(self.project.get)
 
     def update_submissions_and_gradings(self, reload = False):
         if reload:
