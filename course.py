@@ -8,7 +8,7 @@ import gitlab
 import json
 import logging
 import operator
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 import re
 import shlex
 import types
@@ -753,14 +753,116 @@ class Course:
     def grading_spreadsheet(self):
         return grading_sheet.GradingSpreadsheet(self.config)
 
-    def format_tag_metadata(self, project, tag, description = None):
+
+    def parse_items(self, name, item_formatter, parser, parsed_items, project, items):
+        '''
+        Parse items using a given parser.
+
+        Arguments:
+        * name:
+            Name of the type of items to be parsed.
+            Only used for formatting log messages.
+        * item_formatter:
+            Callable to format details of an item for use in a log message.
+            Takes as arguments the project and an the item.
+            Returns a line-feed terminated log string describing the item.
+            This can be a multi-line string.
+        * parser:
+            Parser called on each items.
+            On successful parse, returns a pair (key, value).
+            On parse failure, raises an exception.
+        * parsed_items:
+            The dictionary to populate with pairs (key, value).
+        * project:
+            Source project of the items.
+            Only used for formatting log messages.
+        * items: Iterable of items to parse.
+
+        This is a generator function that returns yields all unparsed items.
+        The generator must be exhausted for all parsable items to have been parsed.
+
+        If an item with key existing in parsed_items is parsed, it is ignored.
+        When that happens, a warning is logged.
+
+        You may chain calls to parse_items to parse several item types at the same time.
+        '''
+        def format(heading, item):
+            r = item_formatter(project, item)
+            return heading + (' ' if r.splitlines() == 1 else '\n') + r
+
+        for item in items:
+            try:
+                (key, value) = parser(item)
+            except:
+                yield item
+                continue
+
+            r = parsed_items.get(key)
+            if r != None:
+                (item_prev, _) = r
+                self.logger.warning(
+                      f'Duplicate {name} in project {project.path_with_namespace}.\n'
+                    + format('First {name}:', item_prev)
+                    + format('Second {name}:', item)
+                    + 'Ignoring second {name}.\n'
+                )
+            else:
+                parsed_items[key] = value
+
+    def log_unrecognized_items(self, name, item_formatter, project, items):
+        '''
+        Log warnings for unrecognized items.
+        Exhausts the iterable items.
+        Arguments are as for parse_items
+        Here, name refers to the general name of the type of items.
+        '''
+        for item in items:
+            self.logger.warning(
+                  f'Unrecognized {name} in project {project.path_with_namespace}:\n'
+                + item_formatter(project, item)
+            )
+
+    def format_tag_metadata(self, project, tag):
         def lines():
-            if description:
-                yield description
             yield f'* name: {tag.name}'
             url = gitlab_tools.url_tag(project, tag)
             yield f'* URL: {url}'
         return general.join_lines(lines())
+
+    def parse_tags(self, name, *args):
+        '''Instantiation of parse_items for tags.'''
+        return self.parse_items(f'{name} tag', self.format_tag_metadata, *args)
+
+    def log_unrecognized_tags(self, *args):
+        '''Instantiation of log_unrecognized_items for tags.'''
+        return self.log_unrecognized_items('tag', self.format_tag_metadata, *args)
+
+    def parse_all_tags(self, project, parse_elements):
+        '''
+        Parse all tags in a project using the given parse functions.
+        The tags are parsed in order of commit date.
+        Log warnings for unrecognized tags.
+
+        Arguments:
+        * project: GitLab Project to retrieve the tags from.
+        * parse_elements:
+            Iterable of parse generator functions to chain.
+            Each element takes as arguments a project and an iterable
+            of tags and returns an iterable of tags it could not parse.
+        '''
+        tags = gitlab_tools.get_tags_sorted_by_date(project)
+        for parse_element in parse_elements:
+            tags = parse_element(project, tags)
+        self.log_unrecognized_tags(project, tags)
+
+    def submission_tag_parser(self, parsed_tags):
+        '''Specialization of parse_tags for submission tags.'''
+        def parser(tag):
+            if not self.config.submission_request.match(tag.name):
+                raise ValueError(f'not a submission tag: {tag.name}')
+            return (tag.name, tag)
+
+        return functools.partial(self.parse_tags, 'submission', parser, parsed_tags)
 
     def format_issue_metadata(self, project, issue, description = None):
         def lines():
@@ -772,25 +874,13 @@ class Course:
             yield f'* URL: {issue.web_url}'
         return general.join_lines(lines())
 
-    def parse_submission_tags(self, tags):
-        '''
-        Parse the submission tags of a project.
-        The form of submission tags is configured in self.config.submission_request.
-        Returns a pair (tags_submission, tags_remaining) where:
-        * tags_submission is the list of submission tags in the argument iterable tags,
-        * tags_remaining is the remainings tags.
-        The order of tags is perserved.
-        '''
-        tags_submission = []
-        tags_remaining = []
+    def parse_issues(self, name, *args):
+        '''Instantiation of parse_items for issues.'''
+        return self.parse_items(f'{name} issue', self.format_issue_metadata, *args)
 
-        for tag in tags:
-            if self.config.submission_request.match(tag.name):
-                tags_submission.append(tag)
-            else:
-                tags_remaining.append(tag)
-        return (tags_submission, tags_remaining)
-
+    def log_unrecognized_issues(self, *args):
+        '''Instantiation of log_unrecognized_items for tags.'''
+        return self.log_unrecognized_items('issue', self.format_issue_metadata, *args)
 
     def response_issues(self, project):
         '''
@@ -801,67 +891,6 @@ class Course:
         for issue in gitlab_tools.list_all(project.issues):
             if issue.author['id'] in self.graders:
                 yield issue
-
-    def parse_issues(self, name, parser, parsed_issues, project, issues):
-        '''
-        Parse issues using a given parser.
-
-        Arguments:
-        * name:
-            Name of the type of issues to be parsed.
-            Only used for formatting log messages.
-        * parser:
-            Parser called on each issue.
-            On successful parse, returns a pair (key, value).
-            On parse failure, raises an exception.
-        * parsed_issues:
-            The dictionary to populate with pairs (key, (issue, value)).
-        * project:
-            Source of the issues.
-            Only used for formatting log messages.
-        * issues: Iterable of issues to parse.
-
-        This is a generator function that returns yields all unparsed issues.
-        The generator must be exhausted for all parsable issues to have been parsed.
-
-        If an issue with key existing in parsed_issues is parsed, it is ignored.
-        When that happens, a warning is logged.
-
-        You may chain calls to parse_issues to parse several issue types at the same time.
-        '''
-        for issue in issues:
-            try:
-                (key, value) = parser(issue)
-            except:
-                yield issue
-                continue
-
-            r = parsed_issues.get(key)
-            if r != None:
-                (issue_prev, _) = r
-                self.logger.warning(
-                      general.join_lines([f'Duplicate {name} issue in project {project.path_with_namespace}.'])
-                    + self.format_issue_metadata(project, issue_prev, 'First issue:')
-                    + self.format_issue_metadata(project, issue, 'Second issue:')
-                    + general.join_lines(['Ignoring second issue.'])
-                )
-            else:
-                parsed_issues[key] = value
-
-    def log_unrecognized_issues(self, project, issues):
-        '''
-        Log warnings for unrecognized issues.
-
-        Arguments:
-        * project:
-            Source of the issues.
-            Only used for formatting log messages.
-        * issues: Iterable of issues to log.
-        '''
-        for issue in issues:
-            self.logger.warning(self.format_issue_metadata(project, issue,
-                f'Unrecognized issue in project {project.path_with_namespace}:'
-            ))
 
     def parse_all_response_issues(self, project, parse_elements):
         '''
@@ -896,6 +925,7 @@ class Course:
 
         return functools.partial(self.parse_issues, 'grading template', parser, parsed_issues)
 
+
     def parse_submissions_and_gradings(self, project):
         self.logger.debug(f'Parsing submissions and gradings in project {project.path_with_namespace}')
 
@@ -904,14 +934,13 @@ class Course:
             self.grading_issue_parser(issues_grading)
         ])
 
-        tags = gitlab_tools.list_all(project.tags)
-        for tag in tags:
-            tag.date = dateutil.parser.parse(tag.commit['committed_date'])
-        tags.sort(key = operator.attrgetter('date'))
-        (tags_submission, _) = self.parse_submission_tags(tags)
+        tags_submission = dict()
+        self.parse_all_tags(project, [
+            self.submission_tag_parser(tags_submission)
+        ])
 
         result = dict()
-        for submission in tags_submission:
+        for submission in tags_submission.values():
             result[submission.name] = (submission, issues_grading.pop(submission.name, None))
 
         for (issue, _) in issues_grading.values():

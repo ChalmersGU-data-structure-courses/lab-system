@@ -237,8 +237,8 @@ def invitation_delete(gitlab_client, entity, email):
         str(PurePosixPath('/') / entity_path_segment(entity) / 'invitations' / email),
     )
 
-def get_tags_sorted_by_date(self, project):
-    tags = gitlab_tools.list_all(self.project.tags)
+def get_tags_sorted_by_date(project):
+    tags = list_all(project.tags)
     for tag in tags:
         tag.date = dateutil.parser.parse(tag.commit['committed_date'])
     tags.sort(key = operator.attrgetter('date'))
@@ -284,7 +284,7 @@ def url_compare(project, source, target):
     )
 
 def url_tag(project, tag):
-    return project_url(project, ['-', 'tags', str(tag)])
+    return project_url(project, ['-', 'tags', tag.name])
 
 def url_issues_new(project, **kwargs):
     '''
