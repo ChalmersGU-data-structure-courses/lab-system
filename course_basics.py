@@ -161,11 +161,12 @@ class Compiler:
 
         Compilation errors should be raised as instances of SubmissionHandlingException.
         '''
+        raise NotImplementedError()
 
 class SubmissionHandler:
     '''Interface defining a submission handler (after compilation).'''
 
-    def setup(self, lab, src, bin):
+    def _setup(self, lab, src, bin):
         '''
         Setup submission handler.
 
@@ -265,6 +266,7 @@ class Robograder(SubmissionHandler):
     Only implementations of the following subinterfaces are supported for now:
     * SubmissionGradingRobograder (submission-grading robograder),
     * StudentCallableRobograder (student-callable robograder).
+      Made into direct child of SubmissionHandler for now.
     '''
 
     def __init__(self):
@@ -275,7 +277,7 @@ class Robograder(SubmissionHandler):
             flags = re.IGNORECASE,
         ),
 
-    def robograde(self, src, bin):
+    def run(self, src, bin):
         '''
         Robograde a submission (student submission or official problem/solution).
 
@@ -331,15 +333,44 @@ class SubmissionGradingRobograder(Robograder):
 
         The default implementation is usually what you want.
         '''
-        
-class StudentCallableRobograder(Robograder):
+
+class StudentCallableRobograder(SubmissionHandler):
     '''
     Interface defining a student-callable robograder.
 
     Required attributes:
     * request_matcher: Request matcher for student robograding requests.
+    * response_title:
+        Printer-parser (print_parse.PrintParse) for the robograding response issue title.
+        The domain of the printer-parser is a map with a single key 'tag' with value the request tag name.
     '''
-
     def __init__(self):
-        '''Provides a default implementation of self.request_matcher.'''
-        self.request_matcher = RegexRequestMatcher('(?:t|T)est[^: ]*', ['test*', 'Test*'])
+        '''
+        Provides default implementations of:
+        * self.request_matcher
+        * self.response_title
+        '''
+        self.request_matcher = RegexRequestMatcher('test', ['test*', 'Test*'], '(?:t|T)est[^: ]*')
+        self.response_title = print_parse.regex_keyed(
+            'Robograder: reporting for {tag}',
+            {'tag': '[^: ]*'},
+            flags = re.IGNORECASE,
+        )
+
+    def _run(self, src, bin):
+        '''
+        Robograde a submission (student submission or official problem/solution).
+
+        Arguments:
+        * src (input):
+            Source directory of the submission.
+        * bin (input):
+            Compiled directory of the submission.
+            Not used for interpreted languages.
+
+        Returns a Markdown-formatted string for use in a GitLab issue.
+
+        If the robograding cannot be generated because of a problem with the submission,
+        raise an instance of SubmissionHandlingException.
+        '''
+        raise NotImplementedError()
