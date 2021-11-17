@@ -81,8 +81,6 @@ class ExecutionError(RobograderException):
 
 class Robograder:
     def setup(self, lab, src, bin = None):
-        print('setting up')
-
         # For now.
         bin = src
 
@@ -106,9 +104,6 @@ class Robograder:
     def run(self, src, bin = None):
         # For now.
         bin = src
-
-        for file in src.iterdir():
-            print(file)
 
         # Check for class name conflicts.
         for dir in self.classpath_resolved:
