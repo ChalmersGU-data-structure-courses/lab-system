@@ -7,7 +7,7 @@ import subprocess
 
 import general
 
-logger = logging.getLogger('java')
+logger = logging.getLogger(__name__)
 
 @functools.cache
 def java_version():
