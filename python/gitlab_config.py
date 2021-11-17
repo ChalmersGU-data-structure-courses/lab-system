@@ -288,7 +288,7 @@ class _LabConfig:
         self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-to-be-graded.html'.format(lab.full_id.print(k))
 
         self.compiler = None
-        self.submission_handlers = []
+        self.submission_handlers = {}
 
 def _lab_item(k, *args):
     return (k, _LabConfig(k, *args))
