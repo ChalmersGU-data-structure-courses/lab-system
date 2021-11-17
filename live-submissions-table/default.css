@@ -14,7 +14,11 @@ body {
   border: 1px solid;
 }
 #results th, #results td {
-  border: 1px solid;
+  /* We don't include border-right as this would interfere with the modifications
+		 to border-left for right neighbour cells with class .extension-column. */
+  border-top: 1px solid;
+  border-bottom: 1px solid;
+  border-left: 1px solid;
   padding: 6px;
   vertical-align: top;
 }
