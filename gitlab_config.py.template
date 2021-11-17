@@ -277,12 +277,12 @@ _lab_config = SimpleNamespace(
     # Value of type course_basics.Compiler.
     compiler = None,
 
-    # List of submission handlers.
+    # Dictionary of submission handlers.
     # Only values of the following interfaces defined in course_basics are supported for now:
     # * Tester
     # * SubmissionGradingRobograder
     # * StudentCallableRobograder
-    submission_handlers = []
+    submission_handlers = {}
 )
 
 _language = 'java'
