@@ -811,9 +811,9 @@ class Course:
                 (item_prev, _) = r
                 self.logger.warning(
                       f'Duplicate {name} in project {project.path_with_namespace}.\n'
-                    + format('First {name}:', item_prev)
-                    + format('Second {name}:', item)
-                    + 'Ignoring second {name}.\n'
+                    + format(f'First {name}:', item_prev)
+                    + format(f'Second {name}:', item)
+                    + f'Ignoring second {name}.\n'
                 )
             else:
                 parsed_items[key] = value
@@ -921,14 +921,6 @@ class Course:
             issues = parse_element(project, issues)
         self.log_unrecognized_issues(project, issues)
 
-    def grading_issue_parser(self, parsed_issues):
-        '''Specialization of parse_issues for grading issues.'''
-        def parser(issue):
-            r = self.config.grading_response.parse(issue.title)
-            return (r['tag'], (issue, r))
-
-        return functools.partial(self.parse_issues, 'grading', parser, parsed_issues)
-
     def grading_template_issue_parser(self, parsed_issues):
         '''Specialization of parse_issues for the grading template issue.'''
         def parser(issue):
@@ -937,29 +929,75 @@ class Course:
 
         return functools.partial(self.parse_issues, 'grading template', parser, parsed_issues)
 
+    def simple_response_issue_parser(self, name, response_title, parsed_issues):
+        '''
+        Specialization of parse_issues for parsing response issues
+        identified from their title via a printer-parser.
+
+        Arguments:
+        * name: Name of the type of requests.
+        * response_title:
+            A printer-parser for the issue title.
+            The domain must be dictionaries with a key 'tag' with string value.
+        * parsed_issues:
+            The dictionary in which to store parsed issues.
+            Entries are (tag_name, (issue, r)) where r is the parsed response issue title.
+        '''
+        def parser(issue):
+            r = response_title.parse(issue.title)
+            return (r['tag'], (issue, r))
+
+        return functools.partial(self.parse_issues, name, parser, parsed_issues)
+
+    def grading_issue_parser(self, parsed_issues):
+        '''Specialization of simple_response_issue_parser for grading issues.'''
+        return self.simple_response_issue_parser('grading', self.config.grading_response, parsed_issues)
+
+    def pair_requests_and_responses(self, project, requests, responses):
+        '''
+        Pair requests with responses.
+
+        Arguments:
+        * project:
+            Source project of the items.
+            Only used for formatting log messages.
+        * requests:
+            A dictionary of key-value pairs (tag_name, tag) containing parsed request tags.
+            Ordered by date.
+        * responses:
+            A dictionary of key-value pairs (tag_name, (issue, r)) containing parsed responses.
+            Responses matched to requests are removed by this method.
+            Each remaining response causes a warning to be logged.
+
+        Returns a dictionary of key-value pairs (tag_name, (tag, response))
+        where response is (issue, r) if a response for tag_name is found and None otherwise.
+        '''
+        result = dict()
+        for (tag_name, tag) in requests.items():
+            result[tag_name] = (tag, responses.pop(tag_name, None))
+
+        for (issue, _) in responses.values():
+            self.logger.warning(self.format_issue_metadata(project, issue,
+                f'Response issue in project {project.path_with_namespace} with no matching request tag:'
+            ))
+        return result
+
 
     def parse_submissions_and_gradings(self, project):
         self.logger.debug(f'Parsing submissions and gradings in project {project.path_with_namespace}')
-
-        issues_grading = dict()
-        self.parse_all_response_issues(project, [
-            self.grading_issue_parser(issues_grading)
-        ])
 
         tags_submission = dict()
         self.parse_all_tags(project, [
             self.submission_tag_parser(tags_submission)
         ])
 
-        result = dict()
-        for submission in tags_submission.values():
-            result[submission.name] = (submission, issues_grading.pop(submission.name, None))
+        issues_grading = dict()
+        self.parse_all_response_issues(project, [
+            self.grading_issue_parser(issues_grading)
+        ])
 
-        for (issue, _) in issues_grading.values():
-            self.logger.warning(self.format_issue_metadata(project, issue,
-                f'Response issue in project {project.path_with_namespace} with no matching request tag:'
-            ))
-        return result
+        return self.pair_requests_and_responses(tags_submission, issues_grading)
+
 
     def request_namespace(self, f):
         return types.SimpleNamespace(**dict(
