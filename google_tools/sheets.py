@@ -196,11 +196,18 @@ def redecode_json(s):
 
 SheetData = collections.namedtuple('Data', ['num_rows', 'num_columns', 'value'])
 
+def extended_value_number(n):
+    return {'numberValue': n}
+
 def extended_value_string(s):
     return {'stringValue': s}
 
-def extended_value_number(s):
-    return {'numberValue': s}
+def extended_value_number_or_string(x):
+    if isinstance(x, int):
+        return extended_value_number(x)
+    if isinstance(x, str):
+        return extended_value_string(x)
+    raise TypeError(f'{x} is neither an integer nor a string')
 
 def extended_value_formula(s):
     return {'formulaValue': s}

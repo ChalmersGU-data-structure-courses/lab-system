@@ -581,7 +581,8 @@ class Lab:
                     (issue, response) = grading
                     informal_name = self.course.issue_author_informal(issue)
                     grader = grading_sheet.link_with_display(informal_name, issue.web_url)
-                    score = google_tools.sheets.extended_value_number(response['score'])
+                    score_as_cell = self.course.config.score.as_cell.print(response['score'])
+                    score = google_tools.sheets.extended_value_number_or_string(score_as_cell)
 
                 self.grading_sheet.write_query(
                     request_buffer,
