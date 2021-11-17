@@ -128,12 +128,21 @@ submission_request = course_basics.RegexRequestMatcher(
     '(?:s|S)ubmission[^/: ]*',
 )
 
-_score = print_parse.compose(
-    print_parse.from_dict([
-        (0, 'incomplete'),
-        (1, 'pass'),
-    ]),
-    print_parse.lower,
+# Parsing and printing of scores.
+score = SimpleNamespace(
+    # Format the score for use in a spreadsheet cell.
+		# An integer or a string.
+    as_cell = print_parse.identity,
+
+    # Full name.
+    # Used in interactions with students
+		name = print_parse.compose(
+        print_parse.from_dict([
+            (0, 'incomplete'),
+            (1, 'pass'),
+        ]),
+        print_parse.lower,
+    ),
 )
 
 # Printer-parser (print_parse.PrintParse) for grading issue titles.
@@ -141,7 +150,7 @@ _score = print_parse.compose(
 # - 'tag': the submission tag name,
 # - 'score': the grading outcome.
 grading_response = print_parse.compose(
-    print_parse.on(general.component('score'), _score),
+    print_parse.on(general.component('score'), score.name),
     print_parse.regex_non_canonical_keyed(
         'Grading for {tag}: {score}',
         'grading\s+(?:for|of)\s+(?P<tag>[^: ]*)\s*:\s*(?P<score>[^:\\.!]*)[\\.!]*',
