@@ -287,11 +287,11 @@ class _LabConfig:
         self.grading_sheet = lab.name.print(k)
         self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-to-be-graded.html'.format(lab.full_id.print(k))
 
-        #self.compiler = robograder_java.compile
-        self.submission_handlers = []
+        self.compiler = robograder_java.Compiler()
+        self.submission_handlers = {}
 
-        has_robograder = (self.path_source / 'pregrade').is_dir()
-        #self.robograder = robograder_java.Robograder(self.path_source, machine_speed = 1) if has_robograder else None
+        if (self.path_source / 'pregrade').is_dir():
+            self.submission_handlers['test'] = robograder_java.StudentCallableRobograder()
 
 def _lab_item(k, *args):
     return (k, _LabConfig(k, *args))
