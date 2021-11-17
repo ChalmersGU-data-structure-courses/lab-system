@@ -259,15 +259,18 @@ def mentions(users):
     '''
     return ' '.join(map(format_username, users))
 
-def append_mentions(text, users):
-    '''Append a mentions paragraph to a given Markdown text.'''
+def append_paragraph(text, paragraph):
+    '''Append a paragraph to a given Markdown text.'''
     lines = text.splitlines()
     def f():
         if len(lines) != 0:
             yield from lines
             yield ''
-        yield mentions(users)
-    return general.join_lines(f())
+    return general.join_lines(f()) + paragraph
+
+def append_mentions(text, users):
+    '''Append a mentions paragraph to a given Markdown text.'''
+    return append_paragraph(text, mentions(users))
 
 def project_url(project, path_segments = [], query_params = dict()):
     '''

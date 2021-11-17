@@ -9,7 +9,7 @@ import shutil
 import tempfile
 import types
 
-from course_basics import CompilationRequirement, SubmissionHandlingException
+import course_basics
 import git_tools
 import gitlab_tools
 import google_tools.sheets
@@ -390,10 +390,15 @@ class Lab:
         ])
         return issues_grading_template.get(())
 
-    def update_submissions_and_gradings(self, reload = False):
-        self.logger.info('Updating submissions and gradings.')
+    def get_requests_and_responses(self):
+        self.logger.info('Getting request tags and response issues.')
         for group in self.student_groups:
-            group.update_submissions_and_gradings(reload = reload)
+            group.get_requests_and_responses()
+
+    def handle_requests(self):
+        self.logger.info('Handling request tags.')
+        for group in self.student_groups:
+            group.handle_requests()
 
     @contextlib.contextmanager
     def checkout_with_empty_bin_manager(self, commit):
@@ -412,6 +417,19 @@ class Lab:
     @functools.cached_property
     def head_solution(self):
         return git_tools.normalize_branch(self.repo, self.course.config.branch.solution)
+
+    @functools.cached_property
+    def compiler(self):
+        if self.config.compiler != None:
+            self.config.compiler.setup(self)
+        return self.config.compiler
+
+    @contextlib.contextmanager
+    def checkout_and_compile_problem(self):
+        with self.checkout_with_empty_bin_manager(self.head_problem) as (src, bin):
+            if self.compiler != None:
+                self.compiler.compile(src, bin)
+                yield (src, bin)
 
     def make_tag_after(self, tag, commit_prev, prev_name):
         '''
@@ -545,7 +563,6 @@ class Lab:
                 except:
                     continue
 
-
     def parse_grading_issues(self):
         for group_id in self.course.groups(self):
             self.student_group(group_id).grading_issues = dict()
@@ -605,13 +622,102 @@ class Lab:
 
         Passes the deadline parameters to the methods update_grading_sheet and update_live_submissions_table.
         '''
-        self.update_submissions_and_gradings(reload = True)
+        self.get_requests_and_responses()
         self.repo_fetch_all()
+        self.handle_requests()
         self.update_grading_sheet(deadline = deadline)
         self.update_live_submissions_table(deadline = deadline)
         self.repo_push()
 
+class HandlerData:
+    def __init__(self, group, name, handler):
+        self.course = group.lab.course
+        self.lab = group.lab
+        self.group = group
+        self.logger = group.logger
+
+        self.name = name
+        self.handler = handler
+        self.is_set_up = False
+
+    def setup(self):
+        if not self.is_set_up:
+            with self.lab.checkout_and_compile_problem() as (src, bin):
+                self.handler.setup(self.lab, src, bin)
+            self.is_set_up = True
+
+    def register_student_project_parsers(self, request_parsers, response_parsers):
+        raise NotImplementedError()
+
+    def process_parsing(self):
+        raise NotImplementedError()
+
+    def handle_requests(self):
+        raise NotImplementedError()
+
+class StudentCallableRobograderData(HandlerData):
+    def register_student_project_parsers(self, request_parsers, response_parsers):
+        self.request_tags = dict()
+        request_parsers.append(self.course.request_tag_parser(
+            self.handler.request_matcher,
+            self.request_tags,
+        ))
+
+        self.response_issues = dict()
+        response_parsers.append(self.course.simple_response_issue_parser(
+            self.name,
+            self.handler.response_title,
+            self.response_issues,
+        ))
+
+    def process_parsing(self):
+        self.requests_and_responses = self.course.pair_requests_and_responses(
+            self.group.project.get,
+            self.request_tags,
+            self.response_issues,
+        )
+
+    def handle_requests(self):
+        for (request, (tag, response)) in list(self.requests_and_responses.items()):
+            if response == None:
+                self.setup()
+                self.requests_and_responses[request] = (tag, (self.robograde(request), ()))
+
+    def robograde(self, request):
+        self.logger.info(f'Robograding {request}')
+
+        def post_issue(description):
+            title = self.handler.response_title.print({'tag': request})
+            return self.group.post_response_issue(title, description)
+
+        # Check the commit out.
+        with self.lab.checkout_with_empty_bin_manager(self.group.repo_tag(request).path) as (src, bin):
+            # If a compiler is configured, compile first.
+            if self.lab.config.compiler:
+                self.logger.info('* compiling')
+                try:
+                    self.lab.compiler.compile(src, bin)
+                except course_basics.SubmissionHandlingException as e:
+                    description = gitlab_tools.append_paragraph(
+                        e.markdown(),
+                        'If you believe this is a mistake on our end, please contact the responsible teacher.'
+                    )
+                    return post_issue(description)
+
+            # Call the robograder.
+            try:
+                self.logger.info('* robograding')
+                description = self.handler.run(src, bin)
+            except course_basics.SubmissionHandlingException as e:
+                description = e.markdown()
+            return post_issue(description)
+
 class GroupProject:
+    def build_handler_data(self, name, handler):
+        if isinstance(handler, course_basics.StudentCallableRobograder):
+            return StudentCallableRobograderData(self, name, handler)
+        raise ValueError(f'Unimplemented handler type {handler} for handler {name}')
+
     def __init__(self, lab, id, logger = logging.getLogger('group-project')):
         self.course = lab.course
         self.lab = lab
@@ -619,6 +725,12 @@ class GroupProject:
         self.logger = logger
 
         self.remote = self.course.config.group.full_id.print(id)
+
+        # Submission handlers.
+        self.handler_data = dict(
+            (name, self.build_handler_data(name, handler))
+            for (name, handler) in self.lab.config.submission_handlers.items()
+        )
 
         #def f(x):
         #    return self.course.request_namespace(lambda request_type, spec: x)
@@ -632,7 +744,7 @@ class GroupProject:
         # * not in map: submission has not yet been considered
         # * False: submission is invalid (for example, because compilation is required and it didn't compile)
         # * True: submission is valid (to be sent to graders)
-        self.submission_valid = dict()
+        #self.submission_valid = dict()
 
     @functools.cached_property
     def gl(self):
@@ -843,9 +955,48 @@ class GroupProject:
         finally:
             self.hook_delete(hook)
 
-    @functools.cached_property
-    def submissions_and_gradings(self):
-        return self.course.parse_submissions_and_gradings(self.project.get)
+    def post_response_issue(self, title, description):
+        self.logger.debug(general.join_lines([
+            'Posting response issue:',
+            f'* title: {title}',
+            f'* description:',
+            *description.splitlines()
+        ]))
+        return self.project.lazy.issues.create({
+            'title': title,
+            'description': self.append_mentions(description)
+        })
+
+    def get_requests_and_responses(self):
+        request_parsers = []
+        response_parsers = []
+
+        tags_submission = dict()
+        request_parsers.append(self.course.submission_tag_parser(tags_submission))
+
+        issues_grading = dict()
+        response_parsers.append(self.course.grading_issue_parser(issues_grading))
+
+        for handler in self.handler_data.values():
+            handler.register_student_project_parsers(request_parsers, response_parsers)
+
+        self.course.parse_all_tags(self.project.get, request_parsers)
+        self.course.parse_all_response_issues(self.project.get, response_parsers)
+
+        self.submissions_and_gradings = self.course.pair_requests_and_responses(
+            self.project.get,
+            tags_submission,
+            issues_grading,
+        )
+        for handler in self.handler_data.values():
+            handler.process_parsing()
+
+    def handle_requests(self):
+        for handler in self.handler_data.values():
+            handler.handle_requests()
+        
+
+
 
     def update_submissions_and_gradings(self, reload = False):
         if reload:
@@ -1053,7 +1204,7 @@ class GroupProject:
                 self.logger.info('* compiling')
                 try:
                     self.lab.config.compiler(src, bin)
-                except SubmissionHandlingException as e:
+                except course_basics.SubmissionHandlingException as e:
                     self.create_response_issue(**issue_params,
                         response_type = 'compilation',
                         description = e.markdown() + general.join_lines([
@@ -1068,7 +1219,7 @@ class GroupProject:
                 self.logger.info('* robograding')
                 r = self.lab.config.robograder.run(src, bin)
                 description = r.report
-            except SubmissionHandlingException as e:
+            except course_basics.SubmissionHandlingException as e:
                 description = e.markdown()
             self.create_response_issue(**issue_params,
                 response_type = 'robograding',
@@ -1128,7 +1279,7 @@ class GroupProject:
                 self.logger.info('* compiling')
                 try:
                     self.lab.config.compiler(src, bin)
-                except SubmissionHandlingException as e:
+                except course_basics.SubmissionHandlingException as e:
                     compilation_okay = False
 
                     # Only report problem if configured and not yet reported.
@@ -1160,7 +1311,7 @@ class GroupProject:
                 try:
                     r = self.lab.config.robograder.run(src, bin)
                     description = r.report
-                except SubmissionHandlingException as e:
+                except course_basics.SubmissionHandlingException as e:
                     description = e.markdown()
                 self.create_response_issue_in_grading_project(**issue_params,
                     response_type = 'robograding',
