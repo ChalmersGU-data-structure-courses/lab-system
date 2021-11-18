@@ -907,7 +907,7 @@ class Course:
     def parse_all_response_issues(self, project, parse_elements):
         '''
         Parse all response issues in a project using the given parse functions.
-        Logs warnings for unrecognized issues.
+        Logs warnings for unrecognized issues, except if they are closed.
 
         Arguments:
         * project: GitLab Project to retrieve the issues from.
@@ -919,6 +919,7 @@ class Course:
         issues = self.response_issues(project)
         for parse_element in parse_elements:
             issues = parse_element(project, issues)
+        issues = filter(lambda issue: issue.state != 'closed', issues)
         self.log_unrecognized_issues(project, issues)
 
     def grading_template_issue_parser(self, parsed_issues):
