@@ -76,7 +76,7 @@ class ExecutionError(RobograderException):
             'This could be a problem with myself (a robo-bug) or with your code '
             '(unexpected changes to class or methods signatures).',
             'In the latter case, you might elucidate the cause from the below error message.',
-            'In the former case, please tell me designers!',
+            'In the former case, please tell my designers!',
         ]) + markdown.escape_code_block(self.errors)
 
 class Robograder:
