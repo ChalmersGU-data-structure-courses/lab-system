@@ -475,6 +475,18 @@ def temp_fifo():
         finally:
             fifo.unlink()
 
+@contextlib.contextmanager
+def temp_dir():
+    with tempfile.TemporaryDirectory() as dir:
+        yield Path(dir)
+
+@contextlib.contextmanager
+def temp_file(name = None):
+    if name == None:
+        name = 'file'
+    with temp_dir() as dir:
+        yield dir / name
+
 def Popen(cmd, **kwargs):
     print(shlex.join(cmd), file = sys.stderr)
     fds = list(kwargs.get('pass_fds', []))
