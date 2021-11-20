@@ -297,7 +297,7 @@ def get_content_modification_time(dir_base, path):
     t = os.lstat(path).st_mtime
     print(path, t)
     if path.is_symlink():
-        t = max(t, get_recursive_modification_time(path.parent / path.readlink()))
+        t = max(t, get_content_modification_time(path.parent / path.readlink()))
     return t
 
 def get_modification_time(path):
