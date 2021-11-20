@@ -277,17 +277,27 @@ def write_lines(file, lines):
 def print_error(*objects, sep = ' ', end = '\n'):
     print(*objects, sep = sep, end = end, file = sys.stderr)
 
-# TODO:
-# Broken, do not use.
 # In the symlink case, we also need to check the modification time of each directory in the symlink path.
-# This would give way too coarse results.
-#def get_recursive_modification_time(path):
-#    path = Path(path)
-#    t = os.lstat(path).st_mtime
-#    print(path, t)
-#    if path.is_symlink():
-#        t = max(t, get_recursive_modification_time(path.parent / path.readlink()))
-#    return t
+# This can give very coarse results.
+def get_content_modification_time(dir_base, path):
+    '''
+    Get an upper bound for the modification time of the content specified by a path.
+    The path is interpreted relative to a base directory that is assumed unchanged.
+
+    of a file specified by a path that may include symlinks.
+
+    Because we need to check every component of path for modification
+    and also follow symlinks, this can give very coarse results.
+    The returned time (in seconds since epoch) is merely an upper bound.
+
+    TODO: implement properly
+    '''
+    path = Path(path)
+    t = os.lstat(path).st_mtime
+    print(path, t)
+    if path.is_symlink():
+        t = max(t, get_recursive_modification_time(path.parent / path.readlink()))
+    return t
 
 def get_modification_time(path):
     return os.path.getmtime(path)
