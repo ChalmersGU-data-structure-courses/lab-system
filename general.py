@@ -14,6 +14,7 @@ import tempfile
 import time
 from types import SimpleNamespace
 import os
+import platform
 import shlex
 import shutil
 import subprocess
@@ -714,3 +715,17 @@ def canonical_keys(items, key = None):
             for x in xs:
                 yield (x, out_key)
     return dict(f())
+
+@functools.cache
+def path_separator():
+    return ';' if platform.system() == 'Windows' else ':'
+
+def join_paths(paths):
+    '''
+    Join paths using the platform-specific path separator.
+    Useful e.g. for the PATH environment variable.
+
+    Arguments:
+    * paths: Iterable of instances of string or PurePath.
+    '''
+    return path_separator().join(map(str, paths))
