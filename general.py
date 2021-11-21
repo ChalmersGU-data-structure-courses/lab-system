@@ -409,12 +409,6 @@ def readfile(fil):
         except UnicodeDecodeError:
             return bstr.decode(errors="replace")
 
-def java_string_encode(x):
-    return json.dumps(x)
-
-def java_string_decode(y):
-    return json.loads(y)
-
 def guess_encoding(b):
     encodings = ['utf-8', 'latin1']
     for encoding in encodings:

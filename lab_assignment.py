@@ -1,6 +1,7 @@
 from collections import namedtuple, OrderedDict
 from datetime import datetime, timedelta
 import itertools
+import json
 import logging
 import os.path
 from pathlib import Path
@@ -15,13 +16,16 @@ from dominate import document
 from dominate.tags import meta, link, title, script, style, h1, h2, div, pre, p, span, del_, button, table, thead, tbody, th, tr, td, a
 from dominate.util import raw, text
 
-from general import from_singleton, ilen, Timer, print_error, mkdir_fresh, exec_simple, link_dir_contents, add_suffix, modify, format_with_rel_prec, format_timespan, sorted_directory_list, copy_tree_fresh, java_string_encode, get_modification_time
+from general import from_singleton, ilen, Timer, print_error, mkdir_fresh, exec_simple, link_dir_contents, add_suffix, modify, format_with_rel_prec, format_timespan, sorted_directory_list, copy_tree_fresh, get_modification_time
 from canvas import Assignment
 import lab_assignment_constants
 import submission_fix_lib
 import test_lib
 
 logger = logging.getLogger(__name__)
+
+def java_string_encode(x):
+    return json.dumps(x)
 
 def get_java_version():
     p = subprocess.run(['java', '-version'], stdin = subprocess.DEVNULL, stdout = subprocess.DEVNULL, stderr = subprocess.PIPE, encoding = 'utf-8', check = True)

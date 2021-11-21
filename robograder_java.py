@@ -2,8 +2,6 @@ import logging
 from pathlib import Path
 import shlex
 import subprocess
-import tempfile
-import types
 
 import check_symlinks
 import course_basics
@@ -39,12 +37,10 @@ class CompileException(course_basics.SubmissionHandlingException):
         return self.e.compile_errors
 
 class Compiler(course_basics.Compiler):
-    # For now: ignoring bin.
-    # TODO: use bin as target directory.
     def compile(self, src, bin):
         try:
             check_symlinks.check_self_contained(src)
-            java_tools.compile_java_dir(src, detect_enc = True)
+            java_tools.compile_unknown(src = src, bin = bin)
         except check_symlinks.SymlinkException as e:
             raise SymlinkException(e)
         except java_tools.CompileError as e:
@@ -80,31 +76,24 @@ class ExecutionError(RobograderException):
         ]) + markdown.escape_code_block(self.errors)
 
 class Robograder:
-    def setup(self, lab, src, bin = None):
-        # For now.
-        bin = src
-
+    def setup(self, lab, src, bin):
         self.machine_speed = lab.course.config.robograder_machine_speed
         self.path_lib = code_root / 'Other' / 'robograding'
         self.path_robograder = lab.config.path_source / 'pregrade'
         self.classpath = [
             self.path_lib,
-            self.path_robograder
+            self.path_robograder,
         ]
-        self.classpath_resolved = [dir.resolve() for dir in self.classpath]
         self.entrypoint = 'Robograder'
 
         logger.info('Compiling robograder {}'.format(shlex.quote(str(self.path_robograder))))
-        java_tools.compile_java_dir(
+        java_tools.compile(
             self.path_robograder,
-            force_recompile = True,
-            classpath = [bin.resolve()] + self.classpath_resolved
+            skip_if_exist = False,
+            classpath = [bin] + self.classpath,
         )
 
-    def run(self, src, bin = None):
-        # For now.
-        bin = src
-
+    def run(self, src, bin):
         # Check for class name conflicts.
         for dir in self.classpath_resolved:
             with general.working_dir(dir):
@@ -113,34 +102,28 @@ class Robograder:
                 if (bin / file).exists():
                     raise FileConflict(file)
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Create policy file.
-            policy_file = Path(temp_dir) / 'policy'
-            policy_file.write_text(java_tools.policy(
-                (dir, [java_tools.permission_all])
-                for dir in self.classpath_resolved
-            ))
+        # Set up security policy to allow submission code to only read submission directory.
+        def policy_entries():
+            for dir in self.classpath:
+                yield (dir, [java_tools.permission_all])
+            yield (bin, [java_tools.permission_file(src, True)])
 
-            cmd = list(java_tools.java_cmd(
-                self.entrypoint,
-                args = [str(self.machine_speed)],
-                security_policy = policy_file.resolve(),
-                classpath = [bin.resolve()] + self.classpath_resolved,
-                options = java_tools.java_standard_options(),
-            ))
-            general.log_command(logger, cmd)
-            process = subprocess.run(
-                cmd,
-                cwd = bin,
-                stdout = subprocess.PIPE,
-                stderr = subprocess.PIPE,
-                encoding = 'utf-8'
-            )
-            if process.returncode != 0:
-                raise ExecutionError(process.stderr)
+        # Run the robograder.
+        process = java_tools.run(
+            self.entrypoint,
+            args = [str(self.machine_speed)],
+            policy_entries = policy_entries(),
+            classpath = [bin] + self.classpath,
+            cwd = src,
+            stdout = subprocess.PIPE,
+            stderr = subprocess.PIPE,
+            encoding = 'utf-8',
+        )
+        if process.returncode != 0:
+            raise ExecutionError(process.stderr)
 
-            logger.debug('pregrading output of {}:\n'.format(self.entrypoint) + process.stdout)
-            return process.stdout
+        logger.debug('pregrading output of {}:\n'.format(self.entrypoint) + process.stdout)
+        return process.stdout
 
 class StudentCallableRobograder(course_basics.StudentCallableRobograder, Robograder):
     def __init__(self):
