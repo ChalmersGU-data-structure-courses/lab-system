@@ -741,3 +741,17 @@ def join_paths(paths):
     * paths: Iterable of instances of string or PurePath.
     '''
     return path_separator().join(map(str, paths))
+
+def split_dict(u, f):
+    '''
+    Split the dictionary u into two parts, based on the key filter function f.
+    The function f takes a key and returns a boolean.
+    The result is a pair of dictionaries (v, w):
+    - v contains all keys that satisfy f.
+    - w contains the remaining keys.
+    '''
+    v = dict()
+    w = dict()
+    for (key, value) in u.items():
+        (v if f(key) else w)[key] = value
+    return (v, w)
