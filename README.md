@@ -423,7 +423,7 @@ course.recreate_student_invitations(
 Suppose we want to create on GitLab the lab with id 3.
 Let us select this lab as a variable:
 ```
-lab = course.lab[3].
+lab = course.lab[3]
 ```
 
 We run
