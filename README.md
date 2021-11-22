@@ -430,7 +430,7 @@ We run
 ```
 lab.official_project.create()
 lab.grading_project.create()`
-``
+```
 to create the official project with problem and solution branches.
 This will take its content from the local directory specified in the lab configuration and add a suitable `.gitignore` file if configured.
 If we wanted to delete the official project to start again, we would call the `delete` method instead.
