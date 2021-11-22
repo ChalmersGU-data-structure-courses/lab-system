@@ -129,7 +129,7 @@ class Column:
     def __init__(self, config):
         '''
         Store the given configuration under self.config.
-        Inline its fields as instance attributes.
+        Inline its fieldsas instance attributes.
         '''
         self.config = config
         for field in Config._fields:

@@ -118,23 +118,6 @@ def resolve(repo, ref):
         ref = git.Reference(repo, str(ref))
     return ref.commit
 
-def exist(ref):
-    '''
-    Test whether a reference exists.
-    ref is an instance of git.Reference.
-    Return a boolean. indicating whether
-    '''
-    try:
-        ref.commit
-        return True
-    except ValueError as e:
-        if str(e).endswith(' does not exist'):
-            return False
-        raise
-
-def create_tag(tag, **kwargs):
-    tag.repo.create_tag(tag.name, **kwargs)
-
 # Refspecs
 
 def refspec(src = None, dst = None, force = False):

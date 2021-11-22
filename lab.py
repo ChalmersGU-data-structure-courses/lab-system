@@ -1,10 +1,8 @@
-# TODO: only cover over request tags from student repositories into grading repository.
 import contextlib
 import functools
 import general
 import git
 import gitlab
-import gitlab.v4.objects.tags
 import logging
 from pathlib import Path, PurePosixPath
 import shutil
@@ -17,7 +15,6 @@ import gitlab_tools
 import google_tools.sheets
 import grading_sheet
 from instance_cache import instance_cache
-import lab_interfaces
 import live_submissions_table
 import print_parse
 
@@ -799,7 +796,7 @@ class GroupProject:
                 self.remote,
                 self.project.get,
                 fetch_branches = [(git_tools.Namespacing.remote, git_tools.wildcard)],
-                fetch_tags = [(git_tools.Namespacing.remote, git_tools.wildcard)],
+                fetch_tags = [(git_tools.Namespacing.qualified_suffix_tag, git_tools.wildcard)],
                 prune = True,
             )
         except gitlab.GitlabGetError as e:
@@ -847,8 +844,6 @@ class GroupProject:
         self.logger.info(f'Fetching from student repository, remote {self.remote}.')
         self.lab.repo.remote(self.remote).fetch('--update-head-ok')
 
-        
-
     # def repo_tag_names(self):
     #     '''
     #     Read the local tags fetched from the student project on GitLab.
@@ -857,7 +852,7 @@ class GroupProject:
     #     dir = Path(self.lab.repo.git_dir) / git_tools.refs / git_tools.remote_tags / self.remote
     #     return [file.name for file in dir.iterdir()]
 
-    def repo_tag(self, request_name, *args):
+    def repo_tag(self, tag_name):
         '''
         Construct the tag (instance of git.Tag) in the grading repository
         corresponding to the tag with given name in the student repository.
@@ -865,19 +860,11 @@ class GroupProject:
 
         Arguments:
         * tag_name: Instance of PurePosixPath, str, or gitlab.v4.objects.tags.ProjectTag.
-        * args:
-            Path segments to attach to tag_name.
-            Strings or instances of PurePosixPath.
-            If not given, defaults to 'tag' for the request tag
-            corresponding to the given request_name.
         '''
-        if not args:
-            args = ['tag']
-
-        if isinstance(request_name, gitlab.v4.objects.tags.ProjectTag):
-            request_name = request_name.name
-        request_name = git_tools.qualify(self.remote, request_name) / PurePosixPath(*args)
-        return git_tools.normalize_tag(self.lab.repo, request_name)
+        if isinstance(tag_name, gitlab.v4.objects.tags.ProjectTag):
+            tag_name = tag_name.name
+        tag_name = git_tools.qualify(self.remote, tag_name) / 'tag'
+        return git_tools.normalize_tag(self.lab.repo, tag_name)
 
     def hotfix_group(self, branch_hotfix, branch_group):
         '''
@@ -967,29 +954,6 @@ class GroupProject:
             yield hook
         finally:
             self.hook_delete(hook)
-
-
-
-    def handle_submission_request(self, request_name):
-        handled = self.repo_tag(request_name, 'handled')
-        if git_tools.exist(handled):
-            return
-
-        # Do callback.
-        gitlab_tools.create_tag(handled, self.repo_tag(request_name))
-        pass
-
-    def handle_testing_request(self, request_name):
-        pass
-
-    def handle_grading_issue(self, request_name, issue, title_data):
-        pass
-    
-
-
-
-
-
 
     def post_response_issue(self, title, description):
         self.logger.debug(general.join_lines([
