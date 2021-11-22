@@ -273,16 +273,14 @@ _lab_config = SimpleNamespace(
     # Path in Canvas course where the table of submissions awaiting grading should be uploaded.
     canvas_path_awaiting_grading = PurePosixPath('temp') / 'lab-N-awaiting-grading.html',
 
-    # Optional configuration for a compiler.
-    # Value of type course_basics.Compiler.
-    compiler = None,
+		# Submission handler.
+		# Instance of SubmissionHandler.
+		submission_handler = None
 
     # Dictionary of submission handlers.
-    # Only values of the following interfaces defined in course_basics are supported for now:
-    # * Tester
-    # * SubmissionGradingRobograder
-    # * StudentCallableRobograder
-    submission_handlers = {}
+		# Its keys should be string-convertible.
+		# Its values are instances of the RequestHandler interface.
+		submission_handlers = {}
 )
 
 _language = 'java'
