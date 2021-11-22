@@ -14,6 +14,7 @@ import tempfile
 import time
 from types import SimpleNamespace
 import os
+import platform
 import shlex
 import shutil
 import subprocess
@@ -277,12 +278,30 @@ def write_lines(file, lines):
 def print_error(*objects, sep = ' ', end = '\n'):
     print(*objects, sep = sep, end = end, file = sys.stderr)
 
-def get_recursive_modification_time(path):
-    t = os.path.getmtime(path)
-    #print(t)
-    #if Path(path).islink():
-    #    t = max(t, get_recursive_modification_time(path.parent / path.readlink()))
+# In the symlink case, we also need to check the modification time of each directory in the symlink path.
+# This can give very coarse results.
+def get_content_modification_time(dir_base, path):
+    '''
+    Get an upper bound for the modification time of the content specified by a path.
+    The path is interpreted relative to a base directory that is assumed unchanged.
+
+    of a file specified by a path that may include symlinks.
+
+    Because we need to check every component of path for modification
+    and also follow symlinks, this can give very coarse results.
+    The returned time (in seconds since epoch) is merely an upper bound.
+
+    TODO: implement properly
+    '''
+    path = Path(path)
+    t = os.lstat(path).st_mtime
+    print(path, t)
+    if path.is_symlink():
+        t = max(t, get_content_modification_time(path.parent / path.readlink()))
     return t
+
+def get_modification_time(path):
+    return os.path.getmtime(path)
 
 def set_modification_time(path, date):
     t = date.timestamp()
@@ -390,12 +409,6 @@ def readfile(fil):
         except UnicodeDecodeError:
             return bstr.decode(errors="replace")
 
-def java_string_encode(x):
-    return json.dumps(x)
-
-def java_string_decode(y):
-    return json.loads(y)
-
 def guess_encoding(b):
     encodings = ['utf-8', 'latin1']
     for encoding in encodings:
@@ -455,6 +468,18 @@ def temp_fifo():
             yield fifo
         finally:
             fifo.unlink()
+
+@contextlib.contextmanager
+def temp_dir():
+    with tempfile.TemporaryDirectory() as dir:
+        yield Path(dir)
+
+@contextlib.contextmanager
+def temp_file(name = None):
+    if name == None:
+        name = 'file'
+    with temp_dir() as dir:
+        yield dir / name
 
 def Popen(cmd, **kwargs):
     print(shlex.join(cmd), file = sys.stderr)
@@ -696,3 +721,31 @@ def canonical_keys(items, key = None):
             for x in xs:
                 yield (x, out_key)
     return dict(f())
+
+@functools.cache
+def path_separator():
+    return ';' if platform.system() == 'Windows' else ':'
+
+def join_paths(paths):
+    '''
+    Join paths using the platform-specific path separator.
+    Useful e.g. for the PATH environment variable.
+
+    Arguments:
+    * paths: Iterable of instances of string or PurePath.
+    '''
+    return path_separator().join(map(str, paths))
+
+def split_dict(u, f):
+    '''
+    Split the dictionary u into two parts, based on the key filter function f.
+    The function f takes a key and returns a boolean.
+    The result is a pair of dictionaries (v, w):
+    - v contains all keys that satisfy f.
+    - w contains the remaining keys.
+    '''
+    v = dict()
+    w = dict()
+    for (key, value) in u.items():
+        (v if f(key) else w)[key] = value
+    return (v, w)
