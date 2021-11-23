@@ -8,6 +8,7 @@ import tempfile
 import types
 
 import course_basics
+import item_parser
 import git_tools
 import gitlab_tools
 import grading_sheet
@@ -37,15 +38,36 @@ class HandlerData:
         # Populated by GroupProject.parse_response_issues.
         # Initialized with inner dictionaries set to None.
         self.response_issues = {
-            response_key: None,
+            response_key: None
             for (response_key, issue_title) in self.handler.issue_titles.items()
         }
 
+    def response_issue_parser_data(self):
+        '''
+        Prepare parser_data entries for a response issue parsing call to item_parser.parse_all_items.
+        Initializes the response_issue map.
+        Returns iterable of parser_data entries.
+        '''
+        for (response_key, response_title) in self.handler.response_titles.items():
+            def parser(issue):
+                title = issue.title
+                parse = response_title.parse.__call__
+                try:
+                    r = parse(title)
+                except:
+                    return None
+                return (r['tag'], (issue, r))
+
+            u = dict()
+            self.response_issues[response_key] = u
+            yield (parser, f'{response_key} {self.handler_key}', u)
+
     @functools.cached_property
     def requests_and_responses(self):
+        pass
 
 class GroupProject:
-    def __init__(self, lab, id, logger = logging.getLogger(__name)):
+    def __init__(self, lab, id, logger = logging.getLogger(__name__)):
         self.course = lab.course
         self.lab = lab
         self.id = id
@@ -260,11 +282,43 @@ class GroupProject:
         finally:
             self.hook_delete(hook)
 
+    def official_issues(self):
+        '''
+        Generator function retrieving the official issues.
+        An official issue is one created by a grader.
+        Only official issues can be response issues.
+        '''
+        self.logger.debug(f'Retrieving response issues in {self.name}.')
+        for issue in gitlab_tools.list_all(self.project.lazy.issues):
+            if issue.author['id'] in self.course.graders:
+                yield issue
+
+    def parse_response_issues(self):
+        '''
+        Parse response issues for this project on Chalmers GitLab
+        on store the result in self.handler_data.
+        '''
+        def f():
+            for handler_data in self.handler_data.values():
+                yield from handler_data.response_issue_parser_data()
+
+        item_parser.parse_all_items(
+            item_parser.Config(
+                location_name = self.name,
+                item_name = 'response issue',
+                item_formatter = gitlab_tools.format_issue_metadata,
+                logger = self.logger,
+            ),
+            f(),
+            self.official_issues(self),
+        )
+
+
     def post_response_issue(self, title, description):
         self.logger.debug(general.join_lines([
             'Posting response issue:',
             f'* title: {title}',
-            f'* description:',
+            '* description:',
             *description.splitlines()
         ]))
         return self.project.lazy.issues.create({
