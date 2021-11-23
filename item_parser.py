@@ -134,7 +134,6 @@ def parse_all_items(config, parser_data, items):
         Iterable of items to parse.
         This will be exhausted by this method.
     '''
-    for (parser, parser_name, parse_results) in parser_data.items():
-        parse_results = general.from_singleton_maybe(parse_results)
+    for (parser, parser_name, parse_results) in parser_data:
         items = parse_items(config, parser, parser_name, parse_results, items)
     log_unrecognized_items(config, items)
