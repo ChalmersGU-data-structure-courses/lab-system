@@ -355,40 +355,6 @@ class Lab:
     def student_groups(self):
         return [self.student_group(group_id) for group_id in self.course.groups]
 
-    def repo_fetch_all(self):
-        '''
-        Fetch from the official repository and all student repositories.
-        '''
-        self.repo_fetch_official()
-        for group in self.student_groups:
-            group.repo_fetch()
-
-    @functools.cached_property
-    def remote_requests(self):
-        '''
-        A dictionary mapping each group id to a dictionary of key-value pairs (path, ref) where:
-        - path is the tag name in the remote repository (converted to pathlib.PurePosixPath).
-        - ref is an instance of git.Reference for the reference in refs/remote_tags/<full group id>.
-
-        Clear this cached property after fetching.
-        '''
-        refs = git_tools.references_hierarchy(self.repo)
-        remote_tags = refs[git_tools.refs.name][git_tools.remote_tags.name]
-
-        def f():
-            for group_id in self.course.groups:
-                value = remote_tags.get(self.course.config.group.full_id.print(group_id), dict())
-                yield (group_id, git_tools.flatten_references_hierarchy(value))
-        return dict(f())
-
-    def create_group_projects(self):
-        for group_id in self.course.groups:
-            self.student_group(group_id).project.create()
-
-    def delete_group_projects(self):
-        for group_id in self.course.groups:
-            self.student_group(group_id).project.delete()
-
     # TODO:
     # Debug what happens when running this without the grading project having been created.
     # For some reason, project.delete seems to trigger an exception.
@@ -429,6 +395,14 @@ class Lab:
                     project.delete()
                 raise
 
+    def create_group_projects(self):
+        for group_id in self.course.groups:
+            self.student_group(group_id).project.create()
+
+    def delete_group_projects(self):
+        for group_id in self.course.groups:
+            self.student_group(group_id).project.delete()
+
     def hotfix_groups(self, branch_hotfix):
         '''
         Attempt to apply a hotfix to all student projects.
@@ -437,6 +411,32 @@ class Lab:
         '''
         for group in self.course.groups:
             self.hotfix_group(branch_hotfix, group, self.course.config.branch.master)
+
+    def repo_fetch_all(self):
+        '''
+        Fetch from the official repository and all student repositories.
+        '''
+        self.repo_fetch_official()
+        for group in self.student_groups:
+            group.repo_fetch()
+
+    @functools.cached_property
+    def remote_requests(self):
+        '''
+        A dictionary mapping each group id to a dictionary of key-value pairs (path, ref) where:
+        - path is the tag name in the remote repository (converted to pathlib.PurePosixPath).
+        - ref is an instance of git.Reference for the reference in refs/remote_tags/<full group id>.
+
+        Clear this cached property after fetching.
+        '''
+        refs = git_tools.references_hierarchy(self.repo)
+        remote_tags = refs[git_tools.refs.name][git_tools.remote_tags.name]
+
+        def f():
+            for group_id in self.course.groups:
+                value = remote_tags.get(self.course.config.group.full_id.print(group_id), dict())
+                yield (group_id, git_tools.flatten_references_hierarchy(value))
+        return dict(f())
 
     @contextlib.contextmanager
     def hook_manager(self, netloc):
