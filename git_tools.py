@@ -153,6 +153,25 @@ def resolve(repo, ref):
         ref = git.Reference(repo, str(ref))
     return ref.commit
 
+references_hierarchy_basic = {
+    refs.name: {
+        heads.name: {},
+        tags.name: {},
+        remotes.name: {},
+        remote_tags.name: {},
+    },
+}
+
+def references_hierarchy(repo):
+    return general.expand_hierarchy(
+        {PurePosixPath(ref.path): ref for ref in repo.refs},
+        operator.attrgetter('parts'),
+        initial_value = references_hierarchy_basic
+    )
+
+def flatten_references_hierarchy(ref_hierarchy):
+    return general.flatten_hierarchy(ref_hierarchy, key_combine = lambda x: PurePosixPath(*x))
+
 # Refspecs
 
 def refspec(src = None, dst = None, force = False):
