@@ -26,8 +26,17 @@ class RequestAndResponses:
         if isinstance(tag_data, gitlab.v4.objects.ProjectTag):
             self.gitlab_tag = tag_data
         else:
-            (self.git_tag, self.git_commit) = tag_data
+            self.gitlab_tag = None
+            (self.repo_remote_tag, self.repo_remote_commit) = tag_data
         self.responses = dict()
+
+    @functools.cached_property
+    def repo_remote_tag(self):
+        return git.Reference(self.lab.repo, str(git_tools.remote_tag(self.request_name)))
+
+    @functools.cached_property
+    def repo_remote_commit(self):
+        return self.repo_remote_tag.commit
 
     def repo_tag(self, segments = ['tag']):
         '''Forwards to self.group.repo_tag.'''
