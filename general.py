@@ -749,3 +749,41 @@ def split_dict(u, f):
     for (key, value) in u.items():
         (v if f(key) else w)[key] = value
     return (v, w)
+
+def recursive_defaultdict():
+    return defaultdict(recursive_defaultdict)
+
+def recursive_dict_values(u):
+    if isinstance(u, dict):
+        for v in u.values():
+            yield from recursive_dict_values(v)
+    else:
+        yield u
+
+def expand_hierarchy(v, key_split, initial_value = None):
+    r = dict() if initial_value == None else initial_value
+    for (combined_key, value) in v.items():
+        last_key = None
+        for part in key_split(combined_key):
+            x = r if last_key == None else x.setdefault(last_key, dict())
+            last_key = part
+        if last_key == None:
+            r = value
+        else:
+            x[last_key] = value
+    return r
+
+def flatten_hierarchy_prefix(u, key_combine, prefix):
+    def f(u, prefix):
+        if isinstance(u, dict):
+            for (key, value) in u.items():
+                prefix.append(key)
+                yield from f(value, prefix)
+                prefix.pop()
+        else:
+            yield (key_combine(prefix), u)
+
+    return dict(f(u, []))
+
+def flatten_hierarchy(u, key_combine = tuple):
+    return dict(flatten_hierarchy_prefix(u, key_combine, []))
