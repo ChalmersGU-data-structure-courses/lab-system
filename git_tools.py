@@ -12,7 +12,7 @@ import general
 
 logger = logging.getLogger(__name__)
 
-# References
+# Reference names.
 
 refs = PurePosixPath('refs')
 heads = PurePosixPath('heads')
@@ -106,6 +106,33 @@ def normalize_tag(repo, tag):
         return tag
     tag = PurePosixPath(tag)
     return repo.tag(str(tag))
+
+def tag_exist(ref):
+    '''
+    Test whether a reference exists.
+    ref is an instance of git.Reference.
+    Return a boolean. indicating whether
+    '''
+    try:
+        ref.commit
+        return True
+    except ValueError as e:
+        if str(e).endswith(' does not exist'):
+            return False
+        raise
+
+def tag_message(tag, default_to_commit_message = False):
+    '''
+    Get the message for an annotated tag.
+    Returns None if the tag is not annotated unless default_to_commit_message is set.
+    In that case, we return the message of the commit pointed to by the tag.
+    '''
+    x = tag.object
+    if isinstance(x, git.TagObject) or default_to_commit_message:
+        return x.message
+    return None
+
+# References.
 
 def resolve(repo, ref):
     '''
