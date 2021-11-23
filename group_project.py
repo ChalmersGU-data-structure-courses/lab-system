@@ -15,6 +15,21 @@ import gitlab_tools
 import print_parse
 
 class RequestAndResponses:
+    '''
+    This class abstracts over a single request tag on Chalmers GitLab.
+    It also collects the response issues posted by the lab system or graders
+    in response to this request tag (as identified by their title).
+
+    To process the request, an instance of this class is passed
+    as argument to handle_request method of the corresponding request handler.
+    That method may take a variety of actions such as creating tags (and tagged commits)
+    in the local grading repository (which will afterwards be pushed to the grading repository
+    on GitLab Chalmers) or posting issues in the student project on GitLab Chalmers.
+
+    Each instances of this class is managed by an instance of HandlerData.
+    Instances are rather transient.
+    They are reconstructed every time request tags or response issues are refreshed.
+    '''
     def __init__(self, handler_data, request_name, tag_data):
         self.course = handler_data.course
         self.lab = handler_data.lab
@@ -153,6 +168,15 @@ class RequestAndResponses:
         self.set_handled(result)
 
 class HandlerData:
+    '''
+    This class abstracts over a request handler handling a single type of request
+    students may make in their group project for a particular lab on Chalmers GitLab.
+    It also collects request tags and response issues associated with this handler
+    before they are combined into instances of RequestAndResponses,
+    which are also collected by this class.
+
+    Each instance of this class is managed by an instance of GroupProject.
+    '''
     def __init__(self, group, handler_key):
         self.course = group.course
         self.lab = group.lab
@@ -249,6 +273,11 @@ class HandlerData:
             request_and_responses.process()
 
 class GroupProject:
+    '''
+    This class abstracts over a lab project of a lab group on Chalmers GitLab.
+    It collects instances of HandlerData.
+    Each instances of this class is managed by an instance of lab.Lab.
+    '''
     def __init__(self, lab, id, logger = logging.getLogger(__name__)):
         self.course = lab.course
         self.lab = lab
