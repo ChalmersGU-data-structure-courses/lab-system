@@ -98,10 +98,30 @@ class RequestHandler:
 class SubmissionHandler(RequestHandler):
     '''
     This interface specifies a request handler for handling submissions.
-    The only extra bit is a specification of the grading columns in the live submissions table.
+    The handle_request method must returns a JSON-encodable dictionary.
+    This dictionary must have the following keys:
+    - 'accepted':
+        Boolean indicating if the submission system
+        should accept or reject the submission.
+        Note that this is different from passing and failing.
+        A rejected submission does not count as an actual submission.
+        This is important if only a certain number of submissions are allowed,
+        or a valid submission is required before a certain date.
+    - 'review_needed' (if 'accepted' is True):
+        Boolean indicating if the handler wants a grader to
+        take a look at the submission and decide its outcome.
+    - 'outcome' (if 'accepted' is True and 'review_needed' is False):
+        Custom value recording the outcome of the submission.
 
-    Required attributes:
+    Submission review issues must have printer-parser
+    with domain a dictionary containing a key 'outcome'.
+    The format of its value should be the same as the one returnable by the handler.
+    Existing review issues always override the submission outcome
+    of the of the submission handler, even if its decision is not 'review'.
+
+    Required attributes (in addition to the ones of RequestHandler):
     * grading_columns
         Customized columns for the live submissions table.
         A collection of instances of live_submissions_table.Column.
     '''
+    pass
