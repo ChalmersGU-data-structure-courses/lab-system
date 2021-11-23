@@ -1,12 +1,13 @@
 import contextlib
 import dateutil
 import functools
-import general
 import gitlab
 import operator
 from pathlib import Path, PurePosixPath
 import time
 import urllib.parse
+
+import general
 
 def read_private_token(x):
     if isinstance(x, Path):
