@@ -353,6 +353,9 @@ class Lab:
         for group_id in self.course.groups:
             self.student_group(group_id).project.delete()
 
+    # TODO:
+    # Debug what happens when running this without the grading project having been created.
+    # For some reason, project.delete seems to trigger an exception.
     def create_group_projects_fast(self, exist_ok = False):
         '''
         Create all student projects for this lab.
