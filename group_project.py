@@ -92,6 +92,36 @@ class RequestAndResponses:
         '''
         self.repo_tag_create_json(self, RequestAndResponses.segment_handled, data = data)
 
+    def post_response_issue(self, response_key, title_data, description):
+        # Only allow posting if there is not already a response issue of the same type.
+        if response_key in responses:
+            ValueError(
+                f'Response issue for {response_key} already exists '
+                'for request {self.request_name} in {self.name} in {self.lab.name}'
+            )
+
+        # Make sure title_data is a dictionary and fill in request name.
+        title_data = dict(title_data)
+        title_data['tag'] = self.request_name
+
+        # Post the issue.
+        title = self.handler_data.handler.response_titles[response_key].print(title_data)
+        self.logger.debug(general.join_lines([
+            'Posting response issue:',
+            f'* title: {title}',
+            '* description:',
+            *description.splitlines()
+        ]))
+        issue = self.group.project.lazy.issues.create({
+            'title': title,
+            'description': self.append_mentions(description)
+        })
+
+        # Make sure the local response issue caches are up to date.
+        issue_data = (issue, title_data)
+        self.responses[response_key] = issue_data
+        self.handler_data.responses[response_key][self.request_name] = issue_data
+
     def process_request(self):
         '''
         Process request.
