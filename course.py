@@ -794,13 +794,18 @@ class Course:
             if not event_name in ['tag_push', 'issue']:
                 return
 
-            # Find the relevant lab and student project.
+            # Find the relevant lab and group project.
             project_path = PurePosixPath(event['project']['path_with_namespace'])
             project_path = project_path.relative_to(self.config.path.groups)
             (group_id_gitlab, lab_full_id) = project_path.parts
+
+            # Find the lab.
             lab_id = self.config.lab.full_id.parse(lab_full_id)
+            lab = self.labs[lab_id]
+
+            # Find the group project.
             group_id = self.config.group.id_gitlab.parse(group_id_gitlab)
-            group = self.labs[lab_id].student_group(group_id)
+            group = lab.student_group(group_id)
         except Exception as e:
             raise HookCallbackError(e) from e
 
