@@ -308,8 +308,11 @@ def url_compare(project, source, target):
         ['-', 'compare', str(source) + '...' + str(target)], {'w': '1'}
     )
 
+def url_tag_name(project, tag_name):
+    return project_url(project, ['-', 'tags', tag_name])
+
 def url_tag(project, tag):
-    return project_url(project, ['-', 'tags', tag.name])
+    return url_tag_name(project, tag.name)
 
 def url_issues_new(project, **kwargs):
     '''
