@@ -133,6 +133,15 @@ class RequestAndResponses:
         return self.handled_result['accepted']
 
     @functools.cached_property
+    def review_needed(self):
+        '''
+        Returns a boolean indicating if the submission handler has requested a review.
+        See the documentation of submission handlers.
+        Only valid to call for submission requests.
+        '''
+        return self.handled_result['review_needed']
+
+    @functools.cached_property
     def review_result(self):
         '''
         Get the outcome of the review, or None if there is none.
