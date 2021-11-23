@@ -273,16 +273,19 @@ _lab_config = SimpleNamespace(
     # Path in Canvas course where the table of submissions awaiting grading should be uploaded.
     canvas_path_awaiting_grading = PurePosixPath('temp') / 'lab-N-awaiting-grading.html',
 
-    # Optional configuration for a compiler.
-    # Value of type course_basics.Compiler.
-    compiler = None,
+    # Dictionary of request handlers.
+		# Its keys should be string-convertible.
+		# Its values are instances of the RequestHandler interface.
+		# The order of the dictionary determines the order in which the request matchers
+		# of the request handlers are tested on a student repository tag.
+		request_handlers = {},
 
-    # Dictionary of submission handlers.
-    # Only values of the following interfaces defined in course_basics are supported for now:
-    # * Tester
-    # * SubmissionGradingRobograder
-    # * StudentCallableRobograder
-    submission_handlers = {}
+		# Key of submission handler in the dictionary of request handlers.
+		# Its value must be an instance of SubmissionHandler.
+		submission_handler_key = None,
+
+		# Key of review issue title printer-parser in specified submission handler.
+		review_issue_title_key = 'grading',
 )
 
 _language = 'java'
