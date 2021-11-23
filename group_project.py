@@ -65,6 +65,10 @@ class RequestAndResponses:
         '''Forwards to self.group.repo_tag_create.'''
         return self.group.repo_tag_create(self.request_name, segments, ref, **kwargs)
 
+    def repo_tag_delete(self, segments = ['tag']):
+        '''Forwards to self.group.repo_tag_delete.'''
+        return self.group.repo_tag_delete(self.request_name, segments)
+
     def repo_tag_create_json(self, segments, ref = None, data = None, **kwargs):
         '''
         Create a tag with JSON-encoded data as message.
@@ -106,6 +110,45 @@ class RequestAndResponses:
         Further keyword arguments are passed to repo_tag_create.
         '''
         self.repo_tag_create_json(self, RequestAndResponses.segment_handled, data = data)
+
+    # TODO:
+    # Shelved for now.
+    # Best to avoid state when we can.
+    # Can activate if performance becomes an issue.
+    #
+    # # Tag path segment suffix used for marking requests as reviewed.
+    # segment_review = ['review']
+    #
+    # def review(self):
+    #     '''
+    #     Check the local grading repository whether this request has been handled.
+    #     This checks for the existence of a tag <group full id>/<request name>/review.
+    #     If it exists, reads the JSON-encoded data, a dictionary with the following structure:
+    #     * grader: The grader who did the review (username on Chalmers Gitlab).
+    #     * outcome: The outcome of the submission (submission-handler-specific).
+    #     If it does not exist, returns None.
+    #     '''
+    #     try:
+    #         return self.repo_tag_read_json(self, RequestAndResponses.segment_review)
+    #     except ValueError:
+    #         return None
+    #
+    # def update_review(self, result):
+    #     '''
+    #     Update the result of the review.
+    #     A value of None signifies deletion.
+    #     If the given value is the same as the stored one,
+    #     no update occurs and we return True.
+    #     Otherwise, we return False.
+    #     '''
+    #     if result == self.review():
+    #         return False
+    #
+    #     if result == None:
+    #         self.repo_tag_delete(RequestAndResponses.segment_review)
+    #     else:
+    #         self.repo_tag_create_json(RequestAndResponses.segment_review, data = result,force = True)
+    #     return True
 
     def post_response_issue(self, response_key, title_data, description):
         # Only allow posting if there is not already a response issue of the same type.
@@ -451,6 +494,22 @@ class GroupProject:
             **kwargs,
         )
 
+    def repo_tag_delete(self, request_name, segments):
+        '''
+        Delete a tag in the grading repository for the current lab group.
+        This can be required under normal circumstances if submission review issues are altered.
+
+        Arguments:
+        * request_name, segments: As for repo_tag.
+        '''
+        self.lab.delete_tag(self.repo_tag(request_name, segments).name)
+
+return self.lab.repo.create_tag(
+            self.repo_tag(request_name, segments).name,
+            ref = ref,
+            **kwargs,
+        )
+
     def hotfix_group(self, branch_hotfix, branch_group):
         '''
         Attempt to hotfix the branch 'branch_group' of the group project.
@@ -645,6 +704,8 @@ class GroupProject:
         Process review responses to submissions (if they have been configured).
         This skips requests that are already marked as reviewed
         with the same outcome in the local grading repository.
+
+        Currently, this method does nothing.
         '''
         # Submissions must be configured to proceed.
         key = self.lab.config.submission_handler_key
@@ -659,17 +720,12 @@ class GroupProject:
 
         for request_and_submissions in submission_handler_data.requests_and_submissions.values():
             (issue, title_data) = request_and_submissions.responses[response_key]
-            title_data['grader'] = issue['author']
-
-        submission_reviews = submission_response_issues[key]
-
-
-    def process_review_issues(self, refresh = False):
-        if refresh:
-            with contextlib.suppress(AttributeError):
-                del self.response_issues
-
-
+            result = {
+                'grader': issue['author'],
+                'outcome': title_data['outcome'],
+            }
+            # TODO: shelved for now (see RequestAndResponses).
+            #request_and_submissions.review_update(result)
 
     def post_response_issue(self, title, description):
         self.logger.debug(general.join_lines([
