@@ -923,16 +923,6 @@ class Course:
         '''Specialization of parse_tags for submission tags.'''
         return self.request_tag_parser(self.config.submission_request, parsed_tags)
 
-    def format_issue_metadata(self, project, issue, description = None):
-        def lines():
-            if description:
-                yield description
-            yield f'* title: {issue.title}'
-            author = issue.author['name']
-            yield f'* author: {author}'
-            yield f'* URL: {issue.web_url}'
-        return general.join_lines(lines())
-
     def parse_issues(self, name, *args):
         '''Instantiation of parse_items for issues.'''
         return self.parse_items(f'{name} issue', self.format_issue_metadata, *args)
@@ -1025,7 +1015,8 @@ class Course:
             result[tag_name] = (tag, responses.pop(tag_name, None))
 
         for (issue, _) in responses.values():
-            self.logger.warning(self.format_issue_metadata(project, issue,
+            self.logger.warning(gitlab_tools.format_issue_metadata(
+                issue,
                 f'Response issue in project {project.path_with_namespace} with no matching request tag:'
             ))
         return result
@@ -1104,14 +1095,15 @@ class Course:
                     (issue_prev, _) = prev
                     self.logger.warning(
                           general.join_lines([f'Duplicate response issue in project {project.path_with_namespace}.'])
-                        + self.format_issue_metadata(project, issue_prev, 'First issue:')
-                        + self.format_issue_metadata(project, issue, 'Second issue:')
+                        + gitlab_tools.format_issue_metadata(issue_prev, 'First issue:')
+                        + gitlab_tools.format_issue_metadata(issue, 'Second issue:')
                         + general.join_lines(['Ignoring second issue.'])
                     )
                 else:
                     request_issues[key] = (issue, u)
             else:
-                self.logger.warning(self.format_issue_metadata(project, issue,
+                self.logger.warning(gitlab_tools.format_issue_metadata(
+                    issue,
                     f'Response issue in project {project.path_with_namespace} with no matching request tag:'
                 ))
         return r
@@ -1143,7 +1135,7 @@ class Course:
             for ((tag_name, response_type), (issue, _)) in response_map.items():
                 self.logger.warning(general.join_lines([
                     f'Unrequested {response_type} issue in project {project.path_with_namespace}:'
-                ]) + self.format_issue_metadata(project, issue))
+                ]) + self.format_issue_metadata(issue))
             return r
 
         return self.request_namespace(lambda request_type, spec:

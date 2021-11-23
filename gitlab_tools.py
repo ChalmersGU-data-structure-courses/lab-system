@@ -330,3 +330,13 @@ def url_issues_new(project, **kwargs):
         ['-', 'issues', 'new'],
         dict((f'issue[{key}]', value) for (key, value) in kwargs.items())
     )
+
+def format_issue_metadata(issue, description = None):
+    def lines():
+        if description:
+            yield description
+        yield f'* title: {issue.title}'
+        author = issue.author['name']
+        yield f'* author: {author}'
+        yield f'* URL: {issue.web_url}'
+    return general.join_lines(lines())
