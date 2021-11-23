@@ -53,6 +53,10 @@ class RequestAndResponses:
     def repo_remote_commit(self):
         return self.repo_remote_tag.commit
 
+    @functools.cached_property
+    def date(self):
+        return git_tools.commit_date(self.repo_remote_commit)
+
     def repo_tag(self, segments = ['tag']):
         '''Forwards to self.group.repo_tag.'''
         return self.group.repo_tag(self.request_name, segments)
