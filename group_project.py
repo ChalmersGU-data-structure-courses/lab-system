@@ -92,6 +92,36 @@ class RequestAndResponses:
         '''
         self.repo_tag_create_json(self, RequestAndResponses.segment_handled, data = data)
 
+    def process_request(self):
+        '''
+        Process request.
+        This only proceeds if the request is not already
+        marked handled in the local grading repository.
+        '''
+        # Skip processing if we already handled this request.
+        if self.handled():
+            return
+
+        # Create tag <full group id>/<request name>/tag copying the request tag.
+        self.repo_tag_create(
+            ref = self.repo_remote_commit,
+            message = git_tools.tag_message(self.repo_remote_tag),
+            force = True,
+        )
+
+        # Call handler with this object as argment.
+        self.logger.debug(
+            f'Handling request {self.request_name} in {self.group.name} '
+            f'using handler {self.handler_data.handler_key}'
+        )
+        result = self.handler_data.handler.handle_request(self)
+        if result != None:
+            self.logger.debug(general.join_lines(['Handler result:', str(result)]))
+
+        # Create tag <full-group-id>/<request_name>/handled
+        # and store handler's result JSON-encoded as its message.
+        self.set_handled(result)
+
 class HandlerData:
     def __init__(self, group, handler_key):
         self.course = group.course
@@ -179,6 +209,14 @@ class HandlerData:
                 else:
                     request_and_responses.responses[response_key] = issue_data
         return result
+
+    def process_requests(self):
+        '''
+        Process requests.
+        This skips requests already marked as handled in the local grading repository.
+        '''
+        for request_and_responses in self.requests_and_responses.values():
+            request_and_responses.process()
 
 class GroupProject:
     def __init__(self, lab, id, logger = logging.getLogger(__name__)):
@@ -467,7 +505,7 @@ class GroupProject:
                 self.logger.warn(
                     'Ignoring tag {} in student group {} not composed '
                     "of exactly one path part (with respect to separator '/').".format(
-                        shlex.quote(str(request_path)), self.name
+                        shlex.quote(tag_name), self.name
                     )
                 )
                 return ()
@@ -534,6 +572,14 @@ class GroupProject:
         for handler_data in self.handler_data.values():
             with contextlib.suppress(AttributeError):
                 del handler_data.requests_and_responses
+
+    def process_requests(self):
+        '''
+        Process requests.
+        This skips requests already marked as handled in the local grading repository.
+        '''
+        for handler_data in self.handler_data.values():
+            handler_data.process_requests()
 
 
     def post_response_issue(self, title, description):
