@@ -308,7 +308,7 @@ class HandlerData:
         # Initialized with inner dictionaries set to None.
         self.response_issues = {
             response_key: None
-            for (response_key, issue_title) in self.handler.issue_titles.items()
+            for (response_key, issue_title) in self.handler.response_titles.items()
         }
 
         # Is this the submission handler?
@@ -398,7 +398,7 @@ class GroupProject:
 
         self.handler_data = {
             handler_key: HandlerData(self, handler_key)
-            for handler_key in self.lab.config.request_handlers.items()
+            for handler_key in self.lab.config.request_handlers.keys()
         }
 
     @functools.cached_property
@@ -451,7 +451,7 @@ class GroupProject:
                 self.remote,
                 self.project.get,
                 fetch_branches = [(git_tools.Namespacing.remote, git_tools.wildcard)],
-                fetch_tags = [(git_tools.Namespacing.qualified_suffix_tag, git_tools.wildcard)],
+                fetch_tags = [(git_tools.Namespacing.remote, git_tools.wildcard)],
                 prune = True,
             )
         except gitlab.GitlabGetError as e:
