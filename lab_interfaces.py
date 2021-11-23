@@ -53,10 +53,6 @@ class RequestHandler:
     For example, it may post response issues for the lab instance.
 
     Required attributes:
-    * name:
-        Name (string) of this kind of request.
-        For example, 'submission'.
-        Used for log messages.
     * request_matcher:
         The request matcher to be used for this type of request.
     * response_titles:
@@ -99,7 +95,7 @@ class SubmissionHandler(RequestHandler):
     '''
     This interface specifies a request handler for handling submissions.
     The handle_request method must returns a JSON-encodable dictionary.
-    This dictionary must have the following keys:
+    This dictionary must have the following key:
     - 'accepted':
         Boolean indicating if the submission system
         should accept or reject the submission.
