@@ -4,18 +4,13 @@ import general
 import git
 import gitlab
 import logging
-from pathlib import Path, PurePosixPath
-import shutil
 import tempfile
 import types
 
 import course_basics
 import git_tools
 import gitlab_tools
-import google_tools.sheets
 import grading_sheet
-from instance_cache import instance_cache
-import live_submissions_table
 import print_parse
 
 class HandlerData:

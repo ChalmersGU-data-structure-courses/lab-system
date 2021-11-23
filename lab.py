@@ -1,23 +1,21 @@
 import contextlib
 import functools
-import general
 import git
 import gitlab
+import gitlab.v4.objects.tags
 import logging
 from pathlib import Path, PurePosixPath
 import shutil
 import tempfile
 import types
 
-import course_basics
 import git_tools
 import gitlab_tools
 import google_tools.sheets
 import grading_sheet
 import group_project
-from instance_cache import instance_cache
+import instance_cache
 import live_submissions_table
-import print_parse
 
 class Lab:
     def __init__(self, course, id, config = None, dir = None, logger = logging.getLogger(__name__)):
@@ -313,7 +311,7 @@ class Lab:
             self.repo.remote(self.course.config.path_lab.grading).push()
             self.repo_updated = False
 
-    @instance_cache
+    @instance_cache.instance_cache
     def student_group(self, group_id):
         return group_project.GroupProject(self, group_id)
 
