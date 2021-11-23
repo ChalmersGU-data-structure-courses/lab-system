@@ -35,12 +35,15 @@ Config.__doc__ = '''
         - callable: use the result from duplicates(key, first_value, second_value).
     '''
 
-def parse_items(config, parser, parse_results, items):
+def parse_items(config, parser, parser_name, parse_results, items):
     '''
     Parse items using a given parser.
 
     Arguments:
     * config: parsing configuration, instance of Config.
+    * parser_name:
+        Name of the parser.
+        Only used for formatting log messages.
     * parser:
         Parser called on each items.
         On parse failure, returns None.
@@ -83,7 +86,7 @@ def parse_items(config, parser, parse_results, items):
                 if callable(config.on_duplicate):
                     value = config.on_duplicate(key, value_prev, value)
                 else:
-                    msg = 'Duplicate {config.item_name} with key {key} in {config.location_name}'
+                    msg = f'Duplicate {parser_name} {config.item_name} with key {key} in {config.location_name}'
                     if config.on_duplicate == None:
                         raise ValueError(msg)
 
@@ -125,19 +128,13 @@ def parse_all_items(config, parser_data, items):
     Arguments:
     * config: parsing configuration, instance of Config.
     * parser_data:
-        Iterable of pairs (parser, parsed_items).
-        parser and parsed_items are as in parse_items.
-        An entry can also just be 'parser'.
-        In that case, parsed_items is assumed to be None.
+        Iterable of producing triples (parser, parser_name, parse_results)
+        for use with parse_item.
     * items:
         Iterable of items to parse.
         This will be exhausted by this method.
     '''
-    for parser_entry in parser_data.items():
-        if isinstance(parser_entry, [tuple, list]):
-            (parser, parsed_items) = parser_entry
-        else:
-            parser = parser_entry
-            parsed_items = None
-        items = parse_items(config, parser, parsed_items, items)
+    for (parser, parser_name, parse_results) in parser_data.items():
+        parse_results = general.from_singleton_maybe(parse_results)
+        items = parse_items(config, parser, parser_name, parse_results, items)
     log_unrecognized_items(config, items)
