@@ -156,7 +156,7 @@ class RequestAndResponses:
         if response_key == None:
             return None
 
-        response = self.responses[response_key]
+        response = self.responses.get(response_key)
         if response == None:
             return None
 
@@ -244,7 +244,7 @@ class RequestAndResponses:
         ]))
         issue = self.group.project.lazy.issues.create({
             'title': title,
-            'description': self.append_mentions(description)
+            'description': self.lab.append_mentions(description),
         })
 
         # Make sure the local response issue caches are up to date.
