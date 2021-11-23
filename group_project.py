@@ -4,14 +4,12 @@ import general
 import git
 import gitlab
 import logging
-import tempfile
-import types
+from pathlib import PurePosixPath
+import shlex
 
-import course_basics
 import item_parser
 import git_tools
 import gitlab_tools
-import grading_sheet
 import print_parse
 
 class HandlerData:
@@ -41,6 +39,22 @@ class HandlerData:
             response_key: None
             for (response_key, issue_title) in self.handler.issue_titles.items()
         }
+
+    def request_tag_parser_data(self):
+        '''
+        Prepare parser_data entries for a request tag parsing call to item_parser.parse_all_items.
+        Initializes the request_tags map.
+        Returns an entry for use in the parser_data iterable.
+        '''
+        def parser(item):
+            (tag_name, tag_data) = item
+            if self.handler.request_matcher.parse(tag_name) == None:
+                return None
+            return (tag_name, tag_data)
+
+        u = dict()
+        self.request_tags = u
+        return (parser, self.handler_key, u)
 
     def response_issue_parser_data(self):
         '''
@@ -281,6 +295,57 @@ class GroupProject:
             yield hook
         finally:
             self.hook_delete(hook)
+
+    def tags_from_gitlab(self):
+        self.logger.debug(f'Parsing request tags in {self.name} from Chalmers GitLab.')
+        return gitlab_tools.get_tags_sorted_by_date(self.project.lazy)
+
+    def tags_from_repo(self):
+        self.logger.debug(f'Parsing request tags in {self.name} from local grading repository.')
+        return sorted((
+            (str(key), (tag, tag.commit))
+            for (key, tag) in self.lab.remote_requests[self.id].items()
+        ), key = lambda x: git_tools.commit_date(x[1][1]))
+
+    def parse_request_tags(self, from_gitlab = True):
+        # To be a valid request, the tag name must consist of a single path segment.
+        # That is, it must be non-empty and cannot contain the character '/'.
+        def check_single_path_segment(item):
+            (tag_name, tag_data) = item
+            tag_parts = PurePosixPath(tag_name).parts
+            try:
+                (_,) = tag_parts
+            except ValueError:
+                # Take tag out of the parsing stream.
+                self.logger.warn(
+                    'Ignoring tag {} in student group {} not composed '
+                    "of exactly one path part (with respect to separator '/').".format(
+                        shlex.quote(str(request_path)), self.name
+                    )
+                )
+                return ()
+
+            # Keep tag for further parsing
+            return None
+
+        def f():
+            yield (check_single_path_segment, None, None)
+            for handler_data in self.handler_data.values():
+                yield handler_data.request_tag_parser_data()
+
+        item_parser.parse_all_items(
+            item_parser.Config(
+                location_name = self.name,
+                item_name = 'request tag',
+                item_formatter = lambda x: gitlab_tools.format_tag_metadata(self.project.get, x[0]),
+                logger = self.logger,
+            ),
+            f(),
+            {
+                True: self.tags_from_gitlab(),
+                False: self.tags_from_grading_repo()
+            }[from_gitlab].items(),
+        )
 
     def official_issues(self):
         '''
