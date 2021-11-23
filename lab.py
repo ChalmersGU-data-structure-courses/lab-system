@@ -329,6 +329,24 @@ class Lab:
         for group in self.student_groups:
             group.repo_fetch()
 
+    @functools.cached_property
+    def remote_requests(self):
+        '''
+        A dictionary mapping each group id to a dictionary of key-value pairs (path, ref) where:
+        - path is the tag name in the remote repository (converted to pathlib.PurePosixPath).
+        - ref is an instance of git.Reference for the reference in refs/remote_tags/<full group id>.
+
+        Clear this cached property after fetching.
+        '''
+        refs = git_tools.references_hierarchy(self.repo)
+        remote_tags = refs[git_tools.refs.name][git_tools.remote_tags.name]
+
+        def f():
+            for group_id in self.course.groups:
+                value = remote_tags.get(self.course.config.group.full_id.print(group_id), dict())
+                yield (group_id, git_tools.flatten_references_hierarchy(value))
+        return dict(f())
+
     def create_group_projects(self):
         for group_id in self.course.groups:
             self.student_group(group_id).project.create()
