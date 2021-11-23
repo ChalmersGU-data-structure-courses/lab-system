@@ -13,6 +13,37 @@ import gitlab_tools
 import grading_sheet
 import print_parse
 
+class HandlerData:
+    def __init__(self, group, handler_key):
+        self.course = group.course
+        self.lab = group.lab
+        self.logger = group.logger
+
+        self.handler_key = handler_key
+        self.handler = self.lab.config.request_handlers[handler_key]
+
+        # A dictionary mapping request names to tags, which are an instance of one of:
+        # - gitlab.v4.objects.tags.ProjectTag,
+        # - pairs of git.Reference and git.Commit.
+        # Ordered by date.
+        #
+        # Populated by GroupProject.parse_requests_tags.
+        # Initializes with None.
+        self.request_tags = None
+
+        # A dictionary mapping keys of response titles to dictionaries
+        # mapping request names to issues and issue title parsings.
+        #
+        # Populated by GroupProject.parse_response_issues.
+        # Initialized with inner dictionaries set to None.
+        self.response_issues = {
+            response_key: None,
+            for (response_key, issue_title) in self.handler.issue_titles.items()
+        }
+
+    @functools.cached_property
+    def requests_and_responses(self):
+
 class GroupProject:
     def __init__(self, lab, id, logger = logging.getLogger(__name)):
         self.course = lab.course
@@ -22,6 +53,11 @@ class GroupProject:
 
         self.name = self.course.config.group.name.print(id)
         self.remote = self.course.config.group.full_id.print(id)
+
+        self.handler_data = {
+            handler_key: HandlerData(self, handler_key)
+            for handler_key in self.lab.config.request_handlers.items()
+        }
 
     @functools.cached_property
     def gl(self):
