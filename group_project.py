@@ -111,6 +111,56 @@ class RequestAndResponses:
         '''
         self.repo_tag_create_json(self, RequestAndResponses.segment_handled, data = data)
 
+    def is_accepted(self):
+        '''
+        Returns a boolean indicating if the submission request has been accepted.
+        This means that it counts as valid submission attempt, not that the submission has passed.
+        See the documentation of submission handlers.
+        Only valid to call for submission requests.
+        '''
+        return self.handled(read_data = True)['accepted']
+
+    def review_result(self):
+        '''
+        Get the outcome of the review, or None if there is none.
+        Only valid to call for submission requests.
+
+        Returns a pair (issue, outcome) on success where:
+        - issue is the review issue on Chalmers GitLab,
+        - outcome is the outcome as produced by the response issue printer-parser.
+        '''
+        # Review issues must be configured to proceed.
+        response_key = self.lab.config.submission_handler_key
+        if response_key == None:
+            return None
+
+        response = and_submissions.responses[response_key]
+        if response == None:
+            return None
+
+        (issue, title_data) = response
+        return (issue, title_data['outcome'])
+
+    def outcome(self):
+        '''
+        Get the outcome of the review, or None if there is none.
+        Only valid to call for submission requests.
+
+        First checks for a review issue and then the result of the submission handler.
+
+        Returns the outcome or None.
+        The form of the outcome is specific to the submission handler.
+        '''
+        if self.review_result() != None:
+            (issue, outcome) = self.review_result()
+            return outcome
+
+        result = self.handled(read_data = False)
+        if result['review_needed']:
+            return None
+
+        return result['outcome']
+
     # TODO:
     # Shelved for now.
     # Best to avoid state when we can.
@@ -247,6 +297,9 @@ class HandlerData:
             response_key: None
             for (response_key, issue_title) in self.handler.issue_titles.items()
         }
+
+        # Is this the submission handler?
+        self.is_submission_handler = handler_key == self.lab.config.submission_handler_key
 
     def request_tag_parser_data(self):
         '''
