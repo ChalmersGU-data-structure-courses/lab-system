@@ -2,6 +2,7 @@
 import ast
 import builtins
 import collections
+import pathlib
 import re
 import urllib.parse
 
@@ -282,6 +283,26 @@ def url_quote(safe = '/'):
     )
 
 url_quote_no_safe = url_quote(safe = '')
+
+pure_posix_path = PrintParse(
+    print = str,
+    parse = pathlib.PurePosixPath,
+)
+
+pure_path = PrintParse(
+    print = str,
+    parse = pathlib.PurePath,
+)
+
+posix_path = PrintParse(
+    print = str,
+    parse = pathlib.PosixPath,
+)
+
+path = PrintParse(
+    print = str,
+    parse = pathlib.Path,
+)
 
 # A network location.
 # Reference: Section 3.1 of RFC 1738
