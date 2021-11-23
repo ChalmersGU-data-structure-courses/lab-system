@@ -92,7 +92,7 @@ class RequestAndResponses:
     # Tag path segment suffix used for marking requests as handled.
     segment_handled = ['handled']
 
-    def handled(self, read_data = False):
+    def get_handled(self, read_data = False):
         '''
         Check the local grading repository whether this request has been handled.
         This checks for the existence of a tag <group full id>/<request name>/handled.
@@ -102,6 +102,14 @@ class RequestAndResponses:
             return self.repo_tag_exists(self, RequestAndResponses.segment_handled)
         return self.repo_tag_read_json(self, RequestAndResponses.segment_handled)
 
+    @functools.cached_property
+    def handled(self):
+        return self.get_handled()
+
+    @functools.cached_property
+    def handled_result(self):
+        return self.get_handled(read_data = True)
+
     def set_handled(self, data = None, **kwargs):
         '''
         Mark this request in the local grading repository as handled.
@@ -110,8 +118,12 @@ class RequestAndResponses:
         Further keyword arguments are passed to repo_tag_create.
         '''
         self.repo_tag_create_json(self, RequestAndResponses.segment_handled, data = data)
+        self.handled = True
+        if data != None:
+            self.handled_result = data
 
-    def is_accepted(self):
+    @functools.cached_property
+    def accepted(self):
         '''
         Returns a boolean indicating if the submission request has been accepted.
         This means that it counts as valid submission attempt, not that the submission has passed.
@@ -120,6 +132,7 @@ class RequestAndResponses:
         '''
         return self.handled(read_data = True)['accepted']
 
+    @functools.cached_property
     def review_result(self):
         '''
         Get the outcome of the review, or None if there is none.
@@ -134,13 +147,14 @@ class RequestAndResponses:
         if response_key == None:
             return None
 
-        response = and_submissions.responses[response_key]
+        response = self.responses[response_key]
         if response == None:
             return None
 
         (issue, title_data) = response
         return (issue, title_data['outcome'])
 
+    @functools.cached_property
     def outcome(self):
         '''
         Get the outcome of the review, or None if there is none.
@@ -151,15 +165,14 @@ class RequestAndResponses:
         Returns the outcome or None.
         The form of the outcome is specific to the submission handler.
         '''
-        if self.review_result() != None:
-            (issue, outcome) = self.review_result()
+        if self.review_result != None:
+            (issue, outcome) = self.review_result
             return outcome
 
-        result = self.handled(read_data = False)
-        if result['review_needed']:
+        if self.handled_result['review_needed']:
             return None
 
-        return result['outcome']
+        return self.handled_result['outcome']
 
     # TODO:
     # Shelved for now.
@@ -202,7 +215,7 @@ class RequestAndResponses:
 
     def post_response_issue(self, response_key, title_data, description):
         # Only allow posting if there is not already a response issue of the same type.
-        if response_key in responses:
+        if response_key in self.responses:
             ValueError(
                 f'Response issue for {response_key} already exists '
                 'for request {self.request_name} in {self.name} in {self.lab.name}'
@@ -237,7 +250,7 @@ class RequestAndResponses:
         marked handled in the local grading repository.
         '''
         # Skip processing if we already handled this request.
-        if self.handled():
+        if self.get_handled():
             return
 
         # Create tag <full group id>/<request name>/tag copying the request tag.
@@ -557,12 +570,6 @@ class GroupProject:
         '''
         self.lab.delete_tag(self.repo_tag(request_name, segments).name)
 
-return self.lab.repo.create_tag(
-            self.repo_tag(request_name, segments).name,
-            ref = ref,
-            **kwargs,
-        )
-
     def hotfix_group(self, branch_hotfix, branch_group):
         '''
         Attempt to hotfix the branch 'branch_group' of the group project.
@@ -773,11 +780,11 @@ return self.lab.repo.create_tag(
 
         for request_and_submissions in submission_handler_data.requests_and_submissions.values():
             (issue, title_data) = request_and_submissions.responses[response_key]
-            result = {
-                'grader': issue['author'],
-                'outcome': title_data['outcome'],
-            }
             # TODO: shelved for now (see RequestAndResponses).
+            #result = {
+            #    'grader': issue['author'],
+            #    'outcome': title_data['outcome'],
+            #}
             #request_and_submissions.review_update(result)
 
     def post_response_issue(self, title, description):
