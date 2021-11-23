@@ -4,6 +4,7 @@ import general
 import git
 import gitlab
 import gitlab.v4.objects
+import json
 import logging
 from pathlib import PurePosixPath
 import shlex
@@ -27,6 +28,60 @@ class RequestAndResponses:
         else:
             (self.git_tag, self.git_commit) = tag_data
         self.responses = dict()
+
+    def repo_tag(self, segments = ['tag']):
+        '''Forwards to self.group.repo_tag.'''
+        return self.group.repo_tag(self.request_name, segments)
+
+    def repo_tag_exist(self, segments):
+        '''Forwards to self.group.repo_tag_exist.'''
+        return self.group.repo_tag_exist(self.request_name, segments)
+
+    def repo_tag_create(self, segments = ['tag'], ref = None, **kwargs):
+        '''Forwards to self.group.repo_tag_create.'''
+        return self.group.repo_tag_create(self.request_name, segments, ref, **kwargs)
+
+    def repo_tag_create_json(self, segments, ref = None, data = None, **kwargs):
+        '''
+        Create a tag with JSON-encoded data as message.
+        Signature is as for repo_tag_create, except
+        the message keyword argument must not be used.
+        Returns the created tag.
+        '''
+        return self.repo_tag_create(
+            segments,
+            ref,
+            message = None if data == None else json.dumps(data, indent = 2),
+            **kwargs,
+        )
+
+    def repo_tag_read_json(self, segments):
+        '''
+        Read the JSON-encoded data in the message of a tag.
+        '''
+        return json.loads(git_tools.tag_message(self.repo_tag(segments)))
+
+    # Tag path segment suffix used for marking requests as handled.
+    segment_handled = ['handled']
+
+    def handled(self, read_data = False):
+        '''
+        Check the local grading repository whether this request has been handled.
+        This checks for the existence of a tag <group full id>/<request name>/handled.
+        If read_data is set, we read JSON-encoded data from the tag message.
+        '''
+        if not read_data:
+            return self.repo_tag_exists(self, RequestAndResponses.segment_handled)
+        return self.repo_tag_read_json(self, RequestAndResponses.segment_handled)
+
+    def set_handled(self, data = None, **kwargs):
+        '''
+        Mark this request in the local grading repository as handled.
+        See handled.
+        If the optional argument data is given, it is stored in JSON-encoded format in the tag message.
+        Further keyword arguments are passed to repo_tag_create.
+        '''
+        self.repo_tag_create_json(self, RequestAndResponses.segment_handled, data = data)
 
 class HandlerData:
     def __init__(self, group, handler_key):
@@ -251,7 +306,7 @@ class GroupProject:
         request_name = git_tools.qualify(self.remote, request_name) / PurePosixPath(*segments)
         return git_tools.normalize_tag(self.lab.repo, request_name)
 
-    def repo_tag_exist(self, request_name, segments):
+    def repo_tag_exist(self, request_name, segments = ['tag']):
         '''
         Test whether a tag with specified name and segments for the current lab group exists in the grading repository.
         Arguments are as for repo_tag.
