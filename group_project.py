@@ -640,6 +640,36 @@ class GroupProject:
         for handler_data in self.handler_data.values():
             handler_data.process_requests()
 
+    def process_review_responses(self):
+        '''
+        Process review responses to submissions (if they have been configured).
+        This skips requests that are already marked as reviewed
+        with the same outcome in the local grading repository.
+        '''
+        # Submissions must be configured to proceed.
+        key = self.lab.config.submission_handler_key
+        if key == None:
+            return
+        submission_handler_data = self.handler_data[key]
+            
+        # Review issues must be configured to proceed.
+        response_key = self.lab.config.submission_handler_key
+        if key == None:
+            return
+
+        for request_and_submissions in submission_handler_data.requests_and_submissions.values():
+            (issue, title_data) = request_and_submissions.responses[response_key]
+            title_data['grader'] = issue['author']
+
+        submission_reviews = submission_response_issues[key]
+
+
+    def process_review_issues(self, refresh = False):
+        if refresh:
+            with contextlib.suppress(AttributeError):
+                del self.response_issues
+
+
 
     def post_response_issue(self, title, description):
         self.logger.debug(general.join_lines([

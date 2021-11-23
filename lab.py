@@ -455,6 +455,13 @@ class Lab:
             finally:
                 self.logger.info('Deleting project hooks in all student projects (do not interrupt)')
 
+    # TODO: which calls to group?
+    def process_requests(self):
+        # TODO: clear response issue cache.
+        self.repo_fetch_all()
+        for group in self.student_groups:
+            group.process_requests()
+
     @functools.cached_property
     def grading_template_issue(self):
         issues_grading_template = dict()
