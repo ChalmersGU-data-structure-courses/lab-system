@@ -3,6 +3,7 @@ import functools
 import general
 import git
 import gitlab
+import gitlab.v4.objects
 import logging
 from pathlib import PurePosixPath
 import shlex
@@ -12,10 +13,26 @@ import git_tools
 import gitlab_tools
 import print_parse
 
+class RequestAndResponses:
+    def __init__(self, handler_data, request_name, tag_data):
+        self.course = handler_data.course
+        self.lab = handler_data.lab
+        self.group = handler_data.group
+        self.handler_data = handler_data
+        self.logger = handler_data.logger
+
+        self.request_name = request_name
+        if isinstance(tag_data, gitlab.v4.objects.ProjectTag):
+            self.gitlab_tag = tag_data
+        else:
+            (self.git_tag, self.git_commit) = tag_data
+        self.responses = dict()
+
 class HandlerData:
     def __init__(self, group, handler_key):
         self.course = group.course
         self.lab = group.lab
+        self.group = group
         self.logger = group.logger
 
         self.handler_key = handler_key
@@ -78,7 +95,26 @@ class HandlerData:
 
     @functools.cached_property
     def requests_and_responses(self):
-        pass
+        '''
+        A dictionary pairing request tags with response issues.
+        The keys are request names.
+        Each value is an instance of RequestAndResponses.
+        '''
+        result = dict()
+        for (request_name, tag_data) in self.requests.items():
+            result[request_name] = RequestAndResponses(request_name, tag_data)
+
+        for (response_key, u) in self.responses.values():
+            for (request_name, issue_data) in u.values():
+                request_and_responses = result.get(request_name)
+                if request_and_responses == None:
+                    self.logger.warning(gitlab_tools.format_issue_metadata(
+                        issue_data[0],
+                        f'Response issue in {self.group.name} with no matching request tag:'
+                    ))
+                else:
+                    request_and_responses.responses[response_key] = issue_data
+        return result
 
 class GroupProject:
     def __init__(self, lab, id, logger = logging.getLogger(__name__)):
@@ -347,6 +383,11 @@ class GroupProject:
             }[from_gitlab].items(),
         )
 
+        # Clear requests and responses cache.
+        for handler_data in self.handler_data.values():
+            with contextlib.suppress(AttributeError):
+                del handler_data.requests_and_responses
+
     def official_issues(self):
         '''
         Generator function retrieving the official issues.
@@ -377,6 +418,11 @@ class GroupProject:
             f(),
             self.official_issues(self),
         )
+
+        # Clear requests and responses cache.
+        for handler_data in self.handler_data.values():
+            with contextlib.suppress(AttributeError):
+                del handler_data.requests_and_responses
 
 
     def post_response_issue(self, title, description):
