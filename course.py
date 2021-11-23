@@ -8,7 +8,7 @@ import gitlab
 import json
 import logging
 import operator
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import shlex
 import types
@@ -28,6 +28,9 @@ def dict_sorted(xs):
 
 #===============================================================================
 # Course labs management
+
+class HookCallbackError(Exception):
+    pass
 
 class InvitationStatus(str, enum.Enum):
     '''
@@ -757,6 +760,50 @@ class Course:
         self.logger.debug(f'Protecting branch {self.config.branch.master}')
         gitlab_tools.protect_branch(self.gl, project.id, self.config.branch.master)
         return project
+
+    @contextlib.contextmanager
+    def hook_manager(self, netloc):
+        '''
+        A context manager for installing GitLab web hooks for all student projects in all lab.
+        This is an expensive operation, setting up and cleaning up costs one HTTP call per project.
+        Yields a dictionary mapping each lab id to a dictionary mapping each group id
+        to the hook installed in the project of that group.
+        '''
+        self.logger.info('Creating project hooks in all labs')
+        try:
+            with contextlib.ExitStack() as stack:
+                def f():
+                    for lab in self.labs.values():
+                        yield (lab.id, stack.enter_context(lab.hook_manager(netloc)))
+                yield dict(f())
+        finally:
+            self.logger.info('Deleted project hooks in all labs')
+
+    def hook_callback(self, event):
+        try:
+            # Only handle certain kinds of callbacks.
+            event_name = event['event_name']
+            if not event_name in ['tag_push', 'issue']:
+                return
+
+            # Find the relevant lab and student project.
+            project_path = PurePosixPath(event['project']['path_with_namespace'])
+            project_path = project_path.relative_to(self.config.path.groups)
+            (group_id_gitlab, lab_full_id) = project_path.parts
+            lab_id = self.config.lab.full_id.parse(lab_full_id)
+            group_id = self.config.group.id_gitlab.parse(group_id_gitlab)
+            group = self.labs[lab_id].student_group(group_id)
+        except Exception as e:
+            raise HookCallbackError(e) from e
+
+        if event_name == 'tag_push':
+            self.logger.info('Handling new tags for {group.name} in {lab.name}.')
+            group.repo_fetch()
+            group.process_requests()
+        elif event_name == 'issue':
+            self.logger.info('Handling new issues for {group.name} in {lab.name}.')
+            # TODO: clear response issue cache.
+            # Process non-script issued response issues.
 
     @functools.cached_property
     def grading_spreadsheet(self):

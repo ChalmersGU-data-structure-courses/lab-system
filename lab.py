@@ -383,6 +383,23 @@ class Lab:
         for group in self.course.groups:
             self.hotfix_group(branch_hotfix, group, self.course.config.branch.master)
 
+    @contextlib.contextmanager
+    def hook_manager(self, netloc):
+        '''
+        A context manager for installing GitLab web hooks for all student projects in this lab.
+        This is an expensive operation, setting up and cleaning up costs one HTTP call per project.
+        Yields a dictionary mapping each group id to the hook installed in the project of that group.
+        '''
+        with contextlib.ExitStack() as stack:
+            try:
+                self.logger.info('Creating project hooks in all student projects')
+                def f():
+                    for group in self.student_groups:
+                        yield (group.id, stack.enter_context(group.hook_manager(netloc)))
+                yield dict(f())
+            finally:
+                self.logger.info('Deleting project hooks in all student projects (do not interrupt)')
+
     @functools.cached_property
     def grading_template_issue(self):
         issues_grading_template = dict()

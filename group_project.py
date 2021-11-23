@@ -311,7 +311,7 @@ class GroupProject:
               Thus, before deleting a response issue, you should first rename it
               (triggering the hook)  so that it is no longer recognized as a response issue.
         '''
-        url = 'https://' + print_parse.netloc.print(netloc)
+        url = print_parse.url.print(print_parse.URL_HTTPS(netloc))
         self.logger.debug(f'Creating project hook with url {url}')
         return self.project.lazy.hooks.create({
             'url': url,
@@ -326,7 +326,7 @@ class GroupProject:
         self.logger.debug(f'Deleting project hook with url {hook.url}')
         hook.delete()
 
-    def delete_all_hooks(self):
+    def hook_delete_all(self):
         '''
         Delete all webhook in the student project on GitLab.
         You should use this when previous program runs where killed or stopped
@@ -337,7 +337,7 @@ class GroupProject:
 
     @contextlib.contextmanager
     def hook_manager(self, netloc):
-        ''' A context manager for creating a webhook. '''
+        '''A context manager for creating a webhook.'''
         hook = self.hook_create(netloc)
         try:
             yield hook
