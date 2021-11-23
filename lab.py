@@ -18,6 +18,42 @@ import instance_cache
 import live_submissions_table
 
 class Lab:
+    '''
+    This class abstracts over a single lab in a course.
+
+    The lab is hosted on Chalmers GitLab.
+    Related attributes and methods:
+    - official_project, grading_project
+    - create_group_projects, create_group_projects_fast
+    - delete_group_projects
+    - hook_manager
+
+    This class also manages a local repository called the grading repository
+    that fetches from official and student projects on Chalmers GitLab
+    and pushes to the grading project on Chalmers GitLab.
+    The latter is intended to be consumed by graders.
+    Related attributes and methods:
+    - repo_init
+    - repo_fetch_all
+    - repo_push
+    - remote_requests
+
+    It also manages a grading sheet on Google Docs.
+    Related attributes and methods:
+    - grading_sheet
+    - update_grading_sheet
+
+    It also manages a live submissions table on Canvas.
+    Related attributes and methods:
+    - update_live_submissions_table(self, deadline = None):
+
+    This class is configured by the config argument to its constructor.
+    The format of this argument is documented in gitlab.config.py.template under _lab_config.
+
+    This class manages instances of group_project.GroupProject.
+    See student_group and student_groups.
+    Each instance of this class is managed by an instance of course.Course.
+    '''
     def __init__(self, course, id, config = None, dir = None, logger = logging.getLogger(__name__)):
         '''
         Initialize lab manager.

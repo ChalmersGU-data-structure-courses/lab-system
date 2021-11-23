@@ -47,6 +47,15 @@ class InvitationStatus(str, enum.Enum):
     POSSIBLY_ACCEPTED = 'possibly accepted'
 
 class Course:
+    '''
+    This class provides the lab management for a single course
+    via Chalmers GitLab and optionally Canvas for group sign-up.
+
+    This class manages instances of lab.Lab (see the attribute labs).
+
+    This class is configured by the config argument to its constructor.
+    The format of this argument is a module as documented in gitlab.config.py.template.
+    '''
     def __init__(self, config, dir = None, *, logger = logging.getLogger(__name__)):
         '''
         Arguments:
@@ -797,11 +806,11 @@ class Course:
             raise HookCallbackError(e) from e
 
         if event_name == 'tag_push':
-            self.logger.info('Handling new tags for {group.name} in {lab.name}.')
+            self.logger.info(f'Handling new tags for {group.name} in {lab.name}.')
             group.repo_fetch()
             group.process_requests()
         elif event_name == 'issue':
-            self.logger.info('Handling new issues for {group.name} in {lab.name}.')
+            self.logger.info(f'Handling new issues for {group.name} in {lab.name}.')
             # TODO: clear response issue cache.
             # Process non-script issued response issues.
 
