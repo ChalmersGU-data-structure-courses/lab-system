@@ -878,13 +878,6 @@ class Course:
                 + item_formatter(project, item)
             )
 
-    def format_tag_metadata(self, project, tag):
-        def lines():
-            yield f'* name: {tag.name}'
-            url = gitlab_tools.url_tag(project, tag)
-            yield f'* URL: {url}'
-        return general.join_lines(lines())
-
     def parse_tags(self, name, *args):
         '''Instantiation of parse_items for tags.'''
         return self.parse_items(f'{name} tag', self.format_tag_metadata, *args)
