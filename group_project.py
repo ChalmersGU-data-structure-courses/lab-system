@@ -229,19 +229,66 @@ class GroupProject:
         self.logger.info(f'Fetching from student repository, remote {self.remote}.')
         self.lab.repo.remote(self.remote).fetch('--update-head-ok')
 
-    def repo_tag(self, tag_name):
+    def repo_tag(self, request_name, segments = ['tag']):
         '''
-        Construct the tag (instance of git.Tag) in the grading repository
-        corresponding to the tag with given name in the student repository.
-        This will have the group's remote prefixed.
+        Construct a tag reference object for the current lab group.
+        This only constructs an in-memory object and does not yet interact with the grading repository.
+        The tag's name with habe the group's remote prefixed.
 
         Arguments:
         * tag_name: Instance of PurePosixPath, str, or gitlab.v4.objects.tags.ProjectTag.
+        * segments:
+            Iterable of path segments to attach to tag_name.
+            Strings or instances of PurePosixPath.
+            If not given, defaults to 'tag' for the request tag
+            corresponding to the given request_name.
+
+        Returns an instance of git.Tag.
         '''
-        if isinstance(tag_name, gitlab.v4.objects.tags.ProjectTag):
-            tag_name = tag_name.name
-        tag_name = git_tools.qualify(self.remote, tag_name) / 'tag'
-        return git_tools.normalize_tag(self.lab.repo, tag_name)
+        if isinstance(request_name, gitlab.v4.objects.tags.ProjectTag):
+            request_name = request_name.name
+
+        request_name = git_tools.qualify(self.remote, request_name) / PurePosixPath(*segments)
+        return git_tools.normalize_tag(self.lab.repo, request_name)
+
+    def repo_tag_exist(self, request_name, segments):
+        '''
+        Test whether a tag with specified name and segments for the current lab group exists in the grading repository.
+        Arguments are as for repo_tag.
+        Returns a boolean.
+        '''
+        return git_tools.tag_exist(self.repo_tag(request_name, segments))
+
+    def repo_tag_create(self, request_name, segments = ['tag'], ref = None, **kwargs):
+        '''
+        Create a tag in the grading repository for the current lab group.
+
+        Arguments:
+        * request_name, segments: As for repo_tag.
+        * ref:
+            The object to tag (for example, an instance of git.Commit).
+            If None, we take the commit referenced by the tag with segments replaced by ['tag'].
+        * kwargs:
+            Additional keyword arguments are forwarded.
+            For example:
+            - message:
+                A string for the message of an annotated tag.
+                TODO: Investigate if this can also be a bytes object.
+                      This probably comes down to parse_arglist in Modules/posixmodule.c of CPython.
+            - force:
+                A boolean indicating whether to force creation of the tag.
+                If true, any existing reference with this name is overwritten.
+
+        Returns an instance of git.Tag.
+        '''
+        if ref == None:
+            ref = self.repo_tag(request_name).commit
+
+        return self.lab.repo.create_tag(
+            self.repo_tag(request_name, segments).name,
+            ref = ref,
+            **kwargs,
+        )
 
     def hotfix_group(self, branch_hotfix, branch_group):
         '''
