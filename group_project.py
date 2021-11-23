@@ -99,8 +99,8 @@ class RequestAndResponses:
         If read_data is set, we read JSON-encoded data from the tag message.
         '''
         if not read_data:
-            return self.repo_tag_exists(self, RequestAndResponses.segment_handled)
-        return self.repo_tag_read_json(self, RequestAndResponses.segment_handled)
+            return self.repo_tag_exist(RequestAndResponses.segment_handled)
+        return self.repo_tag_read_json(RequestAndResponses.segment_handled)
 
     @functools.cached_property
     def handled(self):
@@ -117,7 +117,7 @@ class RequestAndResponses:
         If the optional argument data is given, it is stored in JSON-encoded format in the tag message.
         Further keyword arguments are passed to repo_tag_create.
         '''
-        self.repo_tag_create_json(self, RequestAndResponses.segment_handled, data = data)
+        self.repo_tag_create_json(RequestAndResponses.segment_handled, data = data)
         self.handled = True
         if data != None:
             self.handled_result = data
@@ -130,7 +130,7 @@ class RequestAndResponses:
         See the documentation of submission handlers.
         Only valid to call for submission requests.
         '''
-        return self.handled(read_data = True)['accepted']
+        return self.handled_result['accepted']
 
     @functools.cached_property
     def review_result(self):
@@ -299,14 +299,14 @@ class HandlerData:
         #
         # Populated by GroupProject.parse_requests_tags.
         # Initializes with None.
-        self.request_tags = None
+        self.requests = None
 
         # A dictionary mapping keys of response titles to dictionaries
         # mapping request names to issues and issue title parsings.
         #
         # Populated by GroupProject.parse_response_issues.
         # Initialized with inner dictionaries set to None.
-        self.response_issues = {
+        self.responses = {
             response_key: None
             for (response_key, issue_title) in self.handler.response_titles.items()
         }
@@ -317,7 +317,7 @@ class HandlerData:
     def request_tag_parser_data(self):
         '''
         Prepare parser_data entries for a request tag parsing call to item_parser.parse_all_items.
-        Initializes the request_tags map.
+        Initializes the requests map.
         Returns an entry for use in the parser_data iterable.
         '''
         def parser(item):
@@ -327,13 +327,13 @@ class HandlerData:
             return (tag_name, tag_data)
 
         u = dict()
-        self.request_tags = u
+        self.requests = u
         return (parser, self.handler_key, u)
 
     def response_issue_parser_data(self):
         '''
         Prepare parser_data entries for a response issue parsing call to item_parser.parse_all_items.
-        Initializes the response_issue map.
+        Initializes the responses map.
         Returns iterable of parser_data entries.
         '''
         for (response_key, response_title) in self.handler.response_titles.items():
@@ -347,7 +347,7 @@ class HandlerData:
                 return (r['tag'], (issue, r))
 
             u = dict()
-            self.response_issues[response_key] = u
+            self.responses[response_key] = u
             yield (parser, f'{self.handler_key} {response_key}', u)
 
     @functools.cached_property
@@ -356,13 +356,15 @@ class HandlerData:
         A dictionary pairing request tags with response issues.
         The keys are request names.
         Each value is an instance of RequestAndResponses.
+        Before this cached property can be constructed, calls
+        to parse_request_tags and parse_response_issues need to complete.
         '''
         result = dict()
         for (request_name, tag_data) in self.requests.items():
-            result[request_name] = RequestAndResponses(request_name, tag_data)
+            result[request_name] = RequestAndResponses(self, request_name, tag_data)
 
-        for (response_key, u) in self.responses.values():
-            for (request_name, issue_data) in u.values():
+        for (response_key, u) in self.responses.items():
+            for (request_name, issue_data) in u.items():
                 request_and_responses = result.get(request_name)
                 if request_and_responses == None:
                     self.logger.warning(gitlab_tools.format_issue_metadata(
@@ -376,7 +378,8 @@ class HandlerData:
     def process_requests(self):
         '''
         Process requests.
-        This skips requests already marked as handled in the local grading repository.
+        This method assumes that requests_and_responses has been set up.
+        It skips requests already marked as handled in the local grading repository.
         '''
         for request_and_responses in self.requests_and_responses.values():
             request_and_responses.process()
@@ -661,7 +664,7 @@ class GroupProject:
 
     def tags_from_gitlab(self):
         self.logger.debug(f'Parsing request tags in {self.name} from Chalmers GitLab.')
-        return gitlab_tools.get_tags_sorted_by_date(self.project.lazy)
+        return [(tag.name, tag) for tag in gitlab_tools.get_tags_sorted_by_date(self.project.lazy)]
 
     def tags_from_repo(self):
         self.logger.debug(f'Parsing request tags in {self.name} from local grading repository.')
@@ -706,8 +709,8 @@ class GroupProject:
             f(),
             {
                 True: self.tags_from_gitlab(),
-                False: self.tags_from_grading_repo()
-            }[from_gitlab].items(),
+                False: self.tags_from_repo(),
+            }[from_gitlab],
         )
 
         # Clear requests and responses cache.
@@ -743,7 +746,7 @@ class GroupProject:
                 logger = self.logger,
             ),
             f(),
-            self.official_issues(self),
+            self.official_issues(),
         )
 
         # Clear requests and responses cache.

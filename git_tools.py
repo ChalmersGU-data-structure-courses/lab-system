@@ -4,6 +4,7 @@ from enum import Enum, auto
 import functools
 import git
 import logging
+import operator
 from pathlib import PurePosixPath, Path
 import subprocess
 import tempfile
