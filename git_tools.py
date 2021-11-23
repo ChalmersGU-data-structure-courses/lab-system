@@ -1,4 +1,5 @@
 import contextlib
+import datetime
 from enum import Enum, auto
 import functools
 import git
@@ -80,6 +81,13 @@ def normalize_branch(repo, branch):
         return branch
     branch = PurePosixPath(branch)
     return git.Head(repo, str(refs / heads / branch))
+
+# Commits.
+
+def commit_date(commit):
+    return datetime.datetime.fromtimestamp(commit.committed_date).astimezone()
+
+# Tags.
 
 def normalize_tag(repo, tag):
     '''
