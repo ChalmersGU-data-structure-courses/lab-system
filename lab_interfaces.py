@@ -77,10 +77,12 @@ class RequestHandler:
         '''
         self.lab = lab
 
-    def handle_request(self, group_project, request_name):
+    def handle_request(self, request_and_responses):
         '''
         Handle a testing request.
-        This may call the lab class for the following:
+        Takes an instance of group_project.request_and_responses as argument.
+
+        This method may call request_and_responses for the following:
         * Work with the git repository for any tag under tag_name.
           This may read tags and create new tagged commits.
           Use methods (TODO) of the lab instance to work with this as a cache.
