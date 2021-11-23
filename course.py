@@ -9,7 +9,6 @@ import json
 import logging
 import operator
 from pathlib import Path, PurePosixPath
-import re
 import shlex
 import types
 import urllib.parse

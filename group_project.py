@@ -802,3 +802,49 @@ class GroupProject:
             #    'outcome': title_data['outcome'],
             #}
             #request_and_submissions.review_update(result)
+
+    def submissions(self, deadline = None):
+        '''
+        Counts only the accepted submission attempts.
+        If deadline is given, we restrict to prior submissions.
+        Here, the date refers to the date of the submission commit.
+        Returns an iterable of instances of SubmissionAndRequests ordered by the date.
+        '''
+        submission_handler_data = self.handler_data[self.lab.config.submission_handler_key]
+        for request_and_responses in submission_handler_data.requests_and_responses.values():
+            if request_and_responses.accepted:
+                if general.when(deadline != None, request_and_responses.date <= deadline):
+                    yield request_and_responses
+
+    def submissions_with_outcome(self, deadline = None):
+        '''
+        Restricts the output of self.submissions to instances of SubmissionAndRequests with an outcome.
+        This could be a submission-handler-provided outcome or a review by a grader.
+        Returns an iterable of instances of SubmissionAndRequests ordered by the date.
+        '''
+        for submission in self.submissions(deadline = deadline):
+            if submission.outcome != None:
+                yield submission
+
+    def submission_current(self, deadline = None):
+        '''
+        With respect to the output of self.submissions, return the last submission
+        if it needs a review (i.e. does not uet have an outcome), otherwise return None.
+        Returns an instances of SubmissionAndRequests or None.
+        '''
+        submissions = list(self.submissions(deadline = deadline))
+        if submissions:
+            submission_last = submissions[-1]
+            if submission_last.review_needed:
+                return submission_last
+
+    def submissions_relevant(self, deadline = None):
+        '''
+        Restrict the output of self.submissions to all relevant submissions.
+        A submission is *relevant* if it has an outcome or is the last submission and needs a review.
+        Returns an iterable of instances of SubmissionAndRequests ordered by the date.
+        '''
+        submissions = list(self.submissions(deadline = deadline))
+        for (i, submission) in submissions:
+            if i + 1 == len(submissions) or submission.outcome != None:
+                yield submission
