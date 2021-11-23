@@ -129,7 +129,7 @@ class Column:
     def __init__(self, config):
         '''
         Store the given configuration under self.config.
-        Inline its fieldsas instance attributes.
+        Inline its fields as instance attributes.
         '''
         self.config = config
         for field in Config._fields:
@@ -209,8 +209,10 @@ class DateColumn(Column):
             if self.late:
                 add_class(cell, 'problematic')
             with cell:
-                dominate.util.text(self.date.strftime('%b %d, %H:%M'))
-                dominate.tags.attr(style = 'text-align: center;')
+                with dominate.tags.span():
+                    dominate.util.text(self.date.strftime('%b %d, %H:%M'))
+                    dominate.tags.attr(title = self.date.strftime('%z (%Z)'))
+                    dominate.tags.attr(style = 'text-align: center;')
 
     def get_value(self, group_id):
         group = super().get_value(group_id)
