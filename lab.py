@@ -503,6 +503,38 @@ class Lab:
     #     finally:
     #         self.hooks_delete(hooks)
 
+    def parse_request_tags(self, from_gitlab = True):
+        '''
+        Parse request tags for group projects on Chalmers GitLab in this lab.
+        This calls parse_request_tags in each contained group project.
+        The boolean parameter from_gitlab determines if:
+        * (True) tags read from Chalmers GitLab (a HTTP call)
+        * (False) tags are read from the local grading repository.
+
+        This method needs to be called before requests_and_responses
+        in each contained handler data instance can be accessed.
+        '''
+        self.logger.info('Parsing request tags.')
+        for group in self.student_groups:
+            group.parse_request_tags(from_gitlab = from_gitlab)
+
+    def parse_response_issues(self):
+        '''
+        Parse response issues for group projects on Chalmers GitLab in this lab.
+        This calls parse_response_issues in each contained group project.
+
+        This method needs to be called before requests_and_responses
+        in each contained handler data instance can be accessed.
+        '''
+        self.logger.info('Parsing response issues.')
+        for group in self.student_groups:
+            group.parse_response_issues()
+
+    def parse_requests_and_responses(self, from_gitlab = True):
+        '''Calls parse_request_tags and parse_response_issues.'''
+        self.parse_request_tags(from_gitlab = from_gitlab)
+        self.parse_response_issues()
+
     # TODO: which calls to group?
     def process_requests(self):
         # TODO: clear response issue cache.
@@ -517,11 +549,6 @@ class Lab:
             self.course.grading_template_issue_parser(issues_grading_template)
         ])
         return issues_grading_template.get(())
-
-    def get_requests_and_responses(self):
-        self.logger.info('Getting request tags and response issues.')
-        for group in self.student_groups:
-            group.get_requests_and_responses()
 
     def handle_requests(self):
         self.logger.info('Handling request tags.')
@@ -616,71 +643,6 @@ class Lab:
             target = self.config.canvas_path_awaiting_grading
             folder = self.course.canvas_course.get_folder_by_path(target.parent)
             self.course.canvas_course.post_file(path, folder.id, target.name)
-
-    # def submission_handlers_of_type(self, klass = object):
-    #     def f(x):
-    #         (handler_id, submission_handler) = x
-    #         return isinstance(submission_handler, klass)
-    #     return dict(filter(f, self.config.submission_handlers.items()))
-
-    # def testers(self):
-    #     return self.submission_handlers_of_type(course_basics.Tester)
-
-    # def submission_grading_robograders(self):
-    #     return self.submission_handlers_of_type(course_basics.SubmissionGradingRobograders)
-
-    # def student_callable_robograders(self):
-    #     return self.submission_handlers_of_type(course_basics.StudentCallableRobograder)
-
-    # def setup_submission_handlers(self):
-    #     '''
-    #     Set up the submission handlers.
-    #     Call before any submission handling happens.
-    #     It is up to each submission handler how much of their setup
-    #     they want to handle via the setup callback method.
-    #     Some handlers may prefer initialization via their constructor
-    #     or even separate compilation setup outside the scope of this script.
-    #     '''
-    #     self.grading_issue_parsers = []
-    #     self.issue_parsers = []
-    #     self.tag_parsers = []
-
-    #     with self.checkout_with_empty_bin_manager(self.commit_problem) as (src, bin):
-    #         if self.config.compiler:
-    #             compiler.setup(self)
-    #             compiler.compile(src, bin)
-    #         for submission_handler in self.config.submission_handlers:
-    #             submission_handler.setup(self, src, bin)
-
-    # A grading issue is parsed to:
-    # * group_id
-    # * request tag
-    # * submission handler key
-    # * some handler-specific data
-
-    # A response issue is parsed to a request tag and
-    # * a grading response
-    # or
-    # * submission handler key
-    # * some handler-specific data
-
-    # Every process is still indexed by the request tag.
-    # Use group_id and request tag as keys.
-    # Use submission handler keys + manual grading as sub-keys
-    # Grading issues are never inputs, only outputs.
-    # So we could avoid scanning them.
-    # But that's inefficient.
-
-    # mapping sending request tag to:
-    # * tag in repo
-    # * handler key: ...
-
-    # mapping sending submission tag to:
-    # * tag in repo
-    # * grading response
-    # * handler key: ...
-
-    # Ignore submission handlers for now.
 
     def parse_issue(self, issue):
         request_types = self.config.request.__dict__

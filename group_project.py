@@ -740,6 +740,15 @@ class GroupProject:
         ), key = lambda x: git_tools.commit_date(x[1][1]))
 
     def parse_request_tags(self, from_gitlab = True):
+        '''
+        Parse request tags for this project and store the result in self.handler_data.
+        The boolean parameter from_gitlab determines if:
+        * (True) tags read from Chalmers GitLab (a HTTP call)
+        * (False) tags are read from the local grading repository.
+
+        This method needs to be called before requests_and_responses
+        in each handler data instance can be accessed.
+        '''
         # To be a valid request, the tag name must consist of a single path segment.
         # That is, it must be non-empty and cannot contain the character '/'.
         def check_single_path_segment(item):
@@ -799,6 +808,9 @@ class GroupProject:
         '''
         Parse response issues for this project on Chalmers GitLab
         on store the result in self.handler_data.
+
+        This method needs to be called before requests_and_responses
+        in each contained handler data instance can be accessed.
         '''
         def f():
             for handler_data in self.handler_data.values():
