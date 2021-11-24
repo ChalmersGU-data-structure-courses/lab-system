@@ -590,52 +590,6 @@ class Lab:
                 self.compiler.compile(src, bin)
                 yield (src, bin)
 
-    def make_tag_after(self, tag, commit_prev, prev_name):
-        '''
-        Given a tag tag and a commit commit_prev in the grading repository,
-        make a tag tag_after whose commit is a descendant of both tag and ref_prev,
-        but has tree (content) identical to that of tag.
-        The name of tag must be of the form tag_core / 'tag'.
-        The name of tag_after will be 'merge' / tag_core / 'after' / prev_name.
-        If tag is a descendant of commit_prev, then tag_after is a synonym for tag.
-        Otherwise, it is constructed as a one-sided merge.
-        Returns the tag tag_after (an instance of git.Tag).
-
-        First tries to retrieve an existing tag tag_after.
-        If none exists, we create it and mark the repository as updated.
-
-        Arguments:
-        * tag:
-            An instance of git.Tag, PurePosixPath, or str.
-            All paths are interpreted relative to refs / tags.
-        * commit_prev:
-            An instance of git.Commit, git.Reference, PurePosixPath, or str.
-            All paths are interpreted absolutely with respect to the repository.
-        * prev_name:
-            An instance of PurePosixPath or str.
-        '''
-        # Resolve inputs.
-        tag = git_tools.normalize_tag(self.repo, tag)
-        commit_prev = git_tools.resolve(self.repo, commit_prev)
-
-        tag_name = PurePosixPath(tag.name)
-        if not tag_name.name == 'tag':
-            raise ValueError(f'Tag name does not end with component "tag": {str(tag_name)}')
-        tag_after_name = str('merge' / tag_name.parent / 'after' / prev_name)
-
-        try:
-            tag_after = self.repo.tag(tag_after_name)
-            tag_after.commit  # Ensure that the reference exists.
-        except ValueError:
-            tag_after = git_tools.tag_onesided_merge(
-                self.repo,
-                tag_after_name,
-                tag.commit,
-                commit_prev,
-            )
-            self.repo_updated = True
-        return tag_after
-
     def update_live_submissions_table(self, deadline = None):
         self.logger.info('Updating live submissions table')
         table = live_submissions_table.LiveSubmissionsTable(self)
