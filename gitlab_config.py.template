@@ -165,7 +165,7 @@ grading_response = print_parse.compose(
 grading_response_template = print_parse.regex_many('Grading template', [], flags = re.IGNORECASE)
 
 # Used to initialize grading template instances.
-grading_response_default_score = 0
+grading_response_default_outcome = 0
 
 # Parsing and printing of references to a lab group.
 group = SimpleNamespace(
