@@ -1,4 +1,5 @@
 import contextlib
+import copy
 import datetime
 from enum import Enum, auto
 import functools
@@ -167,7 +168,7 @@ def references_hierarchy(repo):
     return general.expand_hierarchy(
         {PurePosixPath(ref.path): ref for ref in repo.refs},
         operator.attrgetter('parts'),
-        initial_value = references_hierarchy_basic
+        initial_value = copy.deepcopy(references_hierarchy_basic),
     )
 
 def flatten_references_hierarchy(ref_hierarchy):
