@@ -134,8 +134,11 @@ def row_data(values):
     }
 
 def request_update_cells(rows, fields, start = None, range = None):
+    '''
+    * rows: Iterable (of rows) of iterables (of cells) of cell values (API type CellData).
+    '''
     def f():
-        yield ('rows', rows)
+        yield ('rows', [row_data(row) for row in rows])
         yield ('fields', fields)
         nonlocal start, range
         if start != None:
@@ -148,13 +151,27 @@ def request_update_cells(rows, fields, start = None, range = None):
             raise ValueError("Exactly one of 'start' and 'range' must be given")
     return request('updateCells', **dict(f()))
 
-def request_update_cells_user_entered_value(rows, start = None, range = None):
+def request_update_cell(cell, fields, sheet_id, row, column):
     '''
-    Convenience specialization of request_update_cells_user for updating the user entered valued.
-    * rows: Iterable (of rows) of iterables (of cells) of user entered values (API type ExtendedValue). 
+    Convenience specialization of request_update_cells for updating a single cell.
+    * cell: value matching API type CellData.
     '''
     return request_update_cells(
-        [row_data(cell_data(userEnteredValue = cell) for cell in row) for row in rows],
+        [[cell]],
+        fields,
+        range = grid_range(sheet_id, (
+            general.range_singleton(row),
+            general.range_singleton(column),
+        )),
+    )
+
+def request_update_cells_user_entered_value(rows, start = None, range = None):
+    '''
+    Convenience specialization of request_update_cells for updating the user entered valued.
+    * rows: Iterable (of rows) of iterables (of cells) of user entered values (API type ExtendedValue).
+    '''
+    return request_update_cells(
+        ((cell_data(userEnteredValue = cell) for cell in row) for row in rows),
         'userEnteredValue',
         start = start,
         range = range,
@@ -162,15 +179,15 @@ def request_update_cells_user_entered_value(rows, start = None, range = None):
 
 def request_update_cell_user_entered_value(value, sheet_id, row, column):
     '''
-    Convenience specialization of request_update_cells_user for updating the user entered valued.
-    * rows: Iterable (of rows) of iterables (of cells) of user entered values (API type ExtendedValue). 
+    Convenience specialization of request_update_cell for updating the user entered valued.
+    * cell: value matching API type ExtendedValue.
     '''
-    return request_update_cells_user_entered_value(
+    return request_update_cell(
         [[value]],
-        range = grid_range(sheet_id, (
-            general.range_singleton(row),
-            general.range_singleton(column),
-        )),
+        'userEnteredValue',
+        sheet_id = sheet_id,
+        row = row,
+        column = column,
     )
 
 def requests_duplicate_dimension(sheet_id, dimension, copy_from, copy_to):
