@@ -215,6 +215,19 @@ class RequestAndResponses:
         (outcome, outcome_issue) = self.outcome_with_issue
         return outcome_issue
 
+    @functools.cached_property
+    def informal_grader_name(self):
+        '''
+        Get the informal name the reviewer, or 'Lab system' if there is none.
+        Only valid for submission requests with an outcome.
+        '''
+        if self.review == None:
+            return 'Lab system'
+
+        gitlab_username = self.outcome_issue['author']
+        canvas_user = self.course.canvas_user_by_gitlab_username[gitlab_username]
+        return self.course.canvas_user_informal_name(canvas_user)
+
     # TODO:
     # Shelved for now.
     # Best to avoid state when we can.
