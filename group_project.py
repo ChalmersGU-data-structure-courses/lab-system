@@ -224,7 +224,7 @@ class RequestAndResponses:
         if self.review == None:
             return 'Lab system'
 
-        gitlab_username = self.outcome_issue['author']
+        gitlab_username = self.outcome_issue.author
         canvas_user = self.course.canvas_user_by_gitlab_username[gitlab_username]
         return self.course.canvas_user_informal_name(canvas_user)
 
