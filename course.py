@@ -315,14 +315,6 @@ class Course:
         except KeyError:
             return self.canvas_course.user_str_informal(user.id)
 
-    def issue_author_informal(self, issue):
-        '''
-        Finds the informal name of an author of an issue on GitLab Chalmers.
-        '''
-        return self.canvas_user_informal_name(
-            self.canvas_user_by_gitlab_username[issue.author['username']]
-        )
-
     @contextlib.contextmanager
     def invitation_history(self, path):
         try:
