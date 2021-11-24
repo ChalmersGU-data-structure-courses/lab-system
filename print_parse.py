@@ -31,7 +31,7 @@ def compose_many(*xs):
         parse = general.compose_many(*(x.parse for x in reversed(xs))),
     )
 
-def swap(x):
+def invert(x):
     return PrintParse(
         print = x.parse,
         parse = x.print,
@@ -52,7 +52,7 @@ singleton = PrintParse(
     parse = general.from_singleton,
 )
 
-#from_singleton = swap(singleton)
+#from_singleton = invert(singleton)
 
 reversal = PrintParse(
     print = lambda xs: builtins.tuple(reversed(xs)),
