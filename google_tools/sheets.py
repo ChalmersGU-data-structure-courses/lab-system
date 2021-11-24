@@ -258,9 +258,7 @@ def cell_data(
             yield ('note', note)
     return dict(f())
 
-string_value_empty = {
-    'stringValue': '',
-}
+string_value_empty = extended_value_string('')
 
 cell_value_empty = {
     'userEnteredValue': string_value_empty,
@@ -271,6 +269,7 @@ def sheet_data(sheet):
     def value(row, column):
         try:
             r = sheet['data'][0]['rowData'][row]['values'][column]
+            # TODO: remove this hack.
             if r == dict():
                 r = cell_value_empty
             return r
@@ -293,8 +292,8 @@ def sheet_data_table(sheet_data):
         for row in range(sheet_data.num_rows)
     ]
 
-def cell_as_string(cell_value):
-    x = cell_value['effectiveValue']
+def cell_as_string(cell):
+    x = cell['userEnteredValue']
     y = x.get('stringValue')
     if y != None:
         return y
@@ -305,7 +304,7 @@ def cell_as_string(cell_value):
     raise ValueError(f'Cannot interpret as string value: {x}')
 
 def is_cell_non_empty(cell):
-    return bool(cell_as_string(cell))
+    return not cell.get('userEnteredValue') in [None, string_value_empty]
 
 def get(spreadsheets, id, fields = None, ranges = None):
     logger.debug(f'Retrieving data of spreadsheet f{id} with fields {fields} and ranges {ranges}')
