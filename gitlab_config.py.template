@@ -128,9 +128,9 @@ submission_request = course_basics.RegexRequestMatcher(
     '(?:s|S)ubmission[^/: ]*',
 )
 
-# Parsing and printing of scores.
-score = SimpleNamespace(
-    # Format the score for use in a spreadsheet cell.
+# Parsing and printing of outcomes.
+outcome = SimpleNamespace(
+    # Format the outcome for use in a spreadsheet cell.
 		# An integer or a string.
     as_cell = print_parse.identity,
 
@@ -148,12 +148,12 @@ score = SimpleNamespace(
 # Printer-parser (print_parse.PrintParse) for grading issue titles.
 # The domain of the printer-parser is a map with the following keys:
 # - 'tag': the submission tag name,
-# - 'score': the grading outcome.
+# - 'outcome': the grading outcome.
 grading_response = print_parse.compose(
-    print_parse.on(general.component('score'), score.name),
+    print_parse.on(general.component('outcome'), outcome.name),
     print_parse.regex_non_canonical_keyed(
-        'Grading for {tag}: {score}',
-        'grading\s+(?:for|of)\s+(?P<tag>[^: ]*)\s*:\s*(?P<score>[^:\\.!]*)[\\.!]*',
+        'Grading for {tag}: {outcome}',
+        'grading\s+(?:for|of)\s+(?P<tag>[^: ]*)\s*:\s*(?P<outcome>[^:\\.!]*)[\\.!]*',
         flags = re.IGNORECASE,
     )
 )
@@ -283,9 +283,6 @@ _lab_config = SimpleNamespace(
 		# Key of submission handler in the dictionary of request handlers.
 		# Its value must be an instance of SubmissionHandler.
 		submission_handler_key = None,
-
-		# Key of review issue title printer-parser in specified submission handler.
-		review_issue_title_key = 'grading',
 )
 
 _language = 'java'
