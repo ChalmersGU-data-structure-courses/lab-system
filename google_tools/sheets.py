@@ -308,16 +308,14 @@ def linked_cell_format(url):
 def cell_data(
     userEnteredValue = None,
     userEnteredFormat = None,
-    hyperlink = None,
     note = None,
 ):
+    '''Produces a value for the API type CellData.'''
     def f():
         if userEnteredValue != None:
             yield ('userEnteredValue', userEnteredValue)
         if userEnteredFormat != None:
             yield ('userEnteredFormat', userEnteredFormat)
-        if hyperlink != None:
-            yield ('hyperlink', hyperlink)
         if note != None:
             yield ('note', note)
     return dict(f())
@@ -394,6 +392,15 @@ def is_cell_non_empty(cell):
     return not cell.get('userEnteredValue') in [None, string_value_empty]
 
 def get(spreadsheets, id, fields = None, ranges = None):
+    '''
+    Retrieve spreadsheet data using the 'get' API call.
+
+    Arguments:
+    * spreadsheets: spreadsheets instance.
+    * id: Spreadsheet it.
+    * fields: Field mask (string).
+    * ranges: Iterable of ranges.
+    '''
     logger.debug(f'Retrieving data of spreadsheet f{id} with fields {fields} and ranges {ranges}')
 
     return spreadsheets.get(
