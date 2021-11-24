@@ -108,6 +108,9 @@ class SubmissionHandler(RequestHandler):
         take a look at the submission and decide its outcome.
     - 'outcome' (if 'accepted' is True and 'review_needed' is False):
         Custom value recording the outcome of the submission.
+    - 'outcome_response_key' (if 'accepted' is True and 'review_needed' is False):
+        Response key of the response issue posted by the submission handler
+        that notifies the students of their submission outcome.
 
     Submission review issues must have printer-parser
     with domain a dictionary containing a key 'outcome'.

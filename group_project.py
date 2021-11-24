@@ -176,23 +176,53 @@ class RequestAndResponses:
         return title_data['outcome']
 
     @functools.cached_property
-    def outcome(self):
+    def outcome_with_response_key(self):
         '''
         Get the outcome of the review, or None if there is none.
         Only valid to call for submission requests.
 
         First checks for a review issue and then the result of the submission handler.
 
-        Returns the outcome or None.
-        The form of the outcome is specific to the submission handler.
+        If there is an outcome, returns a pair (outcome, outcome_response_key) where
+        * 'outcome' is the outcome of the submission.
+          The form is specific to the submission handler.
+        * 'outcome_response_key' is the response key of the response issue
+          that notifies the students of their submission outcome.
+          The response issue under this key exist.
         '''
         if self.review_outcome != None:
-            return self.review_outcome
+            return (self.review_outcome, self.lab.config.submission_handler_key)
 
         if self.handled_result['review_needed']:
             return None
 
-        return self.handled_result['outcome']
+        return (self.handled_result['outcome'], self.handled_result['outcome_response_key'])
+
+    @functools.cached_property
+    def outcome(self):
+        '''
+        The outcome part of 'outcome_with_response_key'.
+        None if the latter is None.
+        '''
+        if self.outcome_with_response_key == None:
+            return None
+
+        (outcome, outcome_response_key) = self.outcome_with_response_key
+        return outcome
+
+    @functools.cached_property
+    def outcome_response_key(self):
+        '''
+        The outcome response key part of 'outcome_with_response_key'.
+        None if the latter is None.
+        '''
+        if self.outcome_with_response_key == None:
+            return None
+
+        (outcome, outcome_response_key) = self.outcome_with_response_key
+        return outcome_response_key
+
+    @functools.cached_property
 
     # TODO:
     # Shelved for now.
