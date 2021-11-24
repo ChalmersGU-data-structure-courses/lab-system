@@ -264,11 +264,20 @@ def extended_value_extract_primitive(v):
 
     raise ValueError(f'Extended value is not a number or string: {v}')
 
+# Obsolete.
+# We now format hyperlinks via userEnteredFormat.textFormat.
+#
 # TODO: No idea how Google Sheets expects data to be escaped.
-hyperlink = pp.compose_many(
-    pp.tuple(pp.doublequote),
-    pp.regex_many('=HYPERLINK({}, {})', ['"(?:\\\\.|[^"\\\\])*"'] * 2),
-)
+#hyperlink = pp.compose_many(
+#    pp.tuple(pp.doublequote),
+#    pp.regex_many('=HYPERLINK({}, {})', ['"(?:\\\\.|[^"\\\\])*"'] * 2),
+#)
+#
+#def value_link(s, url):
+#    return f'=HYPERLINK("{url}", "{s}")'
+#
+#def extended_value_link(s, url):
+#    return extended_value_formula(value_link(s, url))
 
 def text_format(
     link = None,
@@ -283,9 +292,6 @@ def text_format(
             yield ('link', {'uri': link})
     return dict(f())
 
-def value_link(s, url):
-    return f'=HYPERLINK("{url}", "{s}")'
-
 def cell_format(
     text_format = None,
 ):
@@ -294,9 +300,6 @@ def cell_format(
         if text_format != None:
             yield ('textFormat', text_format)
     return dict(f())
-
-def extended_value_link(s, url):
-    return extended_value_formula(value_link(s, url))
 
 def linked_cell_format(url):
     '''
