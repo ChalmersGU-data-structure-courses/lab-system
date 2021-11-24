@@ -79,6 +79,8 @@ def parse_grading_columns(config, header_row):
     def consume(value_expected):
         try:
             (column, value) = next(header_row)
+            value = value['userEnteredValue']
+            value = value.get('stringValue')
             if not value == value_expected:
                 raise SheetParseException(f'expected header {value_expected} in column {column}, got {value}')
             return column
@@ -96,6 +98,8 @@ def parse_grading_columns(config, header_row):
             break
 
         try:
+            value = value['userEnteredValue']
+            value = value['stringValue']
             j = headers.query.parse(value)
         except:
             continue
@@ -127,7 +131,9 @@ def parse_group_rows(config, values):
     def f():
         for (i, value) in values:
             try:
-                yield (config.group.id.parse(value), i)
+                value = value['userEnteredValue']
+                value = google_tools.sheets.extended_value_extract_primitive(value)
+                yield (config.group.as_cell.parse(value), i)
             except:
                 continue
     return general.sdict(f())
@@ -144,7 +150,7 @@ def parse(config, sheet_data):
     Exceptions encountered are raised as instances of SheetParseException.
     '''
     (group_column, query_column_groups) = parse_grading_columns(config, (
-        (column, google_tools.sheets.cell_as_string(sheet_data.value(0, column)))
+        (column, sheet_data.value(0, column))
         for column in range(sheet_data.num_columns)
     ))
 
@@ -157,7 +163,7 @@ def parse(config, sheet_data):
     return GradingSheetData(
         sheet_data = sheet_data,
         group_rows = parse_group_rows(config, (
-            (row, google_tools.sheets.cell_as_string(sheet_data.value(row, group_column)))
+            (row, sheet_data.value(row, group_column))
             for row in range(sheet_data.num_rows) if not row in ignore
         )),
         group_column = group_column,
@@ -205,14 +211,6 @@ def guess_group_row_range(sheet_data):
     if start == end:
         raise ValueError('unable to guess group row range')
     return (start, end)
-
-def link_with_display(s, url):
-    '''
-    Returns a pair of an extended value (formula link) and the effective string.
-
-    For use with specifying query fields in write_query.
-    '''
-    return (google_tools.sheets.extended_value_link(s, url), s)
 
 class GradingSheet:
     def __init__(
@@ -263,7 +261,7 @@ class GradingSheet:
             self.grading_spreadsheet.google,
             self.grading_spreadsheet.config.grading_sheet.spreadsheet,
             ranges = self.name,
-            fields = 'sheets/properties,sheets/data/rowData/values/userEnteredValue,sheets/data/rowData/values/effectiveValue'
+            fields = 'sheets(properties,data/rowData/values(userEnteredValue,userEnteredFormat))'
         )['sheets'][0]
         return (sheet['properties'], google_tools.sheets.sheet_data(sheet))
 
@@ -388,8 +386,9 @@ class GradingSheet:
                     self.row_range_param(range),
                     inherit_from_before = inherit_from_before,
                 ),
-                google_tools.sheets.request_update_cells_user_entered_value(
+                google_tools.sheets.request_update_cells(
                     [[self.grading_spreadsheet.format_group(group_id, group_link)] for (group_id, _) in xs],
+                    fields = google_tools.sheets.cell_link_fields,
                     range = google_tools.sheets.grid_range(
                         self.sheet_properties.sheetId,
                         (range, general.range_singleton(self.sheet_parsed.group_column)),
@@ -523,12 +522,13 @@ class GradingSheet:
         query,
         field,
         value,
-        value_effective_string = None,
-        force = False
+        fields = 'userEnteredValue',
+        force = False,
     ):
         '''
         Add a request to the given request buffer to write a cell in the grading sheet.
-        Only proceeds if the given value is different from the previous one.
+        Only proceeds if the given value is not subdata of the previous one.
+        In practice, this means that the previous value can have additional formatting applied.
         Logs a warning if the cell already contained a value (unless force is set).
 
         You should use the flush method of this instance instead of that of the request buffer
@@ -539,24 +539,27 @@ class GradingSheet:
         * group_id: The student lab group.
         * query: The query (indexed sequentially from 0).
         * field: The field to write (one of 'submission', 'grader', 'score')
-        * value: Value as specified by ExtendedValue in the Google Sheets API.
-        * value_effective_string:
-            Effective string display of value.
-            Should correspond to google_tools.sheets.cell_as_string applied to the cell with the updated value.
-            If set, used to mask overwriting warnings to only cases with different effective string.
+        * value:
+            Cell value as specified by CellData in the Google Sheets API.
+            Only the keys userEnteredValue and userEnteredFormat are supported.
+            (See use of 'fields' in sheet method.)
+        * fields:
+            Field mask for fields of CellData to write (see UpdateCellsRequest in Google Sheets API).
         * force:
-            Add request even if previous value is the same as given one.
+            Add request even if previous user-entered value is the same as the one of the given value.
             Disables warning for a different previous value.
         '''
         coords = self._cell_coords(group_id, query, field)
         value_prev = self.sheet_data.value(*coords)
         if not force:
-            if value == value_prev['userEnteredValue']:
+            # TODO:
+            # is_subdata is not exactly what we want here.
+            # Missing keys in updates mean entry deletion in Sheets API.
+            # We need to take 'fields' into account.
+            # Postpone until we have better framework for handling field masks.
+            if google_tools.sheets.is_subdata(value, value_prev):
                 return
-            if google_tools.sheets.is_cell_non_empty(value_prev) and general.when(
-                value_effective_string != None,
-                google_tools.sheets.cell_as_string(value_prev) != value_effective_string,
-            ):
+            if google_tools.sheets.is_cell_non_empty(value_prev):
                 group_name = self.grading_spreadsheet.config.group.id.print(group_id)
                 query_name = self.grading_spreadsheet.config.grading_sheet.header.query.print(query)
                 self.logger.warn(general.join_lines([
@@ -596,26 +599,28 @@ class GradingSheet:
         * query_values:
             The values for the columns in the column group of the query.
             Of type Query; fields that are None are ignored.
-            Each field has value as specified by ExtendedValue in the Google Sheets API.
-            Alternatively, it can also be a pair (value, value_effective_string)
-            where value is as before and value_effective_string is the effective string display
-            to be passed to the class to write_query_cell
+            Each field is a pair (value, fields) where:
+            - value is as specified by CellData in the Google Sheets API,
+            - fields is a field mask for CellData (see UpdateCellsRequest in Google Sheets API).
+            Instead of this pair, you may also just specify 'value'.
+            Then fields default to 'userEnteredValue'.
         * force: Passed on to each call of write_query_cell.
         '''
         for field in Query._fields:
-            value = query_values._asdict()[field]
-            value_effective_string = None
-            if isinstance(value, tuple):
-                value_effective_string = value[1]
-                value = value[0]
-            if value != None:
+            x = query_values._asdict()[field]
+            if x != None:
+                try:
+                    (value, fields) = x
+                except:
+                    value = x
+                    fields = 'userEnteredValue'
                 self.write_query_cell(
                     request_buffer,
                     group_id,
                     query,
                     field,
                     value,
-                    value_effective_string = value_effective_string,
+                    fields,
                     force = force,
                 )
 
@@ -694,11 +699,13 @@ class GradingSpreadsheet:
         (request_buffer.add if request_buffer else self.update)(*requests)
 
     def format_group(self, group_id, group_link):
-        value = self.config.group.id.print(group_id)
-        if group_link:
-            return google_tools.sheets.extended_value_link(value, group_link(group_id))
-        else:
-            return google_tools.sheets.extended_value_string(value)
+        return google_tools.sheets.cell_data(
+            userEnteredValue = google_tools.sheets.extended_value_number_or_string(
+                self.config.group.as_cell.print(group_id)
+            ),
+            userEnteredFormat =
+                None if group_link == None else google_tools.sheets.linked_cell_format(group_link(group_id)),
+        )
 
     @functools.cached_property
     def template_grading_sheet_qualified_id(self):
