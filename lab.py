@@ -9,6 +9,7 @@ import shutil
 import tempfile
 import types
 
+import general
 import git_tools
 import gitlab_tools
 import google_tools.sheets
@@ -676,35 +677,35 @@ class Lab:
     def update_grading_sheet(self, deadline = None):
         # Ensure grading sheet exists and has sufficient query group columns.
         self.grading_sheet.ensure_num_queries(max(
-            (len(group.relevant_submissions(deadline)) for group in self.student_groups),
+            (general.ilen(group.submissions_relevant(deadline)) for group in self.student_groups),
             default = 0,
         ))
 
         request_buffer = self.course.grading_spreadsheet.create_request_buffer()
         for group_id in self.course.groups:
             group = self.student_group(group_id)
-            for (query, (tag, grading)) in enumerate(group.relevant_submissions(deadline)):
-                if grading == None:
+            for (query, submission) in enumerate(group.submissions_relevant(deadline)):
+                if submission.outcome == None:
                     grader = None
-                    score = None
+                    outcome = None
                 else:
-                    (issue, response) = grading
-                    informal_name = self.course.issue_author_informal(issue)
-                    grader = grading_sheet.link_with_display(informal_name, issue.web_url)
-                    score_as_cell = self.course.config.score.as_cell.print(response['score'])
-                    score = google_tools.sheets.extended_value_number_or_string(score_as_cell)
+                    grader = google_tools.sheets.cell_string(submission.informal_grader_name)
+                    outcome = google_tools.sheets.cell_link_with_fields(
+                        self.course.config.outcome.as_cell.print(submission.outcome),
+                        submission.outcome_issue.web_url,
+                    )
 
                 self.grading_sheet.write_query(
                     request_buffer,
                     group_id,
                     query,
                     grading_sheet.Query(
-                        submission = grading_sheet.link_with_display(
-                            tag.name,
-                            group.project.get.web_url + '/-/tree/' + tag.name,
+                        submission = google_tools.sheets.cell_link_with_fields(
+                            submission.request_name,
+                            gitlab_tools.url_tag_name(group.project.get, submission.request_name),
                         ),
                         grader = grader,
-                        score = score,
+                        score = outcome,
                     ),
                 )
         request_buffer.flush()
