@@ -36,7 +36,7 @@ class Lab:
     - repo_init
     - repo_fetch_all
     - repo_push
-    - remote_requests
+    - remote_tags
 
     It also manages a grading sheet on Google Docs.
     Related attributes and methods:
@@ -421,7 +421,7 @@ class Lab:
             group.repo_fetch()
 
     @functools.cached_property
-    def remote_requests(self):
+    def remote_tags(self):
         '''
         A dictionary mapping each group id to a dictionary of key-value pairs (path, ref) where:
         - path is the tag name in the remote repository (converted to pathlib.PurePosixPath).

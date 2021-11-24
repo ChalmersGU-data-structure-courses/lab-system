@@ -736,7 +736,7 @@ class GroupProject:
         self.logger.debug(f'Parsing request tags in {self.name} from local grading repository.')
         return sorted((
             (str(key), (tag, tag.commit))
-            for (key, tag) in self.lab.remote_requests[self.id].items()
+            for (key, tag) in self.lab.remote_tags[self.id].items()
         ), key = lambda x: git_tools.commit_date(x[1][1]))
 
     def parse_request_tags(self, from_gitlab = True):
