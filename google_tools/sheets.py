@@ -403,7 +403,7 @@ numeral_unbounded = pp.with_none(pp.int_str(), str())
 # Supports unbounded delimiters instead of -1 as indices.
 # (Indices -1 may arise with the silly inclusive range convention.)
 a1_notation = pp.compose_many(
-    pp.swap_pair,
+    pp.swap,
     pp.tuple(pp.maybe(pp.from_one)),
     pp.combine((alpha_unbounded, numeral_unbounded)),
     pp.regex_many('{}{}', ('[a-zA-Z]*', '\-?\d*'), flags = re.ASCII),

@@ -37,9 +37,9 @@ def invert(x):
         parse = x.print,
     )
 
-swap_pair = PrintParse(
-    print = general.swap_pair,
-    parse = general.swap_pair,
+swap = PrintParse(
+    print = general.swap,
+    parse = general.swap,
 )
 
 interchange = PrintParse(

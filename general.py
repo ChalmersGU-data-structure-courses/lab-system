@@ -61,7 +61,7 @@ def from_singleton_maybe(xs):
 def choose_unique(f, xs):
     return from_singleton(filter(f, xs))
 
-def swap_pair(xs):
+def swap(xs):
     (a, b) = xs
     return (b, a)
 
