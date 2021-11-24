@@ -911,6 +911,6 @@ class GroupProject:
         Returns an iterable of instances of SubmissionAndRequests ordered by the date.
         '''
         submissions = list(self.submissions(deadline = deadline))
-        for (i, submission) in submissions:
+        for (i, submission) in enumerate(submissions):
             if i + 1 == len(submissions) or submission.outcome != None:
                 yield submission
