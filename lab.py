@@ -438,8 +438,47 @@ class Lab:
                 yield (group_id, git_tools.flatten_references_hierarchy(value))
         return dict(f())
 
+    def hooks_create(self, netloc):
+        '''
+        Create webhooks in all group project in this lab on GitLab with the given net location.
+        See group_project.GroupProject.hook_create.
+        Returns a dictionary mapping group ids to hooks.
+
+        Use this method only if you intend to create and
+        delete webhooks over separate program invocations.
+        Otherwise, the context manager hooks_manager is more appropriate.
+        '''
+        self.logger.info('Creating project hooks in all student projects')
+        hooks = dict()
+        try:
+            for group in self.student_groups:
+                hooks[group.id] = group.hook_create(netloc)
+            return hooks
+        except:
+            for (group_id, hook) in hooks.items():
+                self.student_group(group_id).hook_delete(hook)
+            raise
+
+    def hooks_delete(self, hooks):
+        '''
+        Delete webhooks in student projects in this lab on on GitLab.
+        Takes a dictionary mapping each group id to its hook.
+        See group_project.GroupProject.hook_delete.
+        '''
+        self.logger.info('Deleting project hooks in all student projects')
+        for group in self.student_groups:
+            group.hook_delete(hooks[group.id])
+
+    def hooks_delete_all(self, netloc):
+        '''
+        Delete all webhooks in all group project in this lab set up with the given netloc on GitLab.
+        See group_project.GroupProject.hook_delete_all.
+        '''
+        for group in self.student_groups:
+            group.hook_delete_all(netloc)
+
     @contextlib.contextmanager
-    def hook_manager(self, netloc):
+    def hooks_manager(self, netloc):
         '''
         A context manager for installing GitLab web hooks for all student projects in this lab.
         This is an expensive operation, setting up and cleaning up costs one HTTP call per project.
@@ -454,6 +493,15 @@ class Lab:
                 yield dict(f())
             finally:
                 self.logger.info('Deleting project hooks in all student projects (do not interrupt)')
+
+    # Alternative implementation
+    # @contextlib.contextmanager
+    # def hooks_manager(self, netloc):
+    #     hooks = self.hooks_create(netloc)
+    #     try:
+    #         yield hooks
+    #     finally:
+    #         self.hooks_delete(hooks)
 
     # TODO: which calls to group?
     def process_requests(self):

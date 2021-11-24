@@ -632,17 +632,20 @@ class GroupProject:
             force = False,
         ))
 
+    def _hook_url(self, netloc):
+        return print_parse.url.print(print_parse.URL_HTTPS(netloc))
+
     def hook_create(self, netloc):
         '''
-        Create webhook in the student project on GitLab.
-        The hook is triggered if tags are updated or issues are changed.
-        This r
+        Create webhook in the student project on GitLab with the given net location.
+        The hook is triggered via HTTPS if tags are updated or issues are changed.
+        The argument netloc is an instance of print_parse.NetLoc.
 
         Note: Due to a GitLab bug, the hook is not called when an issue is deleted.
               Thus, before deleting a response issue, you should first rename it
               (triggering the hook)  so that it is no longer recognized as a response issue.
         '''
-        url = print_parse.url.print(print_parse.URL_HTTPS(netloc))
+        url = self._hook_url(netloc)
         self.logger.debug(f'Creating project hook with url {url}')
         return self.project.lazy.hooks.create({
             'url': url,
@@ -657,18 +660,27 @@ class GroupProject:
         self.logger.debug(f'Deleting project hook with url {hook.url}')
         hook.delete()
 
-    def hook_delete_all(self):
+    def hook_delete_all(self, netloc):
         '''
-        Delete all webhook in the student project on GitLab.
-        You should use this when previous program runs where killed or stopped
-        in a non-standard fashion that prevented cleanup and have left lingering webhooks.
+        Delete all webhook in the student project with the given netloc on GitLab.
+        The argument netloc is an instance of print_parse.NetLoc.
+        You should use this:
+        * when manually creating and deleting hooks in separate program invocations,
+        * when using hook_manager:
+            if previous program runs where killed or stopped in a non-standard fashion
+            that prevented cleanup and have left lingering webhooks.
         '''
+        url = self._hook_url(netloc)
         for hook in self.project.lazy.hooks.list(all = True):
-            self.hook_delete(hook)
+            if hook.url == url:
+                self.hook_delete(hook)
 
     @contextlib.contextmanager
     def hook_manager(self, netloc):
-        '''A context manager for creating a webhook.'''
+        '''
+        A context manager for a webhook.
+        Encapsulates hook_create and hool_delete.
+        '''
         hook = self.hook_create(netloc)
         try:
             yield hook
