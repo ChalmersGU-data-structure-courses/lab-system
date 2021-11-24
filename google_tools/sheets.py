@@ -64,6 +64,9 @@ def request(name, /, **params):
         name: params
     }
 
+# TODO:
+# inheritFromBefore = True for rows fails to copy vertical border.
+# Find out why.
 def request_insert_dimension(dimension_range, inherit_from_before = False):
     return request('insertDimension',
         range = dimension_range,
