@@ -505,7 +505,7 @@ class Lab:
 
     def parse_request_tags(self, from_gitlab = True):
         '''
-        Parse request tags for group projects on Chalmers GitLab in this lab.
+        Parse request tags for group projects in this lab.
         This calls parse_request_tags in each contained group project.
         The boolean parameter from_gitlab determines if:
         * (True) tags read from Chalmers GitLab (a HTTP call)
@@ -520,8 +520,9 @@ class Lab:
 
     def parse_response_issues(self):
         '''
-        Parse response issues for group projects on Chalmers GitLab in this lab.
+        Parse response issues for group projects on in this lab.
         This calls parse_response_issues in each contained group project.
+        Cost: one HTTP call per group.
 
         This method needs to be called before requests_and_responses
         in each contained handler data instance can be accessed.
@@ -535,10 +536,12 @@ class Lab:
         self.parse_request_tags(from_gitlab = from_gitlab)
         self.parse_response_issues()
 
-    # TODO: which calls to group?
     def process_requests(self):
-        # TODO: clear response issue cache.
-        self.repo_fetch_all()
+        '''
+        Parse response issues for group projects in this lab.
+        This skips requests already marked as handled in the local grading repository.
+        '''
+        self.logger.info('Processing requests.')
         for group in self.student_groups:
             group.process_requests()
 

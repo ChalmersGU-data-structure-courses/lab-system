@@ -436,7 +436,7 @@ class HandlerData:
         It skips requests already marked as handled in the local grading repository.
         '''
         for request_and_responses in self.requests_and_responses.values():
-            request_and_responses.process()
+            request_and_responses.process_request()
 
 class GroupProject:
     '''
@@ -808,6 +808,7 @@ class GroupProject:
         '''
         Parse response issues for this project on Chalmers GitLab
         on store the result in self.handler_data.
+        Cost: one HTTP call.
 
         This method needs to be called before requests_and_responses
         in each contained handler data instance can be accessed.
