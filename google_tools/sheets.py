@@ -390,7 +390,7 @@ alpha = pp.compose_many(
     list_of_digits(len(string.ascii_uppercase)),
     pp.tuple(number_as_uppercase_letter),
     pp.reversal,
-    pp.swap(pp.string_letters),
+    pp.invert(pp.string_letters),
 )
 
 # The alphabetical part of A1 notation, supporting the unbounded value None instead of the number 0.
