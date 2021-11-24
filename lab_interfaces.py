@@ -94,33 +94,49 @@ class RequestHandler:
 class SubmissionHandler(RequestHandler):
     '''
     This interface specifies a request handler for handling submissions.
+
+    Required attributes (in addition to the ones of RequestHandler):
+
+    * review_response_key
+        Key in self.response_titles identifying submissions review issues (produced by graders).
+        These are also known as "grading issues".
+
+        Submission review issues must have printer-parser
+        with domain a dictionary containing a key 'outcome'.
+        The type of its value is specific to the submission handler.
+        It must be JSON-encodable (combination of dict, list, and primitive types).
+
+        To not set up review issues, set review_response_key to None.
+        In that case, the only possible grading pathway
+        is via the result of the submission handler.
+
+    * grading_columns
+        Customized columns for the live submissions table.
+        A collection of instances of live_submissions_table.Column.
+
     The handle_request method must returns a JSON-encodable dictionary.
     This dictionary must have the following key:
+
     - 'accepted':
         Boolean indicating if the submission system
         should accept or reject the submission.
+
         Note that this is different from passing and failing.
         A rejected submission does not count as an actual submission.
         This is important if only a certain number of submissions are allowed,
         or a valid submission is required before a certain date.
+
     - 'review_needed' (if 'accepted' is True):
         Boolean indicating if the handler wants a grader to
         take a look at the submission and decide its outcome.
-    - 'outcome' (if 'accepted' is True and 'review_needed' is False):
-        Custom value recording the outcome of the submission.
+
     - 'outcome_response_key' (if 'accepted' is True and 'review_needed' is False):
         Response key of the response issue posted by the submission handler
         that notifies the students of their submission outcome.
 
-    Submission review issues must have printer-parser
-    with domain a dictionary containing a key 'outcome'.
-    The format of its value should be the same as the one returnable by the handler.
-    Existing review issues always override the submission outcome
-    of the of the submission handler, even if its decision is not 'review'.
-
-    Required attributes (in addition to the ones of RequestHandler):
-    * grading_columns
-        Customized columns for the live submissions table.
-        A collection of instances of live_submissions_table.Column.
+        The associated issue title printer-parser needs to have domain
+        a dictionary with an 'outcome' entry as for a submission review issue.
+        Existing review issues always override the submission outcome
+        of the submission handler, even if 'review_needed' is not True.
     '''
     pass

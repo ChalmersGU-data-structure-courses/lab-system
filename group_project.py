@@ -132,7 +132,7 @@ class RequestAndResponses:
         Returns a boolean indicating if the submission request has been accepted.
         This means that it counts as valid submission attempt, not that the submission has passed.
         See the documentation of submission handlers.
-        Only valid to call for submission requests.
+        Only valid for submission requests.
         '''
         return self.handled_result['accepted']
 
@@ -141,7 +141,7 @@ class RequestAndResponses:
         '''
         Returns a boolean indicating if the submission handler has requested a review.
         See the documentation of submission handlers.
-        Only valid to call for submission requests.
+        Only valid for submission requests.
         '''
         return self.handled_result['review_needed']
 
@@ -149,11 +149,13 @@ class RequestAndResponses:
     def review(self):
         '''
         Get the review response, or None if there is none.
-        Only valid to call for submission requests.
+        Only valid for accepted submission requests.
 
         Returns a pair (issue, title_data) on success where:
         - issue is the review issue on Chalmers GitLab,
         - title_data is the parsing produced by the response issue printer-parser.
+
+        Can be used as a boolean to test for the existence of a review.
         '''
         # Review issues must be configured to proceed.
         response_key = self.lab.config.submission_handler_key
@@ -163,66 +165,55 @@ class RequestAndResponses:
         return self.responses.get(response_key)
 
     @functools.cached_property
-    def review_outcome(self):
+    def outcome_response_key(self):
         '''
-        Get the outcome of the review, or None if there is none.
-        Only valid to call for submission requests.
-        The format of the outcome is defined by the submission handler.
+        Get the outcome response key, or None if there is no outcome.
+        Only valid for accepted submission requests.
+        First checks for a review issue and then the result of the submission handler.
         '''
-        if self.review == None:
-            return None
+        if self.review != None:
+            return self.lab.config.submission_handler_key
 
-        (issue, title_data) = self.review
-        return title_data['outcome']
+        return self.handled_result.get('outcome_response_key')
 
     @functools.cached_property
-    def outcome_with_response_key(self):
+    def outcome_with_issue(self):
         '''
-        Get the outcome of the review, or None if there is none.
-        Only valid to call for submission requests.
-
-        First checks for a review issue and then the result of the submission handler.
-
-        If there is an outcome, returns a pair (outcome, outcome_response_key) where
-        * 'outcome' is the outcome of the submission.
-          The form is specific to the submission handler.
-        * 'outcome_response_key' is the response key of the response issue
-          that notifies the students of their submission outcome.
-          The response issue under this key exist.
+        Get the outcome and the associated response issue, or None if there is no outcome.
+        In the former case, returns a pair (outcome, outcome_issue) where:
+        - outcome is the submission outcome,
+        - issue is an instance of gitlab.v4.objects.ProjectIssue.
+        Only valid for accepted submission requests.
         '''
-        if self.review_outcome != None:
-            return (self.review_outcome, self.lab.config.submission_handler_key)
-
-        if self.handled_result['review_needed']:
+        if self.outcome_response_key == None:
             return None
 
-        return (self.handled_result['outcome'], self.handled_result['outcome_response_key'])
+        (issue, title_data) = self.responses[self.outcome_response_key]
+        return (title_data['outcome'], issue)
 
     @functools.cached_property
     def outcome(self):
         '''
-        The outcome part of 'outcome_with_response_key'.
+        The outcome part of 'outcome_with_issue'.
         None if the latter is None.
         '''
-        if self.outcome_with_response_key == None:
+        if self.outcome_with_issue == None:
             return None
 
-        (outcome, outcome_response_key) = self.outcome_with_response_key
+        (outcome, outcome_issue) = self.outcome_with_issue
         return outcome
 
     @functools.cached_property
-    def outcome_response_key(self):
+    def outcome_issue(self):
         '''
-        The outcome response key part of 'outcome_with_response_key'.
+        The outcome issue part of 'outcome_with_issue'.
         None if the latter is None.
         '''
-        if self.outcome_with_response_key == None:
+        if self.outcome_with_issue == None:
             return None
 
-        (outcome, outcome_response_key) = self.outcome_with_response_key
-        return outcome_response_key
-
-    @functools.cached_property
+        (outcome, outcome_issue) = self.outcome_with_issue
+        return outcome_issue
 
     # TODO:
     # Shelved for now.
