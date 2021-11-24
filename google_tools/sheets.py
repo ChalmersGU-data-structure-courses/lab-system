@@ -13,6 +13,23 @@ import print_parse as pp
 
 logger = logging.getLogger(__name__)
 
+# TODO: This belongs in a more general module.
+def is_subdata(current, previous):
+    '''
+    Given JSON data arguments, tests whether 'current' is subdata of 'previous'.
+    That means it only differs recursively in dictionaries having more keys.
+    Note in particular that [1, 2] is not subdata of any other list.
+    '''
+    if not (isinstance(current, dict) and isinstance(previous, dict)):
+        return current == previous
+
+    for (key, current_value) in current.items():
+        previous_value = previous.get(key)
+        if not is_subdata(current_value, previous_value):
+            return False
+
+    return True
+
 default_scopes = ['spreadsheets']
 
 #def request_update_sheet_properties
