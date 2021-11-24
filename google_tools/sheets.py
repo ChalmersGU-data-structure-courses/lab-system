@@ -249,17 +249,61 @@ def extended_value_number_or_string(x):
 def extended_value_formula(s):
     return {'formulaValue': s}
 
+def extended_value_extract_primitive(v):
+    n = v.get('numberValue')
+    if n != None:
+        if not isinstance(n, int):
+            raise ValueError(f'Not an integer: {n}')
+        return n
+
+    s = v.get('stringValue')
+    if s != None:
+        if not isinstance(s, str):
+            raise ValueError(f'Not a string: {s}')
+        return s
+
+    raise ValueError(f'Extended value is not a number or string: {v}')
+
 # TODO: No idea how Google Sheets expects data to be escaped.
 hyperlink = pp.compose_many(
     pp.tuple(pp.doublequote),
     pp.regex_many('=HYPERLINK({}, {})', ['"(?:\\\\.|[^"\\\\])*"'] * 2),
 )
 
+def text_format(
+    link = None,
+):
+    '''
+    Produces a value for the API type TextFormat.
+    Arguments:
+    * link: an optional URL (string) to use for a link.
+    '''
+    def f():
+        if link != None:
+            yield ('link', {'uri': link})
+    return dict(f())
+
 def value_link(s, url):
     return f'=HYPERLINK("{url}", "{s}")'
 
+def cell_format(
+    text_format = None,
+):
+    '''Produces a value for the API type CellFormat.'''
+    def f():
+        if text_format != None:
+            yield ('textFormat', text_format)
+    return dict(f())
+
 def extended_value_link(s, url):
     return extended_value_formula(value_link(s, url))
+
+def linked_cell_format(url):
+    '''
+    Convenience method for producing a value for the API type CellFormat
+    that displays a link to the given url (string).
+    '''
+    return cell_format(text_format = text_format(link = url))
 
 def cell_data(
     userEnteredValue = None,
@@ -284,6 +328,29 @@ cell_value_empty = {
     'userEnteredValue': string_value_empty,
     'effectiveValue': string_value_empty,
 }
+
+def cell_string(s):
+    '''Returns a value for the API type CellData for a cell with string content s.'''
+    return cell_data(userEnteredValue = extended_value_string(s))
+
+def cell_link(value, url):
+    '''
+    Convenience method for writing a cell with a hyperlink.
+    Arguments:
+    * value: String or integer to use as userEnteredValue.
+    * url: URL (string) to use as link.
+    Returns a value for the API type CellData.
+    '''
+    return cell_data(
+        userEnteredValue = extended_value_number_or_string(value),
+        userEnteredFormat = linked_cell_format(url),
+    )
+
+cell_link_fields = 'userEnteredValue,userEnteredFormat/textFormat/link'
+'''Fields contained in the result of cell_link.'''
+
+def cell_link_with_fields(value, link):
+    return (cell_link(value, link), cell_link_fields)
 
 def sheet_data(sheet):
     def value(row, column):
