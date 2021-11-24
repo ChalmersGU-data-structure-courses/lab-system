@@ -158,7 +158,7 @@ class RequestAndResponses:
         Can be used as a boolean to test for the existence of a review.
         '''
         # Review issues must be configured to proceed.
-        response_key = self.lab.config.submission_handler_key
+        response_key = self.handler_data.handler.review_response_key
         if response_key == None:
             return None
 
@@ -172,7 +172,7 @@ class RequestAndResponses:
         First checks for a review issue and then the result of the submission handler.
         '''
         if self.review != None:
-            return self.lab.config.submission_handler_key
+            return self.handler_data.handler.review_response_key
 
         return self.handled_result.get('outcome_response_key')
 
