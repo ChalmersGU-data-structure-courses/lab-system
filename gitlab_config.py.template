@@ -132,7 +132,7 @@ submission_request = course_basics.RegexRequestMatcher(
 outcome = SimpleNamespace(
     # Full name.
     # Used in interactions with students
-		name = print_parse.compose(
+    name = print_parse.compose(
         print_parse.from_dict([
             (0, 'incomplete'),
             (1, 'pass'),
@@ -280,15 +280,15 @@ _lab_config = SimpleNamespace(
     canvas_path_awaiting_grading = PurePosixPath('temp') / 'lab-N-awaiting-grading.html',
 
     # Dictionary of request handlers.
-		# Its keys should be string-convertible.
-		# Its values are instances of the RequestHandler interface.
-		# The order of the dictionary determines the order in which the request matchers
-		# of the request handlers are tested on a student repository tag.
-		request_handlers = {},
+    # Its keys should be string-convertible.
+    # Its values are instances of the RequestHandler interface.
+    # The order of the dictionary determines the order in which the request matchers
+    # of the request handlers are tested on a student repository tag.
+    request_handlers = {},
 
-		# Key of submission handler in the dictionary of request handlers.
-		# Its value must be an instance of SubmissionHandler.
-		submission_handler_key = None,
+    # Key of submission handler in the dictionary of request handlers.
+    # Its value must be an instance of SubmissionHandler.
+    submission_handler_key = None,
 )
 
 _language = 'java'
