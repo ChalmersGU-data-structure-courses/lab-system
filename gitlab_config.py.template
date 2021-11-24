@@ -130,10 +130,6 @@ submission_request = course_basics.RegexRequestMatcher(
 
 # Parsing and printing of outcomes.
 outcome = SimpleNamespace(
-    # Format the outcome for use in a spreadsheet cell.
-		# An integer or a string.
-    as_cell = print_parse.identity,
-
     # Full name.
     # Used in interactions with students
 		name = print_parse.compose(
@@ -144,6 +140,11 @@ outcome = SimpleNamespace(
         print_parse.lower,
     ),
 )
+
+# Format the outcome for use in a spreadsheet cell.
+# An integer or a string.
+# The below definition is the identity, but checks the domain is correct.
+outcome.as_cell = print_parse.compose(outcome.name, print_pars.invert(outcome.name))
 
 # Printer-parser (print_parse.PrintParse) for grading issue titles.
 # The domain of the printer-parser is a map with the following keys:
@@ -187,6 +188,11 @@ group = SimpleNamespace(
     # Used for sorting in grading sheet.
     sort_key = lambda id: id,
 )
+
+# Format the id for use in a spreadsheet cell.
+# An integer or a string.
+# The below definition is the identity on integers.
+group.as_cell = print_parse.compose(group.id, print_parse.invert(group.id))
 
 # Parsing and printing of references to a lab.
 lab = SimpleNamespace(
