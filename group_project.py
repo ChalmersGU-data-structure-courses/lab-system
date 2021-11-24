@@ -146,26 +146,34 @@ class RequestAndResponses:
         return self.handled_result['review_needed']
 
     @functools.cached_property
-    def review_result(self):
+    def review(self):
         '''
-        Get the outcome of the review, or None if there is none.
+        Get the review response, or None if there is none.
         Only valid to call for submission requests.
 
-        Returns a pair (issue, outcome) on success where:
+        Returns a pair (issue, title_data) on success where:
         - issue is the review issue on Chalmers GitLab,
-        - outcome is the outcome as produced by the response issue printer-parser.
+        - title_data is the parsing produced by the response issue printer-parser.
         '''
         # Review issues must be configured to proceed.
         response_key = self.lab.config.submission_handler_key
         if response_key == None:
             return None
 
-        response = self.responses.get(response_key)
-        if response == None:
+        return self.responses.get(response_key)
+
+    @functools.cached_property
+    def review_outcome(self):
+        '''
+        Get the outcome of the review, or None if there is none.
+        Only valid to call for submission requests.
+        The format of the outcome is defined by the submission handler.
+        '''
+        if self.review == None:
             return None
 
-        (issue, title_data) = response
-        return (issue, title_data['outcome'])
+        (issue, title_data) = self.review
+        return title_data['outcome']
 
     @functools.cached_property
     def outcome(self):
@@ -178,9 +186,8 @@ class RequestAndResponses:
         Returns the outcome or None.
         The form of the outcome is specific to the submission handler.
         '''
-        if self.review_result != None:
-            (issue, outcome) = self.review_result
-            return outcome
+        if self.review_outcome != None:
+            return self.review_outcome
 
         if self.handled_result['review_needed']:
             return None
