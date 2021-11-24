@@ -879,7 +879,7 @@ class GroupProject:
         submission_handler_data = self.handler_data[self.lab.config.submission_handler_key]
         for request_and_responses in submission_handler_data.requests_and_responses.values():
             if request_and_responses.accepted:
-                if general.when(deadline != None, request_and_responses.date <= deadline):
+                if deadline == None or request_and_responses.date <= deadline:
                     yield request_and_responses
 
     def submissions_with_outcome(self, deadline = None):
