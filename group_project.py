@@ -9,6 +9,7 @@ import logging
 from pathlib import PurePosixPath
 import shlex
 
+import instance_cache
 import item_parser
 import git_tools
 import gitlab_tools
@@ -266,6 +267,39 @@ class RequestAndResponses:
     #     else:
     #         self.repo_tag_create_json(RequestAndResponses.segment_review, data = result,force = True)
     #     return True
+
+    def _repo_tag_after_segments(self, prev_name):
+        return ['after', prev_name]
+
+    @instance_cache.instance_cache
+    def repo_tag_after(self, prev_name):
+        '''
+        Returns an instance of git.TagReference for the tag with name
+            <full group id>/<request name>/after/<prev_name>
+        in the local grading repository.
+
+        This points to a descendant commit of self.repo_remote_commit, identical in content,
+        that is additionally a descendant of whatever commit prev_name refers to.
+        '''
+        return self._repo_tag_after_segments(prev_name)
+
+    def repo_tag_after_create(self, prev_name, prev_ref):
+        '''
+        Given a reference prev_ref in the grading repository, create a tag
+            <full group id>/<request name>/after/<prev_name>
+        for a commit that is a descendant of both self.repo_tag and prev_ref.
+
+        If self.repo_tag is a descendant of prev_commit, the commit is self.repo_remote_commit.
+        Otherwise, it is created as a one-sided merge.
+
+        Returns an instance of git.TagReference for the created tag.
+        '''
+        prev_commit = git_tools.resolve(self.lab.repo, prev_ref)
+        if self.lab.repo.is_ancestor(prev_commit, self.repo_remote_commit):
+            commit = self.repo_remote_commit
+        else:
+            commit = git_tools.onesided_merge(self.lab.repo, self.repo_remote_commit, prev_commit)
+        return self.repo_tag_create(self._repo_tag_after_segments(prev_name), commit, force = True)
 
     def post_response_issue(self, response_key, title_data, description):
         # Only allow posting if there is not already a response issue of the same type.
