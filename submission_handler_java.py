@@ -93,9 +93,11 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
                     self.robograder.setup(lab, src, bin)
 
         # Set up grading columns.
-        self.grading_columns = live_submissions_table.with_standard_columns(
-            dict(self.grading_columns_generator())
-        )
+        def f():
+            yield ('compilation', CompilationColumn)
+            if self.has_robograder:
+                yield ('robograding', RobogradingColumn)
+        self.grading_columns = live_submissions_table.with_standard_columns(dict(f()))
 
     def _handle_request(self, request_and_responses, src, bin, report):
         try:
@@ -126,8 +128,3 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
             with general.temp_dir() as bin:
                 with general.temp_dir() as report:
                     return self._handle_request(request_and_responses, src, bin, report)
-
-    def grading_columns_generator(self):
-        yield ('compilation', CompilationColumn)
-        if self.has_robograder:
-            yield ('robograding', RobogradingColumn)
