@@ -705,7 +705,7 @@ class Lab:
                     grader = None
                     outcome = None
                 else:
-                    grader = google_tools.sheets.cell_string(submission.informal_grader_name)
+                    grader = google_tools.sheets.cell_value(submission.informal_grader_name)
                     outcome = google_tools.sheets.cell_link_with_fields(
                         self.course.config.outcome.as_cell.print(submission.outcome),
                         submission.outcome_issue.web_url,
