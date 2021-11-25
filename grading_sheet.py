@@ -575,8 +575,8 @@ class GradingSheet:
         # then the call computing coords will have triggered an exception.
         self.needed_num_queries = max(self.needed_num_queries, query + 1)
 
-        request_buffer.add(google_tools.sheets.request_update_cell_user_entered_value(
-            value, self.sheet_properties.sheetId, *coords
+        request_buffer.add(google_tools.sheets.request_update_cell(
+            value, fields, self.sheet_properties.sheetId, *coords,
         ))
 
     def write_query(
