@@ -317,8 +317,8 @@ class QueryNumberColumn(Column):
 
     def get_value(self, group_id):
         group = super().get_value(group_id)
-        graded_submissions = group.graded_submissions(deadline = self.deadline)
-        return QueryNumberColumn.Value(len(graded_submissions))
+        submissions_with_outcome = group.submissions_with_outcome(deadline = self.deadline)
+        return QueryNumberColumn.Value(general.ilen(submissions_with_outcome))
 
 
 class MessageColumn(Column):
