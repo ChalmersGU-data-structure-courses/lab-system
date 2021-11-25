@@ -347,3 +347,7 @@ def create_tree_from_dir(repo, dir, follow_symlinks = True):
                 yield (binsha, mode, name)
 
     return make_tree(repo, entries())
+
+def read_text_file_from_tree(tree, path):
+    path = str(PurePosixPath(path))
+    return tree[path].data_stream.read().decode()
