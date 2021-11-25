@@ -76,9 +76,9 @@ class RequestAndResponses:
 
     def repo_tag_create_json(self, segments, ref = None, data = None, **kwargs):
         '''
-        Create a tag with JSON-encoded data as message.
-        Signature is as for repo_tag_create, except
-        the message keyword argument must not be used.
+        Create a tag with optional JSON-encoded data as message.
+        Signature is as for repo_tag_create,
+        except the message keyword argument must not be used.
         Returns the created tag.
         '''
         return self.repo_tag_create(
@@ -98,6 +98,24 @@ class RequestAndResponses:
     def checkout_manager(self, segments = ['tag']):
         with git_tools.checkout_manager(self.lab.repo, self.repo_tag(segments)) as src:
             yield src
+
+    def repo_report_create(self, segments, dir, follow_symlinks = False, commit_message = '', **kwargs):
+        '''
+        Commit the directory 'dir' as a descendant of self.repo_remote_commit
+        and tag it as <group full id>/<request name>/<segments>.
+        Further arguments are passed to self.repo_tag_create_json.
+        Returns the created tag.
+        '''
+        tree = git_tools.create_tree_from_dir(self.lab.repo, dir, follow_symlinks = follow_symlinks)
+        commit = git.Commit.create_from_tree(
+            repo = self.lab.repo,
+            tree = tree,
+            message = commit_message,
+            parent_commits = [self.repo_remote_commit],
+            author_date = self.repo_remote_commit.authored_datetime,
+            commit_date = self.repo_remote_commit.committed_datetime,
+        )
+        return self.repo_tag_create_json(segments, ref = commit, **kwargs)
 
     # Tag path segment suffix used for marking requests as handled.
     segment_handled = ['handled']
@@ -705,7 +723,6 @@ class GroupProject:
             merge,
             hotfix.message,
             parent_commits = [git_tools.resolve(self.lab.repo, master)],
-            head = False,
             author = hotfix.author,
             committer = hotfix.committer,
             author_date = hotfix.authored_datetime,

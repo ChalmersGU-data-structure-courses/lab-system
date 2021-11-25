@@ -282,7 +282,6 @@ def onesided_merge(repo, commit, new_parent):
         commit.tree,
         'merge commit',
         [commit, new_parent],
-        head = False,
         author_date = commit.authored_datetime,
         commit_date = commit.committed_datetime,
     )
