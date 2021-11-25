@@ -335,12 +335,12 @@ def url_issues_new(project, **kwargs):
         dict((f'issue[{key}]', value) for (key, value) in kwargs.items())
     )
 
-def format_tag_metadata(project, tag, description = None):
+def format_tag_metadata(project, tag_name, description = None):
     def lines():
         if description:
             yield description
-        yield f'* name: {tag.name}'
-        url = gitlab_tools.url_tag(project, tag)
+        yield f'* name: {tag_name}'
+        url = url_tag_name(project, tag_name)
         yield f'* URL: {url}'
     return general.join_lines(lines())
 
