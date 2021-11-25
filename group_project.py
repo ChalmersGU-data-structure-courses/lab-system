@@ -901,6 +901,17 @@ class GroupProject:
             if submission.outcome != None:
                 yield submission
 
+    def submissions_relevant(self, deadline = None):
+        '''
+        Restrict the output of self.submissions to all relevant submissions.
+        A submission is *relevant* if it has an outcome or is the last submission and needs a review.
+        Returns an iterable of instances of SubmissionAndRequests ordered by the date.
+        '''
+        submissions = list(self.submissions(deadline = deadline))
+        for (i, submission) in enumerate(submissions):
+            if i + 1 == len(submissions) or submission.outcome != None:
+                yield submission
+
     def submission_current(self, deadline = None):
         '''
         With respect to the output of self.submissions, return the last submission
@@ -912,14 +923,3 @@ class GroupProject:
             submission_last = submissions[-1]
             if submission_last.review_needed:
                 return submission_last
-
-    def submissions_relevant(self, deadline = None):
-        '''
-        Restrict the output of self.submissions to all relevant submissions.
-        A submission is *relevant* if it has an outcome or is the last submission and needs a review.
-        Returns an iterable of instances of SubmissionAndRequests ordered by the date.
-        '''
-        submissions = list(self.submissions(deadline = deadline))
-        for (i, submission) in enumerate(submissions):
-            if i + 1 == len(submissions) or submission.outcome != None:
-                yield submission
