@@ -364,6 +364,8 @@ class RequestAndResponses:
         if self.get_handled():
             return
 
+        self.logger.info(f'Processing request {self.request_name} in {self.group.name}.')
+
         # Create tag <full group id>/<request name>/tag copying the request tag.
         self.repo_tag_create(
             ref = self.repo_remote_commit,
