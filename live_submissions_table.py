@@ -425,8 +425,8 @@ class SubmissionDiffColumnValue(ColumnValue):
         return self.linked_name != None
 
     def format_cell(self, cell):
+        add_class(cell, 'extension-column')
         if self.has_content():
-            add_class(cell, 'extension-column')
             with cell:
                 with dominate.tags.p():
                     format_url(*self.linked_name)
