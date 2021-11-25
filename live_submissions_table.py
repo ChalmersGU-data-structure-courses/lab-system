@@ -388,25 +388,30 @@ class SubmissionFilesColumn(Column):
 
     def get_value(self, group_id):
         group = super().get_value(group_id)
-        tag = group.current_submission(deadline = self.deadline)
+        submission = group.submission_current(deadline = self.deadline)
 
-        def f():
-            try:
-                return self.lab.grading_template_issue.description
-            except AttributeError:
-                return ''
-        issue_description = group.append_mentions(f())
+        response_key = self.lab.submission_handler.review_response_key
+        if response_key == None:
+            linked_open_grading_issue = None
+        else:
+            def f():
+                try:
+                    return self.lab.grading_template_issue.description
+                except AttributeError:
+                    return ''
+
+            linked_open_grading_issue = ('open issue', gitlab_tools.url_issues_new(
+                group.project.get,
+                title = self.lab.submission_handler.response_titles[response_key].print({
+                    'tag': submission.request_name,
+                    'outcome': self.course.config.grading_response_default_outcome,
+                }),
+                description = group.append_mentions(f()),
+            ))
 
         return SubmissionFilesColumn.Value(
-            (tag.name, gitlab_tools.url_tree(group.project.get, tag.name)),
-            ('open issue', gitlab_tools.url_issues_new(
-                group.project.get,
-                title = self.course.config.grading_response.print({
-                    'tag': tag.name,
-                    'score': self.course.config.grading_response_default_score,
-                }),
-                description = issue_description,
-            ))
+            (submission.request_name, gitlab_tools.url_tree(group.project.get, submission.request_name)),
+            linked_open_grading_issue,
         )
 
 
@@ -447,25 +452,23 @@ class SubmissionDiffPreviousColumn(Column):
 
     def get_value(self, group_id):
         group = super().get_value(group_id)
-        graded_submissions = group.graded_submissions(deadline = self.deadline)
-        if not graded_submissions:
+        submissions_with_outcome = list(group.submissions_with_outcome(deadline = self.deadline))
+        if not submissions_with_outcome:
             return SubmissionDiffColumnValue(None)
 
-        tag = group.current_submission(deadline = self.deadline)
-        (tag_prev, (issue_prev, _)) = graded_submissions[-1]
-        tag_after = self.lab.make_tag_after(
-            group.repo_tag(tag),
-            group.repo_tag(tag_prev),
-            tag_prev.name
+        submission_current = group.submission_current(deadline = self.deadline)
+        submission_previous = submissions_with_outcome[-1]
+        tag_after = submission_current.repo_tag_after_create(
+            submission_previous.request_name,
+            submission_previous.repo_remote_commit
         )
-        grader_informal = self.course.issue_author_informal(issue_prev)
         return SubmissionDiffColumnValue(
-            (tag_prev.name + '..', gitlab_tools.url_compare(
+            (submission_previous.request_name + '..', gitlab_tools.url_compare(
                 self.lab.grading_project.get,
-                group.repo_tag(tag_prev),
+                submission_previous.repo_tag(),
                 tag_after.name,
             )),
-            (grader_informal, issue_prev.web_url),
+            (submission_previous.informal_grader_name, submission_previous.outcome_issue.web_url),
             is_same = False, # TODO: implement
         )
 
@@ -482,11 +485,10 @@ class SubmissionDiffOfficialColumn(Column):
 
     def get_value(self, group_id):
         group = super().get_value(group_id)
-        tag = group.current_submission(deadline = self.deadline)
-        tag_after = self.lab.make_tag_after(
-            group.repo_tag(tag),
+        submission_current = group.submission_current(deadline = self.deadline)
+        tag_after = submission_current.repo_tag_after_create(
+            self.branch.name,
             self.branch,
-            self.branch.name
         )
         return SubmissionDiffColumnValue(
             (self.branch.name + '..', gitlab_tools.url_compare(
