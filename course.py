@@ -821,3 +821,31 @@ class Course:
             return ((), issue)
 
         return functools.partial(self.parse_issues, 'grading template', parser, parsed_issues)
+
+    @contextlib.contextmanager
+    def error_reporter(self):
+        '''
+        A context manager for reporting program errors via the temp directory on Canvas.
+        Hack, uses hard-coded configuration for now.
+        '''
+        import traceback
+        import google_tools.sheets
+
+        # Shortcut
+        spreadsheets = grading_sheet.GradingSpreadsheet(self.config).google
+
+        spreadsheet_id = '1qnG1Lfp8Y-_0MpsncASBljDb_NTn1pFk6b0pgjQwka4'
+        sheet_id = '0'
+
+        try:
+            yield
+        except:
+            report = traceback.format_exc()
+            google_tools.sheets.batch_update(
+                spreadsheets,
+                spreadsheet_id,
+                [google_tools.sheets.request_update_cell_user_entered_value(
+                    google_tools.sheets.cell_value(report), sheet_id, 0, 0
+                )]
+            )
+            raise
