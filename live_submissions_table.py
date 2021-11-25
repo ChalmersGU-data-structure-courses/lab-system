@@ -5,6 +5,7 @@ from pathlib import Path
 import types
 
 import general
+import git_tools
 import gitlab_tools
 
 logger = logging.getLogger(__name__)
@@ -341,13 +342,17 @@ class MessageColumn(Column):
 
         def format_cell(self, cell):
             with cell:
-                dominate.tags.pre(self.message)
+                if self.message != None:
+                    dominate.tags.pre(self.message)
 
     def get_value(self, group_id):
         group = super().get_value(group_id)
-        tag = group.current_submission(deadline = self.deadline)
-        return MessageColumn.Value(tag.message)
-
+        submission_current = group.submission_current(deadline = self.deadline)
+        message = git_tools.tag_message(
+            submission_current.repo_remote_tag,
+            default_to_commit_message = True
+        )
+        return MessageColumn.Value(message)
 
 def float_left_and_right(cell, left, right):
     with cell:
@@ -560,7 +565,7 @@ class LiveSubmissionsTable:
         def f():
             for group_id in self.course.groups:
                 group = self.lab.student_group(group_id)
-                if group.current_submission(deadline = deadline) != None:
+                if group.submission_current(deadline = deadline) != None:
                     yield group_id
         group_ids = list(f())
 
