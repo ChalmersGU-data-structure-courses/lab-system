@@ -317,6 +317,10 @@ def make_tree(repo, entries):
 
     Adapted from the test suite of GitPython.
     '''
+    # Sort entries
+    entries = list(entries)
+    git.objects.tree.merge_sort(entries, git.objects.tree.git_cmp)
+
     sio = io.BytesIO()
     git.objects.fun.tree_to_stream(entries, sio.write)
     sio.seek(0)
