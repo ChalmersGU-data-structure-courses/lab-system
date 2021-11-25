@@ -11,6 +11,8 @@ import robograder_java
 import check_symlinks
 
 class CompilationColumn(live_submissions_table.Column):
+    sortable = True
+
     def format_header_cell(self, cell):
         with cell:
             dominate.util.text('Compilation')
@@ -28,10 +30,13 @@ class CompilationColumn(live_submissions_table.Column):
 
         if not submission_current.handled_result['compilation_succeded']:
             cl = 'error'
+            sort_key = 0
         elif not git_tools.read_text_file_from_tree(report.commit.tree, PurePosixPath('compilation')):
             cl = 'grayed-out'
+            sort_key = 2
         else:
             cl = None
+            sort_key = 1
 
         def format_cell(cell):
             with cell:
@@ -39,8 +44,9 @@ class CompilationColumn(live_submissions_table.Column):
                 if cl:
                     live_submissions_table.add_class(a, cl)
         return live_submissions_table.CallbackColumnValue(
+            sort_key = sort_key,
             has_content = bool(cl),
-            callback = format_cell
+            callback = format_cell,
         )
 
 class RobogradingColumn(live_submissions_table.Column):

@@ -162,7 +162,7 @@ class CallbackColumnValue(ColumnValue):
     Values for sort_key and has_content are given at construction.
     '''
     def __init__(self, sort_key = None, has_content = True, callback = None):
-        if sort_key:
+        if sort_key != None:
             self.sort_key = lambda: sort_key
         self.has_content = lambda: has_content
         self.format_cell = callback if callback != None else lambda cell: None
