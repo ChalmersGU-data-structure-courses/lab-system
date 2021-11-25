@@ -9,6 +9,7 @@ import shutil
 import tempfile
 import types
 
+import item_parser
 import general
 import git_tools
 import gitlab_tools
@@ -547,12 +548,42 @@ class Lab:
             group.process_requests()
 
     @functools.cached_property
-    def grading_template_issue(self):
-        issues_grading_template = dict()
-        self.course.parse_all_response_issues(self.official_project.get, [
-            self.course.grading_template_issue_parser(issues_grading_template)
-        ])
-        return issues_grading_template.get(())
+    def submission_handler(self):
+        '''The submission handler specified by the lab configuration.'''
+        return self.config.request_handlers[self.config.submission_handler_key]
+
+    @functools.cached_property
+    def review_template_issue(self):
+        '''
+        The submission review template issue specified by the lab configuration.
+        Parsing this on first access takes an HTTP call.
+        None if no submission review is configured.
+        '''
+        if self.submission_handler.review_response_key == None:
+            return None
+
+        self.logger.debug('Retrieving template issue.')
+
+        def parser(issue):
+            try:
+                self.course.config.grading_response_template.parse(issue.title)
+            except:
+                return None
+            return ((), issue)
+
+        u = dict()
+
+        item_parser.parse_all_items(
+            item_parser.Config(
+                location_name = 'official lab project',
+                item_name = 'official response issue',
+                item_formatter = gitlab_tools.format_issue_metadata,
+                logger = self.logger,
+            ),
+            [(parser, f'{self.submission_handler.review_response_key} template issue', u)],
+            gitlab_tools.list_all(self.official_project.lazy.issues),
+        )
+        return u[()]
 
     def handle_requests(self):
         self.logger.info('Handling request tags.')
