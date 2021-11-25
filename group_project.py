@@ -648,11 +648,13 @@ class GroupProject:
         if ref == None:
             ref = self.repo_tag(request_name).commit
 
-        return self.lab.repo.create_tag(
+        tag = self.lab.repo.create_tag(
             self.repo_tag(request_name, segments).name,
             ref = ref,
             **kwargs,
         )
+        self.lab.repo_updated = True
+        return tag
 
     def repo_tag_delete(self, request_name, segments):
         '''
@@ -663,6 +665,7 @@ class GroupProject:
         * request_name, segments: As for repo_tag.
         '''
         self.lab.delete_tag(self.repo_tag(request_name, segments).name)
+        self.lab.repo_updated = True
 
     def hotfix_group(self, branch_hotfix, branch_group):
         '''
