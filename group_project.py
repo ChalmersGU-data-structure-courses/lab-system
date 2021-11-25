@@ -329,7 +329,7 @@ class RequestAndResponses:
             commit = git_tools.onesided_merge(self.lab.repo, self.repo_remote_commit, prev_commit)
         return self.repo_tag_create(self._repo_tag_after_segments(prev_name), commit, force = True)
 
-    def post_response_issue(self, response_key, title_data, description):
+    def post_response_issue(self, response_key, title_data = dict(), description = str()):
         # Only allow posting if there is not already a response issue of the same type.
         if response_key in self.responses:
             ValueError(
