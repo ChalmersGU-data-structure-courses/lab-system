@@ -294,6 +294,13 @@ class Lab:
         for group_id in self.course.groups:
             self.student_group(group_id).repo_add_remote(ignore_missing = True)
 
+    def repo_delete(self):
+        '''
+        Delete the repository directory.
+        Warning: Make sure that self.dir is correctly configured before calling.
+        '''
+        shutil.rmtree(self.dir)
+
     def repo_init(self, bare = False):
         '''
         Initialize the local grading repository.
