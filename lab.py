@@ -650,7 +650,7 @@ class Lab:
         table = live_submissions_table.LiveSubmissionsTable(self)
         with tempfile.TemporaryDirectory() as dir:
             path = Path(dir) / 'index.html'
-            table.build(path, deadline = deadline)
+            table.build(path, deadline = deadline, columns = self.submission_handler.grading_columns)
             self.repo_push()
             self.logger.info('Posting live submissions table to Canvas')
             target = self.config.canvas_path_awaiting_grading
