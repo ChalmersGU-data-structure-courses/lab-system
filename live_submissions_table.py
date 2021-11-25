@@ -625,6 +625,8 @@ class LiveSubmissionsTable:
                         add_class(cell, name)
                         if data.column.sortable:
                             add_class(cell, 'sortable')
+                            if [name] == sort_order[:1]:  # want to write: is_prefix([name], sort_order)
+                                add_class(cell, 'sortable-order-asc')
                         data.column.format_header_cell(cell)
                 with dominate.tags.tbody():
                     for group_id in group_ids:
