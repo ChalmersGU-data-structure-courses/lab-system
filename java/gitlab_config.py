@@ -1,12 +1,13 @@
 # Variables starting with an underscore are only used locally.
-from pathlib import Path, PurePosixPath
+from pathlib import PurePosixPath
 import re
 from types import SimpleNamespace
 
-import course_basics
 import general
+import lab_interfaces
 import print_parse
-import robograder_java
+import submission_handler_java
+import robograding_handler_java
 from this_dir import this_dir
 
 # Canvas config
@@ -86,6 +87,13 @@ base_url = 'https://git.chalmers.se/'
 #     ├── 1
 #     ...
 
+# Regarding group and project names on GitLab, we are constrained by the following.
+# (This has been last checked at version 14.4).
+# > Name can contain only letters, digits, emojis, '_', '.', dash, space.
+# > It must start with letter, digit, emoji or '_'.
+# This also applies to the content of the name file for each lab.
+# This is because it is currently used to form the full name of a lab on Chalmers Gitlab.
+
 _course_path = PurePosixPath('courses/dat038-tda417')
 
 # Absolute paths on Chalmers GitLab to the groups described above.
@@ -115,21 +123,16 @@ branch = SimpleNamespace(
 
 # Value of type RequestMatcher.
 # Determines what tag name students can use to make a submission in their lab project on GitLab Chalmers.
-submission_request = course_basics.RegexRequestMatcher(
-    'submission',
+submission_request = lab_interfaces.RegexRequestMatcher(
     ['submission*', 'Submission*'],
     '(?:s|S)ubmission[^/: ]*',
 )
 
-# Parsing and printing of scores.
-score = SimpleNamespace(
-    # Format the score for use in a spreadsheet cell.
-		# An integer or a string.
-    as_cell = print_parse.identity,
-
+# Parsing and printing of outcomes.
+outcome = SimpleNamespace(
     # Full name.
     # Used in interactions with students
-		name = print_parse.compose(
+    name = print_parse.compose(
         print_parse.from_dict([
             (0, 'incomplete'),
             (1, 'pass'),
@@ -138,15 +141,20 @@ score = SimpleNamespace(
     ),
 )
 
+# Format the outcome for use in a spreadsheet cell.
+# An integer or a string.
+# The below definition is the identity, but checks the domain is correct.
+outcome.as_cell = print_parse.compose(outcome.name, print_parse.invert(outcome.name))
+
 # Printer-parser (print_parse.PrintParse) for grading issue titles.
 # The domain of the printer-parser is a map with the following keys:
 # - 'tag': the submission tag name,
-# - 'score': the grading outcome.
+# - 'outcome': the grading outcome.
 grading_response = print_parse.compose(
-    print_parse.on(general.component('score'), score.name),
+    print_parse.on(general.component('outcome'), outcome.name),
     print_parse.regex_non_canonical_keyed(
-        'Grading for {tag}: {score}',
-        'grading\s+(?:for|of)\s+(?P<tag>[^: ]*)\s*:\s*(?P<score>[^:\\.!]*)[\\.!]*',
+        'Grading for {tag}: {outcome}',
+        'grading\s+(?:for|of)\s+(?P<tag>[^: ]*)\s*:\s*(?P<outcome>[^:\\.!]*)[\\.!]*',
         flags = re.IGNORECASE,
     )
 )
@@ -157,7 +165,7 @@ grading_response = print_parse.compose(
 grading_response_template = print_parse.regex_many('Grading template', [], flags = re.IGNORECASE)
 
 # Used to initialize grading template instances.
-grading_response_default_score = 0
+grading_response_default_outcome = 0
 
 # Parsing and printing of references to a lab group.
 group = SimpleNamespace(
@@ -180,6 +188,11 @@ group = SimpleNamespace(
     # Used for sorting in grading sheet.
     sort_key = lambda id: id,
 )
+
+# Format the id for use in a spreadsheet cell.
+# An integer or a string.
+# The below definition is the identity on integers.
+group.as_cell = print_parse.compose(group.id, print_parse.invert(group.id))
 
 # Parsing and printing of references to a lab.
 lab = SimpleNamespace(
@@ -250,6 +263,8 @@ grading_sheet = SimpleNamespace(
 # Root of the code repository.
 _code_root = this_dir.parent
 
+import lab_interfaces
+
 # Example lab configuration (for purpose of documentation).
 _lab_config = SimpleNamespace(
     # Filesystem path to the lab source.
@@ -266,16 +281,22 @@ _lab_config = SimpleNamespace(
     # Path in Canvas course where the table of submissions awaiting grading should be uploaded.
     canvas_path_awaiting_grading = PurePosixPath('temp') / 'lab-N-awaiting-grading.html',
 
-    # Optional configuration for a compiler.
-    # Value of type course_basics.Compiler.
-    compiler = None,
+    # Dictionary of request handlers.
+    # Its keys should be string-convertible.
+    # Its values are instances of the RequestHandler interface.
+    # The order of the dictionary determines the order in which the request matchers
+    # of the request handlers are tested on a student repository tag.
+    request_handlers = {
+        'submission': None,
+        'robograding': None,
+    },
 
-    # List of submission handlers.
-    # Only values of the following interfaces defined in course_basics are supported for now:
-    # * Tester
-    # * SubmissionGradingRobograder
-    # * StudentCallableRobograder
-    submission_handlers = []
+    # Key of submission handler in the dictionary of request handlers.
+    # Its value must be an instance of SubmissionHandler.
+    submission_handler_key = 'submission',
+
+    # Key of review issue title printer-parser in specified submission handler.
+    review_issue_title_key = 'grading',
 )
 
 _language = 'java'
@@ -287,11 +308,20 @@ class _LabConfig:
         self.grading_sheet = lab.name.print(k)
         self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-to-be-graded.html'.format(lab.full_id.print(k))
 
-        self.compiler = robograder_java.Compiler()
-        self.submission_handlers = {}
+        # Dictionary of request handlers.
+        # Its keys should be string-convertible.
+        # Its values are instances of the RequestHandler interface.
+        # The order of the dictionary determines the order in which the request matchers
+        # of the request handlers are tested on a student repository tag.
+        def f():
+            yield ('submission', submission_handler_java.SubmissionHandler(submission_request, grading_response))
+            if (self.path_source / 'pregrade').is_dir():
+                yield ('robograding', robograding_handler_java.RobogradingHandler())
+        self.request_handlers = dict(f())
 
-        if (self.path_source / 'pregrade').is_dir():
-            self.submission_handlers['test'] = robograder_java.StudentCallableRobograder()
+    # Key of submission handler in the dictionary of request handlers.
+    # Its value must be an instance of SubmissionHandler.
+    submission_handler_key = 'submission'
 
 def _lab_item(k, *args):
     return (k, _LabConfig(k, *args))
