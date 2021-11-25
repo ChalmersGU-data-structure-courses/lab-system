@@ -13,6 +13,23 @@ import print_parse as pp
 
 logger = logging.getLogger(__name__)
 
+# TODO: This belongs in a more general module.
+def is_subdata(current, previous):
+    '''
+    Given JSON data arguments, tests whether 'current' is subdata of 'previous'.
+    That means it only differs recursively in dictionaries having more keys.
+    Note in particular that [1, 2] is not subdata of any other list.
+    '''
+    if not (isinstance(current, dict) and isinstance(previous, dict)):
+        return current == previous
+
+    for (key, current_value) in current.items():
+        previous_value = previous.get(key)
+        if not is_subdata(current_value, previous_value):
+            return False
+
+    return True
+
 default_scopes = ['spreadsheets']
 
 #def request_update_sheet_properties
@@ -47,6 +64,9 @@ def request(name, /, **params):
         name: params
     }
 
+# TODO:
+# inheritFromBefore = True for rows fails to copy vertical border.
+# Find out why.
 def request_insert_dimension(dimension_range, inherit_from_before = False):
     return request('insertDimension',
         range = dimension_range,
@@ -117,8 +137,11 @@ def row_data(values):
     }
 
 def request_update_cells(rows, fields, start = None, range = None):
+    '''
+    * rows: Iterable (of rows) of iterables (of cells) of cell values (API type CellData).
+    '''
     def f():
-        yield ('rows', rows)
+        yield ('rows', [row_data(row) for row in rows])
         yield ('fields', fields)
         nonlocal start, range
         if start != None:
@@ -131,13 +154,27 @@ def request_update_cells(rows, fields, start = None, range = None):
             raise ValueError("Exactly one of 'start' and 'range' must be given")
     return request('updateCells', **dict(f()))
 
-def request_update_cells_user_entered_value(rows, start = None, range = None):
+def request_update_cell(cell, fields, sheet_id, row, column):
     '''
-    Convenience specialization of request_update_cells_user for updating the user entered valued.
-    * rows: Iterable (of rows) of iterables (of cells) of user entered values (API type ExtendedValue). 
+    Convenience specialization of request_update_cells for updating a single cell.
+    * cell: value matching API type CellData.
     '''
     return request_update_cells(
-        [row_data(cell_data(userEnteredValue = cell) for cell in row) for row in rows],
+        [[cell]],
+        fields,
+        range = grid_range(sheet_id, (
+            general.range_singleton(row),
+            general.range_singleton(column),
+        )),
+    )
+
+def request_update_cells_user_entered_value(rows, start = None, range = None):
+    '''
+    Convenience specialization of request_update_cells for updating the user entered valued.
+    * rows: Iterable (of rows) of iterables (of cells) of user entered values (API type ExtendedValue).
+    '''
+    return request_update_cells(
+        ((cell_data(userEnteredValue = cell) for cell in row) for row in rows),
         'userEnteredValue',
         start = start,
         range = range,
@@ -145,15 +182,15 @@ def request_update_cells_user_entered_value(rows, start = None, range = None):
 
 def request_update_cell_user_entered_value(value, sheet_id, row, column):
     '''
-    Convenience specialization of request_update_cells_user for updating the user entered valued.
-    * rows: Iterable (of rows) of iterables (of cells) of user entered values (API type ExtendedValue). 
+    Convenience specialization of request_update_cell for updating the user entered valued.
+    * cell: value matching API type ExtendedValue.
     '''
-    return request_update_cells_user_entered_value(
+    return request_update_cell(
         [[value]],
-        range = grid_range(sheet_id, (
-            general.range_singleton(row),
-            general.range_singleton(column),
-        )),
+        'userEnteredValue',
+        sheet_id = sheet_id,
+        row = row,
+        column = column,
     )
 
 def requests_duplicate_dimension(sheet_id, dimension, copy_from, copy_to):
@@ -212,48 +249,115 @@ def extended_value_number_or_string(x):
 def extended_value_formula(s):
     return {'formulaValue': s}
 
+def extended_value_extract_primitive(v):
+    n = v.get('numberValue')
+    if n != None:
+        if not isinstance(n, int):
+            raise ValueError(f'Not an integer: {n}')
+        return n
+
+    s = v.get('stringValue')
+    if s != None:
+        if not isinstance(s, str):
+            raise ValueError(f'Not a string: {s}')
+        return s
+
+    raise ValueError(f'Extended value is not a number or string: {v}')
+
+# Obsolete.
+# We now format hyperlinks via userEnteredFormat.textFormat.
+#
 # TODO: No idea how Google Sheets expects data to be escaped.
-hyperlink = pp.compose_many(
-    pp.tuple(pp.doublequote),
-    pp.regex_many('=HYPERLINK({}, {})', ['"(?:\\\\.|[^"\\\\])*"'] * 2),
-)
+#hyperlink = pp.compose_many(
+#    pp.tuple(pp.doublequote),
+#    pp.regex_many('=HYPERLINK({}, {})', ['"(?:\\\\.|[^"\\\\])*"'] * 2),
+#)
+#
+#def value_link(s, url):
+#    return f'=HYPERLINK("{url}", "{s}")'
+#
+#def extended_value_link(s, url):
+#    return extended_value_formula(value_link(s, url))
 
-def value_link(s, url):
-    return f'=HYPERLINK("{url}", "{s}")'
+def text_format(
+    link = None,
+):
+    '''
+    Produces a value for the API type TextFormat.
+    Arguments:
+    * link: an optional URL (string) to use for a link.
+    '''
+    def f():
+        if link != None:
+            yield ('link', {'uri': link})
+    return dict(f())
 
-def extended_value_link(s, url):
-    return extended_value_formula(value_link(s, url))
+def cell_format(
+    text_format = None,
+):
+    '''Produces a value for the API type CellFormat.'''
+    def f():
+        if text_format != None:
+            yield ('textFormat', text_format)
+    return dict(f())
+
+def linked_cell_format(url):
+    '''
+    Convenience method for producing a value for the API type CellFormat
+    that displays a link to the given url (string).
+    '''
+    return cell_format(text_format = text_format(link = url))
 
 def cell_data(
     userEnteredValue = None,
     userEnteredFormat = None,
-    hyperlink = None,
     note = None,
 ):
+    '''Produces a value for the API type CellData.'''
     def f():
         if userEnteredValue != None:
             yield ('userEnteredValue', userEnteredValue)
         if userEnteredFormat != None:
             yield ('userEnteredFormat', userEnteredFormat)
-        if hyperlink != None:
-            yield ('hyperlink', hyperlink)
         if note != None:
             yield ('note', note)
     return dict(f())
 
-string_value_empty = {
-    'stringValue': '',
-}
+string_value_empty = extended_value_string('')
 
 cell_value_empty = {
     'userEnteredValue': string_value_empty,
     'effectiveValue': string_value_empty,
 }
 
+def cell_string(s):
+    '''Returns a value for the API type CellData for a cell with string content s.'''
+    return cell_data(userEnteredValue = extended_value_string(s))
+
+def cell_link(value, url):
+    '''
+    Convenience method for writing a cell with a hyperlink.
+    Arguments:
+    * value: String or integer to use as userEnteredValue.
+    * url: URL (string) to use as link.
+    Returns a value for the API type CellData.
+    '''
+    return cell_data(
+        userEnteredValue = extended_value_number_or_string(value),
+        userEnteredFormat = linked_cell_format(url),
+    )
+
+cell_link_fields = 'userEnteredValue,userEnteredFormat/textFormat/link'
+'''Fields contained in the result of cell_link.'''
+
+def cell_link_with_fields(value, link):
+    return (cell_link(value, link), cell_link_fields)
+
 def sheet_data(sheet):
     def value(row, column):
         try:
             r = sheet['data'][0]['rowData'][row]['values'][column]
+            # TODO: remove this hack.
             if r == dict():
                 r = cell_value_empty
             return r
@@ -276,8 +380,8 @@ def sheet_data_table(sheet_data):
         for row in range(sheet_data.num_rows)
     ]
 
-def cell_as_string(cell_value):
-    x = cell_value['effectiveValue']
+def cell_as_string(cell):
+    x = cell['userEnteredValue']
     y = x.get('stringValue')
     if y != None:
         return y
@@ -288,9 +392,18 @@ def cell_as_string(cell_value):
     raise ValueError(f'Cannot interpret as string value: {x}')
 
 def is_cell_non_empty(cell):
-    return bool(cell_as_string(cell))
+    return not cell.get('userEnteredValue') in [None, string_value_empty]
 
 def get(spreadsheets, id, fields = None, ranges = None):
+    '''
+    Retrieve spreadsheet data using the 'get' API call.
+
+    Arguments:
+    * spreadsheets: spreadsheets instance.
+    * id: Spreadsheet it.
+    * fields: Field mask (string).
+    * ranges: Iterable of ranges.
+    '''
     logger.debug(f'Retrieving data of spreadsheet f{id} with fields {fields} and ranges {ranges}')
 
     return spreadsheets.get(
@@ -373,7 +486,7 @@ alpha = pp.compose_many(
     list_of_digits(len(string.ascii_uppercase)),
     pp.tuple(number_as_uppercase_letter),
     pp.reversal,
-    pp.swap(pp.string_letters),
+    pp.invert(pp.string_letters),
 )
 
 # The alphabetical part of A1 notation, supporting the unbounded value None instead of the number 0.
@@ -386,7 +499,7 @@ numeral_unbounded = pp.with_none(pp.int_str(), str())
 # Supports unbounded delimiters instead of -1 as indices.
 # (Indices -1 may arise with the silly inclusive range convention.)
 a1_notation = pp.compose_many(
-    pp.swap_pair,
+    pp.swap,
     pp.tuple(pp.maybe(pp.from_one)),
     pp.combine((alpha_unbounded, numeral_unbounded)),
     pp.regex_many('{}{}', ('[a-zA-Z]*', '\-?\d*'), flags = re.ASCII),

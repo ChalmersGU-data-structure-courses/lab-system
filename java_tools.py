@@ -451,4 +451,4 @@ def run(
 
         cmd = list(cmd_java(main, **kwargs_cmd_java))
         general.log_command(logger, cmd)
-        process = subprocess.run(cmd, **kwargs_run)
+        return subprocess.run(cmd, **kwargs_run)

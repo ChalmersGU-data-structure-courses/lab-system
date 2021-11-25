@@ -1,12 +1,13 @@
 import contextlib
 import dateutil
 import functools
-import general
 import gitlab
 import operator
 from pathlib import Path, PurePosixPath
 import time
 import urllib.parse
+
+import general
 
 def read_private_token(x):
     if isinstance(x, Path):
@@ -299,6 +300,9 @@ def project_url(project, path_segments = [], query_params = dict()):
 def url_tree(project, ref):
     return project_url(project, ['-', 'tree', str(ref)])
 
+def url_blob(project, ref, path):
+    return project_url(project, ['-', 'tree', str(ref), *PurePosixPath(path).parts])
+
 # BUG:
 # GitLab gets confused when references contain slashes ('/').
 # Although the diff shows correctly, links back to the project are broken.
@@ -308,8 +312,11 @@ def url_compare(project, source, target):
         ['-', 'compare', str(source) + '...' + str(target)], {'w': '1'}
     )
 
+def url_tag_name(project, tag_name):
+    return project_url(project, ['-', 'tags', tag_name])
+
 def url_tag(project, tag):
-    return project_url(project, ['-', 'tags', tag.name])
+    return url_tag_name(project, tag.name)
 
 def url_issues_new(project, **kwargs):
     '''
@@ -327,3 +334,22 @@ def url_issues_new(project, **kwargs):
         ['-', 'issues', 'new'],
         dict((f'issue[{key}]', value) for (key, value) in kwargs.items())
     )
+
+def format_tag_metadata(project, tag_name, description = None):
+    def lines():
+        if description:
+            yield description
+        yield f'* name: {tag_name}'
+        url = url_tag_name(project, tag_name)
+        yield f'* URL: {url}'
+    return general.join_lines(lines())
+
+def format_issue_metadata(issue, description = None):
+    def lines():
+        if description:
+            yield description
+        yield f'* title: {issue.title}'
+        author = issue.author['name']
+        yield f'* author: {author}'
+        yield f'* URL: {issue.web_url}'
+    return general.join_lines(lines())

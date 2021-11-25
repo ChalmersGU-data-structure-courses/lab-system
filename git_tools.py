@@ -1,9 +1,16 @@
 import contextlib
+import copy
+import datetime
 from enum import Enum, auto
 import functools
 import git
+import gitdb
+import io
 import logging
+import operator
 from pathlib import PurePosixPath, Path
+import shlex
+import stat
 import subprocess
 import tempfile
 
@@ -11,7 +18,7 @@ import general
 
 logger = logging.getLogger(__name__)
 
-# References
+# Reference names.
 
 refs = PurePosixPath('refs')
 heads = PurePosixPath('heads')
@@ -81,6 +88,13 @@ def normalize_branch(repo, branch):
     branch = PurePosixPath(branch)
     return git.Head(repo, str(refs / heads / branch))
 
+# Commits.
+
+def commit_date(commit):
+    return datetime.datetime.fromtimestamp(commit.committed_date).astimezone()
+
+# Tags.
+
 def normalize_tag(repo, tag):
     '''
     Construct a tag in the given repository from a given tag name.
@@ -98,6 +112,33 @@ def normalize_tag(repo, tag):
         return tag
     tag = PurePosixPath(tag)
     return repo.tag(str(tag))
+
+def tag_exist(ref):
+    '''
+    Test whether a reference exists.
+    ref is an instance of git.Reference.
+    Return a boolean. indicating whether
+    '''
+    try:
+        ref.commit
+        return True
+    except ValueError as e:
+        if str(e).endswith(' does not exist'):
+            return False
+        raise
+
+def tag_message(tag, default_to_commit_message = False):
+    '''
+    Get the message for an annotated tag.
+    Returns None if the tag is not annotated unless default_to_commit_message is set.
+    In that case, we return the message of the commit pointed to by the tag.
+    '''
+    x = tag.object
+    if isinstance(x, git.TagObject) or default_to_commit_message:
+        return x.message
+    return None
+
+# References.
 
 def resolve(repo, ref):
     '''
@@ -117,6 +158,25 @@ def resolve(repo, ref):
     if not isinstance(ref, git.Reference):
         ref = git.Reference(repo, str(ref))
     return ref.commit
+
+references_hierarchy_basic = {
+    refs.name: {
+        heads.name: {},
+        tags.name: {},
+        remotes.name: {},
+        remote_tags.name: {},
+    },
+}
+
+def references_hierarchy(repo):
+    return general.expand_hierarchy(
+        {PurePosixPath(ref.path): ref for ref in repo.refs},
+        operator.attrgetter('parts'),
+        initial_value = copy.deepcopy(references_hierarchy_basic),
+    )
+
+def flatten_references_hierarchy(ref_hierarchy):
+    return general.flatten_hierarchy(ref_hierarchy, key_combine = lambda x: PurePosixPath(*x))
 
 # Refspecs
 
@@ -222,7 +282,6 @@ def onesided_merge(repo, commit, new_parent):
         commit.tree,
         'merge commit',
         [commit, new_parent],
-        head = False,
         author_date = commit.authored_datetime,
         commit_date = commit.committed_datetime,
     )
@@ -250,3 +309,49 @@ def checkout_manager(repo, ref):
         dir = Path(dir)
         checkout(repo, dir, ref)
         yield dir
+
+def make_tree(repo, entries):
+    '''
+    Create a tree from the given iterable of tree entries and save it to the database.
+    Returns an instance of git.Tree.
+
+    Adapted from the test suite of GitPython.
+    '''
+    # Sort entries
+    entries = list(entries)
+    git.objects.tree.merge_sort(entries, git.objects.tree.git_cmp)
+
+    sio = io.BytesIO()
+    git.objects.fun.tree_to_stream(entries, sio.write)
+    sio.seek(0)
+    binsha = repo.odb.store(gitdb.IStream(gitdb.typ.str_tree_type, len(sio.getvalue()), sio)).binsha
+    logger.debug(f'Created tree object {gitdb.util.bin_to_hex(binsha)}')
+    return git.Tree(repo, binsha)
+
+def create_tree_from_dir(repo, dir, follow_symlinks = True):
+    '''
+    Create a tree from a given directory.
+    This recursively adds all files in directory to the tree.
+    The boolean argument follow_symlinks determines
+    if symlinks are respected or treated as regular files.
+    Returns an instance of git.Tree.
+    '''
+    logger.debug('Building tree from directory {}'.format(shlex.quote(str(dir))))
+
+    def entries():
+        for file in dir.rglob('*'):
+            if file.is_file() or (not follow_symlinks and file.is_symlink()):
+                # GitPython calls git with changed working directory.
+                # Thus, we resolve the file here.
+                name = str(file.relative_to(dir))
+                hexsha = repo.git.hash_object(file.resolve(), '-w', '--no-filters')
+                binsha = gitdb.util.hex_to_bin(hexsha)
+                mode = stat.S_IFREG | file.stat().st_mode
+                logger.debug(f'{mode:06o} blob {hexsha}	{name}')
+                yield (binsha, mode, name)
+
+    return make_tree(repo, entries())
+
+def read_text_file_from_tree(tree, path):
+    path = str(PurePosixPath(path))
+    return tree[path].data_stream.read().decode()

@@ -2,6 +2,8 @@
 import ast
 import builtins
 import collections
+import functools
+import pathlib
 import re
 import urllib.parse
 
@@ -29,15 +31,15 @@ def compose_many(*xs):
         parse = general.compose_many(*(x.parse for x in reversed(xs))),
     )
 
-def swap(x):
+def invert(x):
     return PrintParse(
         print = x.parse,
         parse = x.print,
     )
 
-swap_pair = PrintParse(
-    print = general.swap_pair,
-    parse = general.swap_pair,
+swap = PrintParse(
+    print = general.swap,
+    parse = general.swap,
 )
 
 interchange = PrintParse(
@@ -50,7 +52,7 @@ singleton = PrintParse(
     parse = general.from_singleton,
 )
 
-#from_singleton = swap(singleton)
+#from_singleton = invert(singleton)
 
 reversal = PrintParse(
     print = lambda xs: builtins.tuple(reversed(xs)),
@@ -283,12 +285,36 @@ def url_quote(safe = '/'):
 
 url_quote_no_safe = url_quote(safe = '')
 
+pure_posix_path = PrintParse(
+    print = str,
+    parse = pathlib.PurePosixPath,
+)
+
+pure_path = PrintParse(
+    print = str,
+    parse = pathlib.PurePath,
+)
+
+posix_path = PrintParse(
+    print = str,
+    parse = pathlib.PosixPath,
+)
+
+path = PrintParse(
+    print = str,
+    parse = pathlib.Path,
+)
+
 # A network location.
 # Reference: Section 3.1 of RFC 1738
-NetLoc = collections.namedtuple('NetLoc', ['host', 'port', 'user', 'password'], defaults = [None, None, None])
+NetLoc = collections.namedtuple(
+    'NetLoc',
+    ['host', 'port', 'user', 'password'],
+    defaults = [None, None, None]
+)
 
 # Exercise.
-# Mmerge _netloc_print and _netloc_regex_parse into a nice printer-parser network.
+# Merge _netloc_print and _netloc_regex_parse into a nice printer-parser network.
 def _netloc_print(netloc):
     def password():
         return ':' + netloc.password if netloc.password != None else ''
@@ -320,5 +346,42 @@ netloc = compose(
     PrintParse(
         print = _netloc_print,
         parse = _netloc_parse,
+    ),
+)
+
+query = PrintParse(
+    print = lambda query: urllib.parse.urlencode(
+        query, doseq = True,
+    ),
+    parse = lambda query_string: urllib.parse.parse_qs(
+        query_string,
+        keep_blank_values = True,
+        # TODO:
+        # Enable once this pull request has been accepted:
+        # https://github.com/python/cpython/pull/29716
+        #strict_parsing = True,
+    )
+)
+
+URL = collections.namedtuple(
+    'URL',
+    ['scheme', 'netloc', 'path', 'query', 'fragments'],
+    defaults = ['', {}, None]
+)
+
+URL_HTTP = functools.partial(URL, 'http')
+URL_HTTPS = functools.partial(URL, 'https')
+
+url = compose(
+    combine_namedtuple(urllib.parse.SplitResult(
+        identity,
+        netloc,
+        pure_posix_path,
+        query,
+        identity,
+    )),
+    PrintParse(
+        print = urllib.parse.urlunsplit,
+        parse = urllib.parse.urlsplit,
     ),
 )

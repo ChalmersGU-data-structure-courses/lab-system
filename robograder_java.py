@@ -95,9 +95,9 @@ class Robograder:
 
     def run(self, src, bin):
         # Check for class name conflicts.
-        for dir in self.classpath_resolved:
+        for dir in self.classpath:
             with general.working_dir(dir):
-                files = list(Path('.').rglob('*.class'))
+                files = list(Path().rglob('*.class'))
             for file in files:
                 if (bin / file).exists():
                     raise FileConflict(file)
@@ -111,8 +111,8 @@ class Robograder:
         # Run the robograder.
         process = java_tools.run(
             self.entrypoint,
-            args = [str(self.machine_speed)],
             policy_entries = policy_entries(),
+            args = [str(self.machine_speed)],
             classpath = [bin] + self.classpath,
             cwd = src,
             stdout = subprocess.PIPE,

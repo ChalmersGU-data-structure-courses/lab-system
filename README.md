@@ -423,14 +423,14 @@ course.recreate_student_invitations(
 Suppose we want to create on GitLab the lab with id 3.
 Let us select this lab as a variable:
 ```
-lab = course.lab[3].
+lab = course.lab[3]
 ```
 
 We run
 ```
 lab.official_project.create()
 lab.grading_project.create()`
-``
+```
 to create the official project with problem and solution branches.
 This will take its content from the local directory specified in the lab configuration and add a suitable `.gitignore` file if configured.
 If we wanted to delete the official project to start again, we would call the `delete` method instead.

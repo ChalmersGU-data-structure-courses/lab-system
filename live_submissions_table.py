@@ -5,6 +5,7 @@ from pathlib import Path
 import types
 
 import general
+import git_tools
 import gitlab_tools
 
 logger = logging.getLogger(__name__)
@@ -129,7 +130,7 @@ class Column:
     def __init__(self, config):
         '''
         Store the given configuration under self.config.
-        Inline its fieldsas instance attributes.
+        Inline its fields as instance attributes.
         '''
         self.config = config
         for field in Config._fields:
@@ -154,6 +155,18 @@ class Column:
         in the lab this object has been initialized with.
         '''
         return self.lab.student_group(group_id)
+
+
+class CallbackColumnValue(ColumnValue):
+    '''
+    A column value implementation using a callback function for format_cell.
+    Values for sort_key and has_content are given at construction.
+    '''
+    def __init__(self, sort_key = None, has_content = True, callback = None):
+        if sort_key:
+            self.sort_key = lambda: sort_key
+        self.has_content = lambda: has_content
+        self.format_cell = callback if callback != None else lambda cell: None
 
 
 class StandardColumnValue(ColumnValue):
@@ -209,13 +222,15 @@ class DateColumn(Column):
             if self.late:
                 add_class(cell, 'problematic')
             with cell:
-                dominate.util.text(self.date.strftime('%b %d, %H:%M'))
-                dominate.tags.attr(style = 'text-align: center;')
+                with dominate.tags.span():
+                    dominate.util.text(self.date.strftime('%b %d, %H:%M'))
+                    dominate.tags.attr(title = self.date.strftime('%z (%Z)'))
+                    dominate.tags.attr(style = 'text-align: center;')
 
     def get_value(self, group_id):
         group = super().get_value(group_id)
-        tag = group.current_submission(deadline = self.deadline)
-        return DateColumn.Value(tag.date)
+        submission = group.submission_current(deadline = self.deadline)
+        return DateColumn.Value(submission.date)
 
 
 class GroupColumn(Column):
@@ -314,8 +329,8 @@ class QueryNumberColumn(Column):
 
     def get_value(self, group_id):
         group = super().get_value(group_id)
-        graded_submissions = group.graded_submissions(deadline = self.deadline)
-        return QueryNumberColumn.Value(len(graded_submissions))
+        submissions_with_outcome = group.submissions_with_outcome(deadline = self.deadline)
+        return QueryNumberColumn.Value(general.ilen(submissions_with_outcome))
 
 
 class MessageColumn(Column):
@@ -339,13 +354,17 @@ class MessageColumn(Column):
 
         def format_cell(self, cell):
             with cell:
-                dominate.tags.pre(self.message)
+                if self.message != None:
+                    dominate.tags.pre(self.message)
 
     def get_value(self, group_id):
         group = super().get_value(group_id)
-        tag = group.current_submission(deadline = self.deadline)
-        return MessageColumn.Value(tag.message)
-
+        submission_current = group.submission_current(deadline = self.deadline)
+        message = git_tools.tag_message(
+            submission_current.repo_remote_tag,
+            default_to_commit_message = True,
+        )
+        return MessageColumn.Value(message)
 
 def float_left_and_right(cell, left, right):
     with cell:
@@ -381,25 +400,30 @@ class SubmissionFilesColumn(Column):
 
     def get_value(self, group_id):
         group = super().get_value(group_id)
-        tag = group.current_submission(deadline = self.deadline)
+        submission = group.submission_current(deadline = self.deadline)
 
-        def f():
-            try:
-                return self.lab.grading_template_issue.description
-            except AttributeError:
-                return ''
-        issue_description = group.append_mentions(f())
+        response_key = self.lab.submission_handler.review_response_key
+        if response_key == None:
+            linked_open_grading_issue = None
+        else:
+            def f():
+                try:
+                    return self.lab.grading_template_issue.description
+                except AttributeError:
+                    return ''
+
+            linked_open_grading_issue = ('open issue', gitlab_tools.url_issues_new(
+                group.project.get,
+                title = self.lab.submission_handler.response_titles[response_key].print({
+                    'tag': submission.request_name,
+                    'outcome': self.course.config.grading_response_default_outcome,
+                }),
+                description = group.append_mentions(f()),
+            ))
 
         return SubmissionFilesColumn.Value(
-            (tag.name, gitlab_tools.url_tree(group.project.get, tag.name)),
-            ('open issue', gitlab_tools.url_issues_new(
-                group.project.get,
-                title = self.course.config.grading_response.print({
-                    'tag': tag.name,
-                    'score': self.course.config.grading_response_default_score,
-                }),
-                description = issue_description,
-            ))
+            (submission.request_name, gitlab_tools.url_tree(group.project.get, submission.request_name)),
+            linked_open_grading_issue,
         )
 
 
@@ -413,8 +437,8 @@ class SubmissionDiffColumnValue(ColumnValue):
         return self.linked_name != None
 
     def format_cell(self, cell):
+        add_class(cell, 'extension-column')
         if self.has_content():
-            add_class(cell, 'extension-column')
             with cell:
                 with dominate.tags.p():
                     format_url(*self.linked_name)
@@ -440,25 +464,23 @@ class SubmissionDiffPreviousColumn(Column):
 
     def get_value(self, group_id):
         group = super().get_value(group_id)
-        graded_submissions = group.graded_submissions(deadline = self.deadline)
-        if not graded_submissions:
+        submissions_with_outcome = list(group.submissions_with_outcome(deadline = self.deadline))
+        if not submissions_with_outcome:
             return SubmissionDiffColumnValue(None)
 
-        tag = group.current_submission(deadline = self.deadline)
-        (tag_prev, (issue_prev, _)) = graded_submissions[-1]
-        tag_after = self.lab.make_tag_after(
-            group.repo_tag(tag),
-            group.repo_tag(tag_prev),
-            tag_prev.name
+        submission_current = group.submission_current(deadline = self.deadline)
+        submission_previous = submissions_with_outcome[-1]
+        tag_after = submission_current.repo_tag_after_create(
+            submission_previous.request_name,
+            submission_previous.repo_remote_commit
         )
-        grader_informal = self.course.issue_author_informal(issue_prev)
         return SubmissionDiffColumnValue(
-            (tag_prev.name + '..', gitlab_tools.url_compare(
+            (submission_previous.request_name + '..', gitlab_tools.url_compare(
                 self.lab.grading_project.get,
-                group.repo_tag(tag_prev),
+                submission_previous.repo_tag(),
                 tag_after.name,
             )),
-            (grader_informal, issue_prev.web_url),
+            (submission_previous.informal_grader_name, submission_previous.outcome_issue.web_url),
             is_same = False, # TODO: implement
         )
 
@@ -475,11 +497,10 @@ class SubmissionDiffOfficialColumn(Column):
 
     def get_value(self, group_id):
         group = super().get_value(group_id)
-        tag = group.current_submission(deadline = self.deadline)
-        tag_after = self.lab.make_tag_after(
-            group.repo_tag(tag),
+        submission_current = group.submission_current(deadline = self.deadline)
+        tag_after = submission_current.repo_tag_after_create(
+            self.branch.name,
             self.branch,
-            self.branch.name
         )
         return SubmissionDiffColumnValue(
             (self.branch.name + '..', gitlab_tools.url_compare(
@@ -499,7 +520,7 @@ class SubmissionDiffSolutionColumn(SubmissionDiffOfficialColumn):
         super().__init__(config, config.lab.head_solution)
 
 
-standard_columns = {
+standard_columns_before = {
     'date': DateColumn,
     'query-number': QueryNumberColumn,
     'group': GroupColumn,
@@ -508,8 +529,20 @@ standard_columns = {
     'submission-after-previous':SubmissionDiffPreviousColumn,
     'submission-after-problem': SubmissionDiffProblemColumn,
     'submission-after-solution': SubmissionDiffSolutionColumn,
+}
+
+standard_columns_after = {
     'message': MessageColumn,
 }
+
+def with_standard_columns(columns = dict()):
+    return dict([
+        *standard_columns_before.items(),
+        *columns.items(),
+        *standard_columns_after.items(),
+    ])
+
+standard_columns = with_standard_columns()
 
 # class TestOutputDiffColumnValue(ColumnValue):
 #     def __init__(self, name = None, link = None, similarity = 0):
@@ -558,9 +591,10 @@ class LiveSubmissionsTable:
         def f():
             for group_id in self.course.groups:
                 group = self.lab.student_group(group_id)
-                if group.current_submission(deadline = deadline) != None:
+                if group.submission_current(deadline = deadline) != None:
                     yield group_id
         group_ids = list(f())
+        logger.debug(f'groups with live submission: {group_ids}')
 
         # Compute the columns (with column values) for these submissions.
         def f():
@@ -615,6 +649,7 @@ class LiveSubmissionsTable:
                         data.column.format_header_cell(cell)
                 with dominate.tags.tbody():
                     for group_id in group_ids:
+                        logger.debug(f'processing group {self.lab.student_group(group_id)}')
                         with dominate.tags.tr():
                             for (name, data) in column_data.items():
                                 cell = dominate.tags.td()
