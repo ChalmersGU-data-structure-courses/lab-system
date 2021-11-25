@@ -512,6 +512,15 @@ class Lab:
     #     finally:
     #         self.hooks_delete(hooks)
 
+    def setup_request_handlers(self):
+        '''
+        Setup the configured request handlers.
+        This method must be called before requests can be processed.
+        '''
+        self.logger.info('Setting up request handlers')
+        for handler in self.config.request_handlers.values():
+            handler.setup(self)
+
     def parse_request_tags(self, from_gitlab = True):
         '''
         Parse request tags for group projects in this lab.
@@ -549,6 +558,10 @@ class Lab:
         '''
         Parse response issues for group projects in this lab.
         This skips requests already marked as handled in the local grading repository.
+        Before calling this method, the following setups steps need to have been executed:
+        * self.setup_handlers()
+        * requests and responses need to be up to date.
+          Update responses before updating requests to avoid responses with no matching request.
         '''
         self.logger.info('Processing requests.')
         for group in self.student_groups:
