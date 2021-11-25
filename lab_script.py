@@ -20,20 +20,14 @@ course_python = Course(config_python, dir = this_dir / 'python')
 logging.basicConfig()
 logging.getLogger().setLevel(logging.WARNING)
 
-#intialize with repo_init for each lab. course_java.labs[1].repo_init()
+with course_java.error_reporter():
+    for lab in course_java.labs.values():
+        lab.update_grading_sheet_and_live_submissions_table() # takes a deadline parameter of type Date, if we want to.
 
+    for lab in course_python.labs.values():
+        lab.update_grading_sheet_and_live_submissions_table() # takes a deadline parameter of type Date, if we want to.
 
-
-
-for lab in course_java.labs.values() :
-    lab.update_grading_sheet_and_live_submissions_table() # takes a deadline parameter of type Date, if we want to.    
-    
-for lab in course_python.labs.values() :
-    lab.update_grading_sheet_and_live_submissions_table() # takes a deadline parameter of type Date, if we want to.    
-
-
-
-#invite student 
+#invite student
 # logging.root.info('Handling java course')
 # course_java.canvas_course_refresh()
 # course_java.canvas_group_set_refresh()
