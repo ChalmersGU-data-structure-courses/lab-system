@@ -89,10 +89,15 @@ class RequestAndResponses:
         )
 
     def repo_tag_read_json(self, segments):
-        '''
-        Read the JSON-encoded data in the message of a tag.
-        '''
+        '''Read the JSON-encoded data in the message of a tag.'''
         return json.loads(git_tools.tag_message(self.repo_tag(segments)))
+
+    def repo_tag_read_text_file(self, segments, path):
+        '''
+        Read a text file given by 'path' (PurePosixPath)
+        in the commit corresponding to 'segments'.
+        '''
+        return git_tools.read_text_file_from_tree(self.repo_tag(segments).commit.tree, path)
 
     @contextlib.contextmanager
     def checkout_manager(self, segments = ['tag']):
