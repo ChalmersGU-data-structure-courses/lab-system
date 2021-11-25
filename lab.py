@@ -614,6 +614,10 @@ class Lab:
             self.config.compiler.setup(self)
         return self.config.compiler
 
+    def checkout_problem(self):
+        '''A context manager for the checked out problem head (path.Path).'''
+        return git_tools.checkout_manager(self.repo, self.head_problem)
+
     @contextlib.contextmanager
     def checkout_and_compile_problem(self):
         with self.checkout_with_empty_bin_manager(self.head_problem) as (src, bin):

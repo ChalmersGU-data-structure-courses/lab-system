@@ -94,6 +94,11 @@ class RequestAndResponses:
         '''
         return json.loads(git_tools.tag_message(self.repo_tag(segments)))
 
+    @contextlib.contextmanager
+    def checkout_manager(self, segments = ['tag']):
+        with git_tools.checkout_manager(self.lab.repo, self.repo_tag(segments)) as src:
+            yield src
+
     # Tag path segment suffix used for marking requests as handled.
     segment_handled = ['handled']
 
