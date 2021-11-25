@@ -557,6 +557,8 @@ class GradingSheet:
             # Missing keys in updates mean entry deletion in Sheets API.
             # We need to take 'fields' into account.
             # Postpone until we have better framework for handling field masks.
+            # TODO:
+            # Investigate why links in userEnteredFormat do not show up in previous values.
             if google_tools.sheets.is_subdata(value, value_prev):
                 return
             if google_tools.sheets.is_cell_non_empty(value_prev):
@@ -564,7 +566,7 @@ class GradingSheet:
                 query_name = self.grading_spreadsheet.config.grading_sheet.header.query.print(query)
                 self.logger.warn(general.join_lines([
                     f'overwriting existing value for {group_name}, query {query_name}, field {field}:',
-                    f'* previous: {value_prev["userEnteredValue"]}',
+                    f'* previous: {value_prev}',
                     f'* current: {value}',
                 ]))
         # TODO:
