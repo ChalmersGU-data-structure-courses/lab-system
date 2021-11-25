@@ -300,6 +300,9 @@ def project_url(project, path_segments = [], query_params = dict()):
 def url_tree(project, ref):
     return project_url(project, ['-', 'tree', str(ref)])
 
+def url_blob(project, ref, path):
+    return project_url(project, ['-', 'tree', str(ref), *PurePosixPath(path).parts])
+
 # BUG:
 # GitLab gets confused when references contain slashes ('/').
 # Although the diff shows correctly, links back to the project are broken.
