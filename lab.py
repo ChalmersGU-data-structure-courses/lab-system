@@ -651,7 +651,6 @@ class Lab:
         with tempfile.TemporaryDirectory() as dir:
             path = Path(dir) / 'index.html'
             table.build(path, deadline = deadline, columns = self.submission_handler.grading_columns)
-            self.repo_push()
             self.logger.info('Posting live submissions table to Canvas')
             target = self.config.canvas_path_awaiting_grading
             folder = self.course.canvas_course.get_folder_by_path(target.parent)
