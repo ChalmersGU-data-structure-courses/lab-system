@@ -351,7 +351,7 @@ class RequestAndResponses:
         ]))
         issue = self.group.project.lazy.issues.create({
             'title': title,
-            'description': self.lab.append_mentions(description),
+            'description': self.group.append_mentions(description),
         })
 
         # Make sure the local response issue caches are up to date.
