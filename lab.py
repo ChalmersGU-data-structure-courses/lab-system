@@ -346,12 +346,12 @@ class Lab:
         self.logger.info('Fetching from official repository.')
         self.repo.remote(self.course.config.path_lab.official).fetch('--update-head-ok')
 
-    def repo_push(self):
+    def repo_push(self, force = False):
         '''
         Push the local grading repository to the grading repository on Chalmers GitLab.
         Only push if changes have been recorded.
         '''
-        if self.repo_updated:
+        if self.repo_updated or force:
             self.logger.info('Pushing to grading repository.')
             self.repo.remote(self.course.config.path_lab.grading).push()
             self.repo_updated = False
