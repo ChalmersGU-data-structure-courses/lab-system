@@ -594,6 +594,7 @@ class LiveSubmissionsTable:
                 if group.submission_current(deadline = deadline) != None:
                     yield group_id
         group_ids = list(f())
+        logger.debug(f'groups with live submission: {group_ids}')
 
         # Compute the columns (with column values) for these submissions.
         def f():
@@ -648,6 +649,7 @@ class LiveSubmissionsTable:
                         data.column.format_header_cell(cell)
                 with dominate.tags.tbody():
                     for group_id in group_ids:
+                        logger.debug(f'processing group {self.lab.student_group(group_id)}')
                         with dominate.tags.tr():
                             for (name, data) in column_data.items():
                                 cell = dominate.tags.td()
