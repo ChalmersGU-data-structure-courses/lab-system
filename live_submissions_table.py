@@ -126,6 +126,7 @@ class Column:
         If so, then column values produced by get_value need to have sort_key implemented.
         Set to False by default.
     '''
+    sortable = False
 
     def __init__(self, config):
         '''
@@ -135,8 +136,6 @@ class Column:
         self.config = config
         for field in Config._fields:
             setattr(self, field, config._asdict()[field])
-
-        self.sortable = False
 
     def format_header_cell(self, cell):
         '''
@@ -163,7 +162,7 @@ class CallbackColumnValue(ColumnValue):
     Values for sort_key and has_content are given at construction.
     '''
     def __init__(self, sort_key = None, has_content = True, callback = None):
-        if sort_key:
+        if sort_key != None:
             self.sort_key = lambda: sort_key
         self.has_content = lambda: has_content
         self.format_cell = callback if callback != None else lambda cell: None
@@ -198,9 +197,7 @@ class StandardColumnValue(ColumnValue):
 
 # TODO: implement deadlines in lab config.
 class DateColumn(Column):
-    def __init__(self, config):
-        super().__init__(config)
-        self.sortable = True
+    sortable = True
 
     def format_header_cell(self, cell):
         with cell:
@@ -234,9 +231,7 @@ class DateColumn(Column):
 
 
 class GroupColumn(Column):
-    def __init__(self, lab):
-        super().__init__(lab)
-        self.sortable = True
+    sortable = True
 
     def format_header_cell(self, cell):
         with cell:
@@ -252,9 +247,6 @@ class GroupColumn(Column):
 
 
 class MembersColumn(Column):
-    def __init__(self, config):
-        super().__init__(config)
-
     def format_header_cell(self, cell):
         with cell:
             dominate.tags.attr(style = 'text-align: center;')
@@ -305,9 +297,7 @@ class MembersColumn(Column):
 
 # TODO: implement deadlines in lab config.
 class QueryNumberColumn(Column):
-    def __init__(self, config):
-        super().__init__(config)
-        self.sortable = True
+    sortable = True
 
     def format_header_cell(self, cell):
         with cell:
@@ -334,9 +324,7 @@ class QueryNumberColumn(Column):
 
 
 class MessageColumn(Column):
-    def __init__(self, config):
-        super().__init__(config)
-        self.sortable = True
+    sortable = True
 
     def format_header_cell(self, cell):
         with cell:
@@ -379,10 +367,6 @@ def float_left_and_right(cell, left, right):
         )
 
 class SubmissionFilesColumn(Column):
-    def __init__(self, config):
-        super().__init__(config)
-        self.sortable = False
-
     def format_header_cell(self, cell):
         float_left_and_right(cell, 'Submission', ' vs:')
 
@@ -453,10 +437,6 @@ class SubmissionDiffColumnValue(ColumnValue):
                         format_url(*self.linked_grader)
 
 class SubmissionDiffPreviousColumn(Column):
-    def __init__(self, config):
-        super().__init__(config)
-        self.sortable = False
-
     def format_header_cell(self, cell):
         add_class(cell, 'extension-column')
         with cell:
@@ -488,7 +468,6 @@ class SubmissionDiffOfficialColumn(Column):
     def __init__(self, config, branch):
         super().__init__(config)
         self.branch = branch
-        self.sortable = False
 
     def format_header_cell(self, cell):
         add_class(cell, 'extension-column')
@@ -646,6 +625,8 @@ class LiveSubmissionsTable:
                         add_class(cell, name)
                         if data.column.sortable:
                             add_class(cell, 'sortable')
+                            if [name] == sort_order[:1]:  # want to write: is_prefix([name], sort_order)
+                                add_class(cell, 'sortable-order-asc')
                         data.column.format_header_cell(cell)
                 with dominate.tags.tbody():
                     for group_id in group_ids:
