@@ -565,6 +565,9 @@ class GroupProject:
             self.project,
         ])).values()
 
+    def non_empty(self):
+        return bool(self.members)
+
     # TODO.
     # We could improve caching of members if we had a way to detect updates.
     # But e.g. group hooks monitoring for membership updates are only

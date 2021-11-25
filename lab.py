@@ -655,7 +655,8 @@ class Lab:
     def grading_sheet(self):
         return self.course.grading_spreadsheet.ensure_grading_sheet(
             self.id,
-            self.course.groups,
+            # Restrict to non-empty groups.
+            [group_id for group_id in self.course.groups if self.student_group(group_id).non_empty()],
             lambda group_id: self.student_group(group_id).project.get.web_url
         )
 
@@ -669,6 +670,13 @@ class Lab:
         request_buffer = self.course.grading_spreadsheet.create_request_buffer()
         for group_id in self.course.groups:
             group = self.student_group(group_id)
+
+            # HACK (for now).
+            # Only include non-empty groups.
+            # Should output warning if an empty group has a submission.
+            if not group.non_empty():
+                continue
+
             for (query, submission) in enumerate(group.submissions_relevant(deadline)):
                 if submission.outcome == None:
                     grader = None
