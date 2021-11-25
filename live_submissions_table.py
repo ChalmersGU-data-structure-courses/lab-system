@@ -166,7 +166,7 @@ class CallbackColumnValue(ColumnValue):
         if sort_key:
             self.sort_key = lambda: sort_key
         self.has_content = lambda: has_content
-        self.format_cell = callback
+        self.format_cell = callback if callback != None else lambda cell: None
 
 
 class StandardColumnValue(ColumnValue):
