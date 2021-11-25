@@ -217,8 +217,8 @@ class DateColumn(Column):
 
     def get_value(self, group_id):
         group = super().get_value(group_id)
-        tag = group.current_submission(deadline = self.deadline)
-        return DateColumn.Value(tag.date)
+        submission = group.submission_current(deadline = self.deadline)
+        return DateColumn.Value(submission.date)
 
 
 class GroupColumn(Column):
