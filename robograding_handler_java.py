@@ -1,16 +1,34 @@
+import re
+
 import course_basics # TODO: deprecate
 import general
 import java_tools
 import lab_interfaces
+import print_parse
 import robograder_java
 
 class RobogradingHandler(lab_interfaces.RequestHandler):
-    def __init__(self, request_matcher, response_title):
-        self.response_key = 'response'
-        self.request_matcher = request_matcher
-        self.response_titles = {
-            self.response_key: response_title,
-        }
+    '''
+    Configuration such as request matching, response_title, and response_key can be
+    configured for individual objects by setting the respective instance attributes.
+    '''
+
+    response_key = 'response'
+
+    request_matcher = lab_interfaces.RegexRequestMatcher(
+        ['test*', 'Test*'],
+        '(?:t|T)est[^/: ]*',
+    )
+
+    response_title = print_parse.regex_keyed(
+        'Robograder: reporting for {tag}',
+        {'tag': '[^: ]*'},
+        flags = re.IGNORECASE,
+    )
+
+    @property
+    def response_titles(self):
+        return {self.response_key: self.response_title}
 
     def setup(self, lab):
         super().setup(lab)
