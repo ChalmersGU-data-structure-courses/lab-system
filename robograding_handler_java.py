@@ -58,9 +58,8 @@ class RobogradingHandler(lab_interfaces.RequestHandler):
 
         # Post response issue.
         request_and_responses.post_response_issue(
-            self.response_key,
-            self.responses_titles[self.response_key].print({}),
-            report
+            response_key = self.response_key,
+            description = report,
         )
 
     def handle_request(self, request_and_responses):
