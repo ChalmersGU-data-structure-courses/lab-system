@@ -330,9 +330,9 @@ cell_value_empty = {
     'effectiveValue': string_value_empty,
 }
 
-def cell_string(s):
-    '''Returns a value for the API type CellData for a cell with string content s.'''
-    return cell_data(userEnteredValue = extended_value_string(s))
+def cell_value(value):
+    '''Returns a value for the API type CellData for a cell with context string or integer value.'''
+    return cell_data(userEnteredValue = extended_value_number_or_string(value))
 
 def cell_link(value, url):
     '''
