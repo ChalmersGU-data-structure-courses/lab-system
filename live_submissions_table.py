@@ -157,6 +157,18 @@ class Column:
         return self.lab.student_group(group_id)
 
 
+class CallbackColumnValue(ColumnValue):
+    '''
+    A column value implementation using a callback function for format_cell.
+    Values for sort_key and has_content are given at construction.
+    '''
+    def __init__(self, sort_key = None, has_content = True, callback = None):
+        if sort_key:
+            self.sort_key = lambda: sort_key
+        self.has_content = lambda: has_content
+        self.format_cell = callback
+
+
 class StandardColumnValue(ColumnValue):
     '''A simple column value implementation using just a string-convertible value and a sort key.'''
 
@@ -350,7 +362,7 @@ class MessageColumn(Column):
         submission_current = group.submission_current(deadline = self.deadline)
         message = git_tools.tag_message(
             submission_current.repo_remote_tag,
-            default_to_commit_message = True
+            default_to_commit_message = True,
         )
         return MessageColumn.Value(message)
 
