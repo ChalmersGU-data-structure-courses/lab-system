@@ -773,7 +773,7 @@ class GradingSpreadsheet:
 
         name = self.config.lab.name.print(lab_id)
         if self.grading_sheets:
-            grading_sheet = max(self.grading_sheets.values(), key = operator.attrgetter('index'))
+            grading_sheet = max(self.grading_sheets.values(), key = lambda x: x.index())
             self.logger.debug('using grading sheet {grading_sheet.name} as template')
             worksheet = grading_sheet.gspread_worksheet.duplicate(
                 insert_sheet_index = grading_sheet.index() + 1,
