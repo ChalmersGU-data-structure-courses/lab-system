@@ -4,9 +4,13 @@ import datetime
 from enum import Enum, auto
 import functools
 import git
+import gitdb
+import io
 import logging
 import operator
 from pathlib import PurePosixPath, Path
+import shlex
+import stat
 import subprocess
 import tempfile
 
@@ -306,3 +310,41 @@ def checkout_manager(repo, ref):
         dir = Path(dir)
         checkout(repo, dir, ref)
         yield dir
+
+def make_tree(repo, entries):
+    '''
+    Create a tree from the given iterable of tree entries and save it to the database.
+    Returns an instance of git.Tree.
+
+    Adapted from the test suite of GitPython.
+    '''
+    sio = io.BytesIO()
+    git.objects.fun.tree_to_stream(entries, sio.write)
+    sio.seek(0)
+    binsha = repo.odb.store(gitdb.IStream(gitdb.typ.str_tree_type, len(sio.getvalue()), sio)).binsha
+    logger.debug(f'Created tree object {gitdb.util.bin_to_hex(binsha)}')
+    return git.Tree(repo, binsha)
+
+def create_tree_from_dir(repo, dir, follow_symlinks = True):
+    '''
+    Create a tree from a given directory.
+    This recursively adds all files in directory to the tree.
+    The boolean argument follow_symlinks determines
+    if symlinks are respected or treated as regular files.
+    Returns an instance of git.Tree.
+    '''
+    logger.debug('Building tree from directory {}'.format(shlex.quote(str(dir))))
+
+    def entries():
+        for file in dir.rglob('*'):
+            if file.is_file() or (not follow_symlinks and file.is_symlink()):
+                # GitPython calls git with changed working directory.
+                # Thus, we resolve the file here.
+                name = str(file.relative_to(dir))
+                hexsha = repo.git.hash_object(file.resolve(), '-w', '--no-filters')
+                binsha = gitdb.util.hex_to_bin(hexsha)
+                mode = stat.S_IFREG | file.stat().st_mode
+                logger.debug(f'{mode:06o} blob {hexsha}	{name}')
+                yield (binsha, mode, name)
+
+    return make_tree(repo, entries())
