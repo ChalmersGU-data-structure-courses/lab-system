@@ -38,7 +38,10 @@ class CompilationColumn(live_submissions_table.Column):
                 a = live_submissions_table.format_url('compilation', url)
                 if cl:
                     live_submissions_table.add_class(a, cl)
-        return live_submissions_table.CallbackColumnValue(callback = format_cell)
+        return live_submissions_table.CallbackColumnValue(
+            has_content = bool(cl),
+            callback = format_cell
+        )
 
 class RobogradingColumn(live_submissions_table.Column):
     def format_header_cell(self, cell):
