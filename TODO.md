@@ -1,5 +1,7 @@
 # TODOs
 
+* Generate live submissions table as static site on Chalmers GitLab Pages.
+
 * Do per group caching of remote_tags.
 
 * Fix configure_student_project method:
