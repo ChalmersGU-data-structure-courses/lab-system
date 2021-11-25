@@ -520,7 +520,7 @@ class SubmissionDiffSolutionColumn(SubmissionDiffOfficialColumn):
         super().__init__(config, config.lab.head_solution)
 
 
-standard_columns = {
+standard_columns_before = {
     'date': DateColumn,
     'query-number': QueryNumberColumn,
     'group': GroupColumn,
@@ -529,8 +529,20 @@ standard_columns = {
     'submission-after-previous':SubmissionDiffPreviousColumn,
     'submission-after-problem': SubmissionDiffProblemColumn,
     'submission-after-solution': SubmissionDiffSolutionColumn,
+}
+
+standard_columns_after = {
     'message': MessageColumn,
 }
+
+def with_standard_columns(columns = dict()):
+    return dict([
+        *standard_columns_before.items(),
+        *columns.items(),
+        *standard_columns_after.items(),
+    ])
+
+standard_columns = with_standard_columns()
 
 # class TestOutputDiffColumnValue(ColumnValue):
 #     def __init__(self, name = None, link = None, similarity = 0):
