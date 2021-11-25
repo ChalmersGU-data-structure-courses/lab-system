@@ -921,5 +921,5 @@ class GroupProject:
         submissions = list(self.submissions(deadline = deadline))
         if submissions:
             submission_last = submissions[-1]
-            if submission_last.review_needed:
+            if submission_last.outcome == None:
                 return submission_last
