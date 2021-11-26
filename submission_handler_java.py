@@ -84,7 +84,7 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
         super().setup(lab)
 
         # Set up robograder.
-        self.has_robograder = (lab.config.path_source / 'pregrade').is_dir()
+        self.has_robograder = (lab.config.path_source / 'robograder').is_dir()
         if self.has_robograder:
             with lab.checkout_problem() as src:
                 with general.temp_dir() as bin:

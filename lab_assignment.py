@@ -225,7 +225,7 @@ class LabAssignment(Assignment):
         self.dir_problem = dir / lab_assignment_constants.rel_dir_problem
         self.dir_solution = dir / lab_assignment_constants.rel_dir_solution
         self.dir_test = dir / lab_assignment_constants.rel_dir_test
-        self.dir_pregrade = dir / lab_assignment_constants.rel_dir_pregrade
+        self.dir_robograder = dir / lab_assignment_constants.rel_dir_robograder
 
         self.name_handlers = None
         self.content_handlers = None
@@ -243,7 +243,7 @@ class LabAssignment(Assignment):
 
         load_if_exists = lambda f, path: f(path) if path.exists() else None
         self.tests = load_if_exists(lambda x: test_lib.parse_tests(x), self.dir_test / lab_assignment_constants.rel_file_tests)
-        self.pregraders = load_if_exists(LabAssignment.parse_tests, self.dir_pregrade / lab_assignment_constants.rel_file_pregraders)
+        self.robograders = load_if_exists(LabAssignment.parse_tests, self.dir_robograder / lab_assignment_constants.rel_file_robograders)
 
         self.java_version = get_java_version()
 
@@ -600,30 +600,30 @@ pre { margin: 0px; white-space: pre-wrap; }
             if not (dir_group / lab_assignment_constants.rel_file_compilation_errors).exists():
                 self.test(dir_group, strict = strict, machine_speed = machine_speed)
 
-    def pregrade(self, dir, dir_pregrade, strict = False):
-        logger.log(logging.INFO, 'Pregrading: {}'.format(shlex.quote(str(dir))))
+    def robograde(self, dir, dir_robograder, strict = False):
+        logger.log(logging.INFO, 'Robograding: {}'.format(shlex.quote(str(dir))))
 
-        file_pregrading = dir / lab_assignment_constants.rel_file_pregrading
-        file_pregrading_errors = dir / lab_assignment_constants.rel_file_pregrading_errors
+        file_robograding = dir / lab_assignment_constants.rel_file_robograding
+        file_robograding_errors = dir / lab_assignment_constants.rel_file_robograding_errors
 
-        file_pregrading.unlink(missing_ok = True)
-        file_pregrading_errors.unlink(missing_ok = True)
+        file_robograding.unlink(missing_ok = True)
+        file_robograding_errors.unlink(missing_ok = True)
 
-        class PregradeException(Exception):
+        class RobogradingException(Exception):
             def __init__(self, msg):
                 self.msg = msg;
 
         # Check for class name conflicts.
         dir_build = dir / lab_assignment_constants.rel_dir_build
-        for file in dir_pregrade.iterdir():
+        for file in dir_robograder.iterdir():
             if file.suffix == '.java':
                 if (dir_build / file.name).exists():
-                     raise PregradeException('The submission contains a top-level Java file with name {}, which is also used for pregrading.'.format(shlex.quote(file.name)))
+                     raise RobogradingException('The submission contains a top-level Java file with name {}, which is also used for robograding.'.format(shlex.quote(file.name)))
 
         # Create policy file.
-        policy_file = dir / 'policy-pregrade'
+        policy_file = dir / 'policy-robograder'
         policy_file.write_text(policy([
-            (os.path.relpath(dir_pregrade, dir_build), [permission_all]),
+            (os.path.relpath(dir_robograder, dir_build), [permission_all]),
         ]))
 
         # Run them.
@@ -631,7 +631,7 @@ pre { margin: 0px; white-space: pre-wrap; }
             cmd = list(java_cmd(
                 java_name,
                 security_policy = os.path.relpath(policy_file, dir_build),
-                classpath = [os.path.relpath(dir_build, dir_build), os.path.relpath(dir_pregrade, dir_build)],
+                classpath = [os.path.relpath(dir_build, dir_build), os.path.relpath(dir_robograder, dir_build)],
                 options = java_options(self.java_version),
             ))
             log_command(cmd, dir_build)
@@ -641,55 +641,55 @@ pre { margin: 0px; white-space: pre-wrap; }
             else:
                 process = subprocess.run(cmd, cwd = dir_build, capture_output = True, encoding = 'utf-8')
                 if process.returncode != 0:
-                    raise PregradeException('\n'.join([
+                    raise RobogradingException('\n'.join([
                         'Running {} returned with {}.'.format(java_name, process.returncode),
                         'The error output was as follows:',
                         str(process.stderr),
                 ]))
 
             r = str(process.stdout)
-            logger.log(logging.DEBUG, 'pregrading output of {}:\n'.format(java_name) + r)
+            logger.log(logging.DEBUG, 'robograding output of {}:\n'.format(java_name) + r)
             return r
 
         try:
-            pregrade_output = '\n'.join(f(java_name) for java_name in self.pregraders)
-            file_pregrading.write_text(pregrade_output)
-        except PregradeException as e:
-            pregrade_error = e.msg
-            file_pregrading_errors.write_text(pregrade_error)
+            robograder_output = '\n'.join(f(java_name) for java_name in self.robograders)
+            file_robograding.write_text(robograder_output)
+        except RobogradingException as e:
+            robograder_error = e.msg
+            file_robograding_errors.write_text(robograder_error)
 
     # Only tests submissions that do not have compilation errors.
-    def submissions_pregrade(self, dir, groups, pregrade_model_solution = False, strict = False):
+    def submissions_robograde(self, dir, groups, robograde_model_solution = False, strict = False):
         assert(dir.exists())
-        if self.pregraders:
-            logger.log(25, 'Pregrading.')
+        if self.robograders:
+            logger.log(25, 'Robograding.')
 
             dir_build = dir / lab_assignment_constants.rel_dir_build
-            dir_pregrade = dir / lab_assignment_constants.rel_dir_pregrade
-            java_files = [file.name for file in self.dir_pregrade.iterdir() if file.suffix == '.java']
+            dir_robograder = dir / lab_assignment_constants.rel_dir_robograder
+            java_files = [file.name for file in self.dir_robograder.iterdir() if file.suffix == '.java']
 
             # Make output directory self-contained and check it is non-conflicting.
-            dir_pregrade.mkdir(exist_ok = True)
+            dir_robograder.mkdir(exist_ok = True)
             for file in java_files:
-                shutil.copy2(self.dir_pregrade / file, dir_pregrade)
+                shutil.copy2(self.dir_robograder / file, dir_robograder)
                 assert(not(dir_build / file).exists())
 
             # Compile test files.
             compile_java(
-                (dir_pregrade / file for file in java_files),
+                (dir_robograder / file for file in java_files),
                 force_recompile = True,
                 strict = True,
-                destination = dir_pregrade,
-                classpath = [dir_build, dir_pregrade],
+                destination = dir_robograder,
+                classpath = [dir_build, dir_robograder],
                 options = javac_options + ['-implicit:none'],
             )
 
-            if pregrade_model_solution:
-                self.pregrade(dir, dir_pregrade, strict = True)
+            if robograde_model_solution:
+                self.robograde(dir, dir_robograder, strict = True)
             for group in groups:
                 dir_group = self.group_dir(dir, group)
-                if not (dir_group / lab_assignment_constants.rel_file_compilation_errors).exists():
-                    self.pregrade(dir_group, dir_pregrade, strict = strict)
+                if not (dir_group p/ lab_assignment_constants.rel_file_compilation_errors).exists():
+                    self.robograde(dir_group, dir_robograder, strict = strict)
 
     def remove_class_files_submissions(self, dir, groups):
         for group in groups:
@@ -893,15 +893,15 @@ pre { margin: 0px; white-space: pre-wrap; }
                 row_data.tests = None
                 row_data.tests_vs_solution = None
 
-            # Pregrading
+            # Robograding
             def f():
                 for (file, attributes) in [
-                    (dir_group / lab_assignment_constants.rel_file_pregrading_errors, {'Class': 'error'}),
-                    (dir_group / lab_assignment_constants.rel_file_pregrading, {}),
+                    (dir_group / lab_assignment_constants.rel_file_robograding_errors, {'Class': 'error'}),
+                    (dir_group / lab_assignment_constants.rel_file_robograding, {}),
                 ]:
                     if file.exists():
                         return cell(pre(file.read_text(), **attributes))
-            row_data.pregrading = f()
+            row_data.robograding = f()
 
             # Comments
             ungraded_comments = Assignment.ungraded_comments(self.submissions[group])
@@ -929,7 +929,7 @@ pre { margin: 0px; white-space: pre-wrap; }
             'compilation_errors': T('Compilation errors'),
             'tests': with_after('Tests', ' vs:'),
             'tests_vs_solution': following(lab_assignment_constants.rel_dir_solution),
-            'pregrading': T('Pregrading'),
+            'robograding': T('Robograding'),
             'new_comments': T('New comments'),
         })
 

@@ -44,7 +44,7 @@ g.add_argument('--unpack', action = 'store_true', help = '\n'.join([
 ]))
 g.add_argument('--process', action = 'store_true', help = '\n'.join([
     f'Assuming the submissions have been unpacked, process them.',
-    f'This involves the following phases, in order: compilation, testing, pregrading, creating overview index.',
+    f'This involves the following phases, in order: compilation, testing, robograding, creating overview index.',
     f'Unless changed using --allow-compilation-errors, the workflow will stop after the compilation stage if there where any errors.',
     f'This is useful to detect fixable errors such as package declarations and non-existing imports.',
     f'You should then extend \'content_handlers\' in \'{lab_assignment_constants.rel_file_submission_fixes}\' in the lab directory to persistently fix theses errors (see documentation in that file).',
@@ -53,10 +53,10 @@ g.add_argument('--process', action = 'store_true', help = '\n'.join([
     f'In any case, the following phases run only for those lab groups passing compilation.'
     f'Testing uses the tests specified in \'{Path(lab_assignment_constants.rel_dir_test) / lab_assignment_constants.rel_file_tests}\' in the lab directory.',
     f'It produces output files in the \'{lab_assignment_constants.rel_dir_build_test}\' subdirectory of each lab group folder.',
-    f'Pregrading copies the java files in \'{Path(lab_assignment_constants.rel_dir_pregrade)}\' into the submission working directory, compiles them with the model solution, and runs them with each lab group submission.',
-    f'The executed Java classes are specified specified in \'{Path(lab_assignment_constants.rel_dir_pregrade) / lab_assignment_constants.rel_file_pregraders}\'.',
-    f'On successful execution, it produces a text file \'{lab_assignment_constants.rel_file_pregrading}\' in each lab group folder.',
-    f'On failure, it instead produces a text file \'{lab_assignment_constants.rel_file_pregrading_errors}\'.',
+    f'Robograding copies the java files in \'{Path(lab_assignment_constants.rel_dir_robograder)}\' into the submission working directory, compiles them with the model solution, and runs them with each lab group submission.',
+    f'The executed Java classes are specified specified in \'{Path(lab_assignment_constants.rel_dir_robograder) / lab_assignment_constants.rel_file_robograders}\'.',
+    f'On successful execution, it produces a text file \'{lab_assignment_constants.rel_file_robograding}\' in each lab group folder.',
+    f'On failure, it instead produces a text file \'{lab_assignment_constants.rel_file_robograding_errors}\'.',
     f'Creation of the overview index outputs files in the \'{lab_assignment_constants.rel_dir_analysis}\' subdirectory of each lab group folder and references these in a top-level file \'index.html\' that provides an overview over the processed submissions.',
     f'For this phase, the npm programs \'diff2html-cli\' and \'highlights\' need to be in PATH or {path_extra}.',
     f'If npm is installed, this may be achieved by executing \'npm install diff2html-cli highlights\' in the directory of this script.',
@@ -127,12 +127,12 @@ g.add_argument('--machine-speed', type = float, metavar = 'SPD', default = 1, he
     f'Defaults to 1.',
 ]))
 
-g = p.add_argument_group('pregrading options')
-g.add_argument('--no-pregrading', action = 'store_true', help = '\n'.join([
-    f'Skip the pregrading phase of the submission processing workflow.',
+g = p.add_argument_group('robograding options')
+g.add_argument('--no-robograding', action = 'store_true', help = '\n'.join([
+    f'Skip the robograding phase of the submission processing workflow.',
 ]))
-g.add_argument('--pregrade-model-solution', action = 'store_true', help = '\n'.join([
-    f'Pregrade also the model solution.',
+g.add_argument('--robograde-model-solution', action = 'store_true', help = '\n'.join([
+    f'Robograde also the model solution.',
 ]))
 
 g = p.add_argument_group('overview options')
@@ -191,9 +191,9 @@ if args.process and (not args.no_compilation) and not (shutil.which('javac')):
     print_error('It is needed for compilation.')
     print_error('To fix, make sure a Java Development Kit (JDK) is installed.')
     exit(1)
-if args.process and (not args.no_testing or not args.no_pregrading) and not (shutil.which('java')):
+if args.process and (not args.no_testing or not args.no_robograding) and not (shutil.which('java')):
     print_error('Cannot find \'java\'.')
-    print_error('It is needed for testing and pregrading.')
+    print_error('It is needed for testing and robograding.')
     print_error('To fix, make sure a Java Development Kit (JDK) is installed.')
     exit(1)
 
@@ -231,8 +231,8 @@ if args.process:
         lab_assignment.submissions_compile(strict = not(args.allow_compilation_errors), **extra)
     if not args.no_testing:
         lab_assignment.submissions_test(**extra, machine_speed = args.machine_speed)
-    if not args.no_pregrading:
-        lab_assignment.submissions_pregrade(**extra, pregrade_model_solution = args.pregrade_model_solution)
+    if not args.no_robograding:
+        lab_assignment.submissions_robograde(**extra, robograde_model_solution = args.robograde_model_solution)
     if args.remove_class_files:
         lab_assignment.submissions_remove_class_files(**extra)
     if not args.no_overview:
