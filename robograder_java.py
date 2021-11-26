@@ -78,8 +78,8 @@ class ExecutionError(RobograderException):
 class Robograder:
     def setup(self, lab, src, bin):
         self.machine_speed = lab.course.config.robograder_machine_speed
-        self.path_lib = code_root / 'Other' / 'robograding'
-        self.path_robograder = lab.config.path_source / 'pregrade'
+        self.path_lib = code_root / 'Other' / 'robograder' / 'java' / 'src'
+        self.path_robograder = lab.config.path_source / 'robograder'
         self.classpath = [
             self.path_lib,
             self.path_robograder,
@@ -122,7 +122,7 @@ class Robograder:
         if process.returncode != 0:
             raise ExecutionError(process.stderr)
 
-        logger.debug('pregrading output of {}:\n'.format(self.entrypoint) + process.stdout)
+        logger.debug('robograding output of {}:\n'.format(self.entrypoint) + process.stdout)
         return process.stdout
 
 class StudentCallableRobograder(course_basics.StudentCallableRobograder, Robograder):
