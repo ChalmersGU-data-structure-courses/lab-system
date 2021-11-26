@@ -42,3 +42,14 @@
 	 - We could create a file or issue in the grading repository in link to that.
 	 - We could embed the compiler output via a toggle.
 	   That might screw up the table layout.
+
+  * [Christian]
+    The compilation output is now part of the live submissions table.
+	The link is partly transparent if there were no errors or warnings.
+	It is red if the compilation failed.
+	
+	The live submissions table also now includes links to robograding output
+	for those Java labs that have a robograder (currently 2-4).
+	
+	I'll add another column for simpler tests that compare runs of the student code
+	with runs of the official solution.
