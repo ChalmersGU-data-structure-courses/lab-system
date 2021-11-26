@@ -315,7 +315,7 @@ class _LabConfig:
         # of the request handlers are tested on a student repository tag.
         def f():
             yield ('submission', submission_handler_java.SubmissionHandler(submission_request, grading_response))
-            if (self.path_source / 'pregrade').is_dir():
+            if (self.path_source / 'robograder').is_dir():
                 yield ('robograding', robograding_handler_java.RobogradingHandler())
         self.request_handlers = dict(f())
 
