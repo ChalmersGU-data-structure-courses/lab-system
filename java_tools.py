@@ -305,8 +305,8 @@ def policy_permission(type, args = []):
 
     Returns a single-line string not terminated by a linefeed.
     '''
-    formatted_args = ', '.join(string_encode(str(arg)) for arg in args)
-    return 'permission {} {};'.format(type, formatted_args)
+    formatted_args = ' ' + ', '.join(string_encode(str(arg)) for arg in args) if args else ''
+    return 'permission {}{};'.format(type, formatted_args)
 
 def policy_grant(path, permissions):
     '''

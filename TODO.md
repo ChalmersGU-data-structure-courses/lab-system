@@ -25,6 +25,9 @@
 * Run ssh -MNT git@git.chalmers.se in a way where we wait for the master control socket has been established.
   Make the ssh call part of the script.
 
+* Check whether javac source is smart enough to update also source dependencies if their class file is out-of-date.
+  Update robograder compilation accordingly.
+
 ## Grading sheet
 
 * Support the "Notes" field in the grading sheet.
