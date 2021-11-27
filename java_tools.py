@@ -148,7 +148,9 @@ def compile_unknown(src, bin, src_files = None, detect_encoding = True, check = 
         return (True, str())
 
     if detect_encoding:
-        encoding = general.detect_encoding(src_files)
+        # Import locally to avoid charet dependency if this option is not used.
+        import chardet_tools
+        encoding = chardet_tools.detect_encoding(src_files)
         logger.debug('Detected encoding {}'.format(encoding))
         kwargs['encoding'] = encoding
 
