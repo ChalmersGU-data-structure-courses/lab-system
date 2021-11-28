@@ -3,8 +3,6 @@ import copy
 import datetime
 from enum import Enum, auto
 import functools
-import git
-import gitdb
 import io
 import logging
 import operator
@@ -14,7 +12,11 @@ import stat
 import subprocess
 import tempfile
 
+import git
+import gitdb
+
 import general
+
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +49,7 @@ def remote_ref(is_tag, remote, reference):
 
 def local_or_remote_ref(is_tag, remote, reference):
     '''If remote is None, then we assume that the reference is local.'''
-    if remote == None:
+    if remote is None:
         return local_ref(is_tag, reference)
     return remote_ref(is_tag, remote, reference)
 
@@ -223,7 +225,7 @@ def add_remote(
             c.add_value(section, 'fetch', refspec)
         for refspec in push_refspecs:
             c.add_value(section, 'push', refspec)
-        if prune != None:
+        if prune is not None:
             c.add_value(section, 'prune', boolean(prune))
         if no_tags:
             c.add_value(section, 'tagopt', '--no-tags')

@@ -2,6 +2,7 @@ import re
 
 import general
 
+
 def find_delimiter(s, char, least = 0):
     '''
     Find the shortest repeating sequence of 'char' that does not appear in 's'.

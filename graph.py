@@ -57,11 +57,11 @@ class Instance:
         queue = [(0, self.start)]
         visited = set()
         while queue:
-            k_min = min(k for k, a in queue)
-            entries = [(k, a) for k, a in queue if k == k_min]
+            k_min = min(k for (k, a) in queue)
+            entries = [(k, a) for (k, a) in queue if k == k_min]
             if len(entries) != 1:
                 raise InstanceException
-            k, a = entries[0]
+            (k, a) = entries[0]
             for b in outgoing[a]:
                 queue.append((k + self.weights[(a, b)], b))
             visited.add(a)
@@ -80,7 +80,7 @@ class Instance:
         except InstanceException:
             return False
 
-        return self.work_size >= 15 and self.work_size <= 17 and self.average_weight <= sum(weights) / len(weights) + 0.5
+        return 15 <= self.work_size <= 17 and self.average_weight <= sum(weights) / len(weights) + 0.5
 
     def dot(self):
         dot = graphviz.Digraph(engine = 'neato', format = 'png')
@@ -98,16 +98,16 @@ class Instance:
                 width = '0.4',
                 fixedsize = 'true',
             )
-        for (a, b), flipped in edges:
+        for ((a, b), flipped) in edges:
             d = [pos(a, i) - pos(b, i) for i in [0, 1]]
             angle = math.atan2(d[1], d[0])
             angle_side = angle + math.tau / 4
             f = (-1 if flipped else 1) * -0.09
             dot.edge(
                 str(a), str(b),
-#                label = '{}'.format(str(self.weights[(a, b)])),
-#                labelangle = '90',#str(angle / math.tau * 360),
-#                labeldistance = str(1000),
+                #label = '{}'.format(str(self.weights[(a, b)])),
+                #labelangle = '90',#str(angle / math.tau * 360),
+                #labeldistance = str(1000),
             )
             m = [(pos(a, i) + pos(b, i)) / 2 for i in [0, 1]]
             dot.node(

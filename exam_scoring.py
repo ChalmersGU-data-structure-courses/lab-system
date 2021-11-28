@@ -1,3 +1,5 @@
+# Deprecated.
+# Use exam/canvas.py instead.
 import collections
 import csv
 import itertools
@@ -9,6 +11,7 @@ import canvas
 import exam_uploader
 import general
 import gitlab_config as config
+
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
@@ -41,7 +44,7 @@ def parse_score(s):
     return float(s)
 
 def score_value(s):
-    return 0 if s == None else s
+    return 0 if s is None else s
 
 def question_score_max(q):
     return 2 if q in questions_basic else 3
@@ -66,14 +69,20 @@ def load_data():
 def score_sum(x, qs):
     return sum(score_value(x[q][0]) for q in qs)
 
-Result = collections.namedtuple('Result', field_names = ['questions', 'points', 'points_basic', 'points_advanced', 'grade'])
+Result = collections.namedtuple(
+    'Result',
+    field_names = ['questions', 'points', 'points_basic', 'points_advanced', 'grade']
+)
 
 def get_results():
-    lookup = dict(((v, n), integration_id) for (v, n, integration_id, _) in exam_uploader.read_lookup(exam_uploader.lookup_file))
+    lookup = dict(
+        ((v, n), integration_id)
+        for (v, n, integration_id, _) in exam_uploader.read_lookup(exam_uploader.lookup_file)
+    )
     data = load_data()
 
     def process_question(q, score, feedback):
-        if score == None:
+        if score is None:
             feedback = 'Missing.'
         v = score_value(score)
         v_max = question_score_max(q)
@@ -100,7 +109,10 @@ def get_results():
     return dict((lookup[id], process(id, x)) for (id, x) in data.items())
 
 def results_by_user_id(course, use_cache = True):
-    return dict((course.user_integration_id_to_id[integration_id], result) for (integration_id, result) in get_results().items())
+    return dict(
+        (course.user_integration_id_to_id[integration_id], result)
+        for (integration_id, result) in get_results().items()
+    )
 
 def results_for_grading_protocol(input, output, use_cache = True):
     c = canvas.Canvas(config.canvas_url)
@@ -139,7 +151,9 @@ def post_grading(use_cache = True, replace = False, replace_author_name = 'Chris
         override = general.from_singleton(a.overrides)
         user_id = general.from_singleton(override.student_ids)
         submission = general.from_singleton(exam.get_submissions(a.id, use_cache = False))
-        assert submission.user_id == user_id, f'Submission user id {submission.user_id} does not match assignment user id {user_id}'
+        assert submission.user_id == user_id, (
+            f'Submission user id {submission.user_id} does not match assignment user id {user_id}'
+        )
         if submission.workflow_state != 'unsubmitted' or user_id in results:
             yield (user_id, submission)
 
@@ -153,7 +167,12 @@ def post_grading(use_cache = True, replace = False, replace_author_name = 'Chris
             if replace:
                 for comment in submission.submission_comments:
                     if comment.author_name == replace_author_name:
-                        c.delete(['courses', exam.course_id, 'assignments', submission.assignment_id, 'submissions', user_id, 'comments', comment.id])
+                        c.delete([
+                            'courses', exam.course_id,
+                            'assignments', submission.assignment_id,
+                            'submissions', user_id,
+                            'comments', comment.id,
+                        ])
             endpoint = ['courses', exam.course_id, 'assignments', submission.assignment_id, 'submissions', user_id]
             params = {
                 'comment[text_comment]': format_feedback(result),
@@ -199,9 +218,9 @@ def analysis():
 
         score_basic = sum(scores_basic)
         score_advanced = sum(scores_advanced)
-        
+
         for t in thresholds_basic:
-            if score_basic  >= t:
+            if score_basic >= t:
                 histogram_basic[t] = histogram_basic[t] + 1
             for t in thresholds_advanced:
                 if score_advanced >= t:
@@ -225,7 +244,6 @@ def analysis():
 
     #rounding = sum(round(2 * score_value(a)) / 2 for (a, b) in x.values())
     #print(precise - rounding)
-
 
 #        return Course.GradingSheet(
 #            group_rows = self.parse_group_rows([row[0] for row in rows]),

@@ -1,10 +1,10 @@
-import os
 from pathlib import PurePath
 import sys
 
+
 def setup_seccomp(callback = None):
     '''Sandbox the current process using the Kernel mechanism libseccomp.
-    
+
     Only minimal permissions are granted by default.
     Filesystem interaction is read-only.
 
@@ -13,7 +13,7 @@ def setup_seccomp(callback = None):
     Use it to specify additional allowed syscalls.
 
     Adapted from output of 'help(seccomp)'.
-    
+
     If something unexpectedly fails, run it under strace to see what it was trying to do.
     '''
     import errno
@@ -30,7 +30,7 @@ def setup_seccomp(callback = None):
     #f.add_rule(ALLOW, "rt_sigaction")
     #f.add_rule(ALLOW, "rt_sigreturn")
     #f.add_rule(ALLOW, "rt_sigprocmask")
-    
+
     # Allow memory allocation.
     f.add_rule(ALLOW, "brk")
     f.add_rule(ALLOW, "mmap", Arg(4, EQ, 0xffffffff))
@@ -63,7 +63,7 @@ def setup_seccomp(callback = None):
     f.add_rule(ALLOW, "getcwd")
 
     # Allow the caller to modify the filter.
-    if callback != None:
+    if callback is not None:
         callback(f)
 
     # Tell the kernel to enforce the rules on the current process.
@@ -102,7 +102,7 @@ def main():
     try:
         path = PurePath(sys.argv[1])
         del sys.argv[1]
-    except:
+    except Exception:
         print('Usage: python3 <script> <script to run> [<arguments>...]', file = sys.stderr)
         sys.exit(-1)
 

@@ -1,5 +1,6 @@
 from pathlib import Path, PurePath
 
+
 def path_as_str(path):
     return str(PurePath(path))
 
@@ -136,13 +137,13 @@ def proot_python_args(
     for path in python_path_extra:
         x = path_as_str(path)
         xs = env.get('PYTHONPATH')
-        env['PYTHONPATH'] = x if xs == None else x + ':' + xs
+        env['PYTHONPATH'] = x if xs is None else x + ':' + xs
 
     def get_args():
         yield '/usr/bin/python3'
         yield '-B'
         yield '-s'
-        yield from *python_args_extra
+        yield from python_args_extra
         yield '--'
         yield guest_script
         yield from guest_args

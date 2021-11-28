@@ -7,7 +7,7 @@ import fcntl
 import functools
 import itertools
 import json
-from pathlib import Path
+from pathlib import PurePosixPath, Path
 import re
 import tempfile
 import time
@@ -18,6 +18,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+
 
 def identity(x):
     return x
@@ -88,13 +89,16 @@ def check_return(pred):
     return f
 
 def with_default(f, x, default):
-    return f(x) if x != None else default
+    return default if x is None else x
 
 def with_none(f, x):
     return with_default(f, x, None)
 
 def maybe(f):
     return lambda x: with_none(f, x)
+
+def defaulting_to(default, value, key = None):
+    return default if value == key else value
 
 # Bug in pyflakes (TODO: report):
 # ./general.py:102:28 local variable 'last' defined in enclosing scope on line 70 referenced before assignment
@@ -130,7 +134,7 @@ def list_get(xs, i):
     return xs[i] if i < len(xs) else None
 
 def map_maybe(f, xs):
-    return filter(lambda x: x != None, map(f, xs))
+    return filter(lambda x: x is not None, map(f, xs))
 
 # missing in itertools.
 def starfilter(f, xs):
@@ -154,7 +158,7 @@ def multidict(xs):
     return r
 
 def ignore_none_keys(xs):
-    return starfilter(lambda k, _: k != None, xs)
+    return starfilter(lambda k, _: k is not None, xs)
 
 dict_ = compose(ignore_none_keys, dict)
 sdict_ = compose(ignore_none_keys, sdict)
@@ -181,9 +185,9 @@ multidict_from_fun = compose(map_with_val, multidict)
 def component(i):
     return lambda x: x[i]
 
-first  = component(0)
+first  = component(0)  # noqa E221
 second = component(1)
-third  = component(2)
+third  = component(2)  # noqa E221
 fourth = component(3)
 
 def ev(*x):
@@ -195,7 +199,7 @@ def tupling(*fs):
 def zip_dicts_with(f, us, vs):
     for k, u in us.items():
         v = vs.get(k)
-        if v != None:
+        if v is not None:
             yield (k, f(u, v))
 
 def zip_dicts(us, vs):
@@ -314,7 +318,7 @@ def add_suffix(path, suffix):
     return path.parent / (path.name + suffix)
 
 def sorted_directory_list(dir, filter = None):
-   return dict(sorted(((f.name, f) for f in dir.iterdir() if not filter or filter(f)), key = lambda x: x[0]))
+    return dict(sorted(((f.name, f) for f in dir.iterdir() if not filter or filter(f)), key = lambda x: x[0]))
 
 class OpenWithModificationTime:
     def __init__(self, path, date):
@@ -346,13 +350,13 @@ def modify(path, callback):
     content = path.read_text()
     content = callback(content)
     with path.open('w') as file:
-       file.write(content)
+        file.write(content)
 
 def modify_no_modification_time(path, callback):
     content = path.read_text()
     content = callback(content)
     with OpenWithNoModificationTime(path) as file:
-       file.write(content)
+        file.write(content)
 
 def mkdir_fresh(path):
     if path.exists():
@@ -373,7 +377,7 @@ def safe_symlink(source, target, exists_ok = False):
 # 'rel' is the path to 'dir_from', taken relative to 'dir_to'.
 # Returns list of newly created files.
 def link_dir_contents(dir_from, dir_to, rel = None, exists_ok = False):
-    if rel == None:
+    if rel is None:
         rel = Path(os.path.relpath(dir_from, dir_to))
 
     files = list()
@@ -404,9 +408,9 @@ def readfile(fil):
         return bstr.decode()
     except UnicodeDecodeError:
         try:
-            return bstr.decode(encoding="latin1")
+            return bstr.decode(encoding = "latin1")
         except UnicodeDecodeError:
-            return bstr.decode(errors="replace")
+            return bstr.decode(errors = "replace")
 
 def guess_encoding(b):
     encodings = ['utf-8', 'latin1']
@@ -475,7 +479,7 @@ def temp_dir():
 
 @contextlib.contextmanager
 def temp_file(name = None):
-    if name == None:
+    if name is None:
         name = 'file'
     with temp_dir() as dir:
         yield dir / name
@@ -510,8 +514,14 @@ def working_dir(path):
     finally:
         os.chdir(old)
 
+def format_path(path):
+    return shlex.quote(str(PurePosixPath(path)))
+
 def log_command(logger, cmd, working_dir = False):
-    logger.debug('running command{}:\n{}'.format(' in {}'.format(shlex.quote(os.getcwd())) if working_dir else '', shlex.join(cmd)))
+    logger.debug('running command{}:\n{}'.format(
+        ' in {}'.format(shlex.quote(os.getcwd())) if working_dir else '',
+        shlex.join(cmd),
+    ))
 
 def wait_and_check(process, cmd):
     r = process.wait()
@@ -670,7 +680,7 @@ def len_range(range):
 
 def range_is_empty(range):
     (start, end) = range
-    return start != None and end != None and start >= end
+    return start is not None and end is not None and start >= end
 
 def range_from_size(i, n):
     return (i, i + n)
@@ -743,13 +753,13 @@ def recursive_dict_values(u):
         yield u
 
 def expand_hierarchy(v, key_split, initial_value = None):
-    r = dict() if initial_value == None else initial_value
+    r = dict() if initial_value is None else initial_value
     for (combined_key, value) in v.items():
         last_key = None
         for part in key_split(combined_key):
-            x = r if last_key == None else x.setdefault(last_key, dict())
+            x = r if last_key is None else x.setdefault(last_key, dict())  # noqa: F821
             last_key = part
-        if last_key == None:
+        if last_key is None:
             r = value
         else:
             x[last_key] = value

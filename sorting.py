@@ -1,5 +1,6 @@
 import random
 
+
 def swap(xs, i, j):
     x = xs[i]
     xs[i] = xs[j]
@@ -94,7 +95,7 @@ class QuestionQuicksort:
         yield f'Finally, we swap the pivot {pivot} with {ys[hi]}.'
         swap(ys, 0, hi)
         for a, b in (0, hi), (hi, hi + 1), (hi + 1, len(ys)):
-            partitions.append(ys[a : b])
+            partitions.append(ys[a : b])  # noqa: E203
 
     def replacements(self, solution):
         yield ('array_to_partition', str(self.array))
@@ -109,7 +110,7 @@ class QuestionQuicksort:
         ys = list(self.array)
         partitions = []
         msgs = list(self.solution(ys, partitions))
-        k = 16 # TODO: only need 14 (change Google document)
+        k = 16  # TODO: only need 14 (change Google document)
         assert len(msgs) <= k, f'Have {len(msgs)} messages.'
         for i in range(k):
             yield (f'quick_sol_{i}', msgs[i] if i < len(msgs) else '')
@@ -151,6 +152,7 @@ class QuestionMergeSort:
             return
 
         indices = [0 for _ in self.lists]
+
         def resolve(i):
             return self.lists[i][indices[i]]
 

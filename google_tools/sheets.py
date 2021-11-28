@@ -1,15 +1,17 @@
 import collections
 import enum
 import functools
-import googleapiclient.discovery
 import json
 import logging
 import re
 import string
 import types
 
+import googleapiclient.discovery
+
 import general
 import print_parse as pp
+
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +34,6 @@ def is_subdata(current, previous):
 
 default_scopes = ['spreadsheets']
 
-#def request_update_sheet_properties
-
 class Dimension(enum.Enum):
     unspecified = 'DIMENSION_UNSPECIFIED'
     rows = 'ROWS'
@@ -53,9 +53,9 @@ def dimension_range(sheet_id, dimension, start = None, end = None):
         'dimension': dimension.value,
     }
 
-    if start != None:
+    if start is not None:
         r['startIndex'] = start
-    if end != None:
+    if end is not None:
         r['endIndex'] = end
     return r
 
@@ -68,24 +68,28 @@ def request(name, /, **params):
 # inheritFromBefore = True for rows fails to copy vertical border.
 # Find out why.
 def request_insert_dimension(dimension_range, inherit_from_before = False):
-    return request('insertDimension',
+    return request(
+        'insertDimension',
         range = dimension_range,
         inheritFromBefore = inherit_from_before,
     )
 
 def request_delete_dimension(dimension_range):
-    return request('deleteDimension',
+    return request(
+        'deleteDimension',
         range = dimension_range,
     )
 
 def request_move_dimension(dimension_range, destination_index):
-    return request('moveDimension',
+    return request(
+        'moveDimension',
         source = dimension_range,
         destinationIndex = destination_index,
     )
 
 def request_update_title(sheet_id, title):
-    return request('updateSheetProperties',
+    return request(
+        'updateSheetProperties',
         properties = {
             'sheetId': sheet_id,
             'title': title,
@@ -95,7 +99,7 @@ def request_update_title(sheet_id, title):
 
 def grid_range(sheet_id, rect):
     def g(name, value):
-        if value != None:
+        if value is not None:
             yield (name, value)
 
     def f():
@@ -121,10 +125,11 @@ class PasteOrientation(enum.Enum):
     transpose = 'TRANSPOSE'
 
 def request_copy_paste(source, destination, paste_type, paste_orientation = None):
-    if paste_orientation == None:
+    if paste_orientation is None:
         paste_orientation = PasteOrientation.normal
 
-    return request('copyPaste',
+    return request(
+        'copyPaste',
         source = source,
         destination = destination,
         pasteType = paste_type.value,
@@ -144,13 +149,13 @@ def request_update_cells(rows, fields, start = None, range = None):
         yield ('rows', [row_data(row) for row in rows])
         yield ('fields', fields)
         nonlocal start, range
-        if start != None:
+        if start is not None:
             yield ('start', start)
             start = None
-        elif range != None:
+        elif range is not None:
             yield ('range', range)
             range = None
-        if not (start == None and range == None):
+        if not (start is None and range is None):
             raise ValueError("Exactly one of 'start' and 'range' must be given")
     return request('updateCells', **dict(f()))
 
@@ -210,9 +215,9 @@ def request_duplicate_sheet(id, new_index, new_id = None, new_name = None):
     def f():
         yield ('sourceSheetId', id)
         yield ('insertSheetIndex', new_index)
-        if new_id != None:
+        if new_id is not None:
             yield ('newSheetId', new_id)
-        if new_name != None:
+        if new_name is not None:
             yield ('newSheetName', new_name)
     return request('duplicateSheet', **dict(f()))
 
@@ -251,13 +256,13 @@ def extended_value_formula(s):
 
 def extended_value_extract_primitive(v):
     n = v.get('numberValue')
-    if n != None:
+    if n is not None:
         if not isinstance(n, int):
             raise ValueError(f'Not an integer: {n}')
         return n
 
     s = v.get('stringValue')
-    if s != None:
+    if s is not None:
         if not isinstance(s, str):
             raise ValueError(f'Not a string: {s}')
         return s
@@ -288,7 +293,7 @@ def text_format(
     * link: an optional URL (string) to use for a link.
     '''
     def f():
-        if link != None:
+        if link is not None:
             yield ('link', {'uri': link})
     return dict(f())
 
@@ -297,7 +302,7 @@ def cell_format(
 ):
     '''Produces a value for the API type CellFormat.'''
     def f():
-        if text_format != None:
+        if text_format is not None:
             yield ('textFormat', text_format)
     return dict(f())
 
@@ -315,11 +320,11 @@ def cell_data(
 ):
     '''Produces a value for the API type CellData.'''
     def f():
-        if userEnteredValue != None:
+        if userEnteredValue is not None:
             yield ('userEnteredValue', userEnteredValue)
-        if userEnteredFormat != None:
+        if userEnteredFormat is not None:
             yield ('userEnteredFormat', userEnteredFormat)
-        if note != None:
+        if note is not None:
             yield ('note', note)
     return dict(f())
 
@@ -383,11 +388,11 @@ def sheet_data_table(sheet_data):
 def cell_as_string(cell):
     x = cell['userEnteredValue']
     y = x.get('stringValue')
-    if y != None:
+    if y is not None:
         return y
     for attr in ['numberValue', 'boolValue']:
         y = x.get(attr)
-        if y != None:
+        if y is not None:
             return str(y)
     raise ValueError(f'Cannot interpret as string value: {x}')
 
@@ -502,7 +507,7 @@ a1_notation = pp.compose_many(
     pp.swap,
     pp.tuple(pp.maybe(pp.from_one)),
     pp.combine((alpha_unbounded, numeral_unbounded)),
-    pp.regex_many('{}{}', ('[a-zA-Z]*', '\-?\d*'), flags = re.ASCII),
+    pp.regex_many('{}{}', ('[a-zA-Z]*', '\\-?\\d*'), flags = re.ASCII),
 )
 
 # Formats a (zero-based) range as a silly inclusive one-based range.

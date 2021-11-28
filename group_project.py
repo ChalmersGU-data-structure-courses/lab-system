@@ -1,19 +1,21 @@
 import contextlib
 import functools
 import general
-import git
-import gitlab
-import gitlab.v4.objects
 import json
 import logging
 from pathlib import PurePosixPath
 import shlex
+
+import git
+import gitlab
+import gitlab.v4.objects
 
 import instance_cache
 import item_parser
 import git_tools
 import gitlab_tools
 import print_parse
+
 
 class RequestAndResponses:
     '''
@@ -84,7 +86,7 @@ class RequestAndResponses:
         return self.repo_tag_create(
             segments,
             ref,
-            message = None if data == None else json.dumps(data, indent = 2),
+            message = None if data is None else json.dumps(data, indent = 2),
             **kwargs,
         )
 
@@ -152,7 +154,7 @@ class RequestAndResponses:
         '''
         self.repo_tag_create_json(RequestAndResponses.segment_handled, data = data)
         self.handled = True
-        if data != None:
+        if data is not None:
             self.handled_result = data
 
     @functools.cached_property
@@ -188,7 +190,7 @@ class RequestAndResponses:
         '''
         # Review issues must be configured to proceed.
         response_key = self.handler_data.handler.review_response_key
-        if response_key == None:
+        if response_key is None:
             return None
 
         return self.responses.get(response_key)
@@ -200,7 +202,7 @@ class RequestAndResponses:
         Only valid for accepted submission requests.
         First checks for a review issue and then the result of the submission handler.
         '''
-        if self.review != None:
+        if self.review is not None:
             return self.handler_data.handler.review_response_key
 
         return self.handled_result.get('outcome_response_key')
@@ -214,7 +216,7 @@ class RequestAndResponses:
         - issue is an instance of gitlab.v4.objects.ProjectIssue.
         Only valid for accepted submission requests.
         '''
-        if self.outcome_response_key == None:
+        if self.outcome_response_key is None:
             return None
 
         (issue, title_data) = self.responses[self.outcome_response_key]
@@ -226,7 +228,7 @@ class RequestAndResponses:
         The outcome part of 'outcome_with_issue'.
         None if the latter is None.
         '''
-        if self.outcome_with_issue == None:
+        if self.outcome_with_issue is None:
             return None
 
         (outcome, outcome_issue) = self.outcome_with_issue
@@ -238,7 +240,7 @@ class RequestAndResponses:
         The outcome issue part of 'outcome_with_issue'.
         None if the latter is None.
         '''
-        if self.outcome_with_issue == None:
+        if self.outcome_with_issue is None:
             return None
 
         (outcome, outcome_issue) = self.outcome_with_issue
@@ -250,7 +252,7 @@ class RequestAndResponses:
         Get the informal name the reviewer, or 'Lab system' if there is none.
         Only valid for submission requests with an outcome.
         '''
-        if self.review == None:
+        if self.review is None:
             return 'Lab system'
 
         gitlab_username = self.outcome_issue.author['username']
@@ -384,7 +386,7 @@ class RequestAndResponses:
             f'using handler {self.handler_data.handler_key}'
         )
         result = self.handler_data.handler.handle_request(self)
-        if result != None:
+        if result is not None:
             self.logger.debug(general.join_lines(['Handler result:', str(result)]))
 
         # Create tag <full-group-id>/<request_name>/handled
@@ -440,7 +442,7 @@ class HandlerData:
         '''
         def parser(item):
             (tag_name, tag_data) = item
-            if self.handler.request_matcher.parse(tag_name) == None:
+            if self.handler.request_matcher.parse(tag_name) is None:
                 return None
             return (tag_name, tag_data)
 
@@ -460,7 +462,7 @@ class HandlerData:
                 parse = response_title.parse.__call__
                 try:
                     r = parse(title)
-                except:
+                except Exception:
                     return None
                 return (r['tag'], (issue, r))
 
@@ -484,7 +486,7 @@ class HandlerData:
         for (response_key, u) in self.responses.items():
             for (request_name, issue_data) in u.items():
                 request_and_responses = result.get(request_name)
-                if request_and_responses == None:
+                if request_and_responses is None:
                     self.logger.warning(gitlab_tools.format_issue_metadata(
                         issue_data[0],
                         f'Response issue in {self.group.name} with no matching request tag:'
@@ -553,7 +555,7 @@ class GroupProject:
                 )
                 self.course.configure_student_project(project)
                 self.repo_add_remote()
-            except:
+            except:  # noqa: E722
                 r.delete()
                 raise
         r.create = create
@@ -675,7 +677,7 @@ class GroupProject:
 
         Returns an instance of git.Tag.
         '''
-        if ref == None:
+        if ref is None:
             ref = self.repo_tag(request_name).commit
 
         tag = self.lab.repo.create_tag(
@@ -920,7 +922,7 @@ class GroupProject:
         submission_handler_data = self.handler_data[self.lab.config.submission_handler_key]
         for request_and_responses in submission_handler_data.requests_and_responses.values():
             if request_and_responses.accepted:
-                if deadline == None or request_and_responses.date <= deadline:
+                if deadline is None or request_and_responses.date <= deadline:
                     yield request_and_responses
 
     def submissions_with_outcome(self, deadline = None):
@@ -930,7 +932,7 @@ class GroupProject:
         Returns an iterable of instances of SubmissionAndRequests ordered by the date.
         '''
         for submission in self.submissions(deadline = deadline):
-            if submission.outcome != None:
+            if submission.outcome is not None:
                 yield submission
 
     def submissions_relevant(self, deadline = None):
@@ -941,7 +943,7 @@ class GroupProject:
         '''
         submissions = list(self.submissions(deadline = deadline))
         for (i, submission) in enumerate(submissions):
-            if i + 1 == len(submissions) or submission.outcome != None:
+            if i + 1 == len(submissions) or submission.outcome is not None:
                 yield submission
 
     def submission_current(self, deadline = None):
@@ -953,5 +955,5 @@ class GroupProject:
         submissions = list(self.submissions(deadline = deadline))
         if submissions:
             submission_last = submissions[-1]
-            if submission_last.outcome == None:
+            if submission_last.outcome is None:
                 return submission_last

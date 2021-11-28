@@ -1,8 +1,11 @@
-import gitlab
+# Deprecated: use course and lab.
 from pathlib import Path
 import subprocess
 
+import gitlab
+
 from general import from_singleton, from_singleton_maybe
+
 
 id_group_dit = 1319
 
@@ -10,20 +13,13 @@ print('Authenticating...')
 gl = gitlab.Gitlab('https://git.chalmers.se/', private_token = 'REDACTED_PRIVATE_TOKEN')
 gl.auth()
 
-#u = gl.users
-#for user in itertools.islice(u.list(all = True), 1000000):
-#    print(user.attributes)
-#    print("{}: {}, {}, {}".format(user.id, user.name, user.username, user.email if 'email' in user.attributes else str(None)))
-#exit()
-
-#print(gl.user)
-
 group_dit = gl.groups.get(id_group_dit)
 
 #print(group_dit)
 
 def get_lab_groups():
-    return dict(((int(subgroup.name.split()[2])), gl.groups.get(subgroup.id))
+    return dict(
+        ((int(subgroup.name.split()[2])), gl.groups.get(subgroup.id))
         for subgroup in group_dit.subgroups.list(all = True)
         if subgroup.name.lower().startswith('lab group')
     )
@@ -48,7 +44,10 @@ def create_lab_groups(n):
             print(r)
 
 def get_subgroup(path):
-    xs = [gl.groups.get(subgroup.id, lazy = True) for subgroup in group_dit.subgroups.list(all = True) if subgroup.path == path]
+    xs = [
+        gl.groups.get(subgroup.id, lazy = True)
+        for subgroup in group_dit.subgroups.list(all = True) if subgroup.path == path
+    ]
     return xs[0] if xs else None
 
 def get_template_group():
@@ -60,9 +59,9 @@ def create_template_group():
             'name': 'Lab templates',
             'path': 'lab_templates',
             'parent_id': id_group_dit,
-         })
+        })
         print(r)
-        
+
 def create_lab_project(group, k, dir):
     project = gl.projects.create({
         'name': 'Lab {}'.format(k),
@@ -122,7 +121,10 @@ def print_tags(lab, lab_groups):
         if tags:
             tag_name = tags[0].name
             #print(f'https://git.chalmers.se/courses/dit181/lab_group_{n}/lab1/-/tree/{tag_name}')
-            print(f'https://git.chalmers.se/courses/dit181/lab_group_{n}/lab1/-/compare/fb30e73b...{tag_name}?view=parallel')
+            print(
+                f'https://git.chalmers.se/courses/dit181/lab_group_{n}/'
+                f'lab1/-/compare/fb30e73b...{tag_name}?view=parallel'
+            )
         else:
             print('-')
 
@@ -148,7 +150,6 @@ def create_submission_branch(n, tag):
 #for n, tag in tags.items():
 #    if n >= 8:
 #        subprocess.run(['git', 'push', 'origin', 'group-{}'.format(n)], cwd = repo, check = True)
-    
 
 #print_tags(1, lab_groups)
 
@@ -165,7 +166,6 @@ def create_submission_branch(n, tag):
 #    })
 #    r.raise_for_status()
 #    print_json(r.json())
-
 
 #fork_lab_project(1, [lab_groups[44]])
 #exit()

@@ -7,6 +7,7 @@ from pathlib import Path
 from general import print_json
 from canvas import Canvas, Course, GroupSet
 
+
 canvas_url = 'canvas.gu.se'
 course_id = 42575
 group_set = 'Lab groups'
@@ -62,8 +63,6 @@ if update:
     set_invitations(invitations)
 
 exit()
-
-
 
 def username_from_email(s):
     return s.split('@')[0]

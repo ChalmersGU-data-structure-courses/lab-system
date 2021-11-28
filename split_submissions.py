@@ -1,4 +1,3 @@
-
 import json
 import unicodedata
 import re
@@ -6,6 +5,7 @@ import os.path
 import subprocess
 import argparse
 from glob import glob
+
 
 # First, do the following:
 # - download all submissions: go to the lab in Canvas, and click "Download submissions"
@@ -26,8 +26,7 @@ assert not os.path.exists(args.outfolder), "The --out folder must not exist!"
 def normalize(s):
     return unicodedata.normalize('NFKC', s)
 
-
-## Read the students, and map them to their lab group
+# Read the students, and map them to their lab group
 
 user_groups = {}
 labusers = json.loads(args.students.read())
@@ -35,8 +34,7 @@ for user in labusers.values():
     uid = re.sub(r"\W", "", normalize(user['sortname']).lower())
     user_groups[uid] = user['group']
 
-
-## Move all submissions to their lab group directory
+# Move all submissions to their lab group directory
 
 submissions = {}
 for filename in glob(os.path.join(args.infolder, "*.*")):
@@ -56,13 +54,12 @@ for filename in glob(os.path.join(args.infolder, "*.*")):
     print(" ".join(cmd))
     subprocess.run(cmd)
 
-
-## Rename submission files filename-5.xxx to filename.xxx
+# Rename submission files filename-5.xxx to filename.xxx
 
 # repeat three times, beacuse there might be files like filename-2-1.xxx or even filename-4-2-1.xxx
 for _repeats in range(2):
     for suffix in range(10):
         for filename in glob(os.path.join(args.outfolder, "*", f"*-{suffix}.*")):
-            newname = re.sub(f"-{suffix}(\.[^.]*)", r"\1", filename)
+            newname = re.sub(f"-{suffix}(\\.[^.]*)", r"\1", filename)
             print(f"mv {filename} {newname}")
             os.replace(filename, newname)

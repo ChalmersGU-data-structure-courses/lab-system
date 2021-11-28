@@ -1,5 +1,6 @@
 import re
 
+
 def implicit_group(pattern):
     return f'(?:{pattern})'
 
@@ -21,10 +22,9 @@ def parse_answers_iter(content, only_appendix = False):
             while not lines[0].strip():
                 del lines[0]
         if not only_appendix or in_appendix:
-            yield (
-                tuple(lines),
-                content[matches[i].end() : len(content) if i + 1 == len(matches) else matches[i + 1].start()].strip(),
-            )
+            start = matches[i].end()
+            end = len(content) if i + 1 == len(matches) else matches[i + 1].start()
+            yield (tuple(lines), content[start : end].strip())  # noqa: E203
 
 def parse_answers_list(content):
     return list((q, a) for q, a in parse_answers_iter(content))

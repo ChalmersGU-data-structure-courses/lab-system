@@ -1,4 +1,3 @@
-
 import difflib
 import re
 import os
@@ -9,11 +8,11 @@ import argparse
 
 from pathlib import Path
 
+
 # Set this to False if you haven't installed diff2html-cli:
 #   https://www.npmjs.com/package/diff2html-cli
 # (or if you want to use Python's internal difflib of some reason)
 USE_GIT_DIFF2HTML = True
-
 
 def autograde_all(cfg):
     rows = [H('tr', [
@@ -39,11 +38,10 @@ def autograde_all(cfg):
             H('h1', f'{cfg.labname} autograding: {cfg.dir.name}'),
             H('p', ['Files to submit:', H('strong', ', '.join(sorted(cfg.required)))]),
             H('p', ['Total submissions:', H('strong', str(len(cfg.labgroups)))]),
-            H('table', rows, klass='results'),
+            H('table', rows, klass = 'results'),
             FOOTER,
-            file=OUT
+            file = OUT
         )
-
 
 def copy_submission_to_outfolder(f, outfolder, cfg):
     # upper-/lowercase of destination should depend on what is required
@@ -59,10 +57,8 @@ def copy_submission_to_outfolder(f, outfolder, cfg):
         # remove packages in java files
         content = re.sub(r'^(package[^;]*;)', r'/* \1 */', content)
     with (outfolder / dest).open('w') as F:
-        print(content, file=F)
+        print(content, file = F)
     return src, dest
-
-
 
 def autograde(group, cfg):
     dir = cfg.dir / group
@@ -82,7 +78,8 @@ def autograde(group, cfg):
     # Copy submitted files to outfolder
     submitted = dict()
     for d in [previous, current]:
-        if not d.exists(): continue
+        if not d.exists():
+            continue
         for f in d.iterdir():
             src, dest = copy_submission_to_outfolder(f, staging, cfg)
             submitted[dest] = f
@@ -140,11 +137,11 @@ def autograde(group, cfg):
             if (previous / original.name).is_file()
         ) if previous.exists() else ''),
     ]
-    
+
     # Compile java files
     print(' - compile java files')
     javafiles = list(f for f in set(submitted) | set(cfg.templates) | set(cfg.required) if f.endswith('.java'))
-    process = subprocess.run(['javac'] + javafiles, cwd=staging, capture_output=True)
+    process = subprocess.run(['javac'] + javafiles, cwd = staging, capture_output = True)
     compilation_errors = bool(process.returncode)
     if compilation_errors:
         print('   + compilation error')
@@ -159,35 +156,35 @@ def autograde(group, cfg):
     elif cfg.testfile:
         # Run test scripts
         runtime_errors = []
-        print(f' - run tests', end='', flush=True)
+        print(' - run tests', end = '', flush = True)
         for outfile, script in cfg.testscripts:
-            print(f' .', end='', flush=True)
+            print(' .', end = '', flush = True)
             if isinstance(script, str):
                 script = script.split()
             try:
-                process = subprocess.run(script, cwd=staging, timeout=cfg.timeout, capture_output=True)
+                process = subprocess.run(script, cwd = staging, timeout = cfg.timeout, capture_output = True)
             except subprocess.TimeoutExpired:
-                print(f'timeout', end='', flush=True)
+                print('timeout', end = '', flush = True)
                 runtime_errors += [
                     H('strong', f'Timeout (>{cfg.timeout}s): {outfile}'),
                 ]
                 continue
             if process.returncode:
-                print(f'error', end='', flush=True)
-                errlines = process.stderr.decode().splitlines(keepends=True)
+                print('error', end = '', flush = True)
+                errlines = process.stderr.decode().splitlines(keepends = True)
                 del errlines[30:]
                 runtime_errors += [
                     H('strong', f'Runtime error: {outfile}'),
                     H('pre', ''.join(errlines)),
                 ]
             with (staging / outfile).open('a') as F:
-                print(f'===== {" ".join(script)[:70]}...', file=F)
-                print(process.stdout.decode(), file=F)
+                print(f'===== {" ".join(script)[:70]}...', file = F)
+                print(process.stdout.decode(), file = F)
                 if process.stderr:
-                    print(file=F)
-                    print(' STDERR '.center(60, '='), file=F)
-                    print(process.stderr.decode(), file=F)
-                print(file=F)
+                    print(file = F)
+                    print(' STDERR '.center(60, '='), file = F)
+                    print(process.stderr.decode(), file = F)
+                print(file = F)
         print()
 
         row += [
@@ -212,7 +209,6 @@ def autograde(group, cfg):
 
     return H('tr', '\n'.join(row))
 
-
 GIT_DIFF_CMD = 'git diff --no-index --histogram --unified=1000 --ignore-space-at-eol'.split()
 DIFF2HTML_CMD = 'diff2html --style side --summary open --input file'.split()
 
@@ -224,20 +220,20 @@ def diff_and_link(afile, bfile, atitle, btitle, diffile):
     try:
         atext = readfile(afile)
     except FileNotFoundError:
-        return H('span', f'({afile.name})', klass='grey')
+        return H('span', f'({afile.name})', klass = 'grey')
     try:
         btext = readfile(bfile)
     except FileNotFoundError:
-        return H('span', f'({bfile.name})', klass='grey')
+        return H('span', f'({bfile.name})', klass = 'grey')
     if atext.strip() == btext.strip():
         diffile = append_suffix(diffile, '.txt')
         with diffile.open('w') as F:
-            print(atext, file=F)
-        return f'{NBSP}={NBSP}' + H('a', afile.name, href=diffile, klass='grey')
+            print(atext, file = F)
+        return f'{NBSP}={NBSP}' + H('a', afile.name, href = diffile, klass = 'grey')
 
     if USE_GIT_DIFF2HTML:
-        cmd = GIT_DIFF_CMD + [afile, bfile] # str(...)?
-        process = subprocess.run(cmd, capture_output=True)
+        cmd = GIT_DIFF_CMD + [afile, bfile]  # str(...)?
+        process = subprocess.run(cmd, capture_output = True)
         with diffile.open('wb') as F:
             F.write(process.stdout)
         difflines = process.stdout.splitlines()
@@ -250,10 +246,10 @@ def diff_and_link(afile, bfile, atitle, btitle, diffile):
         subprocess.run(cmd)
         diffile = append_suffix(diffile, '.html')
 
-    else: # use difflib
+    else:  # use difflib
         alines = atext.splitlines()
         blines = btext.splitlines()
-        sim = difflib.SequenceMatcher(a=alines, b=blines).ratio()
+        sim = difflib.SequenceMatcher(a = alines, b = blines).ratio()
         difftable = difflib.HtmlDiff().make_table(alines, blines, atitle, btitle)
         difftable = difftable.replace('<td nowrap="nowrap">', '<td class="diff_column">')
         difftable = difftable.replace(NBSP, ' ')
@@ -265,12 +261,10 @@ def diff_and_link(afile, bfile, atitle, btitle, diffile):
                 H('h1', diffile),
                 difftable,
                 FOOTER,
-                file=F
+                file = F
             )
 
-    return f'{100*sim:.0f}%{NBSP}' + H('a', afile.name, href=diffile)
-
-
+    return f'{100*sim:.0f}%{NBSP}' + H('a', afile.name, href = diffile)
 
 HEADER = """
 <html>
@@ -302,7 +296,7 @@ FOOTER = """
 NBSP = '&nbsp;'
 
 def joinBR(lines):
-    return '<br/>'.join(l for l in lines if l)
+    return '<br/>'.join(line for line in lines if line)
 
 def H(elem, content, **attrs):
     if isinstance(content, list):
@@ -310,10 +304,8 @@ def H(elem, content, **attrs):
     if 'klass' in attrs:
         attrs['class'] = attrs['klass']
         del attrs['klass']
-    attrs = ''.join(f' {k}="{str(v)}"' for k,v in attrs.items())
+    attrs = ''.join(f' {k}="{str(v)}"' for (k, v) in attrs.items())
     return f'<{elem}{attrs}>{content}</{elem}>'
-
-
 
 def readfile(fil):
     with fil.open("br") as F:
@@ -322,27 +314,26 @@ def readfile(fil):
         return bstr.decode()
     except UnicodeDecodeError:
         try:
-            return bstr.decode(encoding="latin1")
+            return bstr.decode(encoding = "latin1")
         except UnicodeDecodeError:
-            return bstr.decode(errors="replace")
-
+            return bstr.decode(errors = "replace")
 
 GOLD = '.gold'
 
 def read_args():
-    parser = argparse.ArgumentParser(description='Split the downloaded Canvas submissions into groups.')
-    parser.add_argument('labgroups', metavar='group', nargs='*',
-                        help='the lab groups to check (default: all)')
-    parser.add_argument('--skeleton', metavar='DIR', required=True, type=Path,
-                        help='the folder containing the code templates, and the data directories')
-    parser.add_argument('--solution', metavar='DIR', required=True, type=Path,
-                        help='the folder containing the solution')
-    parser.add_argument('--dir', metavar='DIR', required=True, type=Path,
-                        help='the folder containing the prepared submissions')
-    parser.add_argument('--testfile', metavar='PY', type=argparse.FileType('r'),
-                        help='the python file containing the test scripts')
-    parser.add_argument('--timeout', metavar='T', type=int, default=5, 
-                        help='the timeout (in seconds) for running test scripts (default: 5)')
+    parser = argparse.ArgumentParser(description = 'Split the downloaded Canvas submissions into groups.')
+    parser.add_argument('labgroups', metavar = 'group', nargs = '*',
+                        help = 'the lab groups to check (default: all)')
+    parser.add_argument('--skeleton', metavar = 'DIR', required = True, type = Path,
+                        help = 'the folder containing the code templates, and the data directories')
+    parser.add_argument('--solution', metavar = 'DIR', required = True, type = Path,
+                        help = 'the folder containing the solution')
+    parser.add_argument('--dir', metavar = 'DIR', required = True, type = Path,
+                        help = 'the folder containing the prepared submissions')
+    parser.add_argument('--testfile', metavar = 'PY', type = argparse.FileType('r'),
+                        help = 'the python file containing the test scripts')
+    parser.add_argument('--timeout', metavar = 'T', type = int, default = 5,
+                        help = 'the timeout (in seconds) for running test scripts (default: 5)')
     args = parser.parse_args()
 
     assert args.dir.is_dir(), "The --dir folder must exist!"
@@ -356,9 +347,8 @@ def read_args():
 
     if not args.labgroups:
         args.labgroups = [f.name for f in args.dir.iterdir()]
-    args.labgroups.sort(key=labgroup_sortkey)
+    args.labgroups.sort(key = labgroup_sortkey)
     return args
-
 
 def main():
     cfg = read_args()
@@ -383,7 +373,5 @@ def main():
 
     autograde_all(cfg)
 
-
 if __name__ == '__main__':
     main()
-

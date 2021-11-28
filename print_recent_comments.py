@@ -7,45 +7,47 @@ import argparse
 from pathlib import Path
 import shlex
 
+
 dir_script = Path(__file__).parent
 cache_dir_default = dir_script / 'cache'
 file_auth_token_default = dir_script / 'auth_token'
 
-p = argparse.ArgumentParser(add_help = False, description = '\n'.join([
-    f'Display assignment comments ordered by recency.',
-]), epilog = '\n'.join([
-    f'This Python script supports bash completion.',
-    f'For this, python-argparse needs to be installed and configured.',
-    f'See https://github.com/kislyuk/argcomplete for more information.',
-]))
+p = argparse.ArgumentParser(add_help = False, description = '''
+Display assignment comments ordered by recency.
+   ''', epilog = '''
+This Python script supports bash completion.
+For this, python-argparse needs to be installed and configured.
+See https://github.com/kislyuk/argcomplete for more information.
+''')
 
-p.add_argument('lab', type = int, choices = [1, 2, 3, 4], help = 'The lab to process.')
-p.add_argument('out', type = Path, help = '\n'.join([
-    f'The path of the HTML file to produce.',
-]))
-
-p.add_argument('-h', '--help', action = 'help', help = '\n'.join([
-    f'Show this help message and exit.',
-]))
-p.add_argument('-v', '--verbose', action = 'store_true', help = '\n'.join([
-    f'Print INFO level logging.',
-    f'This includes accesses to Canvas API endpoints.',
-]))
-p.add_argument('--auth-token-file', type = str, default = file_auth_token_default, help = '\n'.join([
-    f'Path to a file storing the Canvas authentication token.',
-    f'Defaults to {shlex.quote(str(file_auth_token_default))}.',
-]))
-p.add_argument('--cache-dir', type = str, default = cache_dir_default, help = '\n'.join([
-    f'The cache directory to use.',
-    f'If it does not exist, it will be created.',
-    f'Defaults to {shlex.quote(str(cache_dir_default))}.',
-]))
-p.add_argument('--groups', nargs = '+', type = str, help = '\n'.join([
-    f'Restrict processing to these groups.',
-]))
-p.add_argument('--no-preview', action = 'store_true', help = '\n'.join([
-    f'After finishing processing, do not open the overview index file in a webbrowser tab.'
-]))
+p.add_argument('lab', type = int, choices = [1, 2, 3, 4], help = '''
+The lab to process.
+''')
+p.add_argument('out', type = Path, help = '''
+The path of the HTML file to produce.
+''')
+p.add_argument('-h', '--help', action = 'help', help = '''
+Show this help message and exit.
+''')
+p.add_argument('-v', '--verbose', action = 'store_true', help = '''
+Print INFO level logging.
+This includes accesses to Canvas API endpoints.
+''')
+p.add_argument('--auth-token-file', type = str, default = file_auth_token_default, help = f'''
+Path to a file storing the Canvas authentication token.
+Defaults to {shlex.quote(str(file_auth_token_default))}.
+''')
+p.add_argument('--cache-dir', type = str, default = cache_dir_default, help = f'''
+The cache directory to use.
+If it does not exist, it will be created.
+Defaults to {shlex.quote(str(cache_dir_default))}.
+''')
+p.add_argument('--groups', nargs = '+', type = str, help = '''
+Restrict processing to these groups.
+''')
+p.add_argument('--no-preview', action = 'store_true', help = '''
+After finishing processing, do not open the overview index file in a webbrowser tab.
+''')
 
 #Support for argcomplete.
 try:
@@ -56,6 +58,7 @@ except ModuleNotFoundError:
 
 args = p.parse_args()
 # Argument parsing is done: expensive initialization can start now.
+
 
 import datetime
 import logging
@@ -68,6 +71,7 @@ from canvas import Canvas, GroupSet
 from lab_assignment import LabAssignment
 import config
 
+
 logging.basicConfig()
 if args.verbose:
     logging.getLogger().setLevel(logging.INFO)
@@ -76,7 +80,13 @@ else:
 
 canvas = Canvas(config.canvas_url, cache_dir = Path(args.cache_dir))
 group_set = GroupSet(canvas, config.course_id, config.group_set, use_cache = True)
-lab_assignment = LabAssignment(canvas, config.course_id, args.lab, use_name_handlers = None, use_content_handlers = None)
+lab_assignment = LabAssignment(
+    canvas,
+    config.course_id,
+    args.lab,
+    use_name_handlers = None,
+    use_content_handlers = None
+)
 lab_assignment.collect_submissions(use_cache = True)
 
 groups = lab_assignment.parse_groups(args.groups) if args.groups else list(lab_assignment.submissions.keys())
@@ -113,7 +123,7 @@ def group_items_into_lists(objects):
     def finish_list(list_end, new_start):
         nonlocal list_start
         if list_start != list_end:
-            r.append(ul(objects[list_start : list_end]))
+            r.append(ul(objects[list_start : list_end]))  # noqa: E203
         list_start = new_start
 
     for i in range(len(objects)):
@@ -147,16 +157,16 @@ def format_comment(lines):
     while i != len(lines):
         j = get_quote_end(lines, i)
         if j != i:
-            new_lines = [line[2:] for line in lines[i : j]]
+            new_lines = [line[2:] for line in lines[i : j]]  # noqa: E203
             objects.append(pre('\n'.join(new_lines), style = 'white-space: pre-wrap'))
             i = j
             continue
 
         j = get_item_end(lines, i)
         if j != i:
-            new_lines = [line[2:] for line in lines[i : j]]
+            new_lines = [line[2:] for line in lines[i : j]]  # noqa: E203
             x = li(format_comment(new_lines))
-            while len(objects) != 0 and objects[-1] == None:
+            while len(objects) != 0 and objects[-1] is None:
                 objects.pop()
             if len(objects) != 0 and isinstance(objects[-1], ul):
                 objects[-1].add(x)
@@ -198,9 +208,3 @@ out = Path(args.out)
 out.write_text(doc.render())
 if not args.no_preview:
     webbrowser.open(out.resolve().as_uri())
-
-
-
-
-
-

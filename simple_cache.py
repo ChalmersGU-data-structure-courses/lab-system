@@ -4,6 +4,7 @@ from pathlib import Path, PurePath
 import json
 import logging
 
+
 logger = logging.getLogger(__name__)
 
 class SimpleCache:
@@ -93,6 +94,8 @@ class SimpleCache:
 
     def with_cache_json(self, path, constructor, use_cache = True):
         json_reader = json.load
-        json_writer = lambda file, x: json.dump(x, file, indent = 4, sort_keys = True)
+
+        def json_writer(file, x):
+            return json.dump(x, file, indent = 4, sort_keys = True)
 
         return self.with_cache_open(path, json_reader, json_writer, constructor, use_cache)

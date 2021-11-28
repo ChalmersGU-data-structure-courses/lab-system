@@ -12,6 +12,7 @@ import subprocess
 
 import general
 
+
 logger = logging.getLogger(__name__)
 
 @functools.cache
@@ -33,11 +34,11 @@ def java_version():
 # Java Compiler
 
 def sourcepath_option(paths):
-    if paths != None:
+    if paths is not None:
         yield from ['-classpath', general.join_paths(paths)]
 
 def classpath_option(paths):
-    if paths != None:
+    if paths is not None:
         yield from ['-classpath', general.join_paths(paths)]
 
 def cmd_javac(
@@ -46,7 +47,7 @@ def cmd_javac(
     sourcepath = None,
     classpath = None,
     encoding = None,
-    options = None
+    options = None,
 ):
     '''
     Produce a command line for a call to javac.
@@ -64,17 +65,17 @@ def cmd_javac(
     '''
 
     yield 'javac'
-    if destination != None:
+    if destination is not None:
         yield from ['-d', str(destination)]
     yield from sourcepath_option(sourcepath)
     yield from classpath_option(classpath)
-    if encoding != None:
+    if encoding is not None:
         yield from ['-encoding', encoding]
-    if options != None:
+    if options is not None:
         for option in options:
             yield str(option)
 
-    if files != None:
+    if files is not None:
         for file in files:
             yield str(file)
 
@@ -92,6 +93,7 @@ def javac_prepend_standard_options(params):
 
 class CompileError(Exception):
     def __init__(self, compile_errors):
+        super().__init__(compile_errors)
         self.compile_errors = compile_errors
 
 def java_files(dir):
@@ -110,13 +112,14 @@ def get_src_files(src, src_files):
     Helper function.
     If src_files is not specified, get source files as descendant of src.
     '''
-    if src_files == None:
+    if src_files is None:
         src_files = java_files(src)
     return list(src_files)
 
 def compile_unknown(src, bin, src_files = None, detect_encoding = True, check = False, **kwargs):
     '''
-    Compile Java source files (if any) in 'src', placing the compiled class files in 'bin'.
+    Compile all Java source files that are descendants of 'src'.
+    The compiled class files are placed in 'bin'.
     The source files might not have 'src' as the base of their package hierarchy.
     Useful for compiling student submissions.
 
@@ -331,7 +334,7 @@ def policy_grant(path, permissions):
     def line_grant():
         nonlocal path
         yield 'grant'
-        if path != None:
+        if path is not None:
             path = Path(path).resolve()
             yield 'codeBase'
             yield string_encode('file:' + format_file_or_dir(path, codebase_file_or_dir(path)))
@@ -396,7 +399,7 @@ def cmd_java(
     if enable_assertions:
         yield '-ea'
     yield from classpath_option(classpath)
-    if options != None:
+    if options is not None:
         for option in options:
             yield str(option)
     yield main
@@ -434,7 +437,7 @@ def run(
     java_prepend_standard_options(kwargs)
 
     with contextlib.ExitStack() as stack:
-        if policy_entries != None:
+        if policy_entries is not None:
             security_policy = stack.enter_context(policy_manager(policy_entries))
             kwargs['security_policy'] = security_policy
             logger.debug('Content of security policy file:\n' + security_policy.read_text())

@@ -1,5 +1,5 @@
 from collections import namedtuple
-from pathlib import Path
+
 
 # A test specification.
 # A test is an invocation of a Java class with a main method.
@@ -13,9 +13,14 @@ from pathlib import Path
 # - timeout: timeout in seconds after which the test program is killed (defaults to 5).
 # - enable_assertions: enable assertions when testing (defaults to True).
 # - perm_read: list of files the program is reading (defaults to an empty list)
-TestJava = namedtuple('TestJava', ['class_name', 'args', 'input', 'timeout', 'enable_assertions', 'perm_read'], defaults = [None, 5, True, []])
+TestJava = namedtuple(
+    'TestJava',
+    ['class_name', 'args', 'input', 'timeout', 'enable_assertions', 'perm_read'],
+    defaults = [None, 5, True, []]
+)
 
-# A test specification script needs to define a dictionary 'tests' mapping strings (test names) to instances of 'TestJava'.
+# A test specification script needs to define a dictionary 'tests'
+# mapping strings (test names) to instances of 'TestJava'.
 def parse_tests(file):
     d = {'TestJava': TestJava}
     exec(file.read_text(), d)

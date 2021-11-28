@@ -7,6 +7,7 @@ import pathlib
 import re
 import urllib.parse
 
+
 from escaping_formatter import regex_escaping_formatter
 import general
 
@@ -167,6 +168,7 @@ def int_str(format = ''):
 
 def regex_parser(regex, keyed = False, **kwargs):
     pattern = re.compile(regex, **kwargs)
+
     def f(s):
         match = pattern.fullmatch(s)
         if not match:
@@ -317,16 +319,16 @@ NetLoc = collections.namedtuple(
 # Merge _netloc_print and _netloc_regex_parse into a nice printer-parser network.
 def _netloc_print(netloc):
     def password():
-        return ':' + netloc.password if netloc.password != None else ''
+        return '' if netloc.password is None else ':' + netloc.password
 
-    login = netloc.user + password() + '@' if netloc.user != None else ''
-    port = ':' + netloc.port if netloc.port != None else ''
+    login = '' if netloc.user is None else netloc.user + password() + '@'
+    port = '' if netloc.port is None else ':' + netloc.port
     return login + netloc.host + port
 
-_safe_regex = '[\w\\.\\-\\~]*'
+_safe_regex = '[\\w\\.\\-\\~]*'
 
 _netloc_regex_parser = regex_parser(
-    f'(?:(?P<user>{_safe_regex})(?::(?P<password>{_safe_regex}))?@)?(?P<host>{_safe_regex})(?::(?P<port>\d+))?',
+    f'(?:(?P<user>{_safe_regex})(?::(?P<password>{_safe_regex}))?@)?(?P<host>{_safe_regex})(?::(?P<port>\\d+))?',
     keyed = True,
     flags = re.ASCII
 )

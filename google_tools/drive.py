@@ -1,5 +1,7 @@
-import googleapiclient.discovery
 import logging
+
+import googleapiclient.discovery
+
 
 logger = logging.getLogger(__name__)
 
@@ -63,5 +65,5 @@ class TemporaryFile:
         return self.id_copy
 
     def __exit__(self, type, value, traceback):
-        logger.log(logging.DEBUG, f'Deleting copy of drive file...')
+        logger.log(logging.DEBUG, 'Deleting copy of drive file...')
         self.drive.delete(self.id_copy)
