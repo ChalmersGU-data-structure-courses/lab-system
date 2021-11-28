@@ -66,7 +66,7 @@ class Course:
         '''
         self.logger = logger
         self.config = config
-        self.dir = Path(dir) if dir != None else None
+        self.dir = None if dir is None else Path(dir)
 
         # Qualify a request by the full group id.
         # Used as tag names in the grading repository of each lab.
@@ -77,7 +77,11 @@ class Course:
 
         import lab
         self.labs = dict(
-            (lab_id, lab.Lab(self, lab_id, dir = self.dir / self.config.lab.full_id.print(lab_id) if self.dir != None else None))
+            (lab_id, lab.Lab(
+                self,
+                lab_id,
+                dir = None if self.dir is None else self.dir / self.config.lab.full_id.print(lab_id)
+            ))
             for lab_id in self.config.labs
         )
 
@@ -123,7 +127,7 @@ class Course:
         '''
         user = self.canvas_course.user_details[canvas_user_id]
         login_id = self.canvas_user_login_id(user)
-        if login_id != None:
+        if login_id is not None:
             return login_id
 
         login_id = self.canvas_profile_login_id(user)
@@ -173,21 +177,24 @@ class Course:
 
     @functools.cached_property
     def labs_group(self):
-        return gitlab_tools.CachedGroup(**self.entity_cached_params,
+        return gitlab_tools.CachedGroup(
+            **self.entity_cached_params,
             path = self.config.path.labs,
             name = 'Labs',
         )
 
     @functools.cached_property
     def groups_group(self):
-        return gitlab_tools.CachedGroup(**self.entity_cached_params,
+        return gitlab_tools.CachedGroup(
+            **self.entity_cached_params,
             path = self.config.path.groups,
             name = 'Student groups',
         )
 
     @functools.cached_property
     def graders_group(self):
-        return gitlab_tools.CachedGroup(**self.entity_cached_params,
+        return gitlab_tools.CachedGroup(
+            **self.entity_cached_params,
             path = self.config.path.graders,
             name = 'Graders',
         )
@@ -208,7 +215,8 @@ class Course:
 
     @instance_cache
     def group(self, group_id):
-        r = gitlab_tools.CachedGroup(**self.entity_cached_params,
+        r = gitlab_tools.CachedGroup(
+            **self.entity_cached_params,
             path = self.groups_group.path / self.config.group.id_gitlab.print(group_id),
             name = self.config.group.name.print(group_id),
         )
@@ -240,7 +248,10 @@ class Course:
         group_names = general.sdict((group_id, self.config.group.name.print(group_id)) for group_id in group_ids)
         for group_name in group_names.values():
             if group_name in self.canvas_group_set.name_to_id:
-                raise ValueError(f'Group {group_name} already exists in Canvas group set {self.canvas_group_set.group_set.name}')
+                raise ValueError(
+                    f'Group {group_name} already exists in '
+                    f'Canvas group set {self.canvas_group_set.group_set.name}'
+                )
 
         for group_name in group_names.values():
             self.canvas_group_set.create_group(group_name)
@@ -288,6 +299,7 @@ class Course:
         A dictionary mapping usernames on Chalmers GitLab to Canvas users.
         '''
         self.logger.debug('Creating dictionary mapping GitLab usernames to Canvas users')
+
         def f():
             user_sources = [self.canvas_course.student_details, self.canvas_course.teacher_details]
             for user in self.canvas_course.user_details.values():
@@ -418,7 +430,7 @@ class Course:
         '''
         self.logger.info('inviting teachers from Canvas to the grader group')
 
-        if path_invitation_history == None:
+        if path_invitation_history is None:
             path_invitation_history = self.dir / 'teacher_invitation_history'
 
         invitations_prev = self.get_invitations(self.graders_group.lazy)
@@ -469,7 +481,7 @@ class Course:
         If the date keep_after is given (instance of datetime.datetime),
         only those invitations are recreated that have been created before the given date.
         '''
-        earlier_than = '' if keep_after == None else f' earlier than {keep_after}'
+        earlier_than = '' if keep_after is None else f' earlier than {keep_after}'
         self.logger.info(f'recreating student invitations{earlier_than}.')
 
         for group_id in self.groups:
@@ -477,7 +489,7 @@ class Course:
             entity_name = f'{self.config.group.name.print(group_id)} on GitLab'
             for invitation in self.get_invitations(entity).values():
                 created_at = dateutil.parser.parse(invitation['created_at'])
-                if keep_after == None or created_at < keep_after:
+                if keep_after is None or created_at < keep_after:
                     email = invitation['invite_email']
                     self.logger.info(f'Recreating invitation from {created_at} of {email} to {entity_name}.')
                     with gitlab_tools.exist_ok():
@@ -532,7 +544,7 @@ class Course:
                 gitlab_username = self.config.gitlab_username_from_canvas_user_id(self, user_id)
 
                 # Only allow running with remove option if we can resolve GitLab student usernames.
-                if remove and gitlab_username == None:
+                if remove and gitlab_username is None:
                     raise ValueError('called with remove option, but cannot resolve GitLab username of {user.name}')
 
                 gitlab_user = self.gitlab_user(gitlab_username)
@@ -571,11 +583,13 @@ class Course:
             # If restrict_to_known holds, restricts to gitlab users and email addresses
             # recognized as belonging to Canvas students.
             self.logger.debug(f'checking {entity_name}')
-            members = dict((gitlab_user.username, gitlab_user)
+            members = dict(
+                (gitlab_user.username, gitlab_user)
                 for gitlab_user in gitlab_tools.members_dict(entity).values()
                 if general.when(restrict_to_known, gitlab_user.username in student_gitlab_usernames)
             )
-            invitations = set(email
+            invitations = set(
+                email
                 for email in self.get_invitations(entity)
                 if general.when(restrict_to_known, email in student_emails)
             )
@@ -667,7 +681,7 @@ class Course:
         '''
         self.logger.info('inviting students from Canvas groups to GitLab groups')
 
-        if path_invitation_history == None:
+        if path_invitation_history is None:
             path_invitation_history = self.dir / 'student_invitation_history'
 
         with self.invitation_history(path_invitation_history) as history:
@@ -677,14 +691,14 @@ class Course:
 
                 def group_id_from_canvas():
                     canvas_group_id = self.canvas_group_set.user_to_group.get(user.id)
-                    if canvas_group_id == None:
+                    if canvas_group_id is None:
                         return None
                     return self.config.group.name.parse(self.canvas_group_set.details[canvas_group_id].name)
                 group_id_current = group_id_from_canvas()
 
                 # Include current group in the following iteration.
                 stored_invitations = history_user.setdefault('invitations', dict())
-                if group_id_current != None:
+                if group_id_current is not None:
                     stored_invitations.setdefault(self.config.group.name.print(group_id_current), dict())
 
                 for (group_name, invitations_by_email) in stored_invitations.items():
@@ -839,7 +853,7 @@ class Course:
 
         try:
             yield
-        except:
+        except Exception:
             report = traceback.format_exc()
             google_tools.sheets.batch_update(
                 spreadsheets,

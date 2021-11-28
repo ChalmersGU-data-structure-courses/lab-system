@@ -1,9 +1,10 @@
 import csv
 import random
 
+
 def allocate_versions(n, num_versions, r):
     '''
-    Randomly generate a list of n versions [0, num_versions). 
+    Randomly generate a list of n versions [0, num_versions).
     r is an instance of random.Random.
     Make sure that every version occurs approximately equally often.
     '''
@@ -17,7 +18,10 @@ def allocate(students, num_versions, seed = None):
     Randomly assign sequential ids to students and allocate question versions to students.
     student is a collections of students.
     num_versions is a dictionary sending questions to the total number of versions.
-    Assigns a random sequential id, formatted as sortable strings with leading zeroes, to every student and returns a dictionary mapping ids to pairs of students and a dictionary from questions to versions in the range specified by the total number of versions for that question.
+    Assigns a random sequential id, formatted as sortable strings with leading zeroes,
+    to every student and returns a dictionary mapping ids to pairs of students and
+    a dictionary from questions to versions in the range specified by
+    the total number of versions for that question.
     '''
 
     r = random.Random(seed)
@@ -39,6 +43,7 @@ def allocate(students, num_versions, seed = None):
 def read(path):
     with path.open() as file:
         reader = csv.DictReader(file)
+
         def f(row):
             id = int(row.pop('id'))
             student = row.pop('student')

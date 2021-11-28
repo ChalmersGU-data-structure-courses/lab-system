@@ -5,6 +5,7 @@ import re
 
 import general
 
+
 this_dir = Path(__file__).parent
 
 exam_id = '1oXOT5xumvM9EthPc8JHbbL9WSzEGr_LsyGubO0ppSUA'
@@ -12,7 +13,7 @@ solution_id = '1ZGpr3Sx1f1MyKSGxQqJjuoJMHua71kalX2DJPWaH9D8'
 secret_salt = 'Half-rainy night'
 
 formats = [
-#    ('txt', 'Text file'),
+    #('txt', 'Text file'),
     ('docx', 'Word document'),
     ('odt', 'OpenDocument'),
     ('pdf', 'PDF, for reading'),
@@ -26,7 +27,7 @@ canvas_secret_salt = '1EZB2k9p0KUAfh2b'
 canvas_start = datetime.datetime.fromisoformat('2021-08-27 14:00+02:00')
 canvas_duration = datetime.timedelta(hours = 4)
 canvas_duration_scanning = datetime.timedelta(minutes = 30)
-canvas_grace_period = datetime.timedelta(minutes = 0) # Canvas doesn't have second granularity.
+canvas_grace_period = datetime.timedelta(minutes = 0)  # Canvas doesn't have second granularity.
 canvas_extra_time = 1.5
 canvas_early_assignment_unlock = datetime.timedelta(minutes = 0)
 
@@ -46,10 +47,19 @@ def canvas_assignment_description(resource_for_format):
         return li(a(filename, href = str(link)), f' ({description})')
 
     return div(
-        p(strong('Note'), ': This exam is individualized! Your questions differ from those of other students, but are of equal difficulty.'),
+        p(
+            strong('Note'),
+            ': This exam is individualized! Your questions differ from '
+            'those of other students, but are of equal difficulty.'
+        ),
         'Download your individual exam in one of the following formats:',
-        ul(*[itertools.starmap(f, formats)]),
-        p('Submit your solutions via file upload, preferably as a ', strong('single PDF file'), '. If you do not know how to convert your solutions to PDF, other formats are accepted as well. Please use separate pages for each question.'),
+        ul(*[map(f, formats)]),
+        p(
+            'Submit your solutions via file upload, preferably as a ',
+            strong('single PDF file'),
+            '. If you do not know how to convert your solutions to PDF, '
+            'other formats are accepted as well. Please use separate pages for each question.',
+        ),
     ).render(pretty = False)
 
 questions = [i + 1 for i in range(6)]
@@ -87,14 +97,14 @@ submissions_dir = this_dir / 'submissions'
 selectors_file = this_dir / 'selectors.csv'
 submissions_packaged_dir = this_dir / 'packaged'
 
-### Checklist
+# Checklist
 
 checklist = this_dir / 'checklist.csv'
 
 checklist_name = 'Efternamn_Fornamn'
 checklist_time = 'Inlämningstid'
 
-### Configuration of grading sheet
+# Configuration of grading sheet
 
 grading_sheet = '10QVjRDzRhl7hCaCIn1J6GZNFnpo8ku_C9B6MAkG-SOw'
 grading_worksheet = 'DIT961'
@@ -133,9 +143,9 @@ def parse_score(s):
     return s
 
 def format_score(x):
-    return x if x != None else '-'
+    return x if x is not None else '-'
 
-### Configuration of grading report and assignment scoring
+# Configuration of grading report and assignment scoring
 
 def is_good(s):
     return s in ['G', 'VG']
@@ -169,11 +179,13 @@ grading_report_columns_summary = [
     ('Grade', grading_grade),
 ]
 
-grading_report_columns = [(question_name(q), lambda grading, q = q: format_score(grading[q][0])) for q in questions] + grading_report_columns_summary
+grading_report_columns = [
+    (question_name(q), lambda grading, q = q: format_score(grading[q][0])) for q in questions
+] + grading_report_columns_summary
 
 def grading_feedback(grading, resource):
     def format_points(score):
-        if score == None:
+        if score is None:
             return 'not attempted'
         return f'{format_score(score)}'
 

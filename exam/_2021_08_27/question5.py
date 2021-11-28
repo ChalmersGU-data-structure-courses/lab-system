@@ -1,5 +1,6 @@
 import random
 
+
 class Generator:
     def __init__(self, seed, version = None):
         self.r = random.Random(seed)

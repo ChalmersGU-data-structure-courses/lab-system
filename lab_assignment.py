@@ -13,14 +13,22 @@ from types import SimpleNamespace
 import webbrowser
 
 from dominate import document
-from dominate.tags import meta, link, title, script, style, h1, h2, div, pre, p, span, del_, button, table, thead, tbody, th, tr, td, a
+from dominate.tags import (
+    meta, link, title, script, style, h1, h2, div, pre, p,
+    span, del_, button, table, thead, tbody, th, tr, td, a,
+)
 from dominate.util import raw, text
 
-from general import from_singleton, ilen, Timer, print_error, mkdir_fresh, exec_simple, link_dir_contents, add_suffix, modify, format_with_rel_prec, format_timespan, sorted_directory_list, copy_tree_fresh, get_modification_time
+from general import (
+    from_singleton, ilen, Timer, print_error, mkdir_fresh, exec_simple,
+    link_dir_contents, add_suffix, modify, format_with_rel_prec, format_timespan,
+    sorted_directory_list, copy_tree_fresh, get_modification_time
+)
 from canvas import Assignment
 import lab_assignment_constants
 import submission_fix_lib
 import test_lib
+
 
 logger = logging.getLogger(__name__)
 
@@ -28,16 +36,37 @@ def java_string_encode(x):
     return json.dumps(x)
 
 def get_java_version():
-    p = subprocess.run(['java', '-version'], stdin = subprocess.DEVNULL, stdout = subprocess.DEVNULL, stderr = subprocess.PIPE, encoding = 'utf-8', check = True)
+    p = subprocess.run(
+        ['java', '-version'],
+        stdin = subprocess.DEVNULL,
+        stdout = subprocess.DEVNULL,
+        stderr = subprocess.PIPE,
+        encoding = 'utf-8',
+        check = True
+    )
     v = shlex.split(str(p.stderr).splitlines()[0])
     assert(v[1] == 'version')
     return [int(x) for x in v[2].split('.')]
 
 def diff_cmd(file_0, file_1):
-    return ['diff', '--text', '--ignore-blank-lines', '--ignore-space-change', '--strip-trailing-cr', '-U', '1000000', '--'] + [file_0, file_1]
+    return [
+        'diff',
+        '--text', '--ignore-blank-lines', '--ignore-space-change', '--strip-trailing-cr',
+        '-U', '1000000',
+        '--',
+        file_0, file_1,
+    ]
 
 def diff2html_cmd(file_input, file_output, highlight):
-    return ['diff2html', '--style', 'side', '--highlightCode', str(bool(highlight)).lower(), '--input', 'file', '--file', file_output, '--', file_input]
+    return [
+        'diff2html',
+        '--style', 'side',
+        '--highlightCode', str(bool(highlight)).lower(),
+        '--input', 'file',
+        '--file', file_output,
+        '--',
+        file_input,
+    ]
 
 def diff_similarity(root, rel_file_0, rel_file_1, file_diff):
     with file_diff.open('wb') as out:
@@ -55,7 +84,7 @@ def diff_similarity(root, rel_file_0, rel_file_1, file_diff):
     assert(len(diff_lines) >= header_len)
     diff_lines = diff_lines[header_len:]
 
-    return sum(not any ([line.startswith(c) for c in ['+', '-']]) for line in diff_lines) / len(diff_lines)
+    return sum(not any([line.startswith(c) for c in ['+', '-']]) for line in diff_lines) / len(diff_lines)
 
 def highlights_cmd(file_input):
     return ['highlights', file_input]
@@ -77,18 +106,18 @@ def as_iterable_of_strings(xs):
     return [str(xs)] if isinstance(xs, str) or not hasattr(xs, '__iter__') else [str(x) for x in xs]
 
 def add_classpath(classpath):
-    if classpath != None:
+    if classpath is not None:
         yield from ['-classpath', ':'.join(as_iterable_of_strings(classpath))]
 
 def javac_cmd(files = None, destination = None, classpath = None, options = None):
     yield 'javac'
-    if destination != None:
+    if destination is not None:
         yield from ['-d', str(destination)]
     yield from add_classpath(classpath)
-    if options != None:
+    if options is not None:
         for option in options:
             yield str(option)
-    if files != None:
+    if files is not None:
         for file in files:
             yield str(file)
 
@@ -100,7 +129,7 @@ def java_cmd(name, args = [], classpath = None, security_policy = None, enable_a
     if enable_assertions:
         yield '-ea'
     yield from add_classpath(classpath)
-    if options != None:
+    if options is not None:
         for option in options:
             yield str(option)
     yield name
@@ -114,7 +143,10 @@ def java_options(version):
         yield ''.join(['-XX', ':', '+', 'ShowCodeDetailsInExceptionMessages'])
 
 def log_command(cmd, working_dir = None):
-    logger.log(logging.DEBUG, 'running command{}:\n{}'.format(' in {}'.format(shlex.quote(str(working_dir))) if working_dir != None else '', shlex.join(cmd)))
+    logger.debug('running command{}:\n{}'.format(
+        '' if working_dir is None else ' in {}'.format(shlex.quote(str(working_dir))),
+        shlex.join(cmd)
+    ))
 
 # Unless forced, only recompiles if necessary: missing or outdated class-files.
 # On success, returns None.
@@ -128,7 +160,7 @@ def compile_java(files, force_recompile = False, strict = False, working_dir = N
     if force_recompile:
         recompile = True
     elif not all(map(is_up_to_date, files)):
-        logger.log(logging.DEBUG, 'Not all class files existing or up to date; (re)compiling.')
+        logger.debug('Not all class files existing or up to date; (re)compiling.')
         recompile = True
     else:
         recompile = False
@@ -145,7 +177,9 @@ def compile_java(files, force_recompile = False, strict = False, working_dir = N
     return None
 
 def policy_permission(type, args = []):
-    return 'permission {};'.format(' '.join([type] + ([', '.join(java_string_encode(str(arg)) for arg in args)] if args else [])))
+    return 'permission {};'.format(
+        ' '.join([type] + ([', '.join(java_string_encode(str(arg)) for arg in args)] if args else []))
+    )
 
 permission_all = ('java.security.AllPermission', [])
 
@@ -154,7 +188,7 @@ def permission_file_descendants_read(dir):
 
 def policy_grant(path, permissions):
     return '\n'.join([
-        ' '.join(['grant'] + (['codeBase', java_string_encode('file:' + str(path))] if path != None else [])) + ' {',
+        ' '.join(['grant'] + ([] if path is None else ['codeBase', java_string_encode('file:' + str(path))])) + ' {',
         *('  ' + policy_permission(*permission) for permission in permissions),
         '};',
         ''
@@ -167,7 +201,12 @@ def format_file(root, name, rel_dir, rel_dir_formatting, rel_css):
     (root / rel_dir_formatting).mkdir(exist_ok = True)
     cell = td()
     if (root / rel_dir / name).exists():
-        result_name = highlight_file(root / rel_dir, root / rel_dir_formatting, name, os.path.relpath(rel_css, rel_dir_formatting))
+        result_name = highlight_file(
+            root / rel_dir,
+            root / rel_dir_formatting,
+            name,
+            os.path.relpath(rel_css, rel_dir_formatting),
+        )
         with cell:
             a(name, href = rel_dir_formatting / result_name)
     else:
@@ -202,10 +241,12 @@ def format_diff(root, name, rel_dir_0, rel_dir_1, rel_dir_formatting, diff_title
                 rel_file_diff_formatted = add_suffix(rel_dir_formatting / name, '.html')
                 cmd = diff2html_cmd(file_diff, rel_file_diff_formatted, file_1.suffix in code_suffices)
                 subprocess.run(cmd, check = True, cwd = root)
-                modify(root / rel_file_diff_formatted, lambda content: content
-                    .replace('<title>Diff to HTML by rtfpessoa</title>', title(diff_title, __pretty = False).render())
-                    .replace('<h1>Diff to HTML by <a href="https://github.com/rtfpessoa">rtfpessoa</a></h1>', h1(diff_title, __pretty = False).render())
-                )
+                modify(root / rel_file_diff_formatted, lambda content: content.replace(
+                    '<title>Diff to HTML by rtfpessoa</title>', title(diff_title, __pretty = False).render()
+                ).replace(
+                    '<h1>Diff to HTML by <a href="https://github.com/rtfpessoa">rtfpessoa</a></h1>',
+                    h1(diff_title, __pretty = False).render()
+                ))
                 cell.add(a(f'{100*similarity:.0f}% same', href = rel_file_diff_formatted))
     return cell
 
@@ -239,11 +280,19 @@ class LabAssignment(Assignment):
 
         self.files_solution = sorted_directory_list(self.dir_solution, filter = lambda f: f.is_file())
         self.files_problem = sorted_directory_list(self.dir_problem, filter = lambda f: f.is_file())
-        self.deadlines = [datetime.fromisoformat(line) for line in (dir / lab_assignment_constants.rel_file_deadlines).read_text().splitlines()]
+        self.deadlines = [
+            datetime.fromisoformat(line)
+            for line in (dir / lab_assignment_constants.rel_file_deadlines).read_text().splitlines()
+        ]
 
-        load_if_exists = lambda f, path: f(path) if path.exists() else None
-        self.tests = load_if_exists(lambda x: test_lib.parse_tests(x), self.dir_test / lab_assignment_constants.rel_file_tests)
-        self.robograders = load_if_exists(LabAssignment.parse_tests, self.dir_robograder / lab_assignment_constants.rel_file_robograders)
+        def load_if_exists(f, path):
+            return f(path) if path.exists() else None
+        self.tests = load_if_exists(
+            lambda x: test_lib.parse_tests(x), self.dir_test / lab_assignment_constants.rel_file_tests
+        )
+        self.robograders = load_if_exists(
+            LabAssignment.parse_tests, self.dir_robograder / lab_assignment_constants.rel_file_robograders
+        )
 
         self.java_version = get_java_version()
 
@@ -265,7 +314,7 @@ class LabAssignment(Assignment):
             return deadline
         if isinstance(deadline, int):
             return self.deadlines[deadline]
-        assert(deadline == None)
+        assert(deadline is None)
         return deadline
 
     # Returns the index of the deadline under which this date falls.
@@ -296,7 +345,7 @@ class LabAssignment(Assignment):
         return Assignment.current_submission(s).workflow_state == 'submitted'
 
     # def unpack(self, dir, submissions, unhandled = None, write_ids = False):
-    #     logger.log(logging.INFO, 'unpacking: {}'.format(shlex.quote(str(dir))))
+    #     logger.info('unpacking: {}'.format(shlex.quote(str(dir))))
     #     unhandled_any = False
     #     dir.mkdir()
     #
@@ -307,22 +356,41 @@ class LabAssignment(Assignment):
     #             unhandled.append((id, name, dir / name_unhandled))
     #         return name_unhandled
     #
-    #     files = Assignment.get_files(submissions, Assignment.name_handler(self.files_solution, self.name_handlers, unhandled_warn))
-    #     file_mapping = self.create_submission_dir(dir, submissions[-1], files, write_ids = write_ids, content_handlers = self.content_handlers)
+    #     files = Assignment.get_files(
+    #         submissions,
+    #         Assignment.name_handler(self.files_solution, self.name_handlers, unhandled_warn)
+    #     )
+    #     file_mapping = self.create_submission_dir(
+    #         dir,
+    #         submissions[-1],
+    #         files,
+    #         write_ids = write_ids,
+    #         content_handlers = self.content_handlers
+    #     )
 
     def unpack_linked(self, dir_files, dir, rel_dir_files, submissions, unhandled = None):
-        logger.log(logging.INFO, 'unpacking: {}'.format(shlex.quote(str(dir))))
+        logger.info('unpacking: {}'.format(shlex.quote(str(dir))))
         dir.mkdir()
 
         def unhandled_warn(id, name):
             nonlocal unhandled
             name_unhandled = name + '.unhandled'
-            if unhandled != None:
+            if unhandled is not None:
                 unhandled.append((id, name, dir / name_unhandled))
             return name_unhandled
 
-        files = Assignment.get_files(submissions, Assignment.name_handler(self.files_solution, self.name_handlers, unhandled_warn))
-        self.create_submission_dir_linked(dir_files, dir, rel_dir_files, submissions[-1], files, content_handlers = self.content_handlers)
+        files = Assignment.get_files(
+            submissions,
+            Assignment.name_handler(self.files_solution, self.name_handlers, unhandled_warn)
+        )
+        self.create_submission_dir_linked(
+            dir_files,
+            dir,
+            rel_dir_files,
+            submissions[-1],
+            files,
+            content_handlers = self.content_handlers
+        )
 
     # static
     stages = {
@@ -360,7 +428,9 @@ class LabAssignment(Assignment):
         if name in self.files_solution:
             pass
         elif file_problem:
-            suggestions.append('is_problem_file' if file_problem.read_bytes() == file.read_bytes() else 'is_modified_problem_file')
+            suggestions.append(
+                'is_problem_file' if file_problem.read_bytes() == file.read_bytes() else 'is_modified_problem_file'
+            )
         else:
             suggestions.append('???')
 
@@ -379,7 +449,12 @@ class LabAssignment(Assignment):
             for previous, rel_dir in LabAssignment.stages.items():
                 submissions = Assignment.get_submissions(self.submissions[group], previous)
                 if submissions:
-                    #self.unpack(dir_group_submission, submissions, unhandled = unhandled if not previous else None, write_ids = write_ids)
+                    #self.unpack(
+                    #    dir_group_submission,
+                    #    submissions,
+                    #    unhandled = unhandled if not previous else None,
+                    #    write_ids = write_ids
+                    #)
                     self.unpack_linked(
                         dir / lab_assignment_constants.rel_dir_files,
                         dir_group / rel_dir,
@@ -394,8 +469,14 @@ class LabAssignment(Assignment):
 
         if unhandled:
             print_error('There were unhandled files.')
-            print_error('You can find them by running: find {}/*/{} -name \'*.unhandled\''.format(shlex.quote(str(dir)), shlex.quote(lab_assignment_constants.rel_dir_current)))
-            print_error('Add (without comments) and complete the below \'name_handlers\' in \'{}\' in the lab directory.'.format(lab_assignment_constants.rel_file_submission_fixes))
+            print_error('You can find them by running: find {}/*/{} -name \'*.unhandled\''.format(
+                shlex.quote(str(dir)),
+                shlex.quote(lab_assignment_constants.rel_dir_current)
+            ))
+            print_error(
+                'Add (without comments) and complete the below \'name_handlers\' '
+                'in \'{}\' in the lab directory.'.format(lab_assignment_constants.rel_file_submission_fixes)
+            )
             print_error('Remember to push your changes so that your colleagues benefit from your fixes.')
             for id, name, file in unhandled:
                 suggestion = self.name_handler_suggestion(name, file)
@@ -404,7 +485,7 @@ class LabAssignment(Assignment):
             exit(1)
 
     def prepare_build(self, dir, dir_problem, rel_dir_submission):
-        logger.log(logging.INFO, 'preparing build directory: {}'.format(shlex.quote(str(dir))))
+        logger.info('preparing build directory: {}'.format(shlex.quote(str(dir))))
         dir_build = dir / lab_assignment_constants.rel_dir_build
         dir_submission = dir / rel_dir_submission
 
@@ -438,13 +519,21 @@ class LabAssignment(Assignment):
             print_error('I am refusing to work on a lab whose problem/solution folders contain class files.')
             exit(1)
 
-        self.prepare_build(dir, dir / lab_assignment_constants.rel_dir_problem, lab_assignment_constants.rel_dir_solution)
+        self.prepare_build(
+            dir,
+            dir / lab_assignment_constants.rel_dir_problem,
+            lab_assignment_constants.rel_dir_solution
+        )
         for group in groups:
-            self.prepare_build(self.group_dir(dir, group), dir / lab_assignment_constants.rel_dir_problem, lab_assignment_constants.rel_dir_current)
+            self.prepare_build(
+                self.group_dir(dir, group),
+                dir / lab_assignment_constants.rel_dir_problem,
+                lab_assignment_constants.rel_dir_current
+            )
 
     # Return value indicates success.
     def compile(self, dir, dir_problem, rel_dir_submission, strict = True):
-        logger.log(logging.INFO, 'compiling: {}'.format(shlex.quote(str(dir))))
+        logger.info('compiling: {}'.format(shlex.quote(str(dir))))
 
         # Compile java files.
         compilation_errors = compile_java(
@@ -454,7 +543,7 @@ class LabAssignment(Assignment):
             destination = Path(),
             options = javac_options,
         )
-        if compilation_errors != None:
+        if compilation_errors is not None:
             (dir / lab_assignment_constants.rel_file_compilation_errors).write_text(compilation_errors)
             return False
 
@@ -470,23 +559,42 @@ class LabAssignment(Assignment):
             shutil.copytree(self.dir_problem, dir / lab_assignment_constants.rel_dir_problem, dirs_exist_ok = True)
             shutil.copytree(self.dir_solution, dir / lab_assignment_constants.rel_dir_solution, dirs_exist_ok = True)
 
-        r = self.compile(dir, dir / lab_assignment_constants.rel_dir_problem, lab_assignment_constants.rel_dir_solution, strict = True) # solution files must compile
+        r = self.compile(
+            dir,
+            dir / lab_assignment_constants.rel_dir_problem,
+            lab_assignment_constants.rel_dir_solution,
+            strict = True
+        )  # solution files must compile
         for group in groups:
-            r &= self.compile(self.group_dir(dir, group), dir / lab_assignment_constants.rel_dir_problem, lab_assignment_constants.rel_dir_current, strict = False)
+            r &= self.compile(
+                self.group_dir(dir, group),
+                dir / lab_assignment_constants.rel_dir_problem,
+                lab_assignment_constants.rel_dir_current,
+                strict = False
+            )
         if not r and strict:
             print_error('There were compilation errors.')
-            print_error('Investigate if any of them are due to differences in the students\' compilation environment, for example: package declarations, unresolved imports.')
-            print_error('If so, add appropriate handlers to \'content_handlers\' in \'{}\' to fix them persistently.'.format(lab_assignment_constants.rel_file_submission_fixes))
+            print_error(
+                'Investigate if any of them are due to differences in the '
+                'students\' compilation environment, for example: package declarations, unresolved imports.'
+            )
+            print_error(
+                'If so, add appropriate handlers to \'content_handlers\' in '
+                '\'{}\' to fix them persistently.'.format(lab_assignment_constants.rel_file_submission_fixes)
+            )
             print_error('For this, you must know the Canvas ids of the files to edit.')
             print_error('These can be learned by activating the option to write ids.')
             print_error('Remember to push your changes so that your colleagues benefit from your fixes.')
             print_error('You need to unpack the submissions again for your fixes to take effect.')
-            print_error('If there are still unresolved compilation errors, you may allow them in this phase (they will be reported in the overview index).')
+            print_error(
+                'If there are still unresolved compilation errors, you may allow '
+                'them in this phase (they will be reported in the overview index).'
+            )
             exit(1)
         return r
 
     def remove_class_files(self, dir):
-        logger.log(logging.INFO, 'removing class files: {}'.format(shlex.quote(str(dir))))
+        logger.info('removing class files: {}'.format(shlex.quote(str(dir))))
         dir_build = dir / lab_assignment_constants.rel_dir_build
         for file in dir_build.iterdir():
             if file.suffix == '.class':
@@ -506,10 +614,13 @@ class LabAssignment(Assignment):
     @staticmethod
     def parse_float_from_file(file):
         return float(file.read_text()) if file.exists() else None
-    
+
     @staticmethod
     def is_test_successful(dir):
-        return not LabAssignment.parse_float_from_file(dir / 'timeout') and LabAssignment.parse_int_from_file(dir / 'ret') == 0
+        return all([
+            not LabAssignment.parse_float_from_file(dir / 'timeout'),
+            LabAssignment.parse_int_from_file(dir / 'ret') == 0,
+        ])
 
     @staticmethod
     def write_test_report(dir, test_name, file_out):
@@ -528,7 +639,7 @@ pre { margin: 0px; white-space: pre-wrap; }
 .error { color: #af0000; }
 """)
         with doc.body:
-            if timeout != None:
+            if timeout is not None:
                 p('Timed out after {} seconds.'.format(timeout), Class = 'error')
             elif ret != 0:
                 p('Failed with return code {}.'.format(ret), Class = 'error')
@@ -541,7 +652,7 @@ pre { margin: 0px; white-space: pre-wrap; }
         file_out.write_text(doc.render())
 
     def test(self, dir, strict = False, machine_speed = 1):
-        logger.log(logging.INFO, 'testing: {}'.format(shlex.quote(str(dir))))
+        logger.info('testing: {}'.format(shlex.quote(str(dir))))
         dir_build = dir / lab_assignment_constants.rel_dir_build
         dir_build_test = dir / lab_assignment_constants.rel_dir_build_test
         mkdir_fresh(dir_build_test)
@@ -563,7 +674,7 @@ pre { margin: 0px; white-space: pre-wrap; }
                 options = java_options(self.java_version),
             ))
             (dir_test / 'cmd').write_text(shlex.join(cmd))
-            if test_spec.input != None:
+            if test_spec.input is not None:
                 (dir_test / 'in').write_text(test_spec.input)
             try:
                 with Timer() as t:
@@ -571,15 +682,15 @@ pre { margin: 0px; white-space: pre-wrap; }
                         cmd,
                         cwd = dir_build,
                         timeout = test_spec.timeout / machine_speed,
-                        input = test_spec.input.encode() if test_spec.input != None else None,
+                        input = test_spec.input.encode() if test_spec.input is not None else None,
                         stdout = (dir_test / 'out').open('wb'),
                         stderr = (dir_test / 'err').open('wb')
                     )
                 (dir_test / 'ret').write_text(str(process.returncode))
-                logger.log(logging.INFO, 'test {} took {}s'.format(test_name, format_with_rel_prec(t.time, 3)))
+                logger.info('test {} took {}s'.format(test_name, format_with_rel_prec(t.time, 3)))
             except subprocess.TimeoutExpired:
                 (dir_test / 'timeout').write_text(str(t.time))
-                logger.log(logging.INFO, 'test {} timed out after {}s'.format(test_name, format_with_rel_prec(t.time, 3)))
+                logger.info('test {} timed out after {}s'.format(test_name, format_with_rel_prec(t.time, 3)))
 
             # This does not strictly belong here.
             # It should be called only in build_index.
@@ -601,7 +712,7 @@ pre { margin: 0px; white-space: pre-wrap; }
                 self.test(dir_group, strict = strict, machine_speed = machine_speed)
 
     def robograde(self, dir, dir_robograder, strict = False):
-        logger.log(logging.INFO, 'Robograding: {}'.format(shlex.quote(str(dir))))
+        logger.info('Robograding: {}'.format(shlex.quote(str(dir))))
 
         file_robograding = dir / lab_assignment_constants.rel_file_robograding
         file_robograding_errors = dir / lab_assignment_constants.rel_file_robograding_errors
@@ -611,14 +722,17 @@ pre { margin: 0px; white-space: pre-wrap; }
 
         class RobogradingException(Exception):
             def __init__(self, msg):
-                self.msg = msg;
+                self.msg = msg
 
         # Check for class name conflicts.
         dir_build = dir / lab_assignment_constants.rel_dir_build
         for file in dir_robograder.iterdir():
             if file.suffix == '.java':
                 if (dir_build / file.name).exists():
-                     raise RobogradingException('The submission contains a top-level Java file with name {}, which is also used for robograding.'.format(shlex.quote(file.name)))
+                    raise RobogradingException(
+                        'The submission contains a top-level Java file with '
+                        'name {}, which is also used for robograding.'.format(shlex.quote(file.name))
+                    )
 
         # Create policy file.
         policy_file = dir / 'policy-robograder'
@@ -645,10 +759,10 @@ pre { margin: 0px; white-space: pre-wrap; }
                         'Running {} returned with {}.'.format(java_name, process.returncode),
                         'The error output was as follows:',
                         str(process.stderr),
-                ]))
+                    ]))
 
             r = str(process.stdout)
-            logger.log(logging.DEBUG, 'robograding output of {}:\n'.format(java_name) + r)
+            logger.debug('robograding output of {}:\n'.format(java_name) + r)
             return r
 
         try:
@@ -688,7 +802,7 @@ pre { margin: 0px; white-space: pre-wrap; }
                 self.robograde(dir, dir_robograder, strict = True)
             for group in groups:
                 dir_group = self.group_dir(dir, group)
-                if not (dir_group p/ lab_assignment_constants.rel_file_compilation_errors).exists():
+                if not (dir_group / lab_assignment_constants.rel_file_compilation_errors).exists():
                     self.robograde(dir_group, dir_robograder, strict = strict)
 
     def remove_class_files_submissions(self, dir, groups):
@@ -805,7 +919,7 @@ pre { margin: 0px; white-space: pre-wrap; }
 
         row_data_dict = dict()
         for group in groups:
-            logger.log(logging.INFO, 'processing {}...'.format(self.group_set.str(group)))
+            logger.info('processing {}...'.format(self.group_set.str(group)))
 
             row_data = SimpleNamespace()
             row_data_dict[group] = row_data
@@ -817,7 +931,10 @@ pre { margin: 0px; white-space: pre-wrap; }
             mkdir_fresh(dir_analysis)
 
             dir_group = self.group_dir(dir, group)
-            filenames_current = sorted_directory_list(dir_group / lab_assignment_constants.rel_dir_current, filter = lambda f: f.is_file() and not f.name.startswith('.')).keys()
+            filenames_current = sorted_directory_list(
+                dir_group / lab_assignment_constants.rel_dir_current,
+                filter = lambda f: f.is_file() and not f.name.startswith('.')
+            ).keys()
             filenames = list(filenames_current) + list(set(self.files_solution) - set(filenames_current))
 
             current_submission = Assignment.current_submission(self.submissions[group])
@@ -833,7 +950,10 @@ pre { margin: 0px; white-space: pre-wrap; }
                 return c
 
             # Group number
-            row_data.group = cell(a(self.group_number(group), href = self.submission_speedgrader_url(current_submission)))
+            row_data.group = cell(a(
+                self.group_number(group),
+                href = self.submission_speedgrader_url(current_submission)
+            ))
 
             # Late submission
             row_data.late = None
@@ -847,7 +967,13 @@ pre { margin: 0px; white-space: pre-wrap; }
             row_data.files = cell()
             files_table_body = row_data.files.add(table(Class = 'files')).add(tbody())
             for filename in filenames:
-                files_table_body.add(tr()).add(format_file(dir, filename, rel_dir_group / lab_assignment_constants.rel_dir_current, rel_dir_group_analysis / lab_assignment_constants.rel_dir_current, file_syntax_highlight_css))
+                files_table_body.add(tr()).add(format_file(
+                    dir,
+                    filename,
+                    rel_dir_group / lab_assignment_constants.rel_dir_current,
+                    rel_dir_group_analysis / lab_assignment_constants.rel_dir_current,
+                    file_syntax_highlight_css
+                ))
 
             # Diffs to other files
             def build_diff_table(rel_base_dir, folder_name):
@@ -860,13 +986,18 @@ pre { margin: 0px; white-space: pre-wrap; }
                     '{}: compared to {}'.format(filename, folder_name)
                 ))
 
-            row_data.files_vs_previous = build_diff_table(rel_dir_group, lab_assignment_constants.rel_dir_previous) if (dir_group / lab_assignment_constants.rel_dir_previous).exists() else None
+            row_data.files_vs_previous = build_diff_table(
+                rel_dir_group,
+                lab_assignment_constants.rel_dir_previous
+            ) if (dir_group / lab_assignment_constants.rel_dir_previous).exists() else None
             row_data.files_vs_problem = build_diff_table(Path(), lab_assignment_constants.rel_dir_problem)
             row_data.files_vs_solution = build_diff_table(Path(), lab_assignment_constants.rel_dir_solution)
 
             # Compilation errors
             file_compilation_errors = dir_group / lab_assignment_constants.rel_file_compilation_errors
-            row_data.compilation_errors = cell(pre(file_compilation_errors.read_text(), Class = 'error')) if file_compilation_errors.exists() else None
+            row_data.compilation_errors = cell(
+                pre(file_compilation_errors.read_text(), Class = 'error')
+            ) if file_compilation_errors.exists() else None
 
             # Tests
             if (dir_group / lab_assignment_constants.rel_dir_build_test).exists():
@@ -905,16 +1036,28 @@ pre { margin: 0px; white-space: pre-wrap; }
 
             # Comments
             ungraded_comments = Assignment.ungraded_comments(self.submissions[group])
-            row_data.new_comments = cell(pre('\n'.join(Assignment.format_comments(ungraded_comments)))) if ungraded_comments else None
+            row_data.new_comments = cell(
+                pre('\n'.join(Assignment.format_comments(ungraded_comments)))
+            ) if ungraded_comments else None
 
         #def build_index_files_entry(rel_base_dir, folder_name):
-        #    return ('Vs. {}'.format(folder_name), lambda group: build_index_files(group, rel_base_dir(group), folder_name))
+        #    return (
+        #        'Vs. {}'.format(folder_name),
+        #        lambda group: build_index_files(group, rel_base_dir(group), folder_name)
+        #    )
 
         T = namedtuple('KeyData', ['title', 'style'], defaults = [None])
 
         # This took me more than 2 hours.
         def with_after(title, title_after):
-            return T(th(div(title + title_after, style = 'white-space: pre; max-height: 0; visibility: hidden;'), title, span(title_after, style = 'float: right; white-space: pre;')))
+            return T(th(
+                div(
+                    title + title_after,
+                    style = 'white-space: pre; max-height: 0; visibility: hidden;'
+                ),
+                title,
+                span(title_after, style = 'float: right; white-space: pre;')
+            ))
 
         def following(title):
             return T(title, style = 'border-left-color: lightgrey;')
@@ -937,12 +1080,12 @@ pre { margin: 0px; white-space: pre-wrap; }
         for key in list(keys.keys()):
             non_empty = False
             for group, row_data in row_data_dict.items():
-                non_empty |= row_data.__dict__[key] != None
+                non_empty |= row_data.__dict__[key] is not None
             if not non_empty:
                 del keys[key]
             else:
                 for group, row_data in row_data_dict.items():
-                    if row_data.__dict__[key] == None:
+                    if row_data.__dict__[key] is None:
                         row_data.__dict__[key] = cell()
 
         def handle(key_data, el):

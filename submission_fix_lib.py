@@ -16,6 +16,7 @@ class NoMatch(HandlerException):
 # Construct a handler performing a single replacement.
 def replace(pattern, replacement):
     regex = re.compile(pattern)
+
     def f(s):
         match = regex.search(s)
         if not match:
@@ -68,6 +69,7 @@ remove_dash_copy = replace(r'^([^.]+)-\d+\.(.+)$', r'\1.\2')
 # Takes care of most variants of a given filename.
 def normalize_suffix(target):
     stem = PurePath(target).stem
+
     def f(name):
         if not name.lower().startswith(stem.lower()):
             print(stem)

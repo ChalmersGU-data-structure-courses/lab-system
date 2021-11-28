@@ -8,6 +8,7 @@ import general
 import git_tools
 import gitlab_tools
 
+
 logger = logging.getLogger(__name__)
 
 def add_class(element, class_name):
@@ -85,7 +86,6 @@ def build_config(lab, deadline = None, logger = logger):
         logger = logger,
     )
 
-
 class ColumnValue:
     '''
     The column value associated to a group.
@@ -155,18 +155,16 @@ class Column:
         '''
         return self.lab.student_group(group_id)
 
-
 class CallbackColumnValue(ColumnValue):
     '''
     A column value implementation using a callback function for format_cell.
     Values for sort_key and has_content are given at construction.
     '''
     def __init__(self, sort_key = None, has_content = True, callback = None):
-        if sort_key != None:
+        if sort_key is not None:
             self.sort_key = lambda: sort_key
         self.has_content = lambda: has_content
-        self.format_cell = callback if callback != None else lambda cell: None
-
+        self.format_cell = callback if callback is not None else lambda cell: None
 
 class StandardColumnValue(ColumnValue):
     '''A simple column value implementation using just a string-convertible value and a sort key.'''
@@ -178,7 +176,7 @@ class StandardColumnValue(ColumnValue):
         * key: An optional sort key (defaulting to the given value).
         '''
         self.value = value
-        self.key = key if key != None else value
+        self.key = key if key is not None else value
 
     def sort_key(self):
         '''Returns the specified sort key, or in its absences the value.'''
@@ -193,7 +191,6 @@ class StandardColumnValue(ColumnValue):
         with cell:
             dominate.util.text(str(self.value))
             dominate.tags.attr(style = 'text-align: center;')
-
 
 # TODO: implement deadlines in lab config.
 class DateColumn(Column):
@@ -229,7 +226,6 @@ class DateColumn(Column):
         submission = group.submission_current(deadline = self.deadline)
         return DateColumn.Value(submission.date)
 
-
 class GroupColumn(Column):
     sortable = True
 
@@ -244,7 +240,6 @@ class GroupColumn(Column):
             group_config.id.print(group_id),
             group_config.sort_key(group_id),
         )
-
 
 class MembersColumn(Column):
     def format_header_cell(self, cell):
@@ -268,7 +263,7 @@ class MembersColumn(Column):
 
         def fill_in_member(self, gitlab_user, canvas_user):
             dominate.util.text(gitlab_tools.format_username(gitlab_user))
-            if canvas_user != None:
+            if canvas_user is not None:
                 dominate.util.text(': ')
                 if canvas_user.enrollments:
                     format_url(canvas_user.name, canvas_user.enrollments[0].html_url)
@@ -293,7 +288,6 @@ class MembersColumn(Column):
         ]
         members.sort(key = lambda x: str.casefold(x[0].username))
         return MembersColumn.Value(members, self.logger)
-
 
 # TODO: implement deadlines in lab config.
 class QueryNumberColumn(Column):
@@ -322,7 +316,6 @@ class QueryNumberColumn(Column):
         submissions_with_outcome = group.submissions_with_outcome(deadline = self.deadline)
         return QueryNumberColumn.Value(general.ilen(submissions_with_outcome))
 
-
 class MessageColumn(Column):
     sortable = True
 
@@ -342,7 +335,7 @@ class MessageColumn(Column):
 
         def format_cell(self, cell):
             with cell:
-                if self.message != None:
+                if self.message is not None:
                     dominate.tags.pre(self.message)
 
     def get_value(self, group_id):
@@ -387,7 +380,7 @@ class SubmissionFilesColumn(Column):
         submission = group.submission_current(deadline = self.deadline)
 
         response_key = self.lab.submission_handler.review_response_key
-        if response_key == None:
+        if response_key is None:
             linked_open_grading_issue = None
         else:
             def f():
@@ -410,7 +403,6 @@ class SubmissionFilesColumn(Column):
             linked_open_grading_issue,
         )
 
-
 class SubmissionDiffColumnValue(ColumnValue):
     def __init__(self, linked_name, linked_grader = None, is_same = False):
         self.linked_name = linked_name
@@ -418,7 +410,7 @@ class SubmissionDiffColumnValue(ColumnValue):
         self.is_same = is_same
 
     def has_content(self):
-        return self.linked_name != None
+        return self.linked_name is not None
 
     def format_cell(self, cell):
         add_class(cell, 'extension-column')
@@ -431,7 +423,7 @@ class SubmissionDiffColumnValue(ColumnValue):
                 if self.is_same:
                     with dominate.tags.p():
                         dominate.util.text('identical')
-                if self.linked_grader != None:
+                if self.linked_grader is not None:
                     with dominate.tags.p():
                         dominate.util.text('graded by ')
                         format_url(*self.linked_grader)
@@ -461,7 +453,7 @@ class SubmissionDiffPreviousColumn(Column):
                 tag_after.name,
             )),
             (submission_previous.informal_grader_name, submission_previous.outcome_issue.web_url),
-            is_same = False, # TODO: implement
+            is_same = False,  # TODO: implement
         )
 
 class SubmissionDiffOfficialColumn(Column):
@@ -487,7 +479,7 @@ class SubmissionDiffOfficialColumn(Column):
                 self.branch.name,
                 tag_after.name,
             )),
-            is_same = False, # TODO: implement
+            is_same = False,  # TODO: implement
         )
 
 class SubmissionDiffProblemColumn(SubmissionDiffOfficialColumn):
@@ -498,14 +490,13 @@ class SubmissionDiffSolutionColumn(SubmissionDiffOfficialColumn):
     def __init__(self, config):
         super().__init__(config, config.lab.head_solution)
 
-
 standard_columns_before = {
     'date': DateColumn,
     'query-number': QueryNumberColumn,
     'group': GroupColumn,
     'members': MembersColumn,
     'submission': SubmissionFilesColumn,
-    'submission-after-previous':SubmissionDiffPreviousColumn,
+    'submission-after-previous': SubmissionDiffPreviousColumn,
     'submission-after-problem': SubmissionDiffProblemColumn,
     'submission-after-solution': SubmissionDiffSolutionColumn,
 }
@@ -570,7 +561,7 @@ class LiveSubmissionsTable:
         def f():
             for group_id in self.course.groups:
                 group = self.lab.student_group(group_id)
-                if group.submission_current(deadline = deadline) != None:
+                if group.submission_current(deadline = deadline) is not None:
                     yield group_id
         group_ids = list(f())
         logger.debug(f'groups with live submission: {group_ids}')
@@ -611,7 +602,10 @@ class LiveSubmissionsTable:
             dominate.tags.link(
                 rel = 'stylesheet',
                 media = 'screen',
-                href = 'https://du11hjcvx0uqb.cloudfront.net/dist/brandable_css/no_variables/bundles/lato_extended-f5a83bde37.css'
+                href = (
+                    'https://du11hjcvx0uqb.cloudfront.net'
+                    '/dist/brandable_css/no_variables/bundles/lato_extended-f5a83bde37.css'
+                ),
             )
             embed_css(path_data_default_css)
             embed_css(path_data_sort_css)

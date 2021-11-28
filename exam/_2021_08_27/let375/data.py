@@ -7,6 +7,7 @@ import re
 
 import general
 
+
 this_dir = Path(__file__).parent
 
 exam_id = '1cl4Vr4dFEivyMh2t7tvxMb2IcZ5yZsP5ObraVQwDtQk'
@@ -14,7 +15,7 @@ solution_id = '1gYMujdbUcIoODHD7IyIJ0FzmsXFhSgpWR3Ah43NSMUU'
 secret_salt = 'Rainy night'
 
 formats = [
-#    ('txt', 'Text file'),
+    #('txt', 'Text file'),
     ('docx', 'Word document'),
     ('odt', 'OpenDocument'),
     ('pdf', 'PDF, for reading'),
@@ -28,7 +29,7 @@ canvas_secret_salt = '1EZB2k9p0KUAfh2b'
 canvas_start = datetime.datetime.fromisoformat('2021-08-27 14:00+02:00')
 canvas_duration = datetime.timedelta(hours = 4)
 canvas_duration_scanning = datetime.timedelta(minutes = 30)
-canvas_grace_period = datetime.timedelta(minutes = 0) # Canvas doesn't have second granularity.
+canvas_grace_period = datetime.timedelta(minutes = 0)  # Canvas doesn't have second granularity.
 canvas_extra_time = 1.5
 canvas_early_assignment_unlock = datetime.timedelta(minutes = 0)
 
@@ -48,10 +49,19 @@ def canvas_assignment_description(resource_for_format):
         return li(a(filename, href = str(link)), f' ({description})')
 
     return div(
-        p(strong('Note'), ': This exam is individualized! Your questions differ from those of other students, but are of equal difficulty.'),
+        p(
+            strong('Note'),
+            ': This exam is individualized! Your questions differ from '
+            'those of other students, but are of equal difficulty.'
+        ),
         'Download your individual exam in one of the following formats:',
-        ul(*[itertools.starmap(f, formats)]),
-        p('Submit your solutions via file upload, preferably as a ', strong('single PDF file'), '. If you do not know how to convert your solutions to PDF, other formats are accepted as well. Please use separate pages for each question.'),
+        ul(*[map(f, formats)]),
+        p(
+            'Submit your solutions via file upload, preferably as a ',
+            strong('single PDF file'),
+            '. If you do not know how to convert your solutions to PDF, '
+            'other formats are accepted as well. Please use separate pages for each question.',
+        ),
     ).render(pretty = False)
 
 questions = [i + 1 for i in range(8)]
@@ -89,14 +99,14 @@ submissions_dir = this_dir / 'submissions'
 selectors_file = this_dir / 'selectors.csv'
 submissions_packaged_dir = this_dir / 'packaged'
 
-### Checklist
+# Checklist
 
 checklist = this_dir / 'checklist.csv'
 
 checklist_name = 'Efternamn_Fornamn'
 checklist_time = 'Inlämningstid'
 
-### Configuration of grading sheet
+# Configuration of grading sheet
 
 grading_sheet = '10QVjRDzRhl7hCaCIn1J6GZNFnpo8ku_C9B6MAkG-SOw'
 grading_worksheet = 'LET375'
@@ -138,10 +148,10 @@ def parse_score(s):
 def format_score(x):
     if x == '?':
         return '?'
-    return f'{x:.5g}' if x != None else '-'
+    return f'{x:.5g}' if x is not None else '-'
 
 
-### Configuration of grading report and assignment scoring
+# Configuration of grading report and assignment scoring
 
 questions_basic = [q for q in questions if q <= 6]
 questions_advanced = [q for q in questions if q > 6]
@@ -155,12 +165,12 @@ def questions_score_max(qs):
 def score_value(s):
     if s == '?':
         return '?'
-    return 0 if s == None else s
+    return 0 if s is None else s
 
 def score_add(a, b):
     if '?' in [a, b]:
         return '?'
-    if a == None and b == None:
+    if a is None and b is None:
         return None
     return score_value(a) + score_value(b)
 
@@ -170,7 +180,7 @@ def score_sum(xs):
 def round(s):
     if s == '?':
         return '?'
-    if s == None:
+    if s is None:
         return None
     return math.ceil(s)
 
@@ -180,10 +190,14 @@ def grading_question_score(grading, q):
 def grading_questions_score(grading, qs):
     return score_sum(grading_question_score(grading, q) for q in qs)
 
-grading_questions_score_via_questions = lambda qs: lambda grading: grading_questions_score(grading, qs)
+def grading_questions_score_via_questions(qs):
+    return lambda grading: grading_questions_score(grading, qs)
 
-grading_score_basic = lambda x: round(grading_questions_score_via_questions(questions_basic)(x))
-grading_score_advanced = lambda x: round(grading_questions_score_via_questions(questions_advanced)(x))
+def grading_score_basic(x):
+    return round(grading_questions_score_via_questions(questions_basic)(x))
+
+def grading_score_advanced(x):
+    return round(grading_questions_score_via_questions(questions_advanced)(x))
 
 def grading_score(x):
     a = grading_score_basic(x)
@@ -198,7 +212,7 @@ def formatted(f):
 def has_threshold(grading, min_basic, min_combined):
     basic = grading_score_basic(grading)
     advanced = grading_score_advanced(grading)
-    return basic >= min_basic and (min_combined == None or advanced + (basic - min_basic) / 2 >= min_combined)
+    return basic >= min_basic and (min_combined is None or advanced + (basic - min_basic) / 2 >= min_combined)
 
 def grading_grade(grading):
     if has_threshold(grading, 10, 4):
@@ -215,14 +229,19 @@ grading_report_columns_summary = [
     ('Grade', grading_grade),
 ]
 
-grading_report_columns = [(question_name(q), formatted(grading_questions_score_via_questions([q]))) for q in questions] + grading_report_columns_summary
+grading_report_columns = [
+    (question_name(q), formatted(grading_questions_score_via_questions([q]))) for q in questions
+] + grading_report_columns_summary
 
 def grading_feedback(grading, resource):
     def format_points(score, score_max, do_rounding):
-        if score == None:
+        if score is None:
             return 'not attempted'
         if do_rounding:
-            return f'{format_score(score)} rounded up to {format_score(round(score))} points (out of {format_score(score_max)})'
+            return (
+                f'{format_score(score)} rounded up to {format_score(round(score))} points '
+                f'(out of {format_score(score_max)})'
+            )
         else:
             return f'{format_score(score)} points (out of {format_score(score_max)})'
 
@@ -230,7 +249,12 @@ def grading_feedback(grading, resource):
         return f'{description}: {format_points(score, score_max, do_rounding)}'
 
     def format_summary_line(kind, qs):
-        return format_line(f'* {kind} part', grading_questions_score(grading, qs), questions_score_max(qs), do_rounding = True)
+        return format_line(
+            f'* {kind} part',
+            grading_questions_score(grading, qs),
+            questions_score_max(qs),
+            do_rounding = True,
+        )
 
     def format_question(q):
         (score, feedback) = grading[q]
@@ -251,5 +275,5 @@ def grading_feedback(grading, resource):
         f'Suggested solutions: {resource(True)[1]}',
         '',
     ], *(format_question(q) for q in questions), [
-        f'Pelle Evensen'
+        'Pelle Evensen'
     ]))

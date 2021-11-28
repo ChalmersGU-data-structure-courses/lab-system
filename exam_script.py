@@ -1,3 +1,5 @@
+# Deprecated.
+# Use exam/canvas.py instead.
 import logging
 #from  pathlib import Path
 
@@ -7,6 +9,7 @@ import exam._2021_08_27.dat038.data as exam_config_dat038
 import exam._2021_08_27.tda417.data as exam_config_tda417
 import exam._2021_08_27.dit961.data as exam_config_dit961
 from exam.canvas import Exam
+
 
 exam_configs = {
     'dit181': exam_config_dit181,
@@ -34,12 +37,14 @@ def select_user_id(exam, pattern):
     return rs[0].id
 
 for key, e in exams.items():
-    if key != 'tda417':
-        continue
-    #print(key)
-    
+    print(key)
+
     #e.allocate_students()
-    #e.instantiate_template(share_dir = Path() / 'exam' / '_2021_08_27' / 'share_dir', share_url = 'http://uxul.org/~noname/exam/', solution = True)
+    #e.instantiate_template(
+    #    share_dir = Path() / 'exam' / '_2021_08_27' / 'share_dir',
+    #    share_url = 'http://uxul.org/~noname/exam/',
+    #    solution = True
+    #)
     #e.upload_instances(delete_old = False, solution = True)
     #e.create_assignments(publish = True, update = True)
     #e.delete_assignments()

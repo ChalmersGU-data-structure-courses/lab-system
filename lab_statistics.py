@@ -7,6 +7,7 @@ import argparse
 from pathlib import Path
 import shlex
 
+
 default_labs = [1, 2, 3, 4]
 
 dir_script = Path(__file__).parent
@@ -14,66 +15,69 @@ dir_script = Path(__file__).parent
 cache_dir_default = dir_script / 'cache'
 file_auth_token_default = dir_script / 'auth_token'
 
-p = argparse.ArgumentParser(add_help = False, description = '\n'.join([
-    f'Print lab statistics, broken down by program.',
-]), epilog = '\n'.join([
-    f'This Python script supports bash completion.',
-    f'For this, python-argparse needs to be installed and configured.',
-    f'See https://github.com/kislyuk/argcomplete for more information.',
-]))
+
+p = argparse.ArgumentParser(add_help = False, description = '''
+Print lab statistics, broken down by program.
+''', epilog = '''
+This Python script supports bash completion.
+For this, python-argparse needs to be installed and configured.
+See https://github.com/kislyuk/argcomplete for more information.
+''')
 
 g = p.add_argument_group('primary arguments')
-g.add_argument('labs', nargs = '*', type = int, metavar = 'LAB', help = 'List of labs to process (1-4).')
+g.add_argument('labs', nargs = '*', type = int, metavar = 'LAB', help = '''
+List of labs to process (1-4).
+''')
 
 g = p.add_argument_group('secondary arguments')
-g.add_argument('--ladok-file', type = Path, metavar = 'REG', help = '\n'.join([
-    f'The file from ladok with the registered students.',
-    f'If provided, the statistics is broken down into individual programs.'
-]))
-g.add_argument('--refresh-group-set', action = 'store_true', help = '\n'.join([
-    f'Collect group membership information from Canvas instead of the cache.',
-    f'Use this at the beginning of a submission processing workflow to make sure the cached group memberships are up to date.',
-    f'Collecting group membership information from Canvas is an expensive operation (on the order of 1 minute per group set).'
-]))
-g.add_argument('--refresh-submissions', action = 'store_true', help = '\n'.join([
-    f'Collect submissions from Canvas instead of the cache.',
-    f'Use this at the beginning of a submission processing workflow to make sure the cached submissions are up to date.',
-    f'It is recommended to use this option only then for fetching the submission info from Canvas is an expensive operation (on the order of 30 seconds per lab).'
-]))
-g.add_argument('--submitted-date', action = 'store_true', help = '\n'.join([
-    f'By default, the date of grading is used to determine which deadline (submission round) a submission belongs to.',
-    f'When this option is specified, the date of submission is used instead.',
-]))
-g.add_argument('--submitted-grace', type = int, metavar = 'GRACE', default = 0, help = '\n'.join([
-    f'Grace period in minutes to use for the deadlines.'
-]))
-g.add_argument('--actual-attempts', action = 'store_true', help = '\n'.join([
-    f'Count the attempts sequentially rather than by deadline.',
-]))
-g.add_argument('--cutoff', type = int, metavar = 'CUTOFF', help = '\n'.join([
-    f'Show programs with less students than these as \'others\'.',
-]))
-g.add_argument('--csv', action = 'store_true', help = '\n'.join([
-    f'Print output in comma-separated value format.',
-]))
+g.add_argument('--ladok-file', type = Path, metavar = 'REG', help = '''
+The file from ladok with the registered students.
+If provided, the statistics is broken down into individual programs
+''')
+g.add_argument('--refresh-group-set', action = 'store_true', help = '''
+Collect group membership information from Canvas instead of the cache.
+Use this at the beginning of a submission processing workflow to make sure the cached group memberships are up to date.
+Collecting group membership information from Canvas is an expensive operation (on the order of 1 minute per group set).
+''')
+g.add_argument('--refresh-submissions', action = 'store_true', help = '''
+Collect submissions from Canvas instead of the cache.
+Use this at the beginning of a submission processing workflow to make sure the cached submissions are up to date.
+It is recommended to use this option only then for fetching the submission info from Canvas is an expensive operation (on the order of 30 seconds per lab)
+''')  # noqa: E501
+g.add_argument('--submitted-date', action = 'store_true', help = '''
+By default, the date of grading is used to determine which deadline (submission round) a submission belongs to.
+When this option is specified, the date of submission is used instead.
+''')
+g.add_argument('--submitted-grace', type = int, metavar = 'GRACE', default = 0, help = '''
+Grace period in minutes to use for the deadlines.
+''')
+g.add_argument('--actual-attempts', action = 'store_true', help = '''
+Count the attempts sequentially rather than by deadline.
+''')
+g.add_argument('--cutoff', type = int, metavar = 'CUTOFF', help = '''
+Show programs with less students than these as others.
+''')
+g.add_argument('--csv', action = 'store_true', help = '''
+Print output in comma-separated value format.
+''')
 
 g = p.add_argument_group('standard arguments')
-g.add_argument('-h', '--help', action = 'help', help = '\n'.join([
-    f'Show this help message and exit.',
-]))
-g.add_argument('-v', '--verbose', action = 'store_true', help = '\n'.join([
-    f'Print INFO level logging.',
-    f'This includes accesses to Canvas API endpoints.',
-]))
-g.add_argument('--auth-file', type = str, metavar = 'AUTH', default = file_auth_token_default, help = '\n'.join([
-    f'Path to a file storing the Canvas authentication token.',
-    f'Defaults to {shlex.quote(str(file_auth_token_default))}.',
-]))
-g.add_argument('--cache-dir', type = str, metavar = 'CACHE', default = cache_dir_default, help = '\n'.join([
-    f'The cache directory to use.',
-    f'If it does not exist, it will be created.',
-    f'Defaults to {shlex.quote(str(cache_dir_default))}.',
-]))
+g.add_argument('-h', '--help', action = 'help', help = '''
+Show this help message and exit.
+''')
+g.add_argument('-v', '--verbose', action = 'store_true', help = '''
+Print INFO level logging.
+This includes accesses to Canvas API endpoints.
+''')
+g.add_argument('--auth-file', type = str, metavar = 'AUTH', default = file_auth_token_default, help = f'''
+Path to a file storing the Canvas authentication token.
+Defaults to {shlex.quote(str(file_auth_token_default))}.
+''')
+g.add_argument('--cache-dir', type = str, metavar = 'CACHE', default = cache_dir_default, help = f'''
+The cache directory to use.
+If it does not exist, it will be created.
+Defaults to {shlex.quote(str(cache_dir_default))}.
+''')
 
 #Support for argcomplete.
 try:
@@ -84,6 +88,7 @@ except ModuleNotFoundError:
 
 args = p.parse_args()
 # Argument parsing is done: expensive initialization can start now.
+
 
 from collections import namedtuple
 import csv
@@ -97,8 +102,12 @@ from types import SimpleNamespace
 
 from canvas import Canvas, Course
 import config
-from general import namespaced, print_error, group_by_unique, get_attr, compose, multidict, map_with_val, partition, group_by,  group_by_, list_get, dict_from_fun
+from general import (
+    namespaced, print_error, group_by_unique, get_attr, compose, multidict,
+    map_with_val, partition, group_by, group_by_, list_get, dict_from_fun,
+)
 from lab_assignment import LabAssignment
+
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO if args.verbose else 25)
@@ -114,7 +123,11 @@ def normalize_personnummer(p):
 # Read program data from the Ladok file.
 if args.ladok_file:
     with args.ladok_file.open() as file:
-        csv_reader = csv.DictReader(file, dialect = csv.excel_tab, fieldnames = ['personnummer', 'name', 'course', 'status', 'program'])
+        csv_reader = csv.DictReader(
+            file,
+            dialect = csv.excel_tab,
+            fieldnames = ['personnummer', 'name', 'course', 'status', 'program']
+        )
         rows = list(namespaced(csv_reader))
     print_error('{} student(s) registered in Ladok.'.format(len(rows)))
 
@@ -138,12 +151,15 @@ print_error('Considering {} student(s) registered in Canvas.'.format(len(users))
 def assignment(lab):
     a = LabAssignment(course, lab, use_cache = not args.refresh_group_set)
 
-    # Given a list of submission deadlines, finds the index of the deadline for which the submission was graded or submitted (the 'attempt').
+    # Given a list of submission deadlines, finds the index of the deadline
+    # for which the submission was graded or submitted (the 'attempt').
     # If it was graded before the first deadline, it is treated as being the first deadline.
     # If it was submitted after the last deadline, it is treated as being the last deadline.
     def get_submission_attempt(assignment, submission):
         if args.submitted_date:
-            return assignment.get_deadline_index(submission.submitted_at_date - timedelta(minutes = args.submitted_grace))
+            return assignment.get_deadline_index(
+                submission.submitted_at_date - timedelta(minutes = args.submitted_grace)
+            )
         if not args.submitted_date:
             return max(0, assignment.get_deadline_index(submission.graded_at_date) - 1)
 
@@ -173,7 +189,7 @@ def assignment(lab):
             (lambda xs: ('pass' if 'complete' in xs else 'fail') if xs else 'missing')(grades_by_attempt.get(i))
             for i in range(a.attempt_count)
         ]
-        
+
         try:
             passing = attempts.index('pass') + 1
             attempts = attempts[:passing]
@@ -201,7 +217,7 @@ def statistics_lab(users, assignment):
         in_no_group = in_no_group,
         ungraded = [u for u in in_group if assignment.submissions[to_group[u.id]].ungraded],
         total = h(lambda x: x.total),
-        attempts = list(map(lambda i : h(lambda x: list_get(x.attempts, i)), range(assignment.attempt_count))),
+        attempts = list(map(lambda i: h(lambda x: list_get(x.attempts, i)), range(assignment.attempt_count))),
     )
 
 # Statistics for all labs for a given list of users
@@ -250,7 +266,10 @@ def print_readable(file):
                 len(stats_lab.in_no_group),
                 len(stats_lab.ungraded),
                 format_stats_attempt(stats_lab.total),
-                ' | '.join('#{} {}'.format(i, format_stats_attempt(stats_attempt)) for i, stats_attempt in enumerate(stats_lab.attempts)),
+                ' | '.join(
+                    '#{} {}'.format(i, format_stats_attempt(stats_attempt))
+                    for (i, stats_attempt) in enumerate(stats_lab.attempts)
+                ),
             ), file = file)
         print(file = file)
 
@@ -286,7 +305,10 @@ def print_csv(file):
                     yield len(stats[v])
 
             def generate():
-                yield from [program.symbol, lab, len(stats_lab.in_group), len(stats_lab.in_no_group), len(stats_lab.ungraded)]
+                yield from [
+                    program.symbol, lab, len(stats_lab.in_group),
+                    len(stats_lab.in_no_group), len(stats_lab.ungraded),
+                ]
                 yield from generate_attempt(stats_lab.total)
                 for stats_attempt in stats_lab.attempts:
                     yield from generate_attempt(stats_attempt)

@@ -9,7 +9,7 @@ import importlib
 import logging
 
 from course import Course
-from this_dir import this_dir
+
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
@@ -21,7 +21,7 @@ for prefix in ['java', 'python']:
     course = Course(config)
     # If you want to see debug messages only for the course module, use:
     # course.logger.setLevel(logging.DEBUG)
-    
+
     course.canvas_course_refresh()
     course.canvas_group_set_refresh()
     course.sync_students_to_gitlab(add = True, remove = True, restrict_to_known = True)

@@ -10,6 +10,7 @@ import java_tools
 import markdown
 from this_dir import this_dir
 
+
 # Root of the code repository.
 code_root = this_dir.parent
 

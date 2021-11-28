@@ -28,7 +28,9 @@ class Process(subprocess.Popen):
             raise subprocess.CalledProcessError(r, self.cmd)
 
 def is_gnu_tar(tar):
-    return shutil.which(tar) and 'GNU tar' in subprocess.run([tar, '--version'], capture_output = True, encoding = 'utf-8').stdout
+    return shutil.which(tar) and 'GNU tar' in subprocess.run(
+        [tar, '--version'], capture_output = True, encoding = 'utf-8'
+    ).stdout
 
 def find_gnu_tar():
     candidates = ['tar', 'gtar']
@@ -78,7 +80,10 @@ def descendants(dir, preserve_symlinks = True):
         for path in dir.iterdir():
             yield from descendants(path)
 
-def compress_dir(output, dir, exclude = [], move_up = False, sort_by_name = False, preserve_symlinks = True, tar = find_gnu_tar(), compressor = get_xz()):
+def compress_dir(
+    output, dir, exclude = [], move_up = False, sort_by_name = False,
+    preserve_symlinks = True, tar = find_gnu_tar(), compressor = get_xz(),
+):
     base_dir = dir.parent if move_up else dir
 
     if isinstance(exclude, Path):
@@ -88,10 +93,13 @@ def compress_dir(output, dir, exclude = [], move_up = False, sort_by_name = Fals
     # paths = set(dir_glob.match_pattern(dir, dir_glob.root / dir_glob.descendants))
     paths = set(descendants(dir, preserve_symlinks = preserve_symlinks))
 
+    def key(path):
+        return (0, path.name) if path.is_dir() else (1, path.name) if path.is_symlink() else (2, path.name)
+
     for path in dir_glob.match_patterns(dir, exclude):
         paths.remove(path)
     if sort_by_name:
-        paths = sorted(paths, key = lambda path: (0, path.name) if path.is_dir() else (1, path.name) if path.is_symlink() else (2, path.name))
+        paths = sorted(paths, key = key)
     paths = [path.relative_to(base_dir) for path in paths]
 
     compress(output, base_dir, paths, preserve_symlinks = preserve_symlinks, compressor = compressor)

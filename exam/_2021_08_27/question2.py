@@ -2,6 +2,7 @@ import collections
 import itertools
 import random
 
+
 # General purpose functions
 
 def identity(x):
@@ -42,7 +43,7 @@ def rangify(xs):
     for x in xs:
         starts.add(x)
         ends.add(x + 1)
-    
+
     def f():
         for x in starts:
             if not x in ends:
@@ -106,7 +107,7 @@ def median_of_three(xs):
 # * L = 2: a range with two numbers excluded, i.e. three ranges,
 # * L = 4: single range,
 # * L = 6: no solution for median-of-three.
-# 
+#
 # We randomly map the numbers 0, ..., n-2 in an order-preserving way into the desired range.
 # We control for:
 # * distance between neighbours and range ends,
@@ -123,7 +124,10 @@ def median_of_three(xs):
 
 def sample_sorted_apart(r, rg, min_distance, min_distance_border, k):
     (low, high) = rg
-    for i, x in enumerate(sorted(r.choices(range(low, high - (k - 1) * min_distance - 2 * min_distance_border), k = k))):
+    for (i, x) in enumerate(sorted(r.choices(
+        range(low, high - (k - 1) * min_distance - 2 * min_distance_border),
+        k = k,
+    ))):
         yield x + i * min_distance + min_distance_border
 
 def shuffled(r, xs):
@@ -147,7 +151,7 @@ class Generator:
         self.varying = 0
 
         self.for_median_ranks = [1, 5]
-        self.problems = [2, 4, 6] # sizes of the left partition
+        self.problems = [2, 4, 6]  # sizes of the left partition
 
         self.r = random.Random(seed)
         self.values = self.build_permutation_controlled(self.choose_numbers_controlled())
@@ -203,10 +207,16 @@ class Generator:
         while True:
             xs = self.sample_sorted_apart_controlled()
 
-            stats_first = Generator.Statistics(self, xs,
-                lambda values: values[self.varying])
-            stats_median_of_three = Generator.Statistics(self, xs,
-                lambda values: median(values[i] for i in [0, *[j + 1 for j in self.for_median_ranks]]))
+            stats_first = Generator.Statistics(
+                self,
+                xs,
+                lambda values: values[self.varying],
+            )
+            stats_median_of_three = Generator.Statistics(
+                self,
+                xs,
+                lambda values: median(values[i] for i in [0, *[j + 1 for j in self.for_median_ranks]]),
+            )
 
             if all([
                 len(stats_first.non_trivial_ranges) + len(stats_median_of_three.non_trivial_ranges) == 5,
@@ -216,7 +226,7 @@ class Generator:
             ]):
                 return xs
 
-    def L_R(self, pattern, l = None, r = None):
+    def L_R(self, pattern, l = None, r = None):  # noqa: E741
         yield (f'{pattern}_L', str(l if l else self.n - r - 1))
         yield (f'{pattern}_R', str(r if r else self.n - l - 1))
 
@@ -231,7 +241,12 @@ class Generator:
 
             if solution:
                 for part, select_pivot in [('A', first), ('B', median_of_three)]:
-                    yield (f'{part}_{i}_solution', format_ranges(rangify(self.solve(self.values, self.varying, select_pivot, problem))))
+                    yield (f'{part}_{i}_solution', format_ranges(rangify(self.solve(
+                        self.values,
+                        self.varying,
+                        select_pivot,
+                        problem
+                    ))))
 
         if solution:
             yield ('array_ordered', ' < '.join(map(str, sorted(self.values))))
@@ -239,5 +254,5 @@ class Generator:
             for_median = sorted(self.values[k - 1] for k in median_of_three_indices(self.n)[1:])
             for (i, x) in enumerate(for_median):
                 yield (f'median_{i}', str(x))
-            yield from self.L_R(f'median_0', r = len([() for y in self.values if y > for_median[0]]))
-            yield from self.L_R(f'median_1', l = len([() for y in self.values if y < for_median[1]]))
+            yield from self.L_R('median_0', r = len([() for y in self.values if y > for_median[0]]))
+            yield from self.L_R('median_1', l = len([() for y in self.values if y < for_median[1]]))

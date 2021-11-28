@@ -1,8 +1,9 @@
 # Modified from 2021-04-07 exam.
-# Uses max-heap instead of min-heap. 
+# Uses max-heap instead of min-heap.
 import collections
 import heapq
 import random
+
 
 # General purpose functions
 
@@ -48,7 +49,7 @@ def analyze_removal(xs, start = None, step = None, end = None):
 
     j = 0
     while True:
-        l = 2 * j + 1
+        l = 2 * j + 1  # noqa: E741
         r = 2 * j + 2
         if not valid(l):
             next = -1
@@ -74,9 +75,9 @@ def analyze_removal(xs, start = None, step = None, end = None):
 
 
 class Node:
-    def __init__(self, value, l, r):
+    def __init__(self, value, l, r):  # noqa: E741
         self.value = value
-        self.l = l
+        self.l = l  # noqa: E741
         self.r = r
 
 def format_tree_helper(node, prefix_node, prefix_left, prefix_right):
@@ -143,7 +144,11 @@ class Generator:
 
     def generate_ugly_heap(self):
         xs = sorted(self.r.sample(range(2 * self.n), self.n), reverse = False)
-        return (xs, f'This is not a max-heap: the root {xs[0]} is not the maximum. (Note that it is a min-heap instead.)')
+        return (
+            xs,
+            f'This is not a max-heap: the root {xs[0]} is not the maximum. '
+            '(Note that it is a min-heap instead.)'
+        )
 
     def __init__(self, seed = 0, version = None):
         self.r = random.Random(seed)
@@ -167,10 +172,14 @@ class Generator:
                 yield (f'sol_heap_{i}', self.heaps[i][1])
 
             def start(first, last):
-                yield ('sol_remove_swap_delete', f'We swap the root {first} with the last element {last}, delete the new last element {first}, and then sink down the root {last}:')
+                yield (
+                    'sol_remove_swap_delete',
+                    f'We swap the root {first} with the last element {last}, '
+                    f'delete the new last element {first}, and then sink down the root {last}:'
+                )
 
             i = 0
-            def step(current, child, next):
+            def step(current, child, next):  # noqa: E306
                 nonlocal i
                 yield(f'sol_remove_sink_{i}', f'We swap {current} with its {child} child {next}.')
                 i += 1

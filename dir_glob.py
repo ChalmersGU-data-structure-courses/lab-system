@@ -3,6 +3,7 @@ from pathlib import Path
 
 from general import join_lines
 
+
 def read_patterns(file, missing_ok = False):
     if missing_ok and not file.exists():
         return []

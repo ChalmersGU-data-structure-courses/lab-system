@@ -1,3 +1,5 @@
+# Deprecated.
+# Use exam/canvas.py instead.
 import collections
 import csv
 import datetime
@@ -5,12 +7,15 @@ import hashlib
 import itertools
 import logging
 from pathlib import Path, PurePosixPath
+import random
 import shlex
+import shutil
 
 import canvas
 import general
 
 import gitlab_config as config
+
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
@@ -18,7 +23,7 @@ logging.getLogger().setLevel(logging.INFO)
 Format = collections.namedtuple('Format', field_names = ['extension', 'description'])
 
 formats = [
-#    Format(extension = 'txt', description = 'Text file'),
+    #Format(extension = 'txt', description = 'Text file'),
     Format(extension = 'docx', description = 'Word document'),
     Format(extension = 'odt', description = 'OpenDocument'),
     Format(extension = 'pdf', description = 'PDF, for reading'),
@@ -29,7 +34,7 @@ format_pdf = formats[-1]
 start = datetime.datetime.fromisoformat('2021-03-19 08:45+01:00')
 duration = datetime.timedelta(hours = 4)
 duration_scanning = datetime.timedelta(minutes = 30)
-grace_period = datetime.timedelta(minutes = 0) # Canvas doesn't have second granularity.
+grace_period = datetime.timedelta(minutes = 0)  # Canvas doesn't have second granularity.
 
 extra_time_section = 'Students with extra time'
 extra_time = 1.5
@@ -77,10 +82,7 @@ exam = canvas.Course(c, config.canvas_exam_course_id)
 
 def add_extension(name, extension = None):
     name = str(name)
-    return name if extension == None else str(name) + '.' + extension
-
-import shutil
-import random
+    return name if extension is None else str(name) + '.' + extension
 
 def write_test_instances(course, dir):
     for format in formats:
@@ -99,18 +101,29 @@ def read_instances_format(course, format, dir):
         for file in dir.iterdir():
             if file.is_file():
                 integration_id = file.stem
-                assert integration_id in course.user_integration_id_to_id, 'stem of exam instance {} is not a student integration id'.format(shlex.quote(file.name))
-                assert file.suffix == '.' + format.extension, 'file {} does not have suffix {}.'.format(file.name, format.extension)
+                assert integration_id in course.user_integration_id_to_id, (
+                    'stem of exam instance {} is not a student integration id'.format(shlex.quote(file.name))
+                )
+                assert file.suffix == '.' + format.extension, (
+                    'file {} does not have suffix {}.'.format(file.name, format.extension)
+                )
                 yield (course.user_integration_id_to_id[file.stem], file)
 
     instances = dict(helper())
     for user in course.students:
-        assert user.id in instances, 'no exam instance of format {} found for student {} (integration id {})'.format(format.extension, course.user_str(user.id), user.integration_id)
+        assert user.id in instances, (
+            'no exam instance of format {} found for student {} (integration id {})'.format(
+                format.extension, course.user_str(user.id), user.integration_id
+            )
+        )
 
     return instances
 
 def read_instances(course, dir):
-    by_format = dict((format.extension, read_instances_format(course, format, dir / format.extension)) for format in formats)
+    by_format = dict(
+        (format.extension, read_instances_format(course, format, dir / format.extension))
+        for format in formats
+    )
 
     def f(id):
         return dict((format.extension, by_format[format.extension][id]) for format in formats)
@@ -131,6 +144,7 @@ def get_student_versions(lookup):
 
 def upload_solutions(instances, lookup):
     student_versions = get_student_versions(lookup)
+
     def f():
         for user in exam.students:
             folder = exam.get_folder_by_path(canvas_instance_dir / integration_id_with_hash(user.integration_id))
@@ -144,8 +158,6 @@ def upload_solutions(instances, lookup):
             yield (user.id, (files[exam_name], file))
     return dict(f())
 
-#    def edit_folder(self, id, name = None, unlock_at = None, lock_at = None, locked = None, hidden = None, use_cache = False):
-
 # Should use author id, but the author id looks weird/different from the user id.
 def post_solutions(solutions, use_cache = True):
     assignments = exam.get_assignments(include = ['overrides'], use_cache = use_cache)
@@ -158,6 +170,7 @@ def post_solutions(solutions, use_cache = True):
         print(user.integration_id)
 
         (file_exam, file_solution) = solutions[user_id]
+
         def f(file):
             return exam.get_file_link(file.id, absolute = True, download = True)
 
@@ -173,6 +186,7 @@ For comparison, here are your original exam problems: {f(file_exam)}'''
 
 def create_canvas_instance_folder(instances, extra_time_students):
     exam.create_folder(canvas_instance_dir, hidden = 'true')
+
     def f():
         for user in exam.students:
             hashed_and_locked = exam.create_folder(
@@ -191,16 +205,21 @@ def create_canvas_instance_folder(instances, extra_time_students):
 
 def print_folders():
     for x in exam.list_folders(use_cache = False):
-        print('{}, {}: locked {}, hidden {}, unlock_at {}, lock_at {}'.format(x.id, x.full_name, x.locked, x.hidden, x.unlock_at, x.lock_at))
+        print(
+            f'{x.id}, {x.full_name}: locked {x.locked}, hidden {x.hidden}, '
+            f'unlock_at {x.unlock_at}, lock_at {x.lock_at}'
+        )
 
 def delete_assignments():
     for a in exam.get_assignments(use_cache = False):
-#        if a.name != 'Exam':
+        #if a.name != 'Exam':
         exam.delete_assignment(a.id)
 
 # Doesn't work. Why?
 # Canvas API is cryptic in documentation for key assignment[assignment_overrides][] in editing an assignment:
-# List of overrides for the assignment. If the assignment key is absent, any existing overrides are kept as is. If the assignment key is present, existing overrides are updated or deleted (and new ones created, as necessary) to match the provided list.
+# List of overrides for the assignment. If the assignment key is absent, any existing overrides are kept as is.
+# If the assignment key is present, existing overrides are updated or
+# deleted (and new ones created, as necessary) to match the provided list.
 def update_assignment_times():
     for a in exam.get_assignments(include = ['overrides'], use_cache = False):
         if not a.overrides[0].student_ids:
@@ -215,19 +234,35 @@ def update_assignment_times():
 def post_assignments(extra_time_students, instances_on_canvas, users = None, overwrite_id = None):
     from dominate.tags import strong, a, div, p, ul, li
 
-    if users == None:
+    if users is None:
         users = exam.students
 
     def e():
         for user in users:
             def f(format):
-                link = PurePosixPath('/') / 'courses' / str(exam.course_id) / 'files' / str(instances_on_canvas[user.id][format.extension])
-                return li(a(format_exam_name(user.integration_id, format), href = str(link)), ' ({})'.format(format.description))
+                link = PurePosixPath(
+                    '/',
+                    'courses', str(exam.course_id),
+                    'files', str(instances_on_canvas[user.id][format.extension]),
+                )
+                return li(
+                    a(format_exam_name(user.integration_id, format), href = str(link)),
+                    ' ({})'.format(format.description),
+                )
             description = div(
-                p(strong('Note'), ': This exam is individualized! Your questions differ from those of other students, but are of equal difficulty.'),
+                p(
+                    strong('Note'),
+                    ': This exam is individualized! Your questions differ from '
+                    'those of other students, but are of equal difficulty.'
+                ),
                 'Download your individual exam in one of the following formats:',
                 ul(*[map(f, formats)]),
-                p('Submit your solutions via file upload, preferably as a ', strong('single PDF file'), '. If you do not know how to convert your solutions to PDF, other formats are accepted as well. Please use separate pages for each question.'),
+                p(
+                    'Submit your solutions via file upload, preferably as a ',
+                    strong('single PDF file'),
+                    '. If you do not know how to convert your solutions to PDF, '
+                    'other formats are accepted as well. Please use separate pages for each question.',
+                ),
             )
 
             assignment = {
@@ -275,13 +310,17 @@ def write_lookup(course, submission_dir, lookup_file):
     lookup = dict((i, []) for i in range(20))
     for user in course.students:
         #if (submissions_dir / user.integration_id).exists():
+        if True:
             r = random.Random(user.integration_id)
             i = r.choice(range(20))
             lookup[i].append(user)
-    
+
     forward = dict((x.id, (i, j)) for (i, xs) in lookup.items() for (j, x) in enumerate(xs))
     with lookup_file.open('w') as file:
-        csv.writer(file).writerows((i, j, course.user_details[id].integration_id, course.user_details[id].name) for (id, (i, j)) in forward.items())
+        csv.writer(file).writerows(
+            (i, j, course.user_details[id].integration_id, course.user_details[id].name)
+            for (id, (i, j)) in forward.items()
+        )
 
 def read_lookup(lookup_file):
     with lookup_file.open() as file:

@@ -56,7 +56,7 @@ class Question:
             #print('bad lucky')
             return False
 
-        total = sum([(int) (x / self.n) for x in all if x != -1])
+        total = sum([int(x / self.n) for x in all if x != -1])
         if not total == 20:
             return False
 
@@ -101,7 +101,7 @@ class Question:
 
         if not solution:
             return
-        
+
         cluster_no = 0
         for i in range(len(self.table)):
             if self.table[i] == -1:
@@ -109,6 +109,7 @@ class Question:
                 cluster = extract(self.table, i + 1, j)
                 yield (f'sol_cluster_{cluster_no}', str(cluster))
                 orders = list(find_insertion_orders(self.table, i))
+
                 def format_order(order):
                     return '"{}"'.format(' then '.join(map(str, order)))
                 yield (f'sol_cluster_{cluster_no}_orders', {

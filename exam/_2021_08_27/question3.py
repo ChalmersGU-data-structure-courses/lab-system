@@ -11,7 +11,7 @@ image_dir = pathlib.Path(__file__).parent / 'question3'
 def gen_tmp_file(suffix = None):
     (fd, name) = tempfile.mkstemp(suffix = suffix)
     os.close(fd)
-    return pathlib.Path(name)    
+    return pathlib.Path(name)
 
 def format_left(is_left):
     return 'left' if is_left else 'right'
@@ -74,10 +74,16 @@ class _Generator:
                 yield (format_smallest(v), format_smallest(v == self.is_left))
 
     def replacements_img(self, solution = False):
-        yield ('kix.bjfury1ntd88' if not self.is_dit961 else 'kix.j8188v64adk0', gen_png_from_svg_template(svg_template_initial_tree, self.nodes, self.is_left))
+        yield (
+            'kix.bjfury1ntd88' if not self.is_dit961 else 'kix.j8188v64adk0',
+            gen_png_from_svg_template(svg_template_initial_tree, self.nodes, self.is_left)
+        )
 
         if solution:
-            yield ('kix.fb9j64evdz0y' if not self.is_dit961 else 'kix.9piqdo6kwqda', gen_png_from_svg_template(svg_template_inserted_tree, self.nodes, self.is_left))
+            yield (
+                'kix.fb9j64evdz0y' if not self.is_dit961 else 'kix.9piqdo6kwqda',
+                gen_png_from_svg_template(svg_template_inserted_tree, self.nodes, self.is_left)
+            )
             for v, id in [
                 (True, 'kix.r7dc08ncuqle' if not self.is_dit961 else 'kix.af62clhvh9zy'),
                 (False, 'kix.7d5i67igq28c' if not self.is_dit961 else 'kix.1anrg18eoi5'),

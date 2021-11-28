@@ -1,5 +1,6 @@
 import re
 
+
 class RequestMatcher:
     '''
     Interface defining a matcher for request tag names.
@@ -24,6 +25,7 @@ class RequestMatcher:
         '''
         raise NotImplementedError()
 
+
 class RegexRequestMatcher(RequestMatcher):
     def __init__(self, protection_patterns, regex, regex_flags = 0):
         '''
@@ -40,6 +42,7 @@ class RegexRequestMatcher(RequestMatcher):
         '''
         self.protection_patterns = list(protection_patterns)
         self.parse = lambda tag: re.fullmatch(regex, tag, regex_flags)
+
 
 class RequestHandler:
     '''
@@ -90,6 +93,7 @@ class RequestHandler:
         If so, its dump will be stored as the message of the above tag.
         '''
         raise NotImplementedError()
+
 
 class SubmissionHandler(RequestHandler):
     '''

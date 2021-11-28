@@ -2,6 +2,7 @@ import canvas
 
 import gitlab_config as config
 
+
 use_cache = False
 
 c = canvas.Canvas(config.canvas_url, auth_token = config.canvas_auth_token)

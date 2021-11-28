@@ -1,11 +1,12 @@
 import re
 
-import course_basics # TODO: deprecate
+import course_basics  # TODO: deprecate
 import general
 import java_tools
 import lab_interfaces
 import print_parse
 import robograder_java
+
 
 class RobogradingHandler(lab_interfaces.RequestHandler):
     '''

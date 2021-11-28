@@ -1,3 +1,5 @@
+# Deprecated.
+# Use exam/canvas.py instead.
 import csv
 import PyPDF2
 import shlex
@@ -6,6 +8,7 @@ import subprocess
 
 import general
 import exam_uploader
+
 
 selectors_file = exam_uploader.exam_dir / 'selectors.txt'
 packaged_dir = exam_uploader.exam_dir / 'packaged'
@@ -39,12 +42,18 @@ def generate_selectors(questions, num_pages, starts, omit):
             i = i + 1
         return i
 
-    return dict((q, [(starts[q], starts.get(next(q), num_pages))] if q in starts else []) for q in questions if not q in omit)
+    return dict(
+        (q, [(starts[q], starts.get(next(q), num_pages))] if q in starts else [])
+        for q in questions if not q in omit
+    )
 
 def read_selectors(file):
     lines = general.read_without_comments(file)
     return dict(
-        (entry['ID'], (entry['type'], dict((int(k), parse_ranges(v)) for (k, v) in entry.items() if k.isdigit() if v != None)))
+        (entry['ID'], (entry['type'], dict(
+            (int(k), parse_ranges(v))
+            for (k, v) in entry.items() if k.isdigit() if v is not None
+        )))
         for entry in csv.DictReader(lines, dialect = csv.excel_tab)
     )
 
@@ -62,9 +71,14 @@ def find_selectors(file, strict = True):
 
     to_pages = dict((i, []) for i in questions)
     to_pages_strict = dict((i, []) for i in questions)
-    
+
     for i in range(num_pages):
-        text = subprocess.run(['pdftotext', '-f', str(i + 1), '-l', str(i + 1), str(file), '-'], stdout = subprocess.PIPE, encoding = 'utf-8', check = True).stdout.strip()
+        text = subprocess.run(
+            ['pdftotext', '-f', str(i + 1), '-l', str(i + 1), str(file), '-'],
+            stdout = subprocess.PIPE,
+            encoding = 'utf-8',
+            check = True
+        ).stdout.strip()
         for q in questions:
             qt = f'Question {q}'
             if text.startswith(qt):
@@ -91,7 +105,12 @@ def calculate_selectors():
         to_pages_strict = dict((i, []) for i in questions)
 
         for i in range(num_pages):
-            text = subprocess.run(['pdftotext', '-f', str(i + 1), '-l', str(i + 1), str(file), '-'], stdout = subprocess.PIPE, encoding = 'utf-8', check = True).stdout.strip()
+            text = subprocess.run(
+                ['pdftotext', '-f', str(i + 1), '-l', str(i + 1), str(file), '-'],
+                stdout = subprocess.PIPE,
+                encoding = 'utf-8',
+                check = True
+            ).stdout.strip()
             for q in questions:
                 qt = f'Question {q}'
                 if text.startswith(qt):
@@ -99,11 +118,11 @@ def calculate_selectors():
                 if qt in text:
                     to_pages[q].append(i)
 
-        yes_strict = all (len(pages) == 1 for pages in to_pages_strict.values())
+        yes_strict = all(len(pages) == 1 for pages in to_pages_strict.values())
         if yes_strict and to_pages_strict[1] == [0]:
             return to_selectors(to_pages_strict, num_pages)
 
-        yes_substrict = all (len(pages) <= 1 for pages in to_pages_strict.values())
+        yes_substrict = all(len(pages) <= 1 for pages in to_pages_strict.values())
         if yes_substrict and s[0] == 'okay':
             return to_selectors(to_pages, num_pages)
 
@@ -132,7 +151,7 @@ def package_submissions():
     selectors = calculate_selectors()
     #general.mkdir_fresh(packaged_dir)
 
-    for q in [7]:#questions_actual:
+    for q in questions_actual:
         question_dir = packaged_dir / f'Q{q}'
         #question_dir.mkdir()
         for i in range(20):
@@ -147,12 +166,11 @@ def package_submissions():
             version_dir.mkdir()
 
     for (i, j, integration_id, name) in read_lookup():
-        #if integration_id == 'gusiacgi@gu.se':
-            for q in [7]:#questions_actual:
-                file = packaged_dir / f'Q{q}' / f'V{i}' / f'N{j}.pdf'
-                ranges = selectors[integration_id][q]
-                extract_from_pdf(exam_uploader.submissions_dir / integration_id / 'submission.pdf', file, ranges)
+        for q in questions_actual:
+            file = packaged_dir / f'Q{q}' / f'V{i}' / f'N{j}.pdf'
+            ranges = selectors[integration_id][q]
+            extract_from_pdf(exam_uploader.submissions_dir / integration_id / 'submission.pdf', file, ranges)
 
-            if False:
-                file = packaged_dir / 'original' / f'V{i}' / f'N{j}.pdf'
-                shutil.copy(exam_uploader.submissions_dir / integration_id / 'submission.pdf', file)
+        if False:
+            file = packaged_dir / 'original' / f'V{i}' / f'N{j}.pdf'
+            shutil.copy(exam_uploader.submissions_dir / integration_id / 'submission.pdf', file)

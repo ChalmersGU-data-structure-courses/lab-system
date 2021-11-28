@@ -1,24 +1,27 @@
-import canvas
 import csv
 import datetime
 import dateutil.parser
 import functools
 import general
-import gitlab_config as config
-import gspread
 import hashlib
 import itertools
 import logging
 import operator
-import PyPDF2
 import shlex
 import subprocess
 import sys
 
-from . import allocate_versions
-from . import instantiate_template
+import gspread
+import PyPDF2
+
+import canvas
+import gitlab_config as config  # TODO: fix hardcoded config
 from google_tools.drive import Drive
 import google_tools.general
+
+from . import allocate_versions
+from . import instantiate_template
+
 
 logger = logging.getLogger('exam.canvas')
 
@@ -58,7 +61,10 @@ class Exam:
 
         self.allocations = allocate_versions.allocate(
             [user.sis_user_id for user in self.course.students],
-            dict((self.exam_config.question_key(q), get_num_versions(v)) for q, v in self.exam_config.question_randomizers.items()),
+            dict(
+                (self.exam_config.question_key(q), get_num_versions(v))
+                for (q, v) in self.exam_config.question_randomizers.items()
+            ),
             seed = self.exam_config.allocation_seed,
         )
         general.clear_cached_property(self, 'allocation_id_lookup')
@@ -81,7 +87,10 @@ class Exam:
             google_tools.general.get_token_for_scopes(['drive', 'documents']),
             exam_id = self.exam_config.exam_id,
             solution_id = self.exam_config.solution_id,
-            questions = dict((self.exam_config.question_key(q), v[0]) for q, v in self.exam_config.question_randomizers.items()),
+            questions = dict(
+                (self.exam_config.question_key(q), v[0])
+                for (q, v) in self.exam_config.question_randomizers.items()
+            ),
             secret_salt = self.exam_config.secret_salt,
             student_versions = dict(
                 (self.format_id(id), versions)
@@ -115,7 +124,12 @@ class Exam:
         return self.exam_config.canvas_start + self.time_factor(has_extra_time) * self.exam_config.canvas_duration
 
     def end(self, has_extra_time = False):
-        return self.exam_config.canvas_start + self.time_factor(has_extra_time) * (self.exam_config.canvas_duration + self.exam_config.canvas_duration_scanning + self.exam_config.canvas_grace_period)
+        duration = sum([
+            self.exam_config.canvas_duration,
+            self.exam_config.canvas_duration_scanning,
+            self.exam_config.canvas_grace_period,
+        ])
+        return self.exam_config.canvas_start + self.time_factor(has_extra_time) * duration
 
     def create_canvas_instance_folder(self):
         self.course.create_folder(self.exam_config.canvas_instance_dir, hidden = 'true')
@@ -133,7 +147,9 @@ class Exam:
         return f'{s}-version-{formatted_id}.{extension}'
 
     def salted_hash(self, x):
-        return hashlib.shake_256(bytes(self.exam_config.secret_salt + '$' + x, encoding = 'utf-8')).hexdigest(length = 8)
+        return hashlib.shake_256(
+            bytes(self.exam_config.secret_salt + '$' + x, encoding = 'utf-8')
+        ).hexdigest(length = 8)
 
     # Make it less trivial to guess other people's exam files.
     # Attackers can still iterate over all file ids.
@@ -148,14 +164,14 @@ class Exam:
 
     def upload_instance(self, user, delete_old = True, solution = False):
         s = Exam.exam_or_solution(solution)
-        logger.log(logging.INFO, f'Uploading {s} instance for {self.course.user_str(user.id)}...')
+        logger.info(f'Uploading {s} instance for {self.course.user_str(user.id)}...')
 
         folder = self.course.get_folder_by_path(self.instance_folder_path(user), use_cache = False)
         general.print_json(folder)
-        if folder != None and delete_old:
+        if folder is not None and delete_old:
             self.course.delete_folder(folder.id)
             folder = None
-        if folder == None:
+        if folder is None:
             folder = self.course.create_folder(
                 canvas_dir = self.instance_folder_path(user),
                 locked = True,
@@ -171,7 +187,7 @@ class Exam:
         If delete_old is false, the old instance files are replaced.
         This automatically updates the links in already created assignments to point to the new files.
         '''
-        if users == None:
+        if users is None:
             users = self.course.students
 
         for user in users:
@@ -195,17 +211,18 @@ class Exam:
 
     def delete_assignments(self, use_cache = False):
         for user_id, assignment in self.get_assignments(use_cache = use_cache).items():
-            logger.log(logging.INFO, f'Deleting exam assignment for {self.course.user_str(user_id)}...')
+            logger.info(f'Deleting exam assignment for {self.course.user_str(user_id)}...')
             self.course.delete_assignment(assignment.id)
 
     def create_assignment(self, user, publish = True, update = False):
-        logger.log(logging.INFO, f'Creating exam assignment for {self.course.user_str(user.id)}...')
+        logger.info(f'Creating exam assignment for {self.course.user_str(user.id)}...')
 
         folder = self.course.get_folder_by_path(self.instance_folder_path(user))
         files = self.course.get_files(folder.id)
         has_extra_time = user.id in self.extra_time_students
 
         id = self.allocation_id_lookup[user.sis_user_id]
+
         def resource_for_format(extension):
             name = self.exam_file_name(id, extension)
             link = self.course.get_file_link(files[name].id)
@@ -232,14 +249,16 @@ class Exam:
             'post_manually': False,
             'only_visible_to_overrides': True,
             'assignment_overrides': [{
-                    'student_ids': [user.id],
-                    'title': 'override title',
-                    'unlock_at': (self.start(has_extra_time) - self.exam_config.canvas_early_assignment_unlock).isoformat(),
-                    'lock_at': self.end(has_extra_time).isoformat(),
-                    'due_at': self.end(has_extra_time).isoformat(),
-                }],
-                'description': self.exam_config.canvas_assignment_description(resource_for_format)
-            }
+                'student_ids': [user.id],
+                'title': 'override title',
+                'unlock_at': (
+                    self.start(has_extra_time) - self.exam_config.canvas_early_assignment_unlock
+                ).isoformat(),
+                'lock_at': self.end(has_extra_time).isoformat(),
+                'due_at': self.end(has_extra_time).isoformat(),
+            }],
+            'description': self.exam_config.canvas_assignment_description(resource_for_format)
+        }
 
         if update:
             r = self.course.edit_assignment(self.assignments[user.id].id, assignment)
@@ -251,7 +270,7 @@ class Exam:
         '''
         If update is True, update existing assignments instead of creating new ones.
         '''
-        if users == None:
+        if users is None:
             assignments = self.get_assignments()
             users = [user for user in self.course.students if (user.id in assignments) == update]
 
@@ -278,10 +297,10 @@ class Exam:
                     time_str = entry[self.exam_config.checklist_time]
 
                     if time_str.strip():
-                        logger.log(logging.INFO, f'Trying to find student with sortable name {name}...')
+                        logger.info(f'Trying to find student with sortable name {name}...')
                         user_id = self.course.user_sortable_name_to_id[name]
 
-                        logger.log(logging.INFO, f'Trying to parse submission time {time_str}...')
+                        logger.info(f'Trying to parse submission time {time_str}...')
                         time = dateutil.parser.parse(time_str, default = self.exam_config.canvas_start)
 
                         yield (user_id, time)
@@ -292,13 +311,16 @@ class Exam:
 
         for (user_id, assignment) in self.get_assignments(use_cache = use_cache).items():
             if not assignment.overrides[0].student_ids:
-                logger.log(logging.WARNING, f'Assignment {assignment.name} has no assigned student (typical cause: student unregistered from Canvas exam course).')
+                logger.warn(
+                    f'Assignment {assignment.name} has no assigned student '
+                    '(typical cause: student unregistered from Canvas exam course).'
+                )
                 continue
 
             user_id = assignment.overrides[0].student_ids[0]
             user = self.course.user_details[user_id]
             id = self.allocation_id_lookup[user.sis_user_id]
-            logger.log(logging.INFO, f'Downloading latest submission for {assignment.name}')
+            logger.info(f'Downloading latest submission for {assignment.name}')
 
             submission = self.course.get_submissions(assignment.id, use_cache = use_cache)[0]
             state = submission.workflow_state
@@ -308,12 +330,18 @@ class Exam:
                 for attachment in submission.attachments:
                     self.canvas.place_file(dir_submission / canvas.Assignment.get_file_name(attachment), attachment)
                 if len(submission.attachments) != 1:
-                    logger.log(logging.WARNING, f'Submission with not exactly one file: allocation id {self.format_id(id)}, {self.course.user_str(user.id)}')
+                    logger.warn(
+                        'Submission with not exactly one file: '
+                        f'allocation id {self.format_id(id)}, {self.course.user_str(user.id)}'
+                    )
 
                 if check_submission_times:
                     checked = self.checklist_submission_times.get(user_id)
                     if not checked:
-                        logger.log(logging.WARNING, f'Student {user.name} (allocation id {id}) has a submission, but no recorded submission time in the checklist.')
+                        logger.warn(
+                            f'Student {user.name} (allocation id {id}) has a submission, '
+                            'but no recorded submission time in the checklist.'
+                        )
                     else:
                         def get_date(d):
                             return d.submitted_at_date.astimezone(self.exam_config.canvas_start.tzinfo)
@@ -322,7 +350,8 @@ class Exam:
                         diff = submitted - checked
                         if diff > datetime.timedelta(minutes = 5):
                             lines = [
-                                f'Student {user.name} (allocation id {id}) has submitted {general.format_timespan(diff)} later than was recorded on the checklist:',
+                                f'Student {user.name} (allocation id {id}) has submitted '
+                                '{general.format_timespan(diff)} later than was recorded on the checklist:',
                                 f'- time recorded on checklist: {checked}',
                                 f'- time of last submission: {submitted}',
                             ]
@@ -333,7 +362,7 @@ class Exam:
                                 lines.append('There are earlier submissions:')
                                 for s in submission.submission_history:
                                     lines.append(f'- {get_date(s)}')
-                            logger.log(logging.WARNING, '\n'.join(lines))
+                            logger.warn('\n'.join(lines))
 
                 comments = submission.submission_comments
                 if comments:
@@ -343,7 +372,7 @@ class Exam:
                         filename = dir_comments / f'{general.format_with_leading_zeroes(i, len(comments))}.txt'
                         with general.OpenWithModificationTime(filename, comment.created_at_date) as file:
                             file.write(comment.comment)
- 
+
     def list_submissions(self):
         for id in self.allocations:
             dir_submission = self.exam_config.submissions_dir / self.format_id(id)
@@ -363,7 +392,7 @@ class Exam:
                 file.rename(file.with_name('submission.pdf'))
                 return
 
-        logger.log(logging.WARNING, f'Could not normalize submission {self.format_id(id)}.')
+        logger.warn(f'Could not normalize submission {self.format_id(id)}.')
 
     def normalize_submissions(self):
         for id, _ in self.submissions:
@@ -415,7 +444,7 @@ class Exam:
         return list(map(Exam.parse_range, s.split(',')))
 
     def find_question_occurrences(self, file):
-        logger.log(logging.INFO, f'Finding question title occurrences in {shlex.quote(str(file))}...')
+        logger.info(f'Finding question title occurrences in {shlex.quote(str(file))}...')
         pdf = PyPDF2.PdfFileReader(str(file), strict = False)
         num_pages = pdf.getNumPages()
         keywords = dict((q, self.exam_config.question_name(q)) for q in self.exam_config.questions)
@@ -443,7 +472,7 @@ class Exam:
 
         def end(i):
             nonlocal s
-            if s != None:
+            if s is not None:
                 r[q_current].append((s, i))
                 s = None
 
@@ -464,8 +493,8 @@ class Exam:
                 return ('enter', dict())
 
         selectors = Exam.guess_selectors(self.exam_config.questions, occurrences)
-        starts_at_beginning = occurrences[0] and occurrences[0][0][1] == True
-        questions_on_own_pages = all(not xs or xs[0][1] == True for xs in occurrences)
+        starts_at_beginning = occurrences[0] and occurrences[0][0][1] is True
+        questions_on_own_pages = all(not xs or xs[0][1] is True for xs in occurrences)
         starts_with_first_question = self.exam_config.questions or occurrences[0][0][0] == self.exam_config.questions[0]
         has_single_ranges = all(len(ranges) <= 1 for ranges in selectors.values())
         has_all_questions = all(len(ranges) >= 1 for ranges in selectors.values())
@@ -498,7 +527,10 @@ class Exam:
     def read_selector_infos(self):
         lines = general.read_without_comments(self.exam_config.selectors_file)
         return dict(
-            (int(entry['id']), (entry['type'], dict((int(k), Exam.parse_ranges(v)) for (k, v) in entry.items() if k.isdigit() if v != None)))
+            (int(entry['id']), (entry['type'], dict(
+                (int(k), Exam.parse_ranges(v))
+                for (k, v) in entry.items() if k.isdigit() if v is not None
+            )))
             for entry in csv.DictReader(lines, dialect = csv.excel_tab)
         )
 
@@ -508,10 +540,17 @@ class Exam:
 
     def write_selector_infos(self, selector_infos):
         with self.exam_config.selectors_file.open('w') as file:
-            out = csv.DictWriter(file, fieldnames = ['id', 'type'] + list(map(str, self.exam_config.questions)), dialect = csv.excel_tab)
+            out = csv.DictWriter(
+                file,
+                fieldnames = ['id', 'type'] + list(map(str, self.exam_config.questions)),
+                dialect = csv.excel_tab
+            )
             out.writeheader()
             for (id, (type, selectors)) in selector_infos.items():
-                out.writerow({'id': id, 'type': type} | dict((str(k), Exam.format_ranges(v)) for (k, v) in selectors.items()))
+                out.writerow({'id': id, 'type': type} | dict(
+                    (str(k), Exam.format_ranges(v))
+                    for (k, v) in selectors.items()
+                ))
         self.selector_infos = selector_infos
 
     def check_selector_infos(self):
@@ -575,20 +614,23 @@ class Exam:
     @staticmethod
     def extract_from_pdf(source, target, ranges):
         if ranges:
-            cmd = ['pdfjam', '--keepinfo', '--outfile', str(target), str(source), Exam.format_ranges(ranges, adjust = True)]
-            logger.log(logging.INFO, shlex.join(cmd))
+            cmd = [
+                'pdfjam', '--keepinfo', '--outfile', str(target),
+                str(source), Exam.format_ranges(ranges, adjust = True),
+            ]
+            logger.info(shlex.join(cmd))
             subprocess.run(cmd, check = True)
 
     def extract_question_submission(self, dir, file, id, q):
         Exam.extract_from_pdf(file, dir / (self.format_id(id) + '.pdf'), self.selector_infos[id][1][q])
 
     def package_question(self, dir, q, include_solutions):
-        logger.log(logging.INFO, f'Packaging question {q}...')
+        logger.info(f'Packaging question {q}...')
         for (id, file) in self.submissions:
             self.extract_question_submission(dir, file, id, q)
 
     def package_randomized_question(self, dir, q, include_solutions):
-        logger.log(logging.INFO, f'Packaging question {q} (randomized)...')
+        logger.info(f'Packaging question {q} (randomized)...')
         for (id, file) in self.submissions:
             version = self.allocations[id][1][self.exam_config.question_key(q)]
             dir_version = dir / ('version-' + self.format_version(version))
@@ -608,13 +650,19 @@ class Exam:
         for q in self.exam_config.questions:
             dir_question = dir / self.exam_config.question_key(q)
             dir_question.mkdir()
-            f = self.package_randomized_question if q in self.exam_config.question_randomizers else self.package_question
+            f = (
+                self.package_randomized_question
+                if q in self.exam_config.question_randomizers
+                else self.package_question
+            )
             f(dir_question, q, include_solutions)
 
     @functools.cached_property
     def gradings(self):
-        worksheet = gspread.oauth().open_by_key(self.exam_config.grading_sheet).worksheet(self.exam_config.grading_worksheet if hasattr(self.exam_config, 'grading_worksheet') else 0)
-        rows = worksheet.get_all_values() #value_render_option = 'FORMULA'
+        worksheet = gspread.oauth().open_by_key(self.exam_config.grading_sheet).worksheet(
+            self.exam_config.grading_worksheet if hasattr(self.exam_config, 'grading_worksheet') else 0
+        )
+        rows = worksheet.get_all_values()  # value_render_option = 'FORMULA'
         grading_lookup = self.exam_config.GradingLookup(self.exam_config.grading_rows_headers(rows))
 
         def process_row(row):
@@ -640,11 +688,15 @@ class Exam:
             return output
 
         with output.open('w') as file:
-            out = csv.DictWriter(file, fieldnames = ['ID', 'Name'] + [key for (key, _) in self.exam_config.grading_report_columns])
+            out = csv.DictWriter(
+                file,
+                fieldnames = ['ID', 'Name'] + [key for (key, _) in self.exam_config.grading_report_columns]
+            )
             out.writeheader()
             for user in users:
                 id = self.allocation_id_lookup.get(user.sis_user_id)
-                grading = self.gradings.get(id) if id != None else None
+                grading = self.gradings.get(id) if id is not None else None
+
                 def f():
                     yield ('ID', user.sis_user_id)
                     yield ('Name', user.sortable_name)
@@ -655,11 +707,11 @@ class Exam:
     def write_grading_report(self, output, include_non_allocations = True, include_non_submissions = True):
         def include(user):
             id = self.allocation_id_lookup.get(user.sis_user_id)
-            if id == None:
+            if id is None:
                 return include_non_allocations
 
             grading = self.gradings.get(id)
-            if grading == None:
+            if grading is None:
                 return include_non_submissions
 
             return True
@@ -669,16 +721,16 @@ class Exam:
         self.write_grading_report_for_users(output, students)
 
     def upload_grading(self, user, replace_author_name = None, dry_run = False):
-        logger.log(logging.INFO, f'Uploading grading for {self.course.user_str(user.id)}...')
+        logger.info(f'Uploading grading for {self.course.user_str(user.id)}...')
 
         id = self.allocation_id_lookup.get(user.sis_user_id)
-        if id == None:
-            logger.log(logging.INFO, f'No allocation.')
+        if id is None:
+            logger.info('No allocation.')
             return
 
         grading = self.gradings.get(id)
         if not grading:
-            logger.log(logging.INFO, f'No grading.')
+            logger.info('No grading.')
             return
 
         assignment = self.assignments[user.id]
@@ -704,7 +756,11 @@ class Exam:
             if replace_author_name:
                 for comment in submission.submission_comments:
                     if comment.author_name == replace_author_name:
-                        self.canvas.delete(self.course.endpoint + ['assignments', assignment.id, 'submissions', user.id, 'comments', comment.id])
+                        self.canvas.delete(self.course.endpoint + [
+                            'assignments', assignment.id,
+                            'submissions', user.id,
+                            'comments', comment.id
+                        ])
             endpoint = self.course.endpoint + ['assignments', assignment.id, 'submissions', user.id]
             params = {
                 'comment[text_comment]': self.exam_config.grading_feedback(grading, resource),
@@ -716,7 +772,7 @@ class Exam:
                 self.canvas.put(endpoint, params = params)
 
     def upload_gradings(self, users = None, **args):
-        if users == None:
+        if users is None:
             users = self.course.students
 
         for user in users:

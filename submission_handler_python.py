@@ -1,6 +1,7 @@
 import lab_interfaces
 import live_submissions_table
 
+
 class SubmissionHandler(lab_interfaces.SubmissionHandler):
     def __init__(self, request_matcher, review_response, review_response_key = 'grading'):
         self.request_matcher = request_matcher
