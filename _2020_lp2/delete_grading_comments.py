@@ -2,7 +2,9 @@ import logging
 
 from general import print_json
 from canvas import Canvas, Course, Assignment
-import config
+
+from . import config
+
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)

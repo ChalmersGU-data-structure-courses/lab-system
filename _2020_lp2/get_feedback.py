@@ -70,14 +70,15 @@ args = p.parse_args()
 
 
 import logging
-
 import tempfile
 
 from general import multidict, fix_encoding
 from canvas import Canvas, Course, Assignment
-from lab_assignment import LabAssignment
-from get_feedback_helpers import parse_answers
-import config
+
+from .lab_assignment import LabAssignment
+from .get_feedback_helpers import parse_answers
+from . import config
+
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO if args.verbose else 25)

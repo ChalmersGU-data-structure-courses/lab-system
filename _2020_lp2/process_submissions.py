@@ -7,8 +7,8 @@ import argparse
 from pathlib import Path
 import shlex
 
+from . import lab_assignment_constants
 
-import lab_assignment_constants
 
 dir_script = Path(__file__).parent
 path_extra = dir_script / 'node_modules' / '.bin'
@@ -172,8 +172,10 @@ import shutil
 
 from general import print_error, add_to_path, join_lines
 from canvas import Canvas, Course
-from lab_assignment import LabAssignment
-import config
+
+from . import config
+from .lab_assignment import LabAssignment
+
 
 if not (args.unpack or args.dir.exists()):
     print_error(

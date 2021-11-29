@@ -25,9 +25,10 @@ from general import (
     sorted_directory_list, copy_tree_fresh, get_modification_time
 )
 from canvas import Assignment
-import lab_assignment_constants
-import submission_fix_lib
-import test_lib
+
+from . import lab_assignment_constants
+from . import submission_fix_lib
+from . import test_lib
 
 
 logger = logging.getLogger(__name__)
