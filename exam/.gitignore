@@ -1,0 +1,13 @@
+# Exam version allocations, answers question ranges selectors.
+allocations.csv
+selectors.csv
+
+# Exams, submissions, submission comments.
+instances
+submissions
+submissions-normalized
+submission_comments.txt
+
+# Suspected cheating.
+cluster
+evidence
