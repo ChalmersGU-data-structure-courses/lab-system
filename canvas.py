@@ -17,7 +17,8 @@ from general import (
     fix_encoding, on, eq, without_adjacent_dups, format_path
 )
 import simple_cache
-from submission_fix_lib import HandlerException
+
+from _2020_lp2.submission_fix_lib import HandlerException
 
 
 logger = logging.getLogger(__name__)
