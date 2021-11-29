@@ -1,3 +1,4 @@
+# Christian: adapt autograde.py to pathlib.
 import difflib
 import re
 import os
