@@ -92,8 +92,9 @@ import shutil
 
 from general import print_error
 from canvas import Canvas, Course
-import compression
-import config
+
+from . import compression
+from . import config
 
 
 logger = logging.getLogger(__name__)

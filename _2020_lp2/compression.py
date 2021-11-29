@@ -5,8 +5,10 @@ import shutil
 import subprocess
 import sys
 
-import dir_glob
 from general import flatten
+
+from . import dir_glob
+
 
 logger = logging.getLogger(__name__)
 

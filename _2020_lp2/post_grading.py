@@ -119,8 +119,9 @@ import re
 
 from general import print_error, multidict, from_singleton
 from canvas import Canvas, Course
-from lab_assignment import LabAssignment
-import config
+
+from . import config
+from .lab_assignment import LabAssignment
 
 
 logging.basicConfig()

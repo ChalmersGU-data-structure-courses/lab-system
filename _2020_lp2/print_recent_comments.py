@@ -67,9 +67,10 @@ import webbrowser
 from dominate import document
 from dominate.tags import div, pre, ul, li
 
-from canvas import Canvas, GroupSet
-from lab_assignment import LabAssignment
-import config
+from canvas import Canvas, Course, GroupSet
+
+from .lab_assignment import LabAssignment
+from . import config
 
 
 logging.basicConfig()
@@ -79,7 +80,8 @@ else:
     logging.getLogger().setLevel(25)
 
 canvas = Canvas(config.canvas_url, cache_dir = Path(args.cache_dir))
-group_set = GroupSet(canvas, config.course_id, config.group_set, use_cache = True)
+course = Course(canvas, config.course_id, use_cache = True)
+group_set = GroupSet(course, config.group_set, use_cache = True)
 lab_assignment = LabAssignment(
     canvas,
     config.course_id,
