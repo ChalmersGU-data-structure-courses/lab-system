@@ -6,7 +6,9 @@ import re
 import general
 
 
-this_dir = Path(__file__).parent
+#this_dir = Path(__file__).parent
+
+this_dir = Path()
 
 exam_id = '1WvOb_D4tQScmJUuq8LgtTbMsNCl1r7qurdCpFPsY6jY'
 solution_id = '1zX1aPMw6mQd0WMZQLgw5ZmlZxOsxOgwv6lU77ehY7L8'
@@ -62,11 +64,11 @@ def canvas_assignment_description(resource_for_format):
         ),
     ).render(pretty = False)
 
-import complexity
-import sorting
-import priority_queue
-import hash_table
-import graph
+from .._2021_lp3 import complexity
+from .._2021_lp3 import sorting
+from .._2021_lp3 import priority_queue
+from .._2021_lp3 import hash_table
+from .._2021_lp3 import graph
 
 questions = [i + 1 for i in range(8)]
 
