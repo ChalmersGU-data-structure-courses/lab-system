@@ -1,5 +1,3 @@
-# Deprecated.
-# Use exam/canvas.py instead.
 import logging
 #from  pathlib import Path
 
