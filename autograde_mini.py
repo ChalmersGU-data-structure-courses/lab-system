@@ -335,7 +335,7 @@ def main():
     cfg.datadirs = [basename(f) for f in glob(pjoin(cfg.problem, '*')) if isdir(f)]
     cfg.testscripts = [abspath(f) for f in glob(pjoin(cfg.testdir, '*')) if isfile(f) and access(f, X_OK)]
 
-    cfg.labname = basename(cfg.problem.rstrip('/'))
+    cfg.labname = open(pjoin(cfg.lab, "name")).read().strip()
     cfg.labfiles = set(basename(f) for f in glob(pjoin(cfg.solution, 'solution', '*.*')))
 
     autograde_all(cfg)
