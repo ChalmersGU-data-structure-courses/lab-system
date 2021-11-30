@@ -1,131 +1,347 @@
+# Java submission compilation and robograding.
 import logging
 from pathlib import Path
-import shlex
 import subprocess
 
 import check_symlinks
-import course_basics
 import general
 import java_tools
 import markdown
 from this_dir import this_dir
 
 
-# Root of the code repository.
-code_root = this_dir.parent
-
 logger = logging.getLogger(__name__)
 
-class SubmissionHandlingExceptionForwarder(course_basics.SubmissionHandlingException):
-    def __init__(self, e):
-        self.e = e
-        self.__str__ = e.__str__
-        self.markdown = e.markdown
 
-class SymlinkException(SubmissionHandlingExceptionForwarder):
+class HandlingException(Exception, markdown.Markdown):
+    '''Raised for errors caused by a problems with a submission.'''
     pass
 
-class CompileException(course_basics.SubmissionHandlingException):
-    def __init__(self, e):
-        self.e = e
+# ## Exceptions and function for running a robograder.
+#
+# This is quite general and does not assume anything
+# about the robograder architecture and configuration.
 
-    def markdown(self):
-        return general.join_lines([
-            'There were compilation errors:'
-        ]) + markdown.escape_code_block(self.e.compile_errors)
-
-    def __str__(self):
-        return self.e.compile_errors
-
-class Compiler(course_basics.Compiler):
-    def compile(self, src, bin):
-        try:
-            check_symlinks.check_self_contained(src)
-            java_tools.compile_unknown(src = src, bin = bin)
-        except check_symlinks.SymlinkException as e:
-            raise SymlinkException(e)
-        except java_tools.CompileError as e:
-            raise CompileException(e)
-
-class RobograderException(course_basics.SubmissionHandlingException):
+class RobograderException(HandlingException):
+    '''Raised for robograding errors caused by a problem with a submission.'''
     pass
 
 class FileConflict(RobograderException):
+    prefix = 'I could not robograde this submission because the compiled file'
+    suffix = 'conflicts with files I use for testing.'
+
     def __init__(self, file):
         self.file = file
 
+    def __str__(self):
+        return f'{self.prefix} {general.format_path(self.file)} {self.suffix}'
+
     def markdown(self):
         return general.join_lines([
-            'I could not robograde your submission because the compiled file',
-        ]) + markdown.escape_code_block(self.file) + general.join_lines([
-            'conflicts with files I use for testing.'
+            self.prefix,
+            *markdown.escape_code_block(self.file).splitlines(),
+            self.suffix,
         ])
 
 class ExecutionError(RobograderException):
+    prolog = '''\
+Oops, you broke the robograder!
+I encountered a problem while robograding your submission.
+This could be a problem with myself (a robo-bug)
+or with your code (unexpected changes to class or methods signatures).
+In the latter case, you might elucidate the cause from the below error message.'
+In the former case, please tell my designers!
+'''
+
     def __init__(self, errors):
         self.errors = errors
 
+    def __str__(self):
+        return general.join_lines('\n'.join(
+            self.prolog,
+            self.errors,
+        ))
+
     def markdown(self):
-        return general.join_lines([
-            'Oops, you broke the robograder!',
-            '',
-            'I encountered a problem while testing your submission.',
-            'This could be a problem with myself (a robo-bug) or with your code '
-            '(unexpected changes to class or methods signatures).',
-            'In the latter case, you might elucidate the cause from the below error message.',
-            'In the former case, please tell my designers!',
-        ]) + markdown.escape_code_block(self.errors)
+        return general.join_lines('\n'.join(
+            self.prolog,
+            markdown.escape_code_block(self.errors),
+        ))
 
-class Robograder:
-    def setup(self, lab, src, bin):
-        self.machine_speed = lab.course.config.robograder_machine_speed
-        self.path_lib = code_root / 'Other' / 'robograder' / 'java' / 'src'
-        self.path_robograder = lab.config.path_source / 'robograder'
-        self.classpath = [
-            self.path_lib,
-            self.path_robograder,
-        ]
-        self.entrypoint = 'Robograder'
+def run(
+    submission_src,
+    submission_bin,
+    classpath,
+    entrypoint,
+    arguments = [],
+    permissions = [],
+):
+    '''
+    Run a robograder on a submission.
+    All path arguments are instances of pathlib.Path.
 
-        logger.info('Compiling robograder {}'.format(shlex.quote(str(self.path_robograder))))
-        java_tools.compile(
-            self.path_robograder,
-            skip_if_exist = False,
-            classpath = [bin] + self.classpath,
+    Arguments:
+    * submission_src:
+        The source directory of the submission.
+        Needed because submission or robograding code may access data files from here.
+        The robograder is run with this directory as working directory.
+    * submission_bin:
+        The directory of the compiled class files of the submission.
+        This may be src_submission if the submission was compiled in-place.
+    * classpath:
+        A list of directories.
+        The classpath for the robograder.
+    * entrypoint:
+        A fully qualified Java class name (string).
+        The entrypoint for the robograder.
+    * arguments:
+        List of string arguments to pass to the robograder.
+        A list of strings.
+    * permissions:
+        Specifies additional permission statements to apply in the security policy to the submission code.
+        See java_tools.permission_file for an example such permission statement.
+        By default, the only permission granted is to read within the submission source directory.
+    '''
+    # Check for class name conflicts.
+    logger.debug('Checking for file conflicts.')
+    for dir in classpath:
+        with general.working_dir(dir):
+            files = list(Path().rglob('*.class'))
+        for file in files:
+            if (submission_bin / file).exists():
+                raise FileConflict(file)
+
+    # Set up security policy to allow submission code to only read submission directory.
+    def policy_entries():
+        for dir in classpath:
+            yield (dir, [java_tools.permission_all])
+        yield (submission_bin, [java_tools.permission_file(submission_src, True), *permissions])
+
+    # Run the robograder.
+    logger.debug('Running robograder.')
+    process = java_tools.run(
+        entrypoint,
+        policy_entries = policy_entries(),
+        args = arguments,
+        classpath = [submission_bin, *classpath],
+        cwd = submission_src,
+        stdout = subprocess.PIPE,
+        stderr = subprocess.PIPE,
+        encoding = 'utf-8',
+    )
+    if process.returncode != 0:
+        raise ExecutionError(process.stderr)
+
+    logger.debug('Robograder output:\n' + process.stdout)
+    return process.stdout
+
+# ## How to compile a robograder?
+#
+# We have several code sources:
+# (a) the lab problem,
+# (b) libraries needed by the robograder,
+# (c) the robograder itself.
+#
+# The lab problem folder only has Java source files.
+# It should not be littered with compilation outputs as
+# it is used as source to initialize the official lab repository.
+#
+# To simplify the dependency chain, we take from (a) directly the Java files as compilation input.
+# If class files exist in the lab problem folder (they should not), we want to ignore them.
+# So we set the sourcepath to (a).
+#
+# We do not wish class files for the lab problem to be produced:
+# * Without a destination directory, they would pollute the lab problem folder.
+# * With a destination directory, they would conflict with student submission files in the robograding.
+# To we disable implicit creation of class files.
+#
+# If the robograder compiles, then it should run without dependency complaints.
+# So any class used from the libraries must be available in class file form.
+# Since we disable implicit creation of class files, we cannot create them at this point.
+# So we must assume they exist.
+# So we include the libraries on the classpath and exclude them on the sourcepath.
+#
+# The remaining decision:
+# Should we write the robograder class files next to
+# the corresponding source files or into a separate binary directory?
+# Since we disable implicit generation of class files,
+# we can get the first option by setting the robograder source directory as destination.
+# So we can let the user decide by having them specify the binary directory.
+# Always specifying the destination directory explicitly also side-steps problems with symlinks.
+
+def compile(
+    problem_src,
+    robograder_src,
+    robograder_bin = None,
+    **kwargs,
+):
+    '''
+    Compile the robograder.
+    All path arguments are instances of pathlib.Path.
+
+    Arguments:
+    * problem_src:
+        The directory of the lab problem.
+        Contains Java source files.
+        The robograder may use these as dependencies.
+        No class files will be generated for them.
+        When run, this dependency is replaced by the compiled student submission.
+    * robograder_src:
+        The source directory of the robograder.
+    * robograder_bin [output]:
+        The compilation target directory.
+        The compiled class files of the robograder are placed here.
+        If set to None, it defaults to robograder_src.
+    * kwargs:
+        Further named arguments to be passed to java_tools.compile.
+        These should exclude: files, destination, implicit.
+        Notes for specific arguments:
+        - classpath:
+            The classpath for the robograder.
+            Java source files on the classpath will be ignored.
+            (This is a side-effect of setting the sourcepath to problem_src.)
+        - options: We presend javac_standard_options to this iterable.
+    '''
+    logger.info('Compiling robograder.')
+    java_tools.compile(
+        src = robograder_src,
+        bin = robograder_bin,
+        sourcepath = [problem_src],
+        implicit = False,
+        **kwargs,
+    )
+
+# ## Current Robograder architecture.
+#
+# This robograder architecture is implemented for the following Java labs:
+# - autocomplete,
+# - plagiarism-detector,
+# - path-finder.
+
+# Entrypoint of the robograder.
+entrypoint = 'Robograder'
+
+# Root of the code repository.
+repo_root = this_dir.parent
+
+# Library used by robograders.
+lib = repo_root / 'Other' / 'robograder' / 'java'
+lib_src = lib / 'src'
+
+def compile_lib(self):
+    logger.info('Compiling robograder library.')
+    java_tools.compile(
+        src = lib_src,
+        bin = lib_src,
+        implicit = False,
+    )
+
+class RobograderMissingException(Exception):
+    pass
+
+class LabRobograder:
+    '''
+    A robograder class for robograders following the architecture
+    that is currently implemented for the following Java labs:
+    - autocomplete,
+    - plagiarism-detector,
+    - path-finder.
+
+    These robograders depend on a shared Java library at:
+        <repo-root>/Other/robograder/java
+    with source subdirectory src (also used for its compiled class files).
+    Their entrypoint is called Robograder.
+    Their single argument is a floating-point number specifying
+    the machine speed relative to a 2015 Desktop machine;
+    this is used to determine timeout periods for test cases.
+    '''
+
+    def __init__(self, dir_lab, machine_speed = 1):
+        '''
+        Arguments:
+        * dir_lab:
+            The lab directory (instance of pathlib.Path).
+            For example: <repo-root>/labs/autocomplete/java
+        * machine_speed:
+            Floating-point number.
+            The machine speed relative to a 2015 Desktop machine.
+
+        An instance of RobograderMissingException is raised if the lab does
+        not have a robograder, i.e. does not have robograder subdirectory.
+        '''
+        self.dir_lab = dir_lab
+        self.machine_speed = machine_speed
+
+        self.robograder_src = self.dir_lab / 'robograder'
+        if not self.robograder_src.is_dir():
+            raise RobograderMissingException(f'No robograder found in {general.format_path(dir_lab)}')
+        logger.debug('Detected robograder in {general.format_path(dir_lab)}.')
+
+        self.problem_src = self.dir_lab / 'problem'
+        self.classpath = [lib_src],
+
+    def compile(self):
+        compile(
+            problem_src = self.problem_src,
+            robograder_src = self.robograder_src,
+            classpath = self.classpath,
         )
 
     def run(self, src, bin):
-        # Check for class name conflicts.
-        for dir in self.classpath:
-            with general.working_dir(dir):
-                files = list(Path().rglob('*.class'))
-            for file in files:
-                if (bin / file).exists():
-                    raise FileConflict(file)
-
-        # Set up security policy to allow submission code to only read submission directory.
-        def policy_entries():
-            for dir in self.classpath:
-                yield (dir, [java_tools.permission_all])
-            yield (bin, [java_tools.permission_file(src, True)])
-
-        # Run the robograder.
-        process = java_tools.run(
-            self.entrypoint,
-            policy_entries = policy_entries(),
-            args = [str(self.machine_speed)],
-            classpath = [bin] + self.classpath,
-            cwd = src,
-            stdout = subprocess.PIPE,
-            stderr = subprocess.PIPE,
-            encoding = 'utf-8',
+        run(
+            submission_src = src,
+            submission_bin = bin,
+            classpath = self.classpath,
+            entrypoint = entrypoint,
+            arguments = [str(self.machine_speed)],
         )
-        if process.returncode != 0:
-            raise ExecutionError(process.stderr)
 
-        logger.debug('robograding output of {}:\n'.format(self.entrypoint) + process.stdout)
-        return process.stdout
+# ## Checking and compiling submissions.
+#
+# The following exceptions and checks just wrap functions from other modules
+# using the class HandlingException to designate submission errors.
 
-class StudentCallableRobograder(course_basics.StudentCallableRobograder, Robograder):
-    def __init__(self):
-        super().__init__()
+class SymlinkException(HandlingException):
+    prefix = 'There is a problem with symbolic links:'
+
+    def __init__(self, e):
+        self.e = e
+
+    def __str__(self):
+        return general.join_lines([
+            self.prefix,
+            str(self.e),
+        ])
+
+    def markdown(self):
+        return general.join_lines([
+            self.prefix,
+            *self.e.markdown().splitlines(),
+        ])
+
+def submission_check_symlinks(src, strict = False):
+    try:
+        return check_symlinks.check(src, strict = strict)
+    except check_symlinks.SymlinkException as e:
+        raise SymlinkException(e)
+
+class CompileException(java_tools.CompileError, HandlingException):
+    prefix = 'There are compilation errors:'
+
+    def __str__(self):
+        return general.join_lines([
+            self.prefix,
+            *self.compile_errors.splitlines(),
+        ])
+
+    def markdown(self):
+        return general.join_lines([
+            self.prefix,
+            *markdown.escape_code_block(self.compile_errors).splitlines(),
+        ])
+
+def submission_compile(src, bin):
+    try:
+        java_tools.compile_unknown(src = src, bin = bin)
+    except java_tools.CompileError as e:
+        raise CompileException(e.compile_errors)
