@@ -122,7 +122,14 @@ def get_src_files(src, src_files):
         src_files = java_files(src)
     return list(src_files)
 
-def compile_unknown(src, bin, src_files = None, detect_encoding = True, check = False, **kwargs):
+def compile_unknown(
+    src,
+    bin,
+    src_files = None,
+    detect_encoding = True,
+    check = False,
+    **kwargs,
+):
     '''
     Compile all Java source files that are descendants of 'src'.
     The source files might not have 'src' as the base of their package hierarchy.
@@ -169,7 +176,11 @@ def compile_unknown(src, bin, src_files = None, detect_encoding = True, check = 
     javac_prepend_standard_options(kwargs)
 
     logger.debug(f'Compiling source files {src_files}')
-    cmd = list(cmd_javac(files = src_files, destination = bin, **kwargs))
+    cmd = list(cmd_javac(
+        files = src_files,
+        destination = bin,
+        **kwargs,
+    ))
     general.log_command(logger, cmd, True)
     process = subprocess.run(cmd, stderr = subprocess.PIPE, encoding = 'utf-8')
     success = process.returncode == 0
