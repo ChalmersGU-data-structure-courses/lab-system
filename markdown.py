@@ -27,4 +27,4 @@ def find_delimiter(s, char, least = 0):
 
 def escape_code_block(s, char = '`'):
     delimiter = find_delimiter(s, char, least = 3)
-    return general.join_lines((delimiter, s, delimiter))
+    return general.join_lines([delimiter, s.rstrip(), delimiter])
