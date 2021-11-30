@@ -47,6 +47,7 @@ def cmd_javac(
     sourcepath = None,
     classpath = None,
     encoding = None,
+    implicit = None,
     options = None,
 ):
     '''
@@ -59,6 +60,9 @@ def cmd_javac(
     * sourcepath: Iterable of paths to use as sourcepath.
     * classpath: Iterable of paths to use as classpath.
     * encoding: Encoding to use (string).
+    * implicit:
+        Whether to generate class files for implicitly loaded source files (boolean).
+        On by default.
     * option: Iterable of further options (string convertible).
 
     Returns an iterable of strings.
@@ -71,6 +75,8 @@ def cmd_javac(
     yield from classpath_option(classpath)
     if encoding is not None:
         yield from ['-encoding', encoding]
+    if implicit is not None:
+        yield '-implicit:' + ('class' if implicit else 'none')
     if options is not None:
         for option in options:
             yield str(option)
