@@ -3,6 +3,17 @@ import re
 import general
 
 
+class Markdown:
+    '''An interface for classes whose instances admit representations in Markdown.'''
+
+    def markdown(self):
+        '''
+        The representation of this object in Markdown.
+        Should be a marked up version of self.__str__().
+        '''
+        raise NotImplementedError()
+
+
 def find_delimiter(s, char, least = 0):
     '''
     Find the shortest repeating sequence of 'char' that does not appear in 's'.
