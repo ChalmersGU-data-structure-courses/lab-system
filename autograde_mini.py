@@ -91,12 +91,12 @@ def autograde(group, submissionfolder, cfg):
     runtime_errors = []
     print(f' - run tests', end='', flush=True)
     for script in cfg.testscripts:
-        outfile = basename(script) + ".out"
+        outfile = output(script)
         print(f' .', end='', flush=True)
         if isinstance(script, str):
             script = script.split()
         try:
-            process = subprocess.run(script, cwd=outfolder, timeout=cfg.timeout, capture_output=True)
+            process = subprocess.run(script, cwd=outfolder, env=os.environ, timeout=cfg.timeout, capture_output=True)
         except subprocess.TimeoutExpired:
             print(f'timeout', end='', flush=True)
             runtime_errors += [
@@ -123,14 +123,17 @@ def autograde(group, submissionfolder, cfg):
 
     row += [
         H('td', joinBR(
-            diff_and_link(pjoin(outfolder, f + ".out"), pjoin(cfg.outfolder, "solution", f + ".out"),
+            diff_and_link(pjoin(outfolder, f), pjoin(cfg.outfolder, "solution", f),
                               'OUT', 'GOLD', pjoin(outfolder, f))
-            for f in sorted(set(basename(f) for f in cfg.testscripts))
+            for f in sorted(set(output(f) for f in cfg.testscripts))
         )),
         H('td', joinBR(runtime_errors)),
     ]
 
     return H('tr', '\n'.join(row))
+
+def output(script):
+    return basename(script).split(".")[0] + ".out"
 
 
 GIT_DIFF_CMD = 'git diff --no-index --histogram --unified=1000 --ignore-space-at-eol'.split()
@@ -325,6 +328,13 @@ def switch_to_submission(repo, group, submission):
     return repo.working_tree_dir
 
 def main():
+    # These are passed into the child process
+    os.environ['PYTHONDONTWRITEBYTECODE']='1'
+    if 'PYTHONPATH' in os.environ:
+        os.environ['PYTHONPATH'] += ':.'
+    else:
+        os.environ['PYTHONPATH'] = '.'
+
     cfg = read_args()
 
     cfg.problem = pjoin(cfg.lab, "problem")
