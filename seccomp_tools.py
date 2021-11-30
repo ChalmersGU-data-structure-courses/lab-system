@@ -25,42 +25,42 @@ def setup_seccomp(callback = None):
 
     # Allow exiting.
     f.add_rule(ALLOW, "exit_group")
-
-    # Don't seem needed yet.
-    #f.add_rule(ALLOW, "rt_sigaction")
-    #f.add_rule(ALLOW, "rt_sigreturn")
-    #f.add_rule(ALLOW, "rt_sigprocmask")
+    f.add_rule(ALLOW, "rt_sigaction")
+    f.add_rule(ALLOW, "rt_sigreturn")
+    f.add_rule(ALLOW, "rt_sigprocmask")
     
     # Allow memory allocation.
     f.add_rule(ALLOW, "brk")
     f.add_rule(ALLOW, "mmap", Arg(4, EQ, 0xffffffff))
+    f.add_rule(ALLOW, "mmap", Arg(4, EQ, 0xffffffffffffffff))
     f.add_rule(ALLOW, "munmap")
 
     # Allow opening files read-only and closing files.
+    f.add_rule(ALLOW, "open", Arg(2, MASKED_EQ, 0b11, 0))
     f.add_rule(ALLOW, "openat", Arg(2, MASKED_EQ, 0b11, 0))
     f.add_rule(ALLOW, "close")
 
     # Allow statting files and listing directory entries.
+    f.add_rule(ALLOW, "stat")
+    f.add_rule(ALLOW, "fstat")
     f.add_rule(ALLOW, "newfstatat")
     f.add_rule(ALLOW, "getdents64")
 
-    # Allow reading, writing, and seeking files open fles.
+    # Allow reading and seeking open fles.
     f.add_rule(ALLOW, "read")
-    f.add_rule(ALLOW, "write")
     f.add_rule(ALLOW, "lseek")
+    f.add_rule(ALLOW, "fcntl")
+    f.add_rule(ALLOW, "pselect6")
 
-    # Needed by REPL? Or rather by time.sleep?
-    #f.add_rule(ALLOW, "pselect6")
+    # Allow writing to stdout/stderr only.
+    f.add_rule(ALLOW, "write", Arg(0, EQ, sys.stdout.fileno()))
+    f.add_rule(ALLOW, "write", Arg(0, EQ, sys.stderr.fileno()))
 
-    # Allow setting "close on exec" on file descriptor.
-    # This is done using ioctl(fd, FIOCLEX).
-    # Like all ioctl requests, the value of FIOCLEX is architecture-dependent.
-    # On x86-64, FIOCLEX = 0x5451.
-    # TODO: Read value of FIOCLEX in architecture-independent manner.
-    f.add_rule(ALLOW, "ioctl", Arg(1, EQ, 0x5451))
-
-    # Needed by runpy.run_path
+    # Documented to never fail.
     f.add_rule(ALLOW, "getcwd")
+    f.add_rule(ALLOW, "getpid")
+    f.add_rule(ALLOW, "getppid")
+    f.add_rule(ALLOW, "gettid")
 
     # Allow the caller to modify the filter.
     if callback != None:
