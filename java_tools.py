@@ -119,13 +119,16 @@ def get_src_files(src, src_files):
 def compile_unknown(src, bin, src_files = None, detect_encoding = True, check = False, **kwargs):
     '''
     Compile all Java source files that are descendants of 'src'.
-    The compiled class files are placed in 'bin'.
     The source files might not have 'src' as the base of their package hierarchy.
     Useful for compiling student submissions.
 
     All path arguments are strings or instances of pathlib.Path.
 
     Arguments:
+    * src: The source directory.
+    * bin [output]:
+        The compilation target directory.
+        This is where the compiled class files are placed.
     * src_files:
         An iterable of source files to compile.
         If not given, defaults to all children files of 'src' with suffix '.java'.
@@ -138,7 +141,7 @@ def compile_unknown(src, bin, src_files = None, detect_encoding = True, check = 
     * kwargs:
         Further keyword arguments to be passed to javac_cmd.
         These should exclude: files, destination.
-        Note that javac_standard_options is added to options.
+        javac_standard_options prepended to the iterable 'options'.
 
     Returns a pair (success, error_output) where:
     * success is a Boolean indicating whether compilation was successful,
@@ -171,31 +174,39 @@ def compile_unknown(src, bin, src_files = None, detect_encoding = True, check = 
 
 def compile(
     src = None,
+    bin = None,
     src_files = None,
     skip_if_exist = False,
-    check = False,
-    **kwargs
+    **kwargs,
 ):
     '''
     Compile Java source files (if any) in 'src' or as given by src_files.
-    The source files must not be symlinks.
     One of 'src' and 'src_files' must be given.
 
     All path arguments are strings or instances of pathlib.Path.
 
+    Note on symlinks:
+    * The source files must not be symlinks.
+    * If bin is None, then the parent directory of each source file must not be a symlink.
+
     Arguments:
+    * src: The source directory.
+    * bin [output]:
+        The compilation target directory.
+        This is where the compiled class files are placed.
+        If None, then these are placed next to the corresponding source file.
     * src_files:
         An iterable of source files to compile.
         If not given, defaults to all children files of 'src' with suffix '.java'.
         All source files should treat 'src' as the basis of their package hierarchy.
     * skip_if_exist:
-        If set, skip compiling those source files that do already have
+        If set, skip compiling if all source files have
         a compiled class file with newer modification time.
-        If all source files are skipped, the output is (True, str()).
+        In that case, the output is (True, str()).
         Broken by renamings of files and directories and the presence of symlinks.
     * kwargs:
         Further keyword arguments to pass to cmd_javac.
-        These should exclude: files.
+        These should exclude: files, destination.
         Note that javac_standard_options is added to options.
 
     Raises an instance of CompileError on compilation error.
@@ -206,15 +217,9 @@ def compile(
         bin_file = src_file.with_suffix('.class')
         return bin_file.exists() and os.path.getmtime(bin_file) > general.get_modification_time(src_file)
 
-    def need_compilation(src_files):
-        for src_file in src_files:
-            if is_up_to_date(src_file):
-                logger.debug(f'Source file {str(src_file)} is up to date, skipping compilation.')
-            else:
-                yield src_file
-
-    if skip_if_exist:
-        src_files = list(need_compilation(src_files))
+    if skip_if_exist and all(is_up_to_date, src_files):
+        logger.debug('All source files are up to date, skipping compilation.')
+        return
 
     if not src_files:
         logger.debug('No source files to compile.')
@@ -223,7 +228,7 @@ def compile(
     javac_prepend_standard_options(kwargs)
 
     logger.debug(f'Compiling source files {src_files}')
-    cmd = list(cmd_javac(files = src_files, **kwargs))
+    cmd = list(cmd_javac(files = src_files, destination = bin, **kwargs))
     general.log_command(logger, cmd, True)
     process = subprocess.run(cmd, stderr = subprocess.PIPE, encoding = 'utf-8')
     if process.returncode != 0:
