@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# A script that runs Python in a sandbox
+name=${0/.sandbox/.py}
+lab_grading_dir=$(dirname $(realpath $0))
+
+python3 -B -c """
+# Temporarily add seccomp_tools directory to path
+import sys
+old_path = list(sys.path)
+sys.path.append(\"$lab_grading_dir\")
+
+# Set up sandbox
+import seccomp_tools
+seccomp_tools.setup_seccomp()
+
+# Set up a better path
+sys.path = old_path + [\".\"]
+
+# Run test
+import runpy
+runpy.run_path(\"$name\")
+"""
