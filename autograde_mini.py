@@ -24,15 +24,22 @@ def autograde_all(cfg):
         H('th', 'Runtime errors')
     ])]
     print("Model solution")
-    autograde("solution", cfg, submissionfolder=cfg.solution)
+    autograde("solution", cfg.solution, cfg)
     for group in cfg.labgroups:
         print(group)
-        rows += [autograde(group, cfg)]
+        if cfg.repo:
+            submission = get_latest_submission(cfg.repo, group)
+            submissionfolder = switch_to_submission(cfg.repo, group, submission)
+            name = "%s %s" % (group, submission)
+        else:
+            submissionfolder=pjoin(cfg.submissions, group)
+            name = group
+        rows += [autograde(name, submissionfolder, cfg)]
 
     with open(pjoin(cfg.outfolder, 'index.html'), 'w') as OUT:
         print(
             HEADER % relpath(os.curdir, cfg.outfolder),
-            H('h1', f'{cfg.labname} autograding: {basename(cfg.submissions.rstrip("/"))}'),
+            H('h1', f'{cfg.labname} autograding'),
             H('p', ['Files to submit:', H('strong', ', '.join(sorted(cfg.required)))]),
             H('p', ['Total submissions:', H('strong', str(len(cfg.labgroups)))]),
             H('table', rows, klass='results'),
@@ -58,7 +65,7 @@ def copy_submission_to_outfolder(f, outfolder, cfg):
         print(content, file=F)
     return src, dest
 
-def autograde(group, cfg, submissionfolder=None):
+def autograde(group, submissionfolder, cfg):
     outfolder = pjoin(cfg.outfolder, group)
     os.mkdir(outfolder)
 
@@ -69,8 +76,6 @@ def autograde(group, cfg, submissionfolder=None):
         os.symlink(relpath(pjoin(cfg.problem, f), outfolder), pjoin(outfolder, f))
 
     # Copy submitted files to outfolder
-    if submissionfolder is None:
-        submissionfolder=pjoin(cfg.submissions, group)
     submitted = {}
     for f in glob(pjoin(submissionfolder, '*.*')):
         src, dest = copy_submission_to_outfolder(f, outfolder, cfg)
@@ -91,7 +96,6 @@ def autograde(group, cfg, submissionfolder=None):
         if isinstance(script, str):
             script = script.split()
         try:
-            print(script, "cwd=", outfolder)
             process = subprocess.run(script, cwd=outfolder, timeout=cfg.timeout, capture_output=True)
         except subprocess.TimeoutExpired:
             print(f'timeout', end='', flush=True)
@@ -247,8 +251,10 @@ def read_args():
                         help='the lab groups to check (default: all)')
     parser.add_argument('--lab', metavar='DIR', required=True,
                         help='the folder containing the lab')
-    parser.add_argument('--submissions', metavar='DIR', required=True,
+    parser.add_argument('--submissions', metavar='DIR', required=False,
                         help='the folder containing the submissions')
+    parser.add_argument('--grading', metavar='DIR', required=False,
+                        help='the folder containing the grading repository')
     parser.add_argument('--out', metavar='DIR', dest='outfolder', required=True,
                         help='the destination folder (must not exist)')
     parser.add_argument('--timeout', metavar='T', type=int, default=5, 
@@ -256,7 +262,16 @@ def read_args():
     args = parser.parse_args()
 
     assert isdir(args.lab), "The --lab folder must exist!"
-    assert isdir(args.submissions), "The --submissions folder must exist!"
+    assert args.submissions or args.grading, "Either --submissions or --grading must be given!"
+    assert not (args.submissions and args.grading), "Only one of --submissions or --grading may be given!"
+    if args.submissions:
+        args.repo = None
+        assert isdir(args.submissions), "The --submissions folder must exist!"
+    if args.grading:
+        assert isdir(args.grading), "The --grading folder must exist!"
+
+        from git import Repo
+        args.repo = Repo(args.grading)
     assert not os.path.exists(args.outfolder), "The --out folder must not exist!"
 
     def labgroup_sortkey(g):
@@ -265,9 +280,49 @@ def read_args():
         return (n, g)
 
     if not args.labgroups:
-        args.labgroups = [basename(f) for f in glob(pjoin(args.submissions, '*'))]
+        if args.repo:
+            args.labgroups = list(set(get_lab_groups_from_repo(args.repo)))
+        else:
+            args.labgroups = [basename(f) for f in glob(pjoin(args.submissions, '*'))]
     args.labgroups.sort(key=labgroup_sortkey)
     return args
+
+def get_lab_groups_from_repo(repo):
+    # Get all lab groups - "group-38" etc. - may return duplicates
+    for tag in repo.tags:
+        path = tag.path
+        if path.startswith("refs/tags/group-"):
+            yield path.split("/")[2]
+
+def get_latest_submission(repo, group):
+    # Get the latest submission of a group
+    latest_num = None
+    latest_name = None
+
+    for tag in repo.tags:
+        name = tag.path
+        if name.startswith("refs/tags/" + group + "/") and name.endswith("/tag"):
+            submission_name = name.split("/")[3]
+            sub = "submission"
+
+            if submission_name[:len(sub)].lower() == sub:
+                submission_num = int(submission_name[len(sub):].replace("-","").replace("_",""))
+                if latest_num is None or latest_num < submission_num:
+                    latest_num = submission_num
+                    latest_name = submission_name
+                    latest_fullname = name
+
+    return latest_name
+
+def switch_to_submission(repo, group, submission):
+    # Switch to a particular submission. Returns the directory where
+    # the submission can be found.
+
+    assert not repo.is_dirty(), "The git repository has changes!"
+    assert repo.untracked_files == [], "The git repository has untracked files!"
+
+    repo.git.checkout("%s/%s/tag" % (group, submission))
+    return repo.working_tree_dir
 
 def main():
     cfg = read_args()
