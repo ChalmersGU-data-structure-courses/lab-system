@@ -35,6 +35,9 @@ testing_request = lab_interfaces.RegexRequestMatcher(
 )
 '''The standard request matcher for a testing (or robograding) request.'''
 
+generic_response_key = 'response'
+'''The standard response key for a handler with only one kind of response.'''
+
 robograder_response_title = print_parse.regex_keyed(
     'Robograder: reporting for {tag}',
     {'tag': '[^: ]*'},
