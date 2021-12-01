@@ -234,13 +234,18 @@ dir_lib_src = dir_lib / 'src'
 # Subdirectory of the robograder in the lab directory.
 rel_dir_robograder = Path('robograder')
 
-def compile_lib(self):
+def compile_lib(self, force = False):
+    '''
+    Compile the robograder library.
+    Compilation is skipped if all compiled class files are up-to-date.
+    Compilation can be forced by setting 'force' to True.
+    '''
     logger.info('Compiling robograder library.')
     java_tools.compile(
         src = dir_lib_src,
         bin = dir_lib_src,
         implicit = False,
-        skip_if_exist = True,
+        skip_if_exist = not force,
     )
 
 def clean_lib(self):
@@ -290,11 +295,20 @@ class LabRobograder:
 
         self.problem_src = self.dir_lab / 'problem'
 
-    def compile(self):
+    def compile(self, force = False):
+        '''
+        Compile the robograder library and the robograder.
+        Compilation of each of these two components is skipped
+        if its compiled class files are up-to-date.
+        Compilation can be forced by setting 'force' to True.
+        '''
+        logger.info(f'Compiling robograder and dependencies (force = {force}).')
+        compile_lib(force = force)
         compile(
             problem_src = self.problem_src,
             robograder_src = self.robograder_src,
             classpath = [dir_lib_src],
+            skip_if_exist = not force,
         )
 
     def clean(self):
