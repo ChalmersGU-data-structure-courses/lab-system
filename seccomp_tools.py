@@ -34,10 +34,13 @@ def setup_seccomp(callback = None):
     f.add_rule(ALLOW, "mmap", Arg(4, EQ, 0xffffffff))
     f.add_rule(ALLOW, "mmap", Arg(4, EQ, 0xffffffffffffffff))
     f.add_rule(ALLOW, "munmap")
+    f.add_rule(ALLOW, "mprotect")
+    f.add_rule(ALLOW, "madvise")
 
     # Allow opening files read-only and closing files.
     f.add_rule(ALLOW, "open", Arg(2, MASKED_EQ, 0b11, 0))
     f.add_rule(ALLOW, "openat", Arg(2, MASKED_EQ, 0b11, 0))
+    f.add_rule(ALLOW, "mmap", Arg(3, MASKED_EQ, 0b11, 2))
     f.add_rule(ALLOW, "close")
 
     # Allow statting files and listing directory entries.
