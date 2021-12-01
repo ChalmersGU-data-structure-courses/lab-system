@@ -46,3 +46,7 @@
 * Display default sorting in live submissions table.
 
 * Allow hiding of columns in live submissions table (user interface).
+
+## Robograder
+
+* Update robograder for autocomplete lab to not test with negative weights.
