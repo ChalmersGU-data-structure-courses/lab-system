@@ -1,21 +1,15 @@
 from collections import defaultdict, namedtuple
-import contextlib
 from datetime import datetime, timedelta, timezone
 import decimal
-import errno
 import fcntl
 import functools
 import itertools
 import json
-from pathlib import PurePosixPath, Path
 import re
-import tempfile
 import time
 from types import SimpleNamespace
 import os
-import platform
 import shlex
-import shutil
 import subprocess
 import sys
 
@@ -276,11 +270,6 @@ json_encoder = JSONEncoderForJSONObject(indent = 4, sort_keys = True)
 def print_error(*objects, sep = ' ', end = '\n'):
     print(*objects, sep = sep, end = end, file = sys.stderr)
 
-def exec_simple(file):
-    r = dict()
-    exec(file.read_text(), r)
-    return SimpleNamespace(**r)
-
 def format_with_leading_zeroes(x, bound):
     num_digits = len(str(bound - 1))
     return f'{x:0{num_digits}}'
@@ -342,9 +331,6 @@ def wait_and_check(process, cmd):
     r = process.wait()
     if r != 0:
         raise subprocess.CalledProcessError(r, cmd)
-
-def read_without_comments(path):
-    return list(filter(lambda s: s and not s.startswith('#'), path.read_text().splitlines()))
 
 def unique_list(xs):
     return list(dict.fromkeys(xs))

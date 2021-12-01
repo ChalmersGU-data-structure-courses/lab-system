@@ -526,7 +526,7 @@ class Exam:
         )
 
     def read_selector_infos(self):
-        lines = general.read_without_comments(self.exam_config.selectors_file)
+        lines = path_tools.read_lines_without_comments(self.exam_config.selectors_file)
         return dict(
             (int(entry['id']), (entry['type'], dict(
                 (int(k), Exam.parse_ranges(v))

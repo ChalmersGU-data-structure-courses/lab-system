@@ -167,6 +167,18 @@ class ScopedFiles:
             file.unlink()
 
 
+# ## Files as lines of text.
+
+def read_lines_without_comments(path):
+    return list(filter(lambda s: s and not s.startswith('#'), path.read_text().splitlines()))
+
+
+# ## File and directory traversal.
+
+def sorted_directory_list(dir, filter = None):
+    return dict(sorted(((f.name, f) for f in dir.iterdir() if not filter or filter(f)), key = lambda x: x[0]))
+
+
 # ## File and directory creation.
 
 def mkdir_fresh(path):
@@ -207,7 +219,8 @@ def copy_tree_fresh(source, to, **flags):
             to.unlink()
     shutil.copytree(source, to, **flags)
 
-# ## Working with lists of searc paths as typically stored in environment variables.
+
+# ## Working with lists of search paths as typically stored in environment variables.
 
 def search_path_split(path_string):
     '''

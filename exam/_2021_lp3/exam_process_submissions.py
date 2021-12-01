@@ -8,6 +8,7 @@ import subprocess
 
 import general
 import exam_uploader
+import path_tools
 
 
 selectors_file = exam_uploader.exam_dir / 'selectors.txt'
@@ -48,7 +49,7 @@ def generate_selectors(questions, num_pages, starts, omit):
     )
 
 def read_selectors(file):
-    lines = general.read_without_comments(file)
+    lines = path_tools.read_lines_without_comments(file)
     return dict(
         (entry['ID'], (entry['type'], dict(
             (int(k), parse_ranges(v))
