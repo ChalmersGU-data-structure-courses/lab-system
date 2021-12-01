@@ -1,14 +1,19 @@
-import dominate.util
 from pathlib import PurePosixPath
 
-import check_symlinks
+import dominate
+
 import git_tools
 import gitlab_tools
-import java_tools
+import lab_handlers
 import lab_interfaces
 import live_submissions_table
 import path_tools
 import robograder_java
+
+report_segments = ['report']
+report_compilation = PurePosixPath('compilation')
+report_robograding = PurePosixPath('robograding.md')
+
 
 class CompilationColumn(live_submissions_table.Column):
     sortable = True
@@ -21,17 +26,17 @@ class CompilationColumn(live_submissions_table.Column):
         group = super().get_value(group_id)
         submission_current = group.submission_current(deadline = self.deadline)
 
-        report = submission_current.repo_tag(['report'])
+        report = submission_current.repo_tag(report_segments)
         url = gitlab_tools.url_blob(
             self.lab.grading_project.get,
             report.name,
-            PurePosixPath('compilation'),
+            report_compilation,
         )
 
         if not submission_current.handled_result['compilation_succeded']:
             cl = 'error'
             sort_key = 0
-        elif not git_tools.read_text_file_from_tree(report.commit.tree, PurePosixPath('compilation')):
+        elif not git_tools.read_text_file_from_tree(report.commit.tree, report_compilation):
             cl = 'grayed-out'
             sort_key = 2
         else:
@@ -60,11 +65,11 @@ class RobogradingColumn(live_submissions_table.Column):
         if not submission_current.handled_result['compilation_succeded']:
             return live_submissions_table.CallbackColumnValue(has_content = False)
 
-        report = submission_current.repo_tag(['report'])
+        report = submission_current.repo_tag(report_segments)
         url = gitlab_tools.url_blob(
             self.lab.grading_project.get,
             report.name,
-            PurePosixPath('robograding.md'),
+            report_robograding,
         )
 
         def format_cell(cell):
@@ -73,24 +78,41 @@ class RobogradingColumn(live_submissions_table.Column):
         return live_submissions_table.CallbackColumnValue(callback = format_cell)
 
 class SubmissionHandler(lab_interfaces.SubmissionHandler):
-    def __init__(self, request_matcher, review_response, review_response_key = 'grading'):
-        self.request_matcher = request_matcher
-        self.response_titles = {
-            review_response_key: review_response,
-        }
-        self.review_response_key = review_response_key
+    '''
+    A submission handler for Java labs.
+
+    You can configure certain aspects by overriding attributes before setup is called.
+
+    To configure the request matcher, review response key, and response title,
+    use the following attributes:
+    * review_response_key
+    * submission_request
+    * submission_request
+    By default, they take their values from the module lab_handlers.
+
+    To set the machine speed parameter of the robograder, use the attribute machine_speed.
+    It defaults to 1.
+    '''
+    review_response_key = lab_handlers.review_response_key
+    submission_request = lab_handlers.submission_request
+    grading_response_for_outcome = lab_handlers.grading_response_for_outcome
+
+    machine_speed = 1
 
     def setup(self, lab):
+        self.request_matcher = self.submission_request
+        self.response_titles = {
+            self.review_response_key: self.grading_response_for_outcome(),
+        }
+
         super().setup(lab)
 
         # Set up robograder.
-        self.has_robograder = (lab.config.path_source / 'robograder').is_dir()
-        if self.has_robograder:
-            with lab.checkout_problem() as src:
-                with path_tools.temp_dir() as bin:
-                    java_tools.compile_unknown(src = src, bin = bin, check = True)
-                    self.robograder = robograder_java.Robograder()
-                    self.robograder.setup(lab, src, bin)
+        try:
+            self.robograder = robograder_java.LabRobograder(lab.config.path_source, self.machine_speed)
+            self.robograder.compile()
+        except robograder_java.RobograderMissingException:
+            pass
 
         # Set up grading columns.
         def f():
@@ -101,22 +123,21 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
 
     def _handle_request(self, request_and_responses, src, bin, report):
         try:
-            check_symlinks.check_self_contained(src)
-            (compilation_success, compilation_report) = java_tools.compile_unknown(src = src, bin = bin)
-        except check_symlinks.SymlinkException as e:
-            compilation_success = False
+            compilation_report = robograder_java.submission_check_and_compile(src, bin)
+            compilation_success = True
+        except robograder_java.SymlinkException as e:
             compilation_report = str(e)
-        (report / 'compilation').write_text(compilation_report)
+            compilation_success = False
+        (report / report_compilation).write_text(compilation_report)
 
-        if compilation_success and self.has_robograder:
+        if compilation_success and hasattr(self, 'robograder'):
             try:
                 robograding_report = self.robograder.run(src, bin)
             except robograder_java.RobograderException as e:
                 robograding_report = e.markdown()
-            (report / 'robograding.md').write_text(robograding_report)
+            (report / report_robograding).write_text(robograding_report)
 
-        request_and_responses.repo_report_create(['report'], report, force = True)
-
+        request_and_responses.repo_report_create(report_segments, report, force = True)
         return {
             'accepted': True,
             'review_needed': True,
