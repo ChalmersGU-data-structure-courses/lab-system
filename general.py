@@ -124,6 +124,9 @@ def equal_by(f, x, y):
 def ilen(it):
     return sum(1 for _ in it)
 
+def inhabited(it):
+    return any(map(lambda: True, it))
+
 def list_get(xs, i):
     return xs[i] if i < len(xs) else None
 

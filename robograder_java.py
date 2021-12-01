@@ -237,6 +237,10 @@ def compile_lib(self):
         implicit = False,
     )
 
+def clean_lib(self):
+    logger.info('Deleting compiled class files in robograder library.')
+    java_tools.clean(lib_src)
+
 class RobograderMissingException(Exception):
     pass
 
@@ -287,6 +291,9 @@ class LabRobograder:
             robograder_src = self.robograder_src,
             classpath = self.classpath,
         )
+
+    def clean(self):
+        java_tools.clean(self.robograder_src)
 
     def run(self, src, bin):
         run(

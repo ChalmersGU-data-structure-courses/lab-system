@@ -252,6 +252,23 @@ def compile(
     if process.returncode != 0:
         raise CompileError(process.stderr)
 
+def clean(src):
+    '''
+    Clean a Java hierarchy that includes both sources and compiled class files.
+    This removes all class files.
+
+    Arguments:
+    * src:
+        The directory to be cleaned.
+        Instance of pathlib.Path.
+    '''
+    for path in path_tools.iterdir_recursive(src, include_top_level = False, pre_order = False):
+        if path.is_file():
+            if path.suffix == '.class':
+                path.unlink()
+        elif path.is_dir():
+            path_tools.rmdir_safe(path)
+
 ################################################################################
 # Java
 
