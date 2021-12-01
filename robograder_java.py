@@ -1,4 +1,5 @@
 # Java submission compilation and robograding.
+import contextlib
 import logging
 from pathlib import Path
 import subprocess
@@ -35,7 +36,7 @@ class FileConflict(RobograderException):
         self.file = file
 
     def __str__(self):
-        return f'{self.prefix} {general.format_path(self.file)} {self.suffix}'
+        return f'{self.prefix} {path_tools.format_path(self.file)} {self.suffix}'
 
     def markdown(self):
         return general.join_lines([
@@ -48,8 +49,7 @@ class ExecutionError(RobograderException):
     prolog = '''\
 Oops, you broke the robograder!
 I encountered a problem while robograding your submission.
-This could be a problem with myself (a robo-bug)
-or with your code (unexpected changes to class or methods signatures).
+This could be a problem with myself (a robo-bug) or with your code (unexpected changes to class or methods signatures).
 In the latter case, you might elucidate the cause from the below error message.'
 In the former case, please tell my designers!
 '''
@@ -58,16 +58,17 @@ In the former case, please tell my designers!
         self.errors = errors
 
     def __str__(self):
-        return general.join_lines('\n'.join(
+        return general.join_lines([
             self.prolog,
-            self.errors,
-        ))
+            '',
+            *self.errors.splitlines(),
+        ])
 
     def markdown(self):
-        return general.join_lines('\n'.join(
+        return general.join_lines([
             self.prolog,
-            markdown.escape_code_block(self.errors),
-        ))
+            *markdown.escape_code_block(self.errors).splitlines(),
+        ])
 
 def run(
     submission_src,
@@ -105,6 +106,7 @@ def run(
     '''
     # Check for class name conflicts.
     logger.debug('Checking for file conflicts.')
+
     for dir in classpath:
         with path_tools.working_dir(dir):
             files = list(Path().rglob('*.class'))
@@ -116,25 +118,25 @@ def run(
     def policy_entries():
         for dir in classpath:
             yield (dir, [java_tools.permission_all])
-        yield (submission_bin, [java_tools.permission_file(submission_src, True), *permissions])
+        yield (submission_bin, [java_tools.permission_file(submission_src.resolve(), True), *permissions])
 
     # Run the robograder.
     logger.debug('Running robograder.')
-    process = java_tools.run(
-        entrypoint,
-        policy_entries = policy_entries(),
-        args = arguments,
-        classpath = [submission_bin, *classpath],
-        cwd = submission_src,
-        stdout = subprocess.PIPE,
-        stderr = subprocess.PIPE,
-        encoding = 'utf-8',
-    )
-    if process.returncode != 0:
-        raise ExecutionError(process.stderr)
+    with path_tools.working_dir(submission_src):
+        process = java_tools.run(
+            entrypoint,
+            policy_entries = policy_entries(),
+            args = arguments,
+            classpath = [submission_bin, *classpath],
+            stdout = subprocess.PIPE,
+            stderr = subprocess.PIPE,
+            encoding = 'utf-8',
+        )
+        if process.returncode != 0:
+            raise ExecutionError(process.stderr)
 
-    logger.debug('Robograder output:\n' + process.stdout)
-    return process.stdout
+        logger.debug('Robograder output:\n' + process.stdout)
+        return process.stdout
 
 # ## How to compile a robograder?
 #
@@ -203,7 +205,7 @@ def compile(
             (This is a side-effect of setting the sourcepath to problem_src.)
         - options: We presend javac_standard_options to this iterable.
     '''
-    logger.info('Compiling robograder.')
+    logger.debug('Compiling robograder.')
     java_tools.compile(
         src = robograder_src,
         bin = robograder_bin,
@@ -226,20 +228,23 @@ entrypoint = 'Robograder'
 repo_root = this_dir.parent
 
 # Library used by robograders.
-lib = repo_root / 'Other' / 'robograder' / 'java'
-lib_src = lib / 'src'
+dir_lib = repo_root / 'Other' / 'robograder' / 'java'
+dir_lib_src = dir_lib / 'src'
+
+# Subdirectory of the robograder in the lab directory.
+rel_dir_robograder = Path('robograder')
 
 def compile_lib(self):
     logger.info('Compiling robograder library.')
     java_tools.compile(
-        src = lib_src,
-        bin = lib_src,
+        src = dir_lib_src,
+        bin = dir_lib_src,
         implicit = False,
     )
 
 def clean_lib(self):
     logger.info('Deleting compiled class files in robograder library.')
-    java_tools.clean(lib_src)
+    java_tools.clean(dir_lib_src)
 
 class RobograderMissingException(Exception):
     pass
@@ -277,29 +282,29 @@ class LabRobograder:
         self.dir_lab = dir_lab
         self.machine_speed = machine_speed
 
-        self.robograder_src = self.dir_lab / 'robograder'
+        self.robograder_src = self.dir_lab / rel_dir_robograder
         if not self.robograder_src.is_dir():
-            raise RobograderMissingException(f'No robograder found in {general.format_path(dir_lab)}')
-        logger.debug('Detected robograder in {general.format_path(dir_lab)}.')
+            raise RobograderMissingException(f'No robograder found in {path_tools.format_path(dir_lab)}')
+        logger.debug('Detected robograder in {path_tools.format_path(dir_lab)}.')
 
         self.problem_src = self.dir_lab / 'problem'
-        self.classpath = [lib_src],
 
     def compile(self):
         compile(
             problem_src = self.problem_src,
             robograder_src = self.robograder_src,
-            classpath = self.classpath,
+            classpath = [dir_lib_src],
         )
 
     def clean(self):
         java_tools.clean(self.robograder_src)
 
     def run(self, src, bin):
-        run(
+        logger.info(f'Running robograder on {path_tools.format_path(src)}.')
+        return run(
             submission_src = src,
             submission_bin = bin,
-            classpath = self.classpath,
+            classpath = [dir.resolve() for dir in [self.robograder_src, dir_lib_src]],
             entrypoint = entrypoint,
             arguments = [str(self.machine_speed)],
         )
@@ -353,3 +358,10 @@ def submission_compile(src, bin):
         java_tools.compile_unknown(src = src, bin = bin)
     except java_tools.CompileError as e:
         raise CompileException(e.compile_errors)
+
+@contextlib.contextmanager
+def submission_checked_and_compiled(src):
+    submission_check_symlinks(src)
+    with path_tools.temp_dir() as bin:
+        submission_compile(src, bin)
+        yield bin
