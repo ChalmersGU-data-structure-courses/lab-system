@@ -20,12 +20,14 @@ from dominate.tags import (
 from dominate.util import raw, text
 
 from general import (
-    from_singleton, ilen, Timer, print_error, mkdir_fresh,
-    link_dir_contents, add_suffix, format_with_rel_prec, format_timespan,
-    sorted_directory_list, copy_tree_fresh,
+    from_singleton, ilen, Timer, print_error,
+    add_suffix, format_with_rel_prec, format_timespan,
+    sorted_directory_list,
 )
 from canvas import Assignment
-from path_tools import modify, get_modification_time
+from path_tools import (
+    modify, get_modification_time, mkdir_fresh, link_dir_contents, copy_tree_fresh,
+)
 
 from . import lab_assignment_constants
 from . import submission_fix_lib
