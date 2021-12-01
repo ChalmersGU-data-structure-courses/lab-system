@@ -178,21 +178,38 @@ def read_lines_without_comments(path):
 def sorted_directory_list(dir, filter = None):
     return dict(sorted(((f.name, f) for f in dir.iterdir() if not filter or filter(f)), key = lambda x: x[0]))
 
-def iterdir_recursive(path, include_top_level = True):
+def iterdir_recursive(path, include_top_level = True, pre_order = True):
     '''
-    Generator function enumerating all descendants of path (instance of pathlib.Path).
+    Generator function enumerating all descendants of a path.
     Note that the given path can be a file (in which case it is its only descendant).
     If 'include_top_level' is false, then the path itself is omitted.
     Directories are emitted before their children.
+
+    Arguments:
+    * Path:
+        The path to traverse.
+        Instance of pathlib.Path.
+    * include_top_level:
+        Boolean value.
+        Whether to include the given path in the enumeration.
+    * pre_order:
+        Whether to emit each path before (True) or after (False) its descendants.
     '''
-    if include_top_level:
-        yield path
+    def emit_top_level():
+        if include_top_level:
+            yield path
+
+    if pre_order:
+        yield from emit_top_level()
 
     for child in dir.iterdir():
-        iterdir_recursive(child)
+        iterdir_recursive(child, pre_order = pre_order)
+
+    if not pre_order:
+        yield from emit_top_level()
 
 
-# ## File and directory creation.
+# ## File and directory creation and deletion
 
 def mkdir_fresh(path):
     if path.exists():
@@ -231,6 +248,21 @@ def copy_tree_fresh(source, to, **flags):
         else:
             to.unlink()
     shutil.copytree(source, to, **flags)
+
+def rmdir_safe(path):
+    '''
+    Remove a directory (instance of pathlib.Path), but only if it is non-empty.
+    Returns True if the directory has been removed.
+
+    Currently only correctly implemented for POSIX.
+    '''
+    try:
+        path.rmdir()
+        return True
+    except OSError as e:
+        if e.errno == 39:
+            return False
+        raise
 
 
 # ## Working with lists of search paths as typically stored in environment variables.
