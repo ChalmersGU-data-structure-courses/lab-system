@@ -324,32 +324,6 @@ def exec_simple(file):
     exec(file.read_text(), r)
     return SimpleNamespace(**r)
 
-def readfile(fil):
-    with open(fil, "br") as F:
-        bstr = F.read()
-    try:
-        return bstr.decode()
-    except UnicodeDecodeError:
-        try:
-            return bstr.decode(encoding = "latin1")
-        except UnicodeDecodeError:
-            return bstr.decode(errors = "replace")
-
-def guess_encoding(b):
-    encodings = ['utf-8', 'latin1']
-    for encoding in encodings:
-        try:
-            return b.decode(encoding = encoding)
-        except UnicodeDecodeError:
-            pass
-
-    return b.decode()
-
-def fix_encoding(path):
-    content = guess_encoding(path.read_bytes())
-    with OpenWithNoModificationTime(path) as file:
-        file.write(content)
-
 def format_with_leading_zeroes(x, bound):
     num_digits = len(str(bound - 1))
     return f'{x:0{num_digits}}'
