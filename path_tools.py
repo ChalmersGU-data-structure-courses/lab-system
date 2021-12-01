@@ -1,12 +1,24 @@
 import contextlib
 import errno
-import functools
 import os
 from pathlib import Path, PurePath, PurePosixPath
-import platform
 import shlex
 import shutil
 import tempfile
+
+
+# ## Operations on pure paths.
+
+def with_stem(path, stem):
+    '''In Python 3.9, equivalent to path.with_stem(stem).'''
+    return path.with_name(stem + path.suffix)
+
+def add_suffix(path, suffix):
+    return path.parent / (path.name + suffix)
+
+def format_path(path):
+    '''Quote a path for use in a user message.'''
+    return shlex.quote(str(PurePosixPath(path)))
 
 
 # ## File modification times.

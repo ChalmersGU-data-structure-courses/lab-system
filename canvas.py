@@ -12,11 +12,13 @@ import types
 import urllib.parse
 
 from general import (
-    from_singleton, group_by, doublequote, JSONObject, json_encoder, print_error, add_suffix,
-    on, eq, without_adjacent_dups, format_path, join_lines,
+    from_singleton, group_by, doublequote, JSONObject, json_encoder, print_error,
+    on, eq, without_adjacent_dups, join_lines,
 )
 from pathlib import (
-    set_modification_time, OpenWithModificationTime, modify_no_modification_time, fix_encoding,
+    add_suffix, format_path,
+    set_modification_time, OpenWithModificationTime, modify_no_modification_time,
+    fix_encoding,
 )
 import simple_cache
 
