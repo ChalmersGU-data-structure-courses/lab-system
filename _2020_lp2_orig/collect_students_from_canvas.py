@@ -34,7 +34,7 @@ while "next" in response.links:
 
 print(f"Nr. groups: {len(groups)}", file = sys.stderr)
 
-users =s {}
+users = {}
 
 for gid, group in groups.items():
     response = requests.get(f'{baseurl}/groups/{gid}/users', headers = headers, params = params)
