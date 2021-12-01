@@ -110,18 +110,42 @@ def java_files(dir):
 
     Takes a string or instance of pathlib.Path, but returns an iterable of pathlib.Path.
     '''
-    for file in Path(dir).rglob('*.java'):
-        if file.is_file():
+    for file in path_tools.iterdir_recursive(dir):
+        if file.is_file() and file.suffix == '.java':
             yield file
 
 def get_src_files(src, src_files):
     '''
     Helper function.
-    If src_files is not specified, get source files as descendant of src.
+    If src_files is not specified, get source files as descendants of src.
     '''
     if src_files is None:
         src_files = java_files(src)
     return list(src_files)
+
+def is_up_to_date(src_file):
+    '''
+    Determine if a Java source file (instance of pathlib.Path) has
+    an up-to-date compiled class file next to it.
+    Here, "up-to-date" means newer modification time.
+    '''
+    bin_file = src_file.with_suffix('.class')
+    return bin_file.exists() and os.path.getmtime(bin_file) > path_tools.get_modification_time(src_file)
+
+def all_up_to_date(
+    src = None,
+    src_files = None,
+):
+    '''
+    Determine if the compiled class files for given Java source files are up-to-date.
+    The source files are descendants of 'src' or, if not specified, given by src_files.
+    All path arguments are strings or instances of pathlib.Path.
+
+    Arguments:
+    * src: The source directory.
+    * src_files: An iterable of source files.
+    '''
+    return all(is_up_to_date(get_src_files(src, src_files)))
 
 def compile_unknown(
     src,
@@ -202,8 +226,7 @@ def compile(
     **kwargs,
 ):
     '''
-    Compile Java source files (if any) in 'src' or as given by src_files.
-    One of 'src' and 'src_files' must be given.
+    Compile Java source files (if any) in 'src' or, if not specified, given by src_files.
 
     All path arguments are strings or instances of pathlib.Path.
 
@@ -234,10 +257,6 @@ def compile(
     Raises an instance of CompileError on compilation error.
     '''
     src_files = get_src_files(src, src_files)
-
-    def is_up_to_date(src_file):
-        bin_file = src_file.with_suffix('.class')
-        return bin_file.exists() and os.path.getmtime(bin_file) > path_tools.get_modification_time(src_file)
 
     if skip_if_exist and all(is_up_to_date, src_files):
         logger.debug('All source files are up to date, skipping compilation.')
