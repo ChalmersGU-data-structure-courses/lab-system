@@ -12,7 +12,7 @@ import shlex
 import shutil
 
 import canvas
-import general
+import path_tools
 
 import gitlab_config as config
 
@@ -299,7 +299,7 @@ def download_submissions(dir, use_cache = True):
         state = submission.workflow_state
         if state != 'unsubmitted':
             dir_user = dir / user.integration_id
-            general.mkdir_fresh(dir_user)
+            path_tools.mkdir_fresh(dir_user)
             for attachment in submission.attachments:
                 exam.canvas.place_file(dir_user / canvas.Assignment.get_file_name(attachment), attachment)
 

@@ -327,7 +327,7 @@ class Exam:
             state = submission.workflow_state
             if state != 'unsubmitted':
                 dir_submission = self.exam_config.submissions_dir / self.format_id(id)
-                general.mkdir_fresh(dir_submission)
+                path_tools.mkdir_fresh(dir_submission)
                 for attachment in submission.attachments:
                     self.canvas.place_file(dir_submission / canvas.Assignment.get_file_name(attachment), attachment)
                 if len(submission.attachments) != 1:
@@ -368,7 +368,7 @@ class Exam:
                 comments = submission.submission_comments
                 if comments:
                     dir_comments = dir_submission / 'submission_comments'
-                    general.mkdir_fresh(dir_comments)
+                    path_tools.mkdir_fresh(dir_comments)
                     for i, comment in enumerate(comments):
                         filename = dir_comments / f'{general.format_with_leading_zeroes(i, len(comments))}.txt'
                         with path_tools.OpenWithModificationTime(filename, comment.created_at_date) as file:
@@ -647,7 +647,7 @@ class Exam:
 
     def package_submissions(self, include_solutions = True):
         dir = self.exam_config.submissions_packaged_dir
-        general.mkdir_fresh(dir)
+        path_tools.mkdir_fresh(dir)
         for q in self.exam_config.questions:
             dir_question = dir / self.exam_config.question_key(q)
             dir_question.mkdir()

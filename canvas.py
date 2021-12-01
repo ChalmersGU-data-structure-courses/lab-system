@@ -12,8 +12,8 @@ import types
 import urllib.parse
 
 from general import (
-    from_singleton, group_by, doublequote, JSONObject, json_encoder, print_error, add_suffix, write_lines,
-    on, eq, without_adjacent_dups, format_path
+    from_singleton, group_by, doublequote, JSONObject, json_encoder, print_error, add_suffix,
+    on, eq, without_adjacent_dups, format_path, join_lines,
 )
 from pathlib import (
     set_modification_time, OpenWithModificationTime, modify_no_modification_time, fix_encoding,
@@ -812,7 +812,7 @@ class Assignment:
         if comments:
             with OpenWithModificationTime(path, comments[-1].created_at_date) as file:
                 for comment in comments:
-                    write_lines(file, [
+                    file.write_text(join_lines([
                         '=' * 80,
                         '',
                         comment.author.display_name,
@@ -820,7 +820,7 @@ class Assignment:
                         '',
                         comment.comment,
                         '',
-                    ])
+                    ]))
 
     @staticmethod
     def format_comments(comments):
@@ -903,11 +903,11 @@ class Assignment:
     #         time_diff = current.submitted_at_date - deadline
     #         if time_diff >= timedelta(minutes = 5):
     #             with OpenWithModificationTime(dir / 'late.txt', current.submitted_at_date) as file:
-    #                 write_lines(file, ['{:.2f} hours'.format(time_diff / timedelta(hours = 1))])
+    #                 file.write_text(general.join_lines(['{:.2f} hours'.format(time_diff / timedelta(hours = 1))]))
 
     #     with (dir / 'members.txt').open('w') as file:
     #         for user in self.group_set.group_users[group]:
-    #             write_lines(file, [self.group_set.user_details[user].name])
+    #             file.write_text(general.join_lines([self.group_set.user_details[user].name]))
 
     # def prepare_submissions(self, dir, deadline = None):
     #     #self.build_submissions()

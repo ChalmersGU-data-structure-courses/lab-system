@@ -149,7 +149,7 @@ def solution_file(i):
 def package_submissions():
     #solution_selectors = dict((i, find_selectors(solution_file(i))) for i in range(20))
     selectors = calculate_selectors()
-    #general.mkdir_fresh(packaged_dir)
+    #path_tools.mkdir_fresh(packaged_dir)
 
     for q in questions_actual:
         question_dir = packaged_dir / f'Q{q}'

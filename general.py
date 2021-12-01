@@ -273,51 +273,8 @@ def print_json(x):
 
 json_encoder = JSONEncoderForJSONObject(indent = 4, sort_keys = True)
 
-def write_lines(file, lines):
-    for line in lines:
-        file.write(line)
-        file.write('\n')
-
 def print_error(*objects, sep = ' ', end = '\n'):
     print(*objects, sep = sep, end = end, file = sys.stderr)
-
-def mkdir_fresh(path):
-    if path.exists():
-        shutil.rmtree(path)
-    path.mkdir()
-
-def file_exists_error(path):
-    e = errno.EEXIST
-    raise FileExistsError(e, os.strerror(e), str(path))
-
-def safe_symlink(source, target, exists_ok = False):
-    if source.exists():
-        if not (exists_ok and source.is_symlink() and Path(os.readlink(source)) == target):
-            file_exists_error(source)
-    else:
-        source.symlink_to(target, target.is_dir())
-
-# 'rel' is the path to 'dir_from', taken relative to 'dir_to'.
-# Returns list of newly created files.
-def link_dir_contents(dir_from, dir_to, rel = None, exists_ok = False):
-    if rel is None:
-        rel = Path(os.path.relpath(dir_from, dir_to))
-
-    files = list()
-    for path in dir_from.iterdir():
-        file = dir_to / path.name
-        files.append(file)
-        target = rel / path.name
-        safe_symlink(file, target, exists_ok = exists_ok)
-    return files
-
-def copy_tree_fresh(source, to, **flags):
-    if to.exists():
-        if to.is_dir():
-            shutil.rmtree(to)
-        else:
-            to.unlink()
-    shutil.copytree(source, to, **flags)
 
 def exec_simple(file):
     r = dict()
