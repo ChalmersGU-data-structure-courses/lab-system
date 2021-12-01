@@ -332,15 +332,6 @@ def pipe(min_size):
     fcntl.fcntl(r, F_SETPIPE_SZ, min_size)
     return (r, w)
 
-@contextlib.contextmanager
-def working_dir(path):
-    old = os.getcwd()
-    os.chdir(path)
-    try:
-        yield
-    finally:
-        os.chdir(old)
-
 def log_command(logger, cmd, working_dir = False):
     logger.debug('running command{}:\n{}'.format(
         ' in {}'.format(shlex.quote(os.getcwd())) if working_dir else '',

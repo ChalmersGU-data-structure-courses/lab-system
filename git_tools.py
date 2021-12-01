@@ -16,6 +16,7 @@ import git
 import gitdb
 
 import general
+import path_tools
 
 
 logger = logging.getLogger(__name__)
@@ -297,7 +298,7 @@ def tag_onesided_merge(repo, tag_name, commit, new_parent):
 def checkout(repo, dir, ref):
     ''' Checkout a reference into the given directory. '''
     cmd = ['tar', '-x']
-    with general.working_dir(dir):
+    with path_tools.working_dir(dir):
         general.log_command(logger, cmd, True)
         tar = subprocess.Popen(cmd, stdin = subprocess.PIPE)
     repo.archive(tar.stdin, ref)

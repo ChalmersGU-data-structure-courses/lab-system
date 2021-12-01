@@ -21,6 +21,24 @@ def format_path(path):
     return shlex.quote(str(PurePosixPath(path)))
 
 
+# ## Operations interacting with the working directory.
+
+@contextlib.contextmanager
+def working_dir(path):
+    '''
+    A context manager for the current working directory.
+
+    When entered, sets the working directory to the specified path (path-like object).
+    When exited, restores the working directory to its previous value.
+    '''
+    old = os.getcwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(old)
+
+
 # ## File modification times.
 
 # In the symlink case, we also need to check the modification time of each directory in the symlink path.
