@@ -385,7 +385,7 @@ def policy_manager(entries):
     Context manager for a policy file specified by entries as in 'policy'.
     Yields an instance of pathlib.Path.
     '''
-    with general.temp_file('policy') as path_policy:
+    with path_tools.temp_file('policy') as path_policy:
         path_policy.write_text(policy(entries))
         yield path_policy
 

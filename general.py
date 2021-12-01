@@ -354,28 +354,6 @@ def format_timespan_using(delta, time_unit, precision = 2):
 def format_timespan(delta, precision = 2):
     return format_timespan_using(delta, appropriate_time_unit(delta), precision)
 
-@contextlib.contextmanager
-def temp_fifo():
-    with tempfile.TemporaryDirectory() as dir:
-        fifo = Path(dir) / 'fifo'
-        os.mkfifo(fifo)
-        try:
-            yield fifo
-        finally:
-            fifo.unlink()
-
-@contextlib.contextmanager
-def temp_dir():
-    with tempfile.TemporaryDirectory() as dir:
-        yield Path(dir)
-
-@contextlib.contextmanager
-def temp_file(name = None):
-    if name is None:
-        name = 'file'
-    with temp_dir() as dir:
-        yield dir / name
-
 def Popen(cmd, **kwargs):
     print(shlex.join(cmd), file = sys.stderr)
     fds = list(kwargs.get('pass_fds', []))
@@ -446,21 +424,6 @@ def filter_keywords(keywords, s):
     The result is a list of (not necessarily unique) keys of dictionary in the order they appear in text.
     '''
     return [k for i, k in find_all_many(keywords, s)]
-
-# A context manager for file paths.
-class ScopedFiles:
-    def __init__(self):
-        self.files = []
-
-    def add(self, file):
-        self.files.append(file)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        for file in reversed(self.files):
-            file.unlink()
 
 Lens = namedtuple('Lens', ['get', 'set'])
 

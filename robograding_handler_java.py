@@ -4,6 +4,7 @@ import course_basics  # TODO: deprecate
 import general
 import java_tools
 import lab_interfaces
+import path_tools
 import print_parse
 import robograder_java
 
@@ -40,7 +41,7 @@ class RobogradingHandler(lab_interfaces.RequestHandler):
 
         # Set up robograder.
         with lab.checkout_problem() as src:
-            with general.temp_dir() as bin:
+            with path_tools.temp_dir() as bin:
                 java_tools.compile_unknown(src = src, bin = bin, check = True)
                 self.robograder = robograder_java.Robograder()
                 self.robograder.setup(lab, src, bin)
@@ -65,5 +66,5 @@ class RobogradingHandler(lab_interfaces.RequestHandler):
 
     def handle_request(self, request_and_responses):
         with request_and_responses.checkout_manager() as src:
-            with general.temp_dir() as bin:
+            with path_tools.temp_dir() as bin:
                 return self._handle_request(request_and_responses, src, bin)

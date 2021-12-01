@@ -72,8 +72,9 @@ args = p.parse_args()
 import logging
 import tempfile
 
-from general import multidict, fix_encoding
+from general import multidict
 from canvas import Canvas, Course, Assignment
+from pathlib import fix_encoding
 
 from .lab_assignment import LabAssignment
 from .get_feedback_helpers import parse_answers
