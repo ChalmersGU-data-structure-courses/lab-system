@@ -7,6 +7,7 @@ import check_symlinks
 import general
 import java_tools
 import markdown
+import path_tools
 from this_dir import this_dir
 
 
@@ -105,7 +106,7 @@ def run(
     # Check for class name conflicts.
     logger.debug('Checking for file conflicts.')
     for dir in classpath:
-        with general.working_dir(dir):
+        with path_tools.working_dir(dir):
             files = list(Path().rglob('*.class'))
         for file in files:
             if (submission_bin / file).exists():

@@ -3,6 +3,7 @@ from pathlib import Path, PurePath
 
 import general
 import markdown
+import path_tools
 
 
 class SymlinkException(Exception, markdown.Markdown):
@@ -74,5 +75,5 @@ def check(dir, strict = False):
     If True, no symlinks are allowed.
     If False, only symlinks that do not escape from the specified directory are allowed.
     '''
-    with general.working_dir(dir):
+    with path_tools.working_dir(dir):
         check_in_current_dir(Path(), strict)
