@@ -1,4 +1,6 @@
-from pathlib import PurePath
+# Stand-alone script used as initialization script
+# for reduced-privilege processes running in a sandbox.
+from pathlib import Path, PurePath
 import sys
 
 
@@ -94,10 +96,10 @@ def main():
     '''
     import runpy
 
-    print('sys.argv', sys.argv)
-    print('sys.path', sys.path)
-    print('__file__', __file__)
-    print('__name__', __name__)
+    #print('sys.argv', sys.argv)
+    #print('sys.path', sys.path)
+    #print('__file__', __file__)
+    #print('__name__', __name__)
 
     try:
         path = PurePath(sys.argv[1])
@@ -105,6 +107,13 @@ def main():
     except Exception:
         print('Usage: python3 <this script> <script to run> [<arguments>...]', file = sys.stderr)
         sys.exit(-1)
+
+    # def print_hierarchy(path):
+    #     print(path, path.is_dir())
+    #     if path.is_dir():
+    #         for child in path.iterdir():
+    #             print_hierarchy(child)
+    # print_hierarchy(Path('/jail'))
 
     if not sys.flags.isolated:
         path_pop(PurePath(__file__).parent)
