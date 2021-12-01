@@ -36,7 +36,7 @@ for group in assignment.submissions:
     for user in groups.group_users[group]:
         s = submissions[user]
         for comment in s.submission_comments:
-            if 'The above grading was performed by' in comment.comment: 
+            if 'The above grading was performed by' in comment.comment:
                 print_json(comment)
                 canvas.delete([
                     'courses', assignment.course_id,
