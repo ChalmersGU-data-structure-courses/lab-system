@@ -1,14 +1,14 @@
 import dominate.util
 from pathlib import PurePosixPath
 
-import general
+import check_symlinks
 import git_tools
 import gitlab_tools
 import java_tools
 import lab_interfaces
 import live_submissions_table
+import path_tools
 import robograder_java
-import check_symlinks
 
 class CompilationColumn(live_submissions_table.Column):
     sortable = True
@@ -87,7 +87,7 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
         self.has_robograder = (lab.config.path_source / 'robograder').is_dir()
         if self.has_robograder:
             with lab.checkout_problem() as src:
-                with general.temp_dir() as bin:
+                with path_tools.temp_dir() as bin:
                     java_tools.compile_unknown(src = src, bin = bin, check = True)
                     self.robograder = robograder_java.Robograder()
                     self.robograder.setup(lab, src, bin)
@@ -125,6 +125,6 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
 
     def handle_request(self, request_and_responses):
         with request_and_responses.checkout_manager() as src:
-            with general.temp_dir() as bin:
-                with general.temp_dir() as report:
+            with path_tools.temp_dir() as bin:
+                with path_tools.temp_dir() as report:
                     return self._handle_request(request_and_responses, src, bin, report)

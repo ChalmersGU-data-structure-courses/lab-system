@@ -11,6 +11,7 @@ import google.oauth2.service_account
 import google_auth_oauthlib.flow
 
 import general
+import path_tools
 
 from .drive import Drive, TemporaryFile
 from .documents import Documents
@@ -107,7 +108,7 @@ def generate_from_template_document(
     docs = Documents(token)
 
     with TemporaryFile(drive, id, name) as id_copy:
-        with general.ScopedFiles() as files:
+        with path_tools.ScopedFiles() as files:
             # Collect all replacement requests.
             requests = []
             for key, value in replacements.items():

@@ -96,6 +96,46 @@ def fix_encoding(path):
     with OpenWithNoModificationTime(path) as file:
         file.write(content)
 
+
+# ## Temporary files and directories.
+
+@contextlib.contextmanager
+def temp_fifo():
+    with tempfile.TemporaryDirectory() as dir:
+        fifo = Path(dir) / 'fifo'
+        os.mkfifo(fifo)
+        try:
+            yield fifo
+        finally:
+            fifo.unlink()
+
+@contextlib.contextmanager
+def temp_dir():
+    with tempfile.TemporaryDirectory() as dir:
+        yield Path(dir)
+
+@contextlib.contextmanager
+def temp_file(name = None):
+    if name is None:
+        name = 'file'
+    with temp_dir() as dir:
+        yield dir / name
+
+class ScopedFiles:
+    '''A context manager for file paths.'''
+    def __init__(self):
+        self.files = []
+
+    def add(self, file):
+        self.files.append(file)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        for file in reversed(self.files):
+            file.unlink()
+
 # ## Working with lists of searc paths as typically stored in environment variables.
 
 def search_path_split(path_string):
