@@ -14,7 +14,6 @@ from this_dir import this_dir
 
 logger = logging.getLogger(__name__)
 
-
 class HandlingException(Exception, markdown.Markdown):
     '''Raised for errors caused by a problems with a submission.'''
     pass
@@ -290,8 +289,8 @@ class LabRobograder:
 
         self.robograder_src = self.dir_lab / rel_dir_robograder
         if not self.robograder_src.is_dir():
-            raise RobograderMissingException(f'No robograder found in {path_tools.format_path(dir_lab)}')
-        logger.debug('Detected robograder in {path_tools.format_path(dir_lab)}.')
+            raise RobograderMissingException(f'No robograder found in {path_tools.format_path(self.dir_lab)}')
+        logger.debug(f'Detected robograder in {path_tools.format_path(self.dir_lab)}.')
 
         self.problem_src = self.dir_lab / 'problem'
 
