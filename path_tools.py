@@ -202,7 +202,7 @@ def iterdir_recursive(path, include_top_level = True, pre_order = True):
     if pre_order:
         yield from emit_top_level()
 
-    for child in dir.iterdir():
+    for child in path.iterdir():
         iterdir_recursive(child, pre_order = pre_order)
 
     if not pre_order:
