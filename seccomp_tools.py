@@ -103,7 +103,7 @@ def main():
         path = PurePath(sys.argv[1])
         del sys.argv[1]
     except Exception:
-        print('Usage: python3 <script> <script to run> [<arguments>...]', file = sys.stderr)
+        print('Usage: python3 <this script> <script to run> [<arguments>...]', file = sys.stderr)
         sys.exit(-1)
 
     if not sys.flags.isolated:
