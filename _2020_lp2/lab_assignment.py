@@ -21,10 +21,11 @@ from dominate.util import raw, text
 
 from general import (
     from_singleton, ilen, Timer, print_error, mkdir_fresh,
-    link_dir_contents, add_suffix, modify, format_with_rel_prec, format_timespan,
-    sorted_directory_list, copy_tree_fresh, get_modification_time
+    link_dir_contents, add_suffix, format_with_rel_prec, format_timespan,
+    sorted_directory_list, copy_tree_fresh,
 )
 from canvas import Assignment
+from path_tools import modify, get_modification_time
 
 from . import lab_assignment_constants
 from . import submission_fix_lib

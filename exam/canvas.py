@@ -2,7 +2,6 @@ import csv
 import datetime
 import dateutil.parser
 import functools
-import general
 import hashlib
 import itertools
 import logging
@@ -15,9 +14,11 @@ import gspread
 import PyPDF2
 
 import canvas
+import general
 import gitlab_config as config  # TODO: fix hardcoded config
 from google_tools.drive import Drive
 import google_tools.general
+import path_tools
 
 from . import allocate_versions
 from . import instantiate_template
@@ -370,7 +371,7 @@ class Exam:
                     general.mkdir_fresh(dir_comments)
                     for i, comment in enumerate(comments):
                         filename = dir_comments / f'{general.format_with_leading_zeroes(i, len(comments))}.txt'
-                        with general.OpenWithModificationTime(filename, comment.created_at_date) as file:
+                        with path_tools.OpenWithModificationTime(filename, comment.created_at_date) as file:
                             file.write(comment.comment)
 
     def list_submissions(self):
