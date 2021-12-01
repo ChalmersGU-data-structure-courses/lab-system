@@ -44,3 +44,46 @@ robograder_response_title = print_parse.regex_keyed(
     flags = re.IGNORECASE,
 )
 '''The standard robograding response printer-parser.'''
+
+class SubmissionHandler(lab_interfaces.SubmissionHandler):
+    '''
+    A base class for submission handlers.
+
+    You can configure certain aspects by overriding attributes.
+    In addition to those of the base class:
+    * grading_response_for_outcome (replacing response_titles):
+        Function taking an outcome printer-parser
+        and returning the grading response printer-parser.
+    By default, this attribute and the remaining ones of
+    the base class take their values from this module.
+    '''
+    request_matcher = submission_request
+    review_response_key = review_response_key
+    grading_response_for_outcome = grading_response_for_outcome
+
+    @property
+    def response_titles(self):
+        return {self.review_response_key: self.grading_response_for_outcome(
+            self.lab.course.config.outcome.name
+        )}
+
+class RobogradingHandler(lab_interfaces.RequestHandler):
+    '''
+    A base class for robograding handlers.
+
+    You can configure certain aspects by overriding attributes.
+    In addition to those of the base class:
+    * response_key: The robograding response key (only used internally).
+    * robograder_response_title: The robograding response printer-parser.
+    The last two attributes override response_titles of the base class.
+
+    By default, these attribute and the remaining ones of
+    the base class take their values from this module.
+    '''
+    request_matcher = testing_request
+    response_key = generic_response_key
+    robograder_response_title = robograder_response_title
+
+    @property
+    def response_titles(self):
+        return {self.response_key: self.robograder_response_title}
