@@ -178,6 +178,19 @@ def read_lines_without_comments(path):
 def sorted_directory_list(dir, filter = None):
     return dict(sorted(((f.name, f) for f in dir.iterdir() if not filter or filter(f)), key = lambda x: x[0]))
 
+def iterdir_recursive(path, include_top_level = True):
+    '''
+    Generator function enumerating all descendants of path (instance of pathlib.Path).
+    Note that the given path can be a file (in which case it is its only descendant).
+    If 'include_top_level' is false, then the path itself is omitted.
+    Directories are emitted before their children.
+    '''
+    if include_top_level:
+        yield path
+
+    for child in dir.iterdir():
+        iterdir_recursive(child)
+
 
 # ## File and directory creation.
 
