@@ -327,7 +327,7 @@ def pipe(min_size):
 def log_command(logger, cmd, working_dir = False):
     logger.debug('running command{}:\n{}'.format(
         ' in {}'.format(shlex.quote(os.getcwd())) if working_dir else '',
-        shlex.join(cmd),
+        shlex.join(map(str, cmd)),
     ))
 
 def wait_and_check(process, cmd):
