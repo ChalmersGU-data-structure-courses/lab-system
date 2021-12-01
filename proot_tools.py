@@ -7,8 +7,8 @@ def proot_args(
     args,
     working_directory,
     bindings = [],
-    root = 'root',
-    proot_executable = 'proot',
+    root = Path('/root'),
+    proot_executable = Path('proot'),
 ):
     '''Produce argument list for a program call of proot.
 
@@ -151,7 +151,7 @@ def proot_python_args(
         bindings = [
             *standard_bindings(),
             (host_dir_main, guest_dir_main),
-            bindings,
+            *bindings,
         ],
         **kwargs,
     )
@@ -165,8 +165,6 @@ def sandboxed_python_args(
     guest_script,
     guest_args = [],
     *,
-    host_dir_main,
-    env,
     sandboxer = sandboxer_default,
     sandboxer_args = [],
     bindings = [],
@@ -180,10 +178,10 @@ def sandboxed_python_args(
     Arguments:
     * guest_script:
         Path to guest script to execute via sandboxer.
+        Relative to the working directory given by the argument
+        guest_dir_main as received by proot_python_args.
     * guest_args:
         Iterable of arguments to pass to the guest script.
-    * host_dir_main: As in proot_python_args.
-    * env: in As proot_python_args.
     * sandboxer_script:
         Executable path to the sandboxer (sandboxing Python script).
         A sandboxer first takes some sandboxer-specific argument.
@@ -198,13 +196,13 @@ def sandboxed_python_args(
 
     Example use case:
     > env = dict()
-    > args = sandboxed_python_args(
+    > cmd = sandboxed_python_args(
     >     guest_script = <some script relative to host main dir>,
     >     guest_args = <arguments>,
     >     host_dir_main = <host main dir>,
-    >     env = env
+    >     env = env,
     > )
-    > subprocess.run(args, cwd = <guest main dir>, env = env)
+    > subprocess.run(cmd, env = env)
     '''
     executable = guest_python_packages / '_sandboxer.py'
 
