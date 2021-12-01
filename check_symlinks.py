@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path, PurePath
 
@@ -5,6 +6,8 @@ import general
 import markdown
 import path_tools
 
+
+logger = logging.getLogger(__name__)
 
 class SymlinkException(Exception, markdown.Markdown):
     def __init__(self, path):
@@ -68,6 +71,8 @@ def check(dir, strict = False):
     If True, no symlinks are allowed.
     If False, only symlinks that do not escape from the specified directory are allowed.
     '''
+    logger.debug(f'Checking symlinks in {path_tools.format_path(dir)} (strict: {strict})')
+
     with path_tools.working_dir(dir):
         for path in path_tools.iterdir_recursive(Path()):
             if path.is_symlink():

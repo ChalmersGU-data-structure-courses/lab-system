@@ -330,6 +330,7 @@ def permission_file(path, is_dir = False, file_permissions = [FilePermission.rea
         String or instance of pathlib.PurePath.
         This should be an absolute path to make it independent
         of the eventual location of the policy file.
+        (TODO: or was it the working directory of the java invocation?)
     * is_dir:
         Boolean.
         Whether to interpret 'path' as a directory (with permissions
@@ -384,7 +385,6 @@ def policy_grant(path, permissions):
         ' '.join(line_grant()),
         *('  ' + policy_permission(*permission) for permission in permissions),
         '};',
-        '',
     ])
 
 def policy(entries):
@@ -394,7 +394,7 @@ def policy(entries):
     Takes an iterable of pairs (path, permissions) as in policy_grant.
     Return a block of text from which a Java policy file can be initialized.
     '''
-    return general.join_lines(policy_grant(*entry) for entry in entries)
+    return '\n'.join(policy_grant(*entry) for entry in entries)
 
 @contextlib.contextmanager
 def policy_manager(entries):
@@ -495,5 +495,5 @@ def run(
         logger.debug(f'Keyword arguments for subprocess.run: {kwargs_run}')
 
         cmd = list(cmd_java(main, **kwargs_cmd_java))
-        general.log_command(logger, cmd)
+        general.log_command(logger, cmd, working_dir = True)
         return subprocess.run(cmd, **kwargs_run)
