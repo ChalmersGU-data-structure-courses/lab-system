@@ -77,6 +77,58 @@ class RobogradingColumn(live_submissions_table.Column):
                 live_submissions_table.format_url('robograding', url)
         return live_submissions_table.CallbackColumnValue(callback = format_cell)
 
+class CompilationAndRobogradingColumn(live_submissions_table.Column):
+    sortable = True
+    '''Sorted by compilation status.'''
+
+    def format_header_cell(self, cell):
+        with cell:
+            dominate.tags.span('Compilation &', display = 'inline-block')
+            dominate.util.text(' ')
+            dominate.tags.span('Robograding', display = 'inline-block')
+
+    def get_value(self, group_id):
+        group = super().get_value(group_id)
+        submission_current = group.submission_current(deadline = self.deadline)
+
+        report = submission_current.repo_tag(report_segments)
+
+        def link_for(name, path):
+            a = live_submissions_table.format_url(name, gitlab_tools.url_blob(
+                self.lab.grading_project.get,
+                report.name,
+                path,
+            ))
+            a['display'] = 'inline-block'
+            return a
+
+        if not submission_current.handled_result['compilation_succeded']:
+            cl = 'error'
+            sort_key = 0  # Compilation failed.
+        elif git_tools.read_text_file_from_tree(report.commit.tree, report_compilation):
+            cl = 'grayed-out'
+            sort_key = 1  # Compilation succeeded, but compiler produced warnings.
+        else:
+            cl = None
+            sort_key = 2  # Compilation succeeded without error output.
+
+        def format_cell(cell):
+            with cell:
+                # Add line for compilation report.
+                if sort_key != 2:
+                    a = link_for('compilation', report_compilation)
+                    if sort_key == 1:
+                        live_submissions_table.add_class(a, cl)
+
+                # Add line for robograding report.
+                if sort_key != 0:
+                    link_for('robograding', report_robograding)
+
+        return live_submissions_table.CallbackColumnValue(
+            sort_key = sort_key,
+            callback = format_cell,
+        )
+
 class SubmissionHandler(lab_interfaces.SubmissionHandler):
     '''
     A submission handler for Java labs.

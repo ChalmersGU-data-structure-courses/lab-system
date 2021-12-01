@@ -1,8 +1,9 @@
 import collections
-import dominate
 import logging
 from pathlib import Path
 import types
+
+import dominate
 
 import general
 import git_tools
