@@ -5,15 +5,14 @@ import dominate
 import git_tools
 import gitlab_tools
 import lab_handlers
-import lab_interfaces
 import live_submissions_table
 import path_tools
 import robograder_java
 
+
 report_segments = ['report']
 report_compilation = PurePosixPath('compilation')
 report_robograding = PurePosixPath('robograding.md')
-
 
 class CompilationColumn(live_submissions_table.Column):
     sortable = True
@@ -129,36 +128,17 @@ class CompilationAndRobogradingColumn(live_submissions_table.Column):
             callback = format_cell,
         )
 
-class SubmissionHandler(lab_interfaces.SubmissionHandler):
+class SubmissionHandler(lab_handlers.SubmissionHandler):
     '''
     A submission handler for Java labs.
 
-    You can configure certain aspects by overriding attributes:
-    * response_key: The grading response key (only used internally).
-    * submission_request: The submission request matcher.
-    * grading_response_for_outcome:
-        The function taking an outcome printer-parser
-        and returning the grading response printer-parser.
-    By default, the three attributes above take their values from the module lab_handlers.
+    You can configure certain aspects by overriding attributes.
+    In addition to those of the base class:
     * machine_speed:
-        The machine speed parameter of the robograder.
-        It defaults to 1.
+        The machine speed parameter of the robograder, if it exists.
+        Defaults to 1.
     '''
-    response_key = lab_handlers.review_response_key
-    submission_request = lab_handlers.submission_request
-    grading_response_for_outcome = lab_handlers.grading_response_for_outcome
-
     machine_speed = 1
-
-    @property
-    def request_matcher(self):
-        return self.submission_request
-
-    @property
-    def response_titles(self):
-        return {self.review_response_key: self.grading_response_for_outcome(
-            self.lab.course.config.outcome.name
-        )}
 
     def setup(self, lab):
         super().setup(lab)
@@ -206,27 +186,13 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
                 with path_tools.temp_dir() as report:
                     return self._handle_request(request_and_responses, src, bin, report)
 
-class RobogradingHandler(lab_interfaces.RequestHandler):
+class RobogradingHandler(lab_handlers.RobogradingHandler):
     '''
     A submission handler for Java labs.
 
-    You can configure certain aspects by overriding attributes:
-    * response_key: The robograding response key (only used internally).
-    * testing_request: The robograding request matcher.
-    * robograder_response_title: The robograding response printer-parser.
-    By default, these attributes take their values from the module lab_handlers.
+    You can configure certain aspects by overriding attributes.
+    See the base class.
     '''
-    response_key = lab_handlers.generic_response_key
-    testing_request = lab_handlers.testing_request
-    robograder_response_title = lab_handlers.robograder_response_title
-
-    @property
-    def request_matcher(self):
-        return self.testing_request
-
-    @property
-    def response_titles(self):
-        return {self.response_key: self.robograder_response_title}
 
     def setup(self, lab):
         super().setup(lab)
