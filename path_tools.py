@@ -1,5 +1,6 @@
 import contextlib
 import errno
+import itertools
 import os
 from pathlib import Path, PurePath, PurePosixPath
 import shlex
@@ -281,7 +282,7 @@ def search_path_split(path_string):
         A search path string.
         Can be None.
 
-    Returns a list of instances of PurePath.
+    Returns a list of instances of pathlib.PurePath.
     '''
     return [PurePath(s) for s in path_string.split(os.pathsep)] if path_string else []
 
@@ -291,7 +292,7 @@ def search_path_join(paths):
     Useful e.g. for the PATH environment variable.
 
     Arguments:
-    * paths: Iterable of instances of string or PurePath.
+    * paths: Iterable of instances of string or pathlib.PurePath.
     '''
     paths = [str(path) for path in paths]
     for path in paths:
@@ -300,9 +301,39 @@ def search_path_join(paths):
 
     return os.pathsep.join(paths)
 
+def search_path_add(path_string, paths):
+    '''
+    Add paths to the front of a search string.
+
+    Arguments:
+    * path_string:
+        The original search path (string).
+        May be None.
+    * paths: Iterable of instances of string or pathlib.PurePath.
+
+    Returns the modified search path (string).
+    '''
+    search_path_join(itertools.chain(paths, search_path_split(path_string)))
+
+def search_path_add_env(environment, name, paths):
+    '''
+    Add paths to the front of a search string in an environment dictionary.
+    If the dictionary does not contain the given key and
+    at least one path is given, an entry is created.
+
+    Arguments:
+    * environment: The environment dictionary to update.
+    * name: Key of the search path entry to modify.
+    * paths: Iterable of instances of string or pathlib.PurePath.
+    '''
+    environment[system_path] = search_path_add(environment.get(system_path), paths)
+
 system_path = 'PATH'
 
-def system_path_add(path):
-    path = str(path.resolve())
-    path_var = os.environ.get(system_path)
-    os.environ[system_path] = search_path_join(path, *search_path_split(path_var))
+def system_path_add(*paths):
+    '''
+    Add paths to the system search path.
+    The given paths must be instances of pathlib.Path.
+    They are resolved before being added.
+    '''
+    return search_path_add_env(os.environ, system_path, map(Path.resolve(paths)))
