@@ -341,9 +341,6 @@ def working_dir(path):
     finally:
         os.chdir(old)
 
-def format_path(path):
-    return shlex.quote(str(PurePosixPath(path)))
-
 def log_command(logger, cmd, working_dir = False):
     logger.debug('running command{}:\n{}'.format(
         ' in {}'.format(shlex.quote(os.getcwd())) if working_dir else '',

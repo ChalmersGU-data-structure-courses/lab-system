@@ -2,9 +2,9 @@ import hashlib
 import logging
 import types
 
-import general
 import google_tools.general
 from google_tools.drive import Drive
+import path_tools
 
 logger = logging.getLogger('exam.instantiate_template')
 
@@ -28,16 +28,21 @@ def generate(
     Generate exams (or exam solutions) from the template documents with the given ids.
 
     The exams are stored in output_dir, which needs to exist.
-    For element of students, a subfolder of that name will be created with files "exam.SUFFIX" (or "solution.SUFFIX" if solution is true) where SUFFIX is in the collection output_types.
+    For element of students, a subfolder of that name will be created
+    with files "exam.SUFFIX" (or "solution.SUFFIX" if solution is true)
+    where SUFFIX is in the collection output_types.
 
     token is a Goolge OAuth2 token with scopes for drives and documents.
 
-    questions is a collection of pairs of question keys and functions that take a random seed argument and version number and return an object with optional methods
+    questions is a collection of pairs of question keys and functions that take
+    a random seed argument and version number and return an object with optional methods
     * replacements(solution)
     * replacements_img(solution)
     returning iterables of key-value pairs.
-    In the case of replacements, a key is a string XYZ representing textual occurrences of e.g. {{Q1:XYZ}} in the template and the values are strings that serve as replacements.
-    In the case of replacements_img, the keys are image ids in the template and the values are paths to image files that serve as replacements.
+    In the case of replacements, a key is a string XYZ representing textual occurrences
+    of e.g. {{Q1:XYZ}} in the template and the values are strings that serve as replacements.
+    In the case of replacements_img, the keys are image ids in the template
+    and the values are paths to image files that serve as replacements.
 
     secret_salt should be a different value for each exam.
 
@@ -51,7 +56,6 @@ def generate(
     share_dir and share_url are required if images are to be replaced.
     share_url is the url of a directory (with trailing slash) from which Google Docs will read an uploaded image.
     share_dir is the path to a local directory from which the files in share_url are populated.
-    * 
     '''
 
     filename = 'solution' if solution else 'exam'
@@ -79,7 +83,7 @@ def generate(
         (output_dir / student).mkdir(exist_ok = True)
         google_tools.general.generate_from_template_document(
             dict(
-                (suffix, general.add_suffix(output_dir / student / filename, '.' + suffix))
+                (suffix, path_tools.add_suffix(output_dir / student / filename, '.' + suffix))
                 for suffix in output_types
             ),
             f'{filename}-{student}',

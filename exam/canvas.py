@@ -180,7 +180,7 @@ class Exam:
 
         id = self.allocation_id_lookup[user.sis_user_id]
         for format in ['pdf'] if solution else self.exam_formats:
-            file = general.add_suffix(self.exam_config.instance_dir / self.format_id(id) / s, '.' + format)
+            file = path_tools.add_suffix(self.exam_config.instance_dir / self.format_id(id) / s, '.' + format)
             self.course.post_file(file, folder.id, self.exam_file_name(id, format, solution = solution))
 
     def upload_instances(self, users = None, delete_old = True, solution = False):
