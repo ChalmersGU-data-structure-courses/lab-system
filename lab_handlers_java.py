@@ -133,30 +133,34 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
     '''
     A submission handler for Java labs.
 
-    You can configure certain aspects by overriding attributes before setup is called.
-
-    To configure the request matcher, review response key, and response title,
-    use the following attributes:
-    * review_response_key
-    * submission_request
-    * submission_request
-    By default, they take their values from the module lab_handlers.
-
-    To set the machine speed parameter of the robograder, use the attribute machine_speed.
-    It defaults to 1.
+    You can configure certain aspects by overriding attributes:
+    * response_key: The grading response key (only used internally).
+    * submission_request: The submission request matcher.
+    * grading_response_for_outcome:
+        The function taking an outcome printer-parser
+        and returning the grading response printer-parser.
+    By default, the three attributes above take their values from the module lab_handlers.
+    * machine_speed:
+        The machine speed parameter of the robograder.
+        It defaults to 1.
     '''
-    review_response_key = lab_handlers.review_response_key
+    response_key = lab_handlers.review_response_key
     submission_request = lab_handlers.submission_request
     grading_response_for_outcome = lab_handlers.grading_response_for_outcome
 
     machine_speed = 1
 
-    def setup(self, lab):
-        self.request_matcher = self.submission_request
-        self.response_titles = {
-            self.review_response_key: self.grading_response_for_outcome(),
-        }
+    @property
+    def request_matcher(self):
+        return self.submission_request
 
+    @property
+    def response_titles(self):
+        return {self.review_response_key: self.grading_response_for_outcome(
+            self.lab.course.config.outcome.name
+        )}
+
+    def setup(self, lab):
         super().setup(lab)
 
         # Set up robograder.
@@ -177,7 +181,7 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
         try:
             compilation_report = robograder_java.submission_check_and_compile(src, bin)
             compilation_success = True
-        except robograder_java.SymlinkException as e:
+        except (robograder_java.SymlinkException, robograder_java.CompileException) as e:
             compilation_report = str(e)
             compilation_success = False
         (report / report_compilation).write_text(compilation_report)
@@ -201,3 +205,54 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
             with path_tools.temp_dir() as bin:
                 with path_tools.temp_dir() as report:
                     return self._handle_request(request_and_responses, src, bin, report)
+
+class RobogradingHandler(lab_interfaces.RequestHandler):
+    '''
+    A submission handler for Java labs.
+
+    You can configure certain aspects by overriding attributes:
+    * response_key: The robograding response key (only used internally).
+    * testing_request: The robograding request matcher.
+    * robograder_response_title: The robograding response printer-parser.
+    By default, these attributes take their values from the module lab_handlers.
+    '''
+    response_key = lab_handlers.generic_response_key
+    testing_request = lab_handlers.testing_request
+    robograder_response_title = lab_handlers.robograder_response_title
+
+    @property
+    def request_matcher(self):
+        return self.testing_request
+
+    @property
+    def response_titles(self):
+        return {self.response_key: self.robograder_response_title}
+
+    def setup(self, lab):
+        super().setup(lab)
+
+        # Set up robograder.
+        self.robograder = robograder_java.LabRobograder(lab.config.path_source, self.machine_speed)
+        self.robograder.compile()
+
+    def _handle_request(self, request_and_responses, src, bin):
+        # If a response issue already exists, we are happy.
+        if self.response_key in request_and_responses.responses:
+            return
+
+        try:
+            robograder_java.submission_check_and_compile(src, bin)
+            robograding_report = self.robograder.run(src, bin)
+        except (robograder_java.HandlingException) as e:
+            robograding_report = e.markdown()
+
+        # Post response issue.
+        request_and_responses.post_response_issue(
+            response_key = self.response_key,
+            description = robograding_report,
+        )
+
+    def handle_request(self, request_and_responses):
+        with request_and_responses.checkout_manager() as src:
+            with path_tools.temp_dir() as bin:
+                return self._handle_request(request_and_responses, src, bin)
