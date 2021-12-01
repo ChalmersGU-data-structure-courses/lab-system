@@ -240,6 +240,7 @@ def compile_lib(self):
         src = dir_lib_src,
         bin = dir_lib_src,
         implicit = False,
+        skip_if_exist = True,
     )
 
 def clean_lib(self):
