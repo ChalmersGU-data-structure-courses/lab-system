@@ -1,14 +1,13 @@
-import lab_interfaces
+import lab_handlers
 import live_submissions_table
 
+class SubmissionHandler(lab_handlers.SubmissionHandler):
+    '''
+    A submission handler for Python labs.
+    So far, not much is implemented.
 
-class SubmissionHandler(lab_interfaces.SubmissionHandler):
-    def __init__(self, request_matcher, review_response, review_response_key = 'grading'):
-        self.request_matcher = request_matcher
-        self.response_titles = {
-            review_response_key: review_response,
-        }
-        self.review_response_key = review_response_key
+    TODO: Add a column in the live submissions table for test cases.
+    '''
 
     def setup(self, lab):
         super().setup(lab)
