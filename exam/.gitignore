@@ -11,3 +11,8 @@ submission_comments.txt
 # Suspected cheating.
 cluster
 evidence
+
+# Gradings and reports.
+grading-table.csv
+report.csv
+report-*.csv
