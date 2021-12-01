@@ -59,13 +59,6 @@ def check_link(link, strict):
     if len(xs) >= 1 and xs[0] == '..':
         raise EscapingSymlinkException(link)
 
-def check_in_current_dir(dir, strict):
-    for path in dir.iterdir():
-        if path.is_dir():
-            check_in_current_dir(path)
-        elif path.is_symlink():
-            check_link(path, strict)
-
 def check(dir, strict = False):
     '''
     Check that all symlinks in the directory 'dir' are non-problematic.
@@ -76,4 +69,6 @@ def check(dir, strict = False):
     If False, only symlinks that do not escape from the specified directory are allowed.
     '''
     with path_tools.working_dir(dir):
-        check_in_current_dir(Path(), strict)
+        for path in path_tools.iterdir_recursive(Path()):
+            if path.is_symlink():
+                check_link(path, strict)
