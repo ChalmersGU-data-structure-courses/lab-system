@@ -157,10 +157,12 @@ def compile_unknown(
         These should exclude: files, destination.
         javac_standard_options prepended to the iterable 'options'.
 
-    Returns a pair (success, error_output) where:
+    If check is False, returns a pair (success, error_output) where:
     * success is a Boolean indicating whether compilation was successful,
     * error_output is the captured error stream of the compiler.
       This can be non-empty even if compilation was successful (e.g., warnings).
+
+    If check is True, returns only error_output as above.
     '''
     src_files = get_src_files(src, src_files)
     if not src_files:
@@ -186,9 +188,11 @@ def compile_unknown(
     process = subprocess.run(cmd, stderr = subprocess.PIPE, encoding = 'utf-8')
     success = process.returncode == 0
 
-    if check and not success:
+    if not check:
+        return (success, process.stderr)
+    if not success:
         raise CompileError(process.stderr)
-    return (success, process.stderr)
+    return process.stderr
 
 def compile(
     src = None,

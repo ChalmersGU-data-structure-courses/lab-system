@@ -336,7 +336,7 @@ def submission_check_symlinks(src, strict = False):
     try:
         return check_symlinks.check(src, strict = strict)
     except check_symlinks.SymlinkException as e:
-        raise SymlinkException(e)
+        raise SymlinkException(e) from None
 
 class CompileException(java_tools.CompileError, HandlingException):
     prefix = 'There are compilation errors:'
@@ -355,12 +355,23 @@ class CompileException(java_tools.CompileError, HandlingException):
 
 def submission_compile(src, bin):
     try:
-        java_tools.compile_unknown(src = src, bin = bin)
+        return java_tools.compile_unknown(src = src, bin = bin, check = True)
     except java_tools.CompileError as e:
-        raise CompileException(e.compile_errors)
+        raise CompileException(e.compile_errors) from None
+
+def submission_check_and_compile(src, bin):
+    submission_check_symlinks(src)
+    return submission_compile(src, bin)
 
 @contextlib.contextmanager
 def submission_checked_and_compiled(src):
+    '''
+    Context manager for checking and compiling a submission.
+    Yields the managed output directory of compiled class files.
+
+    Does not expose the compiler report.
+    If you desire that, use submission_check_and_compile or submission_compile.
+    '''
     submission_check_symlinks(src)
     with path_tools.temp_dir() as bin:
         submission_compile(src, bin)
