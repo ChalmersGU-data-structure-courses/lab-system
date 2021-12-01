@@ -50,3 +50,11 @@
 ## Robograder
 
 * Update robograder for autocomplete lab to not test with negative weights.
+
+## Proot
+
+* Find the cause of the following bug.
+  When running the command line
+    proot -r /root -w /jail/main -b '/bin:/bin!' -b '/lib64:/lib64!' -b '/lib:/lib!' -b '/usr/bin:/usr/bin!' -b '/usr/lib64:/usr/lib64!' -b '/usr/lib:/usr/lib!' -b '/home/noname:/jail/main!'
+  the directory /bin is copied as /bin *and* /jail/bin.
+
