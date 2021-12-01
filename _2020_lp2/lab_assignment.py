@@ -20,7 +20,7 @@ from dominate.tags import (
 from dominate.util import raw, text
 
 from general import (
-    from_singleton, ilen, Timer, print_error, mkdir_fresh, exec_simple,
+    from_singleton, ilen, Timer, print_error, mkdir_fresh,
     link_dir_contents, add_suffix, modify, format_with_rel_prec, format_timespan,
     sorted_directory_list, copy_tree_fresh, get_modification_time
 )
@@ -254,7 +254,12 @@ def format_diff(root, name, rel_dir_0, rel_dir_1, rel_dir_formatting, diff_title
 class LabAssignment(Assignment):
     @staticmethod
     def parse_tests(file):
-        return exec_simple(file).tests if file.exists() else []
+        if not file.exists():
+            return []
+
+        r = dict()
+        exec(file.read_text(), r)
+        return r['tests']
 
     def __init__(self, course, dir, use_name_handlers = True, use_content_handlers = True, use_cache = True):
         if isinstance(dir, int):

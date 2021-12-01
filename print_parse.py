@@ -7,12 +7,13 @@ import pathlib
 import re
 import urllib.parse
 
-
 from escaping_formatter import regex_escaping_formatter
 import general
+import path_tools
 
-# Approximations to isomorphisms.
 PrintParse = collections.namedtuple('PrintParse', ['print', 'parse'])
+PrintParse.__doc__ = 'Approximations to isomorphisms.'
+
 
 identity = PrintParse(
     print = general.identity,
@@ -305,6 +306,11 @@ posix_path = PrintParse(
 path = PrintParse(
     print = str,
     parse = pathlib.Path,
+)
+
+search_path = PrintParse(
+    print = path_tools.search_path_join,
+    parse = path_tools.search_path_split,
 )
 
 # A network location.

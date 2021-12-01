@@ -457,11 +457,6 @@ def format_timespan_using(delta, time_unit, precision = 2):
 def format_timespan(delta, precision = 2):
     return format_timespan_using(delta, appropriate_time_unit(delta), precision)
 
-def add_to_path(dir):
-    path = str(dir.resolve())
-    assert(not (':' in path))
-    os.environ['PATH'] = path + ':' + os.environ['PATH']
-
 @contextlib.contextmanager
 def temp_fifo():
     with tempfile.TemporaryDirectory() as dir:
@@ -713,20 +708,6 @@ def canonical_keys(items, key = None):
             for x in xs:
                 yield (x, out_key)
     return dict(f())
-
-@functools.cache
-def path_separator():
-    return ';' if platform.system() == 'Windows' else ':'
-
-def join_paths(paths):
-    '''
-    Join paths using the platform-specific path separator.
-    Useful e.g. for the PATH environment variable.
-
-    Arguments:
-    * paths: Iterable of instances of string or PurePath.
-    '''
-    return path_separator().join(map(str, paths))
 
 def split_dict(u, f):
     '''

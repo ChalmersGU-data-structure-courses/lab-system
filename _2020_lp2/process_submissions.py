@@ -170,8 +170,9 @@ args = p.parse_args()
 import logging
 import shutil
 
-from general import print_error, add_to_path, join_lines
+from general import print_error, join_lines
 from canvas import Canvas, Course
+from path_tools import system_path_add
 
 from . import config
 from .lab_assignment import LabAssignment
@@ -184,7 +185,7 @@ if not (args.unpack or args.dir.exists()):
     )
     exit(1)
 
-add_to_path(path_extra)
+system_path_add(path_extra)
 
 # Check that all the necessary programs are installed.
 if args.process and not args.no_overview and not (shutil.which('diff2html') and shutil.which('highlights')):

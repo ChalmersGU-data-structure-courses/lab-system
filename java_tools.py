@@ -11,6 +11,7 @@ import shlex
 import subprocess
 
 import general
+import path_tools
 
 
 logger = logging.getLogger(__name__)
@@ -35,11 +36,11 @@ def java_version():
 
 def sourcepath_option(paths):
     if paths is not None:
-        yield from ['-classpath', general.join_paths(paths)]
+        yield from ['-classpath', path_tools.search_path_join(paths)]
 
 def classpath_option(paths):
     if paths is not None:
-        yield from ['-classpath', general.join_paths(paths)]
+        yield from ['-classpath', path_tools.search_path_join(paths)]
 
 def cmd_javac(
     files = None,
@@ -232,7 +233,7 @@ def compile(
 
     def is_up_to_date(src_file):
         bin_file = src_file.with_suffix('.class')
-        return bin_file.exists() and os.path.getmtime(bin_file) > general.get_modification_time(src_file)
+        return bin_file.exists() and os.path.getmtime(bin_file) > path_tools.get_modification_time(src_file)
 
     if skip_if_exist and all(is_up_to_date, src_files):
         logger.debug('All source files are up to date, skipping compilation.')
