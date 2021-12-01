@@ -38,8 +38,8 @@ def singularize(xs):
 def merge(xs, ys):
     ix = CachingIterator(xs)
     iy = CachingIterator(ys)
-    while not (ix.value() == None and iy.value() == None):
-        yield (ix if iy.value() == None or (ix.value() != None and ix.value() <= iy.value()) else iy).next()
+    while not (ix.value() is None and iy.value() is None):
+        yield (ix if iy.value() is None or (ix.value() is not None and ix.value() <= iy.value()) else iy).next()
 
 def merge_sort_bottom_up_step(xss):
     it = iter(xss)
@@ -63,7 +63,7 @@ class Generator:
         while True:
             values = self.r.sample([k + 1 for k in range(9)], self.n)
             c = count_inversions(values)
-            if c == self.n * (self.n - 1) // 4: # average amount of inversions
+            if c == self.n * (self.n - 1) // 4:  # average amount of inversions
                 break
         yield ('merge', '[' + ', '.join([str(value) for value in values]) + ']')
 

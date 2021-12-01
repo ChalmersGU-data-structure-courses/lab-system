@@ -3,10 +3,10 @@ import itertools
 import random
 
 class Node:
-    def __init__(self, value, l, r):
+    def __init__(self, value, l, r):  # noqa: E741
         self.height = 1 + max(height(l), height(r))
         self.value = value
-        self.l = l
+        self.l = l  # noqa: E741
         self.r = r
 
     def __str__(self):

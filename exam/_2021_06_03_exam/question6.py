@@ -26,7 +26,7 @@ def question6(seed = None, solution = False):
         # remove a random number until the length == NCHEAP
         while len(weights) > NCHEAP:
             del weights[rnd.randrange(0, len(weights))]
-        # the path will be the even-numbered elements 
+        # the path will be the even-numbered elements
         path = weights[0::2]
 
     path_cost = sum(path)
@@ -50,7 +50,7 @@ def question6(seed = None, solution = False):
     return r
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     print(question6())
 
 class Generator:

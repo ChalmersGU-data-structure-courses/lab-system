@@ -1,14 +1,14 @@
 
 import random
 
-SIZE = 10 # size of the array
-HOLES = [2, 3, 9] # positions for "?" unknown values
-INSERT = 1 # position where the inserted element should end up
+SIZE = 10  # size of the array
+HOLES = [2, 3, 9]  # positions for "?" unknown values
+INSERT = 1  # position where the inserted element should end up
 
-STARTVALUES = [1, 2, 3] # possible values for the first element
-INCREASE = [2, 3, 4, 5, 6] # possible diffs between one value and its child
-HOLE_INC = [2, 3, 4] # possible diff between one value and its child, if one of them is a hole
-INSERT_INC = [4, 5] # possible diff between one value and its child, if one of them is the INSERT position
+STARTVALUES = [1, 2, 3]  # possible values for the first element
+INCREASE = [2, 3, 4, 5, 6]  # possible diffs between one value and its child
+HOLE_INC = [2, 3, 4]  # possible diff between one value and its child, if one of them is a hole
+INSERT_INC = [4, 5]  # possible diff between one value and its child, if one of them is the INSERT position
 
 def test_unique_values(array):
     insert_values = set(range(array[parent(INSERT)] + 1, array[INSERT])) - set(array)
@@ -34,14 +34,19 @@ def question4(seed = None, solution = False):
             i = len(array)
             prev = array[parent(i)]
             choices = (INSERT_INC if i == INSERT else
-                       HOLE_INC   if i in HOLES or parent(i) in HOLES else
+                       HOLE_INC   if i in HOLES or parent(i) in HOLES else  # noqa: E272
                        INCREASE)
             increase = rnd.choice(choices)
             array.append(prev + increase)
 
     #min_insert_val = array[parent(INSERT)] + 1
     #max_insert_val = array[INSERT] - 1
-    unique_choice_insert_val = min(v for f in [leftchild, rightchild] for v in [array[f(parent(INSERT))]] if v != None) - 1
+    unique_choice_insert_val = min(
+        v
+        for f in [leftchild, rightchild]
+        for v in [array[f(parent(INSERT))]]
+        if v is not None
+    ) - 1
 
     #answer = {'solution': {
     #    'array': [],
@@ -74,7 +79,7 @@ def question4(seed = None, solution = False):
             answer[f'sol_b_v{i}'] = str(array[i])
     return answer
 
-if __name__=='__main__':
+if __name__ == '__main__':
     print(question4())
 
 class Generator:
