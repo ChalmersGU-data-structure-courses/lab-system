@@ -79,6 +79,23 @@ def modify_no_modification_time(path, callback):
         file.write(content)
 
 
+# ## File encodings.
+
+def guess_encoding(b):
+    encodings = ['utf-8', 'latin1']
+    for encoding in encodings:
+        try:
+            return b.decode(encoding = encoding)
+        except UnicodeDecodeError:
+            pass
+
+    return b.decode()
+
+def fix_encoding(path):
+    content = guess_encoding(path.read_bytes())
+    with OpenWithNoModificationTime(path) as file:
+        file.write(content)
+
 # ## Working with lists of searc paths as typically stored in environment variables.
 
 def search_path_split(path_string):
