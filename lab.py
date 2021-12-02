@@ -770,3 +770,4 @@ class Lab:
         self.repo_push()
         self.update_live_submissions_table(deadline = deadline)
         self.update_grading_sheet(deadline = deadline)
+        self.repo_push()  # Needed because update_grading_sheet might add stuff to repo.
