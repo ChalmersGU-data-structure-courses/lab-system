@@ -45,7 +45,12 @@ class SubmissionHandler(lab_handlers.SubmissionHandler):
     def test_submission(self, request_and_responses, src):
         with path_tools.temp_dir() as report:
             self.tester.run_tests(report, src)
-            request_and_responses.repo_report_create(segments_test_tag, report, force = True)
+            request_and_responses.repo_report_create(
+                segments_test_tag,
+                report,
+                commit_message = 'test results',
+                force = True
+            )
 
     def setup(self, lab):
         super().setup(lab)
