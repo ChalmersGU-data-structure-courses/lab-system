@@ -169,7 +169,12 @@ class SubmissionHandler(lab_handlers.SubmissionHandler):
                 robograding_report = e.markdown()
             (report / report_robograding).write_text(robograding_report)
 
-        request_and_responses.repo_report_create(report_segments, report, force = True)
+        request_and_responses.repo_report_create(
+            report_segments,
+            report,
+            commit_message = 'compilation and robograding report',
+            force = True,
+        )
         return {
             'accepted': True,
             'review_needed': True,
