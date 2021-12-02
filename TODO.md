@@ -4,6 +4,8 @@
 
 * Do per group caching of remote_tags.
 
+* Cache resolved commits in group_project.
+
 * Fix configure_student_project method:
   make it use the request handlers of the lab config.
 
