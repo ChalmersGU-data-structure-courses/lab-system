@@ -32,7 +32,7 @@ class TestingColumn(live_submissions_table.Column):
 
         def format_cell(cell):
             with cell:
-                live_submissions_table.format_url('official..', url)
+                live_submissions_table.format_url('diff solution..', url)
         return live_submissions_table.CallbackColumnValue(callback = format_cell)
 
 class SubmissionHandler(lab_handlers.SubmissionHandler):
