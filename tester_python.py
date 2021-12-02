@@ -3,6 +3,10 @@ from pathlib import Path
 import shutil
 import subprocess
 
+# The following module is not needed here, but when tests are run.
+# We import it to make sure that all dependencies of the sandboxing script are satisfies.
+import seccomp  # noqa: F401
+
 import general
 import path_tools
 import proot_tools
