@@ -1,8 +1,10 @@
 # Stand-alone script used as initialization script
 # for reduced-privilege processes running in a sandbox.
+import errno
 from pathlib import PurePath
-import seccomp
 import sys
+
+import seccomp
 
 
 def setup_seccomp(callback = None):
@@ -22,7 +24,6 @@ def setup_seccomp(callback = None):
     Supported configurations (add yours):
     * x64 Linux with glibc
     '''
-    import errno
     from seccomp import Arg, ALLOW, MASKED_EQ
 
     # Make the system call return an error if the policy is violated.
