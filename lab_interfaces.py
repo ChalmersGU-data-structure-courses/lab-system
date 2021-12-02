@@ -64,6 +64,9 @@ class RequestHandler:
         The request handler may only produce response issues by calling
         a method in the lab instance that produces it via a key
         to the dictionary of issue title printer-parsers.
+        If this attribute is provided dynamically,
+        its keys must be stable.
+        The attribute must be stable after setup has been called.
 
         The domains of the printer-parsers are string-valued dictionaries
         that must include the key 'tag' for the name of the associated request.

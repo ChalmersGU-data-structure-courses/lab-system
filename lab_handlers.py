@@ -63,9 +63,10 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
 
     @property
     def response_titles(self):
-        return {self.review_response_key: self.grading_response_for_outcome(
-            self.lab.course.config.outcome.name
-        )}
+        value = self.grading_response_for_outcome(
+            self.lab.course.config.outcome.name,
+        ) if hasattr(self, 'lab') else None
+        return {self.review_response_key: value}
 
 class RobogradingHandler(lab_interfaces.RequestHandler):
     '''
