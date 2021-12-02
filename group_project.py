@@ -126,7 +126,7 @@ class RequestAndResponses:
             repo = self.lab.repo,
             tree = tree,
             message = commit_message,
-            parent_commits = [self.repo_remote_commit],
+            parent_commits = [],
             author_date = self.repo_remote_commit.authored_datetime,
             commit_date = self.repo_remote_commit.committed_datetime,
         )
