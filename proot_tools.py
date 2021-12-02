@@ -1,14 +1,14 @@
 from pathlib import Path, PurePath
 
-def path_as_str(path):
-    return str(PurePath(path))
+import path_tools
+
 
 def proot_args(
     args,
     working_directory,
     bindings = [],
-    root = 'root',
-    proot_executable = 'proot',
+    root = Path('/root'),
+    proot_executable = Path('proot'),
 ):
     '''Produce argument list for a program call of proot.
 
@@ -19,7 +19,7 @@ def proot_args(
     - shell = False
     - restore_signals = True
 
-    Path arguments may be given instances of pathlib.PurePath or string.
+    Path arguments may be given as instances of pathlib.PurePath or string.
 
     Arguments:
     * args
@@ -70,7 +70,7 @@ def proot_args(
                 binding = (binding, binding)
             (path_host, path_guest) = binding
             yield '-b'
-            yield path_as_str(path_host) + ':' + path_as_str(path_guest) + '!'
+            yield str(path_host) + ':' + str(path_guest) + '!'
 
         # Pass argument list to invoke.
         yield from args
@@ -99,9 +99,11 @@ def proot_python_args(
     env = None,
     **kwargs,
 ):
-    '''Produce argument list for a python script call within a proot.
+    '''
+    Produce argument list for a python script call within a proot.
 
     Adds necessary bindings to run the Python interpreter.
+    Path arguments may be given as instances of pathlib.PurePath or string.
 
     Arguments:
     * guest_script:
@@ -133,29 +135,24 @@ def proot_python_args(
     * kwargs:
         Keyword arguments passed on to proot_args.
     '''
-    for path in python_path_extra:
-        x = path_as_str(path)
-        xs = env.get('PYTHONPATH')
-        env['PYTHONPATH'] = x if xs == None else x + ':' + xs
-
-    def get_args():
-        yield '/usr/bin/python3'
-        yield '-B'
-        yield '-s'
-        yield from *python_args_extra
-        yield '--'
-        yield guest_script
-        yield from guest_args
-
-    def get_bindings():
-        yield from standard_bindings()
-        yield (host_dir_main, guest_dir_main)
-        yield from bindings
+    path_tools.search_path_add_env(env, 'PYTHONPATH', python_path_extra)
 
     return proot_args(
-        get_args(),
-        guest_dir_main,
-        get_bindings(),
+        args = [
+            '/usr/bin/env', 'python3',
+            '-B',
+            '-s',
+            *python_args_extra,
+            '--',
+            guest_script,
+            *guest_args,
+        ],
+        working_directory = guest_dir_main,
+        bindings = [
+            *standard_bindings(),
+            (host_dir_main, guest_dir_main),
+            *bindings,
+        ],
         **kwargs,
     )
 
@@ -173,11 +170,16 @@ def sandboxed_python_args(
     bindings = [],
     **kwargs,
 ):
-    '''Produce argument list for a sandboxed python script call within a proot.
+    '''
+    Produce argument list for a sandboxed python script call within a proot.
+
+    Path arguments may be given as instances of pathlib.PurePath or string.
 
     Arguments:
     * guest_script:
         Path to guest script to execute via sandboxer.
+        Relative to the working directory given by the argument
+        guest_dir_main as received by proot_python_args.
     * guest_args:
         Iterable of arguments to pass to the guest script.
     * sandboxer_script:
@@ -194,29 +196,27 @@ def sandboxed_python_args(
 
     Example use case:
     > env = dict()
-    > args = sandboxed_python_args(
-    >     guest_script = <host main dir> / <some script basename>,
+    > cmd = sandboxed_python_args(
+    >     guest_script = <some script relative to host main dir>,
     >     guest_args = <arguments>,
     >     host_dir_main = <host main dir>,
-    >     env = env
+    >     env = env,
     > )
-    > subprocess.run(args, env = env)
+    > subprocess.run(cmd, env = env)
     '''
     executable = guest_python_packages / '_sandboxer.py'
 
-    def get_guest_args():
-        yield from sandboxer_args
-        yield guest_script
-        yield from guest_args
-
-    def get_bindings():
-        yield (sandboxer, executable)
-        yield from bindings
-
     return proot_python_args(
         guest_script = executable,
-        guest_args = get_guest_args(),
+        guest_args = [
+            *sandboxer_args,
+            guest_script,
+            *guest_args,
+        ],
         python_path_extra = [guest_python_packages],
-        bindings = get_bindings(),
+        bindings = [
+            (sandboxer, executable),
+            *bindings,
+        ],
         **kwargs,
     )

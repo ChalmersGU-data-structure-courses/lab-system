@@ -425,16 +425,21 @@ Let us select this lab as a variable:
 ```
 lab = course.lab[3]
 ```
-
-We run
+We start by running:
+```
+lab.group.create()
+```
+This will create the group for the lab.
+This is where the official project and grading project will reside.
+Next, we run:
 ```
 lab.official_project.create()
 lab.grading_project.create()`
 ```
-to create the official project with problem and solution branches.
-This will take its content from the local directory specified in the lab configuration and add a suitable `.gitignore` file if configured.
-If we wanted to delete the official project to start again, we would call the `delete` method instead.
-Similarly, this creates the grading repository that graders can later clone and pull from to get up-to-date submissions and derived information such as test output.
+This creates the official project with problem and solution branches.
+It takes its initial content from the local directory specified in the lab configuration and add a suitable `.gitignore` file if configured.
+Similarly, this creates the (empty) grading repository that graders can later clone and pull from to get up-to-date submissions and derived information such as test output.
+If we wanted to delete a project to start over, we would call the `delete` method instead of `create`.
 
 Double-check that the official project has the correct content.
 The student projects will be derived from it.

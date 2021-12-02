@@ -1,7 +1,4 @@
 import json
-import google.auth.transport.requests
-import google.oauth2.service_account 
-import google_auth_oauthlib.flow
 import logging
 from pathlib import Path
 import pickle
@@ -9,10 +6,16 @@ import shlex
 import shutil
 import urllib.parse
 
+import google.auth.transport.requests
+import google.oauth2.service_account
+import google_auth_oauthlib.flow
+
 import general
+import path_tools
 
 from .drive import Drive, TemporaryFile
 from .documents import Documents
+
 
 logger = logging.getLogger('google_tools.general')
 
@@ -99,14 +102,13 @@ def generate_from_template_document(
     share_dir and share_url are required if images are to be replaced.
     share_url is the url of a directory (with trailing slash) from which Google Docs will read an uploaded image.
     share_dir is the path to a local directory from which the files in share_url are populated.
-    * 
     '''
 
     drive = Drive(token)
     docs = Documents(token)
 
     with TemporaryFile(drive, id, name) as id_copy:
-        with general.ScopedFiles() as files:
+        with path_tools.ScopedFiles() as files:
             # Collect all replacement requests.
             requests = []
             for key, value in replacements.items():
@@ -115,7 +117,8 @@ def generate_from_template_document(
                 name = key + '_' + value.name
                 share_file = share_dir / name
 
-                # Copy and unlink instead of renaming because 'value' could be a symlink that might have no meaning to the HTTP server that will serve the file request from Google Docs. 
+                # Copy and unlink instead of renaming because 'value' could be a symlink that might
+                # have no meaning to the HTTP server that will serve the file request from Google Docs.
                 shutil.copyfile(value, share_file)
                 files.add(share_file)
                 value.unlink()

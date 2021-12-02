@@ -11,6 +11,8 @@ import shlex
 import subprocess
 
 import general
+import path_tools
+
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +35,12 @@ def java_version():
 # Java Compiler
 
 def sourcepath_option(paths):
-    if paths != None:
-        yield from ['-classpath', general.join_paths(paths)]
+    if paths is not None:
+        yield from ['-classpath', path_tools.search_path_join(paths)]
 
 def classpath_option(paths):
-    if paths != None:
-        yield from ['-classpath', general.join_paths(paths)]
+    if paths is not None:
+        yield from ['-classpath', path_tools.search_path_join(paths)]
 
 def cmd_javac(
     files = None,
@@ -46,7 +48,8 @@ def cmd_javac(
     sourcepath = None,
     classpath = None,
     encoding = None,
-    options = None
+    implicit = None,
+    options = None,
 ):
     '''
     Produce a command line for a call to javac.
@@ -58,23 +61,28 @@ def cmd_javac(
     * sourcepath: Iterable of paths to use as sourcepath.
     * classpath: Iterable of paths to use as classpath.
     * encoding: Encoding to use (string).
+    * implicit:
+        Whether to generate class files for implicitly loaded source files (boolean).
+        On by default.
     * option: Iterable of further options (string convertible).
 
     Returns an iterable of strings.
     '''
 
     yield 'javac'
-    if destination != None:
+    if destination is not None:
         yield from ['-d', str(destination)]
     yield from sourcepath_option(sourcepath)
     yield from classpath_option(classpath)
-    if encoding != None:
+    if encoding is not None:
         yield from ['-encoding', encoding]
-    if options != None:
+    if implicit is not None:
+        yield '-implicit:' + ('class' if implicit else 'none')
+    if options is not None:
         for option in options:
             yield str(option)
 
-    if files != None:
+    if files is not None:
         for file in files:
             yield str(file)
 
@@ -92,6 +100,7 @@ def javac_prepend_standard_options(params):
 
 class CompileError(Exception):
     def __init__(self, compile_errors):
+        super().__init__(compile_errors)
         self.compile_errors = compile_errors
 
 def java_files(dir):
@@ -101,28 +110,63 @@ def java_files(dir):
 
     Takes a string or instance of pathlib.Path, but returns an iterable of pathlib.Path.
     '''
-    for file in Path(dir).rglob('*.java'):
-        if file.is_file():
+    for file in path_tools.iterdir_recursive(dir):
+        if file.is_file() and file.suffix == '.java':
             yield file
 
 def get_src_files(src, src_files):
     '''
     Helper function.
-    If src_files is not specified, get source files as descendant of src.
+    If src_files is not specified, get source files as descendants of src.
     '''
-    if src_files == None:
+    if src_files is None:
         src_files = java_files(src)
     return list(src_files)
 
-def compile_unknown(src, bin, src_files = None, detect_encoding = True, check = False, **kwargs):
+def is_up_to_date(src_file):
     '''
-    Compile Java source files (if any) in 'src', placing the compiled class files in 'bin'.
+    Determine if a Java source file (instance of pathlib.Path) has
+    an up-to-date compiled class file next to it.
+    Here, "up-to-date" means newer modification time.
+    '''
+    bin_file = src_file.with_suffix('.class')
+    return bin_file.exists() and os.path.getmtime(bin_file) > path_tools.get_modification_time(src_file)
+
+def all_up_to_date(
+    src = None,
+    src_files = None,
+):
+    '''
+    Determine if the compiled class files for given Java source files are up-to-date.
+    The source files are descendants of 'src' or, if not specified, given by src_files.
+    All path arguments are strings or instances of pathlib.Path.
+
+    Arguments:
+    * src: The source directory.
+    * src_files: An iterable of source files.
+    '''
+    return all(map(is_up_to_date, get_src_files(src, src_files)))
+
+def compile_unknown(
+    src,
+    bin,
+    src_files = None,
+    detect_encoding = True,
+    check = False,
+    **kwargs,
+):
+    '''
+    Compile all Java source files that are descendants of 'src'.
     The source files might not have 'src' as the base of their package hierarchy.
     Useful for compiling student submissions.
 
     All path arguments are strings or instances of pathlib.Path.
 
     Arguments:
+    * src: The source directory.
+    * bin [output]:
+        The compilation target directory.
+        This is where the compiled class files are placed.
     * src_files:
         An iterable of source files to compile.
         If not given, defaults to all children files of 'src' with suffix '.java'.
@@ -135,12 +179,14 @@ def compile_unknown(src, bin, src_files = None, detect_encoding = True, check = 
     * kwargs:
         Further keyword arguments to be passed to javac_cmd.
         These should exclude: files, destination.
-        Note that javac_standard_options is added to options.
+        javac_standard_options prepended to the iterable 'options'.
 
-    Returns a pair (success, error_output) where:
+    If check is False, returns a pair (success, error_output) where:
     * success is a Boolean indicating whether compilation was successful,
     * error_output is the captured error stream of the compiler.
       This can be non-empty even if compilation was successful (e.g., warnings).
+
+    If check is True, returns only error_output as above.
     '''
     src_files = get_src_files(src, src_files)
     if not src_files:
@@ -148,68 +194,73 @@ def compile_unknown(src, bin, src_files = None, detect_encoding = True, check = 
         return (True, str())
 
     if detect_encoding:
-        encoding = general.detect_encoding(src_files)
+        # Import locally to avoid charet dependency if this option is not used.
+        import chardet_tools
+        encoding = chardet_tools.detect_encoding(src_files)
         logger.debug('Detected encoding {}'.format(encoding))
         kwargs['encoding'] = encoding
 
     javac_prepend_standard_options(kwargs)
 
     logger.debug(f'Compiling source files {src_files}')
-    cmd = list(cmd_javac(files = src_files, destination = bin, **kwargs))
+    cmd = list(cmd_javac(
+        files = src_files,
+        destination = bin,
+        **kwargs,
+    ))
     general.log_command(logger, cmd, True)
     process = subprocess.run(cmd, stderr = subprocess.PIPE, encoding = 'utf-8')
     success = process.returncode == 0
 
-    if check and not success:
+    if not check:
+        return (success, process.stderr)
+    if not success:
         raise CompileError(process.stderr)
-    return (success, process.stderr)
+    return process.stderr
 
 def compile(
     src = None,
+    bin = None,
     src_files = None,
     skip_if_exist = False,
-    check = False,
-    **kwargs
+    **kwargs,
 ):
     '''
-    Compile Java source files (if any) in 'src' or as given by src_files.
-    The source files must not be symlinks.
-    One of 'src' and 'src_files' must be given.
+    Compile Java source files (if any) in 'src' or, if not specified, given by src_files.
 
     All path arguments are strings or instances of pathlib.Path.
 
+    Note on symlinks:
+    * The source files must not be symlinks.
+    * If bin is None, then the parent directory of each source file must not be a symlink.
+
     Arguments:
+    * src: The source directory.
+    * bin [output]:
+        The compilation target directory.
+        This is where the compiled class files are placed.
+        If None, then these are placed next to the corresponding source file.
     * src_files:
         An iterable of source files to compile.
         If not given, defaults to all children files of 'src' with suffix '.java'.
         All source files should treat 'src' as the basis of their package hierarchy.
     * skip_if_exist:
-        If set, skip compiling those source files that do already have
+        If set, skip compiling if all source files have
         a compiled class file with newer modification time.
-        If all source files are skipped, the output is (True, str()).
+        In that case, the output is (True, str()).
         Broken by renamings of files and directories and the presence of symlinks.
     * kwargs:
         Further keyword arguments to pass to cmd_javac.
-        These should exclude: files.
+        These should exclude: files, destination.
         Note that javac_standard_options is added to options.
 
     Raises an instance of CompileError on compilation error.
     '''
     src_files = get_src_files(src, src_files)
 
-    def is_up_to_date(src_file):
-        bin_file = src_file.with_suffix('.class')
-        return bin_file.exists() and os.path.getmtime(bin_file) > general.get_modification_time(src_file)
-
-    def need_compilation(src_files):
-        for src_file in src_files:
-            if is_up_to_date(src_file):
-                logger.debug(f'Source file {str(src_file)} is up to date, skipping compilation.')
-            else:
-                yield src_file
-
-    if skip_if_exist:
-        src_files = list(need_compilation(src_files))
+    if skip_if_exist and all(map(is_up_to_date, src_files)):
+        logger.debug('All source files are up to date, skipping compilation.')
+        return
 
     if not src_files:
         logger.debug('No source files to compile.')
@@ -218,11 +269,28 @@ def compile(
     javac_prepend_standard_options(kwargs)
 
     logger.debug(f'Compiling source files {src_files}')
-    cmd = list(cmd_javac(files = src_files, **kwargs))
+    cmd = list(cmd_javac(files = src_files, destination = bin, **kwargs))
     general.log_command(logger, cmd, True)
     process = subprocess.run(cmd, stderr = subprocess.PIPE, encoding = 'utf-8')
     if process.returncode != 0:
         raise CompileError(process.stderr)
+
+def clean(src):
+    '''
+    Clean a Java hierarchy that includes both sources and compiled class files.
+    This removes all class files.
+
+    Arguments:
+    * src:
+        The directory to be cleaned.
+        Instance of pathlib.Path.
+    '''
+    for path in path_tools.iterdir_recursive(src, include_top_level = False, pre_order = False):
+        if path.is_file():
+            if path.suffix == '.class':
+                path.unlink()
+        elif path.is_dir():
+            path_tools.rmdir_safe(path)
 
 ################################################################################
 # Java
@@ -285,6 +353,7 @@ def permission_file(path, is_dir = False, file_permissions = [FilePermission.rea
         String or instance of pathlib.PurePath.
         This should be an absolute path to make it independent
         of the eventual location of the policy file.
+        (TODO: or was it the working directory of the java invocation?)
     * is_dir:
         Boolean.
         Whether to interpret 'path' as a directory (with permissions
@@ -329,7 +398,7 @@ def policy_grant(path, permissions):
     def line_grant():
         nonlocal path
         yield 'grant'
-        if path != None:
+        if path is not None:
             path = Path(path).resolve()
             yield 'codeBase'
             yield string_encode('file:' + format_file_or_dir(path, codebase_file_or_dir(path)))
@@ -339,7 +408,6 @@ def policy_grant(path, permissions):
         ' '.join(line_grant()),
         *('  ' + policy_permission(*permission) for permission in permissions),
         '};',
-        '',
     ])
 
 def policy(entries):
@@ -349,7 +417,7 @@ def policy(entries):
     Takes an iterable of pairs (path, permissions) as in policy_grant.
     Return a block of text from which a Java policy file can be initialized.
     '''
-    return general.join_lines(policy_grant(*entry) for entry in entries)
+    return '\n'.join(policy_grant(*entry) for entry in entries)
 
 @contextlib.contextmanager
 def policy_manager(entries):
@@ -357,7 +425,7 @@ def policy_manager(entries):
     Context manager for a policy file specified by entries as in 'policy'.
     Yields an instance of pathlib.Path.
     '''
-    with general.temp_file('policy') as path_policy:
+    with path_tools.temp_file('policy') as path_policy:
         path_policy.write_text(policy(entries))
         yield path_policy
 
@@ -394,7 +462,7 @@ def cmd_java(
     if enable_assertions:
         yield '-ea'
     yield from classpath_option(classpath)
-    if options != None:
+    if options is not None:
         for option in options:
             yield str(option)
     yield main
@@ -432,7 +500,7 @@ def run(
     java_prepend_standard_options(kwargs)
 
     with contextlib.ExitStack() as stack:
-        if policy_entries != None:
+        if policy_entries is not None:
             security_policy = stack.enter_context(policy_manager(policy_entries))
             kwargs['security_policy'] = security_policy
             logger.debug('Content of security policy file:\n' + security_policy.read_text())
@@ -450,5 +518,5 @@ def run(
         logger.debug(f'Keyword arguments for subprocess.run: {kwargs_run}')
 
         cmd = list(cmd_java(main, **kwargs_cmd_java))
-        general.log_command(logger, cmd)
+        general.log_command(logger, cmd, working_dir = True)
         return subprocess.run(cmd, **kwargs_run)

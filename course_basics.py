@@ -5,6 +5,7 @@ import general
 import markdown
 import print_parse
 
+
 class SubmissionHandlingException(Exception):
     '''
     Interface to use for all errors arising from submissions
@@ -20,6 +21,7 @@ class SubmissionHandlingException(Exception):
         so should also be supported.
         '''
         return markdown.escape_code_block(str(self))
+
 
 class RequestMatcher:
     '''
@@ -49,6 +51,7 @@ class RequestMatcher:
         '''
         raise NotImplementedError()
 
+
 class RegexRequestMatcher(RequestMatcher):
     def __init__(self, name, protection_patterns, regex, regex_flags = 0):
         '''
@@ -67,6 +70,7 @@ class RegexRequestMatcher(RequestMatcher):
         self.name = name
         self.protection_patterns = list(protection_patterns)
         self.parse = lambda tag: re.fullmatch(regex, tag, regex_flags)
+
 
 CompilationRequirement = namedtuple(
     'CompilationRequirement',
@@ -123,6 +127,7 @@ compilation_requirement_require = CompilationRequirement(
     ]),
 )
 
+
 class Compiler:
     '''
     Interface defining a submission compiler.
@@ -163,6 +168,7 @@ class Compiler:
         '''
         raise NotImplementedError()
 
+
 class SubmissionHandler:
     '''Interface defining a submission handler (after compilation).'''
 
@@ -189,6 +195,7 @@ class SubmissionHandler:
         This operation should be idempotent.
         '''
         pass
+
 
 class Tester(SubmissionHandler):
     '''

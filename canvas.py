@@ -1,22 +1,32 @@
 from datetime import timedelta
 import logging
-import http_logging
+import http_logging  # noqa F401
 import json
 import os.path
 from pathlib import PurePosixPath, Path
 import re
 import requests
-import shlex
 import shutil
 import subprocess
 import types
 import urllib.parse
 
-from general import from_singleton, group_by, doublequote, JSONObject, json_encoder, print_error, add_suffix, write_lines, set_modification_time, OpenWithModificationTime, modify_no_modification_time, fix_encoding, on, eq, without_adjacent_dups
+from general import (
+    from_singleton, group_by, doublequote, JSONObject, json_encoder, print_error,
+    on, eq, without_adjacent_dups, join_lines,
+)
+from path_tools import (
+    add_suffix, format_path,
+    set_modification_time, OpenWithModificationTime, modify_no_modification_time,
+    fix_encoding,
+)
 import simple_cache
-from submission_fix_lib import HandlerException
+
+from _2020_lp2.submission_fix_lib import HandlerException
+
 
 logger = logging.getLogger(__name__)
+
 
 # This class manages requests to Canvas and their caching.
 # Caching is important to maintain quick execution time of higher level scripts on repeat invocation.
@@ -31,7 +41,7 @@ class Canvas:
                 self.auth_token = Path(auth_token).open().read().strip()
             except FileNotFoundError:
                 print_error('No Canvas authorization token found.')
-                print_error('Expected Canvas authorization token in file {}.'.format(shlex.quote(str(auth_token))))
+                print_error('Expected Canvas authorization token in file {}.'.format(format_path(auth_token)))
                 exit(1)
         else:
             self.auth_token = auth_token
@@ -97,15 +107,22 @@ class Canvas:
         x = Canvas.get_response_json(r)
         assert(isinstance(x, list))
         while 'next' in r.links:
-            r = self.session.get(r.links['next']['url'], headers = {'Authorization': 'Bearer {}'.format(self.auth_token)})
+            r = self.session.get(
+                r.links['next']['url'],
+                headers = {'Authorization': 'Bearer {}'.format(self.auth_token)}
+            )
             x.extend(Canvas.get_response_json(r))
-        return x;
+        return x
 
     # internal
     def json_cacher(self, method):
         def f(endpoint, params = dict(), use_cache = True):
             logger.log(logging.INFO, 'accessing endpoint ' + self.get_url(Canvas.with_api(endpoint)))
-            return Canvas.objectify_json(self.cache.with_cache_json(Canvas.get_cache_path(Canvas.with_api(endpoint), params), lambda: method(endpoint, params), use_cache))
+            return Canvas.objectify_json(self.cache.with_cache_json(
+                Canvas.get_cache_path(Canvas.with_api(endpoint), params),
+                lambda: method(endpoint, params),
+                use_cache,
+            ))
         return f
 
     # Return the URL to the web browser page on Canvas corresponding to an endpoint.
@@ -167,21 +184,27 @@ class Canvas:
     # The starting elements 'api' and 'v1' are omitted.
     def put(self, endpoint, params = dict(), data = None, json = None):
         logger.log(logging.INFO, 'PUT with endpoint ' + self.get_url(Canvas.with_api(endpoint)))
-        return Canvas.objectify_json(Canvas.get_response_json(self.session.put(self.get_url(Canvas.with_api(endpoint)), data = data, json = json, params = params)))
+        return Canvas.objectify_json(Canvas.get_response_json(self.session.put(
+            self.get_url(Canvas.with_api(endpoint)), data = data, json = json, params = params,
+        )))
 
     # Perform a POST request to the designated endpoint.
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
     # The starting elements 'api' and 'v1' are omitted.
     def post(self, endpoint, data = None, json = None, params = dict()):
         logger.log(logging.INFO, 'POST with endpoint ' + self.get_url(Canvas.with_api(endpoint)))
-        return Canvas.objectify_json(Canvas.get_response_json(self.session.post(self.get_url(Canvas.with_api(endpoint)), data = data, json = json, params = params)))
+        return Canvas.objectify_json(Canvas.get_response_json(self.session.post(
+            self.get_url(Canvas.with_api(endpoint)), data = data, json = json, params = params,
+        )))
 
     # Perform a DELETE request to the designated endpoint.
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
     # The starting elements 'api' and 'v1' are omitted.
     def delete(self, endpoint, params = dict()):
         logger.log(logging.INFO, 'DELETE with endpoint ' + self.get_url(Canvas.with_api(endpoint)))
-        return Canvas.objectify_json(Canvas.get_response_json(self.session.delete(self.get_url(Canvas.with_api(endpoint)), params = params)))
+        return Canvas.objectify_json(Canvas.get_response_json(self.session.delete(
+            self.get_url(Canvas.with_api(endpoint)), params = params,
+        )))
 
     @staticmethod
     def param_boolean(v):
@@ -200,20 +223,22 @@ class Canvas:
             #'locked': True,
             #'lock': True,
             'parent_folder_id': folder_id,
-            'on_duplicate': 'overwrite', # There should be an 'error' option
+            'on_duplicate': 'overwrite',  # There should be an 'error' option
         })
         upload_params = json.loads(json_encoder.encode(r.upload_params))
 
         if use_curl:
             cmd = ['curl', r.upload_url]
             for upload_param, value in upload_params.items():
-                assert(re.fullmatch('\w+', upload_param))
+                assert(re.fullmatch('\\w+', upload_param))
                 cmd += ['-F', upload_param + '=' + doublequote(value if isinstance(value, str) else json.dumps(value))]
             cmd += ['-F', 'file=@' + doublequote(str(file))]
             process = subprocess.run(cmd, check = True, stdout = subprocess.PIPE, encoding = 'utf-8')
             location = json.loads(process.stdout)['location']
         else:
-            location = self.session_file.post(r.upload_url, upload_params, files = {'file': file.read_bytes()}).headers['Location']
+            location = self.session_file.post(
+                r.upload_url, upload_params, files = {'file': file.read_bytes()}
+            ).headers['Location']
 
         return Canvas.objectify_json(Canvas.get_response_json(self.session.get(location))).id
 
@@ -223,6 +248,7 @@ class Canvas:
 
     def file_set_locked(self, file_id, locked):
         self.put(['files', file_id], params = {'locked': Canvas.param_boolean(locked)})
+
 
 # On GU Canvas, the user id fields seem to mean the following:
 # * sis_user_id: 12-digit personnummer (could be a temporary one, which includes letter 'T'; probably even 'P')
@@ -309,7 +335,7 @@ class Course:
             self.assignments_name_to_id[assignment.name] = assignment.id
 
     def _user_maybe(self, user_id):
-        return self.user_details[user_id] if user_id != None else None
+        return None if user_id is None else self.user_details[user_id]
 
     def user_by_sis_id(self, sis_id):
         return self._user_maybe(self.user_sis_id_to_id.get(sis_id))
@@ -337,7 +363,10 @@ class Course:
         if id:
             return self.assignment_details[id]
 
-        xs = list(filter(lambda assignment: assignment.name.lower().startswith(assignment_name.lower()), self.assignment_details.values()))
+        xs = list(filter(
+            lambda assignment: assignment.name.lower().startswith(assignment_name.lower()),
+            self.assignment_details.values()
+        ))
         if len(xs) == 1:
             return xs[0]
 
@@ -366,15 +395,23 @@ class Course:
         self.canvas.delete(self.endpoint + ['assignments', id])
 
     def get_submissions(self, assignment_id, use_cache = True):
-        return self.canvas.get_list(['courses', self.course_id, 'assignments', assignment_id, 'submissions'], params = {'include[]': ['submission_comments', 'submission_history']}, use_cache = use_cache)
+        return self.canvas.get_list(
+            ['courses', self.course_id, 'assignments', assignment_id, 'submissions'],
+            params = {'include[]': ['submission_comments', 'submission_history']},
+            use_cache = use_cache
+        )
 
     def get_section(self, name, use_cache = True):
         sections = self.canvas.get_list(self.endpoint + ['sections'], use_cache = use_cache)
         return from_singleton(s for s in sections if s.name == name)
 
     def get_students_in_section(self, id, use_cache = True):
-        x = self.canvas.get(self.endpoint + ['sections', id], params = {'include': ['students']}, use_cache = use_cache).students
-        return x if x != None else []
+        x = self.canvas.get(
+            self.endpoint + ['sections', id],
+            params = {'include': ['students']},
+            use_cache = use_cache,
+        ).students
+        return[] if x is None else x
 
     def get_folder_by_path(self, canvas_dir, use_cache = True):
         canvas_dir = PurePosixPath(canvas_dir)
@@ -419,34 +456,38 @@ class Course:
             'name': canvas_dir.name,
             'parent_folder_path': str(canvas_dir.parent),
         }
-        if unlock_at != None:
+        if unlock_at is not None:
             params['unlock_at'] = unlock_at.isoformat()
-        if lock_at != None:
+        if lock_at is not None:
             params['lock_at'] = lock_at.isoformat()
-        if locked != None:
+        if locked is not None:
             params['locked'] = Canvas.param_boolean(locked)
-        if hidden != None:
+        if hidden is not None:
             params['hidden'] = Canvas.param_boolean(hidden)
 
         folder = self.canvas.post(self.endpoint + ['folders'], params)
         if not folder.full_name == 'course files' + str(canvas_dir):
             self.delete_folder(folder.id)
-            assert False, 'Could not create Canvas folder {}.'.format(shlex.quote(str(canvas_dir)))
+            assert False, 'Could not create Canvas folder {}.'.format(format_path(canvas_dir))
 
         return folder
 
-    def edit_folder(self, id, name = None, unlock_at = None, lock_at = None, locked = None, hidden = None, use_cache = False):
+    def edit_folder(
+        self, id,
+        name = None, unlock_at = None, lock_at = None,
+        locked = None, hidden = None, use_cache = False,
+    ):
         if not isinstance(id, int):
             id = self.get_folder_by_path(id, use_cache = use_cache).id
 
         params = dict()
-        if name != None:
+        if name is not None:
             params['name'] = name
-        params['unlock_at'] = unlock_at.isoformat() if unlock_at != None else 'null'
-        params['lock_at'] = lock_at.isoformat() if lock_at != None else 'null'
-        if locked != None:
+        params['unlock_at'] = unlock_at.isoformat() if unlock_at is not None else 'null'
+        params['lock_at'] = lock_at.isoformat() if lock_at is not None else 'null'
+        if locked is not None:
             params['locked'] = 'true' if locked else 'false'
-        if hidden != None:
+        if hidden is not None:
             params['hidden'] = hidden
 
         return self.canvas.put(['folders', id], data = params)
@@ -461,6 +502,7 @@ class Course:
     def list_folders(self, use_cache = False):
         return self.canvas.get_list(self.endpoint + ['folders'], use_cache = use_cache)
 
+
 class GroupSet:
     def __init__(self, course, group_set, use_cache = True):
         logger.info(f'loading group set {group_set}.')
@@ -469,7 +511,10 @@ class GroupSet:
         self.course = course
 
         group_sets = self.canvas.get_list(['courses', self.course.course_id, 'group_categories'])
-        self.group_set = from_singleton(filter(lambda x: (isinstance(group_set, str) and x.name == group_set) or x.id == group_set, group_sets))
+        self.group_set = from_singleton(filter(
+            lambda x: (isinstance(group_set, str) and x.name == group_set) or x.id == group_set,
+            group_sets
+        ))
 
         self.details = dict()
         self.name_to_id = dict()
@@ -478,7 +523,7 @@ class GroupSet:
         self.user_to_group = dict()
 
         for group in self.canvas.get_list(['group_categories', self.group_set.id, 'groups'], use_cache = use_cache):
-            self.details[group.id] = group;
+            self.details[group.id] = group
             self.name_to_id[group.name] = group.id
             users = set()
             for user in self.canvas.get_list(['groups', group.id, 'users'], use_cache = use_cache):
@@ -498,9 +543,10 @@ class GroupSet:
         logger.info(f'Creating group with name {name} in group set {self.group_set.name}')
         self.canvas.post(['group_categories', self.group_set.id, 'groups'], json = {
             'name': name,
-#            'description': None,
+            #'description': None,
             'join_level': 'parent_context_auto_join',
         })
+
 
 class Assignment:
     def __init__(self, course, assignment_id, use_cache = True):
@@ -528,7 +574,7 @@ class Assignment:
     # What does posted_at mean? Using submitted_at.
     @staticmethod
     def submission_date(s):
-        return s.submitted_at_date #if s.submitted_at else max(a.updated_at_date for a in s.attachments)
+        return s.submitted_at_date #if s.submitted_at else max(a.updated_at_date for a in s.attachments) # noqa E261
 
     @staticmethod
     def is_duplicate_comment(a, b):
@@ -552,23 +598,39 @@ class Assignment:
 
     @staticmethod
     def merge_comments(comments):
-        return without_adjacent_dups(Assignment.is_duplicate_comment, sorted(comments, key = lambda c: c.created_at_date))
+        return without_adjacent_dups(
+            Assignment.is_duplicate_comment,
+            sorted(comments, key = lambda c: c.created_at_date)
+        )
 
     @staticmethod
     def merge_submissions(submissions):
-        return without_adjacent_dups(Assignment.is_duplicate_submission, sorted(submissions, key = Assignment.submission_date))
+        return without_adjacent_dups(
+            Assignment.is_duplicate_submission,
+            sorted(submissions, key = Assignment.submission_date)
+        )
 
     # Get the web browser URL for a submission.
     def submission_interactive_url(self, submission):
-        return self.canvas.interactive_url(['courses', self.course.course_id, 'assignments', self.assignment_id, 'submissions', submission.user_id])
+        return self.canvas.interactive_url([
+            'courses', self.course.course_id,
+            'assignments', self.assignment_id,
+            'submissions', submission.user_id
+        ])
 
     def submission_speedgrader_url(self, submission):
-        return self.canvas.interactive_url(['courses', self.course.course_id, 'gradebook', 'speed_grader']) + '?' + urllib.parse.urlencode({'assignment_id' : self.assignment_id, 'student_id' : submission.user_id})
+        return self.canvas.interactive_url([
+            'courses', self.course.course_id,
+            'gradebook', 'speed_grader'
+        ]) + '?' + urllib.parse.urlencode({'assignment_id': self.assignment_id, 'student_id': submission.user_id})
 
     # Keep only the real submissions.
     @staticmethod
     def filter_submissions(raw_submissions):
-        return filter(lambda raw_submission: not raw_submission.missing and raw_submission.workflow_state != 'unsubmitted', raw_submissions)
+        return filter(
+            lambda raw_submission: not raw_submission.missing and raw_submission.workflow_state != 'unsubmitted',
+            raw_submissions
+        )
 
     # Returns list of named tuples with attributes:
     # - members: list of users with this submission
@@ -577,16 +639,29 @@ class Assignment:
     # TODO: Revisit implementation of this method when there is a conflict of the produced grouping with groupset.
     @staticmethod
     def group_identical_submissions(raw_submissions):
-        grouping = group_by(lambda raw_submission: tuple(sorted(file.id for file in raw_submission.attachments)), raw_submissions)
+        grouping = group_by(
+            lambda raw_submission: tuple(sorted(file.id for file in raw_submission.attachments)),
+            raw_submissions
+        )
         return [types.SimpleNamespace(
             members = [submission.user_id for submission in grouped_submissions],
-            submissions = list(Assignment.merge_submissions(submission for s in grouped_submissions for submission in s.submission_history)),
-            comments = list(Assignment.merge_comments([comment for s in grouped_submissions for comment in s.submission_comments])),
+            submissions = list(Assignment.merge_submissions(
+                submission for s in grouped_submissions for submission in s.submission_history
+            )),
+            comments = list(Assignment.merge_comments([
+                comment for s in grouped_submissions for comment in s.submission_comments
+            ])),
         ) for _, grouped_submissions in grouping.items()]
 
     def align_with_groups(self, user_grouped_submissions):
-        user_to_user_grouping = dict((user, submission_data.members) for submission_data in user_grouped_submissions for user in submission_data.members)
-        lookup = dict((tuple(user_grouped_submission.members), user_grouped_submission) for user_grouped_submission in user_grouped_submissions)
+        user_to_user_grouping = dict(
+            (user, submission_data.members)
+            for submission_data in user_grouped_submissions for user in submission_data.members
+        )
+        lookup = dict(
+            (tuple(user_grouped_submission.members), user_grouped_submission)
+            for user_grouped_submission in user_grouped_submissions
+        )
 
         result = dict()
         for group in self.group_set.details:
@@ -618,13 +693,17 @@ class Assignment:
 
             did_not_submit = set(group_users).difference(set(user_grouping))
             if did_not_submit:
-                logger.log(logging.INFO, 'The following members have not submitted with {}:'.format(self.group_set.str(group)))
+                logger.log(logging.INFO, 'The following members have not submitted with {}:'.format(
+                    self.group_set.str(group)
+                ))
                 for user_id in did_not_submit:
                     logger.log(logging.INFO, '- {}'.format(self.course.user_str(user_id)))
 
             not_part_of_group = set(user_grouping).difference(set(group_users))
             if not_part_of_group:
-                logger.log(logging.INFO, 'The following non-members have submitted with {}:'.format(self.group_set.str(group)))
+                logger.log(logging.INFO, 'The following non-members have submitted with {}:'.format(
+                    self.group_set.str(group)
+                ))
                 for user_id in not_part_of_group:
                     logger.log(logging.INFO, '- {}'.format(self.course.user_str(user_id)))
 
@@ -667,16 +746,18 @@ class Assignment:
     @staticmethod
     def graded_comments(s):
         last_graded = Assignment.last_graded_submission(s)
+
         def is_new(date):
-            return last_graded == None or date - last_graded.graded_at_date >= timedelta(minutes = 5)
+            return last_graded is None or date - last_graded.graded_at_date >= timedelta(minutes = 5)
 
         return list(filter(lambda comment: not is_new(comment.created_at_date), s.comments))
 
     @staticmethod
     def ungraded_comments(s):
         last_graded = Assignment.last_graded_submission(s)
+
         def is_new(date):
-            return last_graded == None or date - last_graded.graded_at_date >= timedelta(minutes = 5)
+            return last_graded is None or date - last_graded.graded_at_date >= timedelta(minutes = 5)
 
         return list(filter(lambda comment: is_new(comment.created_at_date), s.comments))
 
@@ -692,7 +773,7 @@ class Assignment:
             if handler:
                 return handler(name)
             if name in whitelist:
-                return name;
+                return name
             if unhandled:
                 return unhandled(id, name)
             return None
@@ -712,7 +793,9 @@ class Assignment:
                 if name:
                     prev_attachment = submission_files.get(name)
                     if prev_attachment:
-                        print_error('Duplicate filename {} in submission {}: files ids {} and {}.'.format(name, submission.id, prev_attachment.id, attachment.id))
+                        print_error('Duplicate filename {} in submission {}: files ids {} and {}.'.format(
+                            name, submission.id, prev_attachment.id, attachment.id
+                        ))
                         raise Exception()
                     submission_files[name] = attachment
             files.update(submission_files)
@@ -731,7 +814,7 @@ class Assignment:
         if comments:
             with OpenWithModificationTime(path, comments[-1].created_at_date) as file:
                 for comment in comments:
-                    write_lines(file, [
+                    file.write_text(join_lines([
                         '=' * 80,
                         '',
                         comment.author.display_name,
@@ -739,7 +822,7 @@ class Assignment:
                         '',
                         comment.comment,
                         '',
-                    ])
+                    ]))
 
     @staticmethod
     def format_comments(comments):
@@ -771,13 +854,15 @@ class Assignment:
     #             try:
     #                 modify_no_modification_time(path, content_handler)
     #             except HandlerException as e:
-    #                 print_error('Content handler failed on file id {}: {}'.format(attachment.id, shlex.quote(str(path))))
+    #                 print_error('Content handler failed on file id {}: {}'.format(attachment.id, format_path(path)))
     #                 raise e
     #     set_modification_time(dir, submission.submitted_at_date)
     #     return file_mapping
 
     # Returns a mapping from file ids to paths.
-    def create_submission_dir_linked(self, dir_files, dir, rel_dir_files, submission, files, content_handlers = None):
+    def create_submission_dir_linked(
+        self, dir_files, dir, rel_dir_files, submission, files, content_handlers = None
+    ):
         dir_files.mkdir(exist_ok = True)
         dir.mkdir(exist_ok = True)
 
@@ -792,7 +877,7 @@ class Assignment:
                 try:
                     modify_no_modification_time(source, content_handler)
                 except HandlerException as e:
-                    print_error('Content handler failed on {}'.format(shlex.quote(str(source))))
+                    print_error('Content handler failed on {}'.format(format_path(source)))
                     raise e
 
             target = dir / filename
@@ -820,11 +905,11 @@ class Assignment:
     #         time_diff = current.submitted_at_date - deadline
     #         if time_diff >= timedelta(minutes = 5):
     #             with OpenWithModificationTime(dir / 'late.txt', current.submitted_at_date) as file:
-    #                 write_lines(file, ['{:.2f} hours'.format(time_diff / timedelta(hours=1))])
+    #                 file.write_text(general.join_lines(['{:.2f} hours'.format(time_diff / timedelta(hours = 1))]))
 
     #     with (dir / 'members.txt').open('w') as file:
     #         for user in self.group_set.group_users[group]:
-    #             write_lines(file, [self.group_set.user_details[user].name])
+    #             file.write_text(general.join_lines([self.group_set.user_details[user].name]))
 
     # def prepare_submissions(self, dir, deadline = None):
     #     #self.build_submissions()
@@ -833,14 +918,15 @@ class Assignment:
     #     for group in self.submissions:
     #         s = self.submissions[group]
     #         current = Assignment.current_submission(s)
-    #         if not (current.workflow_state == 'graded' and current.grade == 'complete') and (current.workflow_state == 'submitted' or Assignment.ungraded_comments(s)):
+    #         if not (current.workflow_state == 'graded' and current.grade == 'complete')
+    #            and (current.workflow_state == 'submitted' or Assignment.ungraded_comments(s)):
     #             self.prepare_submission(deadline, group, dir / self.group_set.details[group].name, s)
 
     def grade(self, user, comment = None, grade = None):
         assert(grade in [None, 'complete', 'incomplete', 'fail'])
 
         endpoint = ['courses', self.course.course_id, 'assignments', self.assignment_id, 'submissions', user]
-        params = {'comment[group_comment]' : 'false'}
+        params = {'comment[group_comment]': 'false'}
         if comment:
             params['comment[text_comment]'] = comment
         if grade:

@@ -1,6 +1,7 @@
 import collections
 import logging
 
+
 logger = logging.getLogger(__name__)
 
 Config = collections.namedtuple(
@@ -70,24 +71,24 @@ def parse_items(config, parser, parser_name, parse_results, items):
 
     for item in items:
         parse_result = parser(item)
-        if parse_result == None:
+        if parse_result is None:
             yield item
             continue
 
-        if parse_result == None:
+        if parse_result is None:
             pass
         elif isinstance(parse_results, list):
             parse_results.append(parse_result)
         elif isinstance(parse_results, dict):
             (key, value) = parse_result
             value_prev = parse_results.get(key)
-            if value_prev != None:
+            if value_prev is not None:
                 item_prev = parsed_items[key]
                 if callable(config.on_duplicate):
                     value = config.on_duplicate(key, value_prev, value)
                 else:
                     msg = f'Duplicate {parser_name} {config.item_name} with key {key} in {config.location_name}'
-                    if config.on_duplicate == None:
+                    if config.on_duplicate is None:
                         raise ValueError(msg)
 
                     msg += format(f'First {config.item_name}:', item_prev)
@@ -115,8 +116,7 @@ def log_unrecognized_items(config, items):
     '''
     for item in items:
         config.logger.warning(
-              f'Unrecognized {config.item_name} in {config.location_name}:\n'
-            + config.item_formatter(item)
+            f'Unrecognized {config.item_name} in {config.location_name}:\n' + config.item_formatter(item)
         )
 
 def parse_all_items(config, parser_data, items):

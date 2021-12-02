@@ -1,3 +1,4 @@
+
 def gspread_open_worksheet(spreadsheet, worksheet_identifier):
     '''
     Open a worksheet in a gspread spreadsheet.
@@ -8,10 +9,10 @@ def gspread_open_worksheet(spreadsheet, worksheet_identifier):
     # * tuple of a single int: worksheet index (0-based).
     '''
     if isinstance(worksheet_identifier, tuple):
-        return spreadsheet.get_worksheet(*worksheet_identifier) 
-    if isinstance(worksheet_identifier, str): 
+        return spreadsheet.get_worksheet(*worksheet_identifier)
+    if isinstance(worksheet_identifier, str):
         return spreadsheet.worksheet(worksheet_identifier)
-    return spreadsheet.get_worksheet_by_id(worksheet_identifier) # todo: update gspread
+    return spreadsheet.get_worksheet_by_id(worksheet_identifier)  # todo: update gspread
 
 def gspread_worksheet_id(spreadsheet, worksheet_identifier):
     '''

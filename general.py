@@ -1,24 +1,18 @@
-import chardet
 from collections import defaultdict, namedtuple
-import contextlib
 from datetime import datetime, timedelta, timezone
 import decimal
-import errno
 import fcntl
 import functools
 import itertools
 import json
-from pathlib import Path
 import re
-import tempfile
 import time
 from types import SimpleNamespace
 import os
-import platform
 import shlex
-import shutil
 import subprocess
 import sys
+
 
 def identity(x):
     return x
@@ -89,13 +83,16 @@ def check_return(pred):
     return f
 
 def with_default(f, x, default):
-    return f(x) if x != None else default
+    return default if x is None else x
 
 def with_none(f, x):
     return with_default(f, x, None)
 
 def maybe(f):
     return lambda x: with_none(f, x)
+
+def defaulting_to(default, value, key = None):
+    return default if value == key else value
 
 # Bug in pyflakes (TODO: report):
 # ./general.py:102:28 local variable 'last' defined in enclosing scope on line 70 referenced before assignment
@@ -127,11 +124,14 @@ def equal_by(f, x, y):
 def ilen(it):
     return sum(1 for _ in it)
 
+def inhabited(it):
+    return any(map(lambda: True, it))
+
 def list_get(xs, i):
     return xs[i] if i < len(xs) else None
 
 def map_maybe(f, xs):
-    return filter(lambda x: x != None, map(f, xs))
+    return filter(lambda x: x is not None, map(f, xs))
 
 # missing in itertools.
 def starfilter(f, xs):
@@ -155,7 +155,7 @@ def multidict(xs):
     return r
 
 def ignore_none_keys(xs):
-    return starfilter(lambda k, _: k != None, xs)
+    return starfilter(lambda k, _: k is not None, xs)
 
 dict_ = compose(ignore_none_keys, dict)
 sdict_ = compose(ignore_none_keys, sdict)
@@ -182,9 +182,9 @@ multidict_from_fun = compose(map_with_val, multidict)
 def component(i):
     return lambda x: x[i]
 
-first  = component(0)
+first  = component(0)  # noqa E221
 second = component(1)
-third  = component(2)
+third  = component(2)  # noqa E221
 fourth = component(3)
 
 def ev(*x):
@@ -196,7 +196,7 @@ def tupling(*fs):
 def zip_dicts_with(f, us, vs):
     for k, u in us.items():
         v = vs.get(k)
-        if v != None:
+        if v is not None:
             yield (k, f(u, v))
 
 def zip_dicts(us, vs):
@@ -270,159 +270,8 @@ def print_json(x):
 
 json_encoder = JSONEncoderForJSONObject(indent = 4, sort_keys = True)
 
-def write_lines(file, lines):
-    for line in lines:
-        file.write(line)
-        file.write('\n')
-
 def print_error(*objects, sep = ' ', end = '\n'):
     print(*objects, sep = sep, end = end, file = sys.stderr)
-
-# In the symlink case, we also need to check the modification time of each directory in the symlink path.
-# This can give very coarse results.
-def get_content_modification_time(dir_base, path):
-    '''
-    Get an upper bound for the modification time of the content specified by a path.
-    The path is interpreted relative to a base directory that is assumed unchanged.
-
-    of a file specified by a path that may include symlinks.
-
-    Because we need to check every component of path for modification
-    and also follow symlinks, this can give very coarse results.
-    The returned time (in seconds since epoch) is merely an upper bound.
-
-    TODO: implement properly
-    '''
-    path = Path(path)
-    t = os.lstat(path).st_mtime
-    print(path, t)
-    if path.is_symlink():
-        t = max(t, get_content_modification_time(path.parent / path.readlink()))
-    return t
-
-def get_modification_time(path):
-    return os.path.getmtime(path)
-
-def set_modification_time(path, date):
-    t = date.timestamp()
-    os.utime(path, (t, t))
-
-# In Python 3.9, equivalent to path.with_stem(stem).
-def with_stem(path, stem):
-    return path.with_name(stem + path.suffix)
-
-def add_suffix(path, suffix):
-    return path.parent / (path.name + suffix)
-
-def sorted_directory_list(dir, filter = None):
-   return dict(sorted(((f.name, f) for f in dir.iterdir() if not filter or filter(f)), key = lambda x: x[0]))
-
-class OpenWithModificationTime:
-    def __init__(self, path, date):
-        self.path = path
-        self.date = date
-
-    def __enter__(self):
-        self.file = self.path.open('w')
-        return self.file.__enter__()
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.file.__exit__(exc_type, exc_value, traceback)
-        set_modification_time(self.path, self.date)
-
-class OpenWithNoModificationTime(OpenWithModificationTime):
-    def __init__(self, path):
-        self.path = path
-
-    def __enter__(self):
-        self.time = os.path.getmtime(self.path)
-        self.file = self.path.open('w')
-        return self.file.__enter__()
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.file.__exit__(exc_type, exc_value, traceback)
-        os.utime(self.path, (self.time, self.time))
-
-def modify(path, callback):
-    content = path.read_text()
-    content = callback(content)
-    with path.open('w') as file:
-       file.write(content)
-
-def modify_no_modification_time(path, callback):
-    content = path.read_text()
-    content = callback(content)
-    with OpenWithNoModificationTime(path) as file:
-       file.write(content)
-
-def mkdir_fresh(path):
-    if path.exists():
-        shutil.rmtree(path)
-    path.mkdir()
-
-def file_exists_error(path):
-    e = errno.EEXIST
-    raise FileExistsError(e, os.strerror(e), str(path))
-
-def safe_symlink(source, target, exists_ok = False):
-    if source.exists():
-        if not (exists_ok and source.is_symlink() and Path(os.readlink(source)) == target):
-            file_exists_error(source)
-    else:
-        source.symlink_to(target, target.is_dir())
-
-# 'rel' is the path to 'dir_from', taken relative to 'dir_to'.
-# Returns list of newly created files.
-def link_dir_contents(dir_from, dir_to, rel = None, exists_ok = False):
-    if rel == None:
-        rel = Path(os.path.relpath(dir_from, dir_to))
-
-    files = list()
-    for path in dir_from.iterdir():
-        file = dir_to / path.name
-        files.append(file)
-        target = rel / path.name
-        safe_symlink(file, target, exists_ok = exists_ok)
-    return files
-
-def copy_tree_fresh(source, to, **flags):
-    if to.exists():
-        if to.is_dir():
-            shutil.rmtree(to)
-        else:
-            to.unlink()
-    shutil.copytree(source, to, **flags)
-
-def exec_simple(file):
-    r = dict()
-    exec(file.read_text(), r)
-    return SimpleNamespace(**r)
-
-def readfile(fil):
-    with open(fil, "br") as F:
-        bstr = F.read()
-    try:
-        return bstr.decode()
-    except UnicodeDecodeError:
-        try:
-            return bstr.decode(encoding="latin1")
-        except UnicodeDecodeError:
-            return bstr.decode(errors="replace")
-
-def guess_encoding(b):
-    encodings = ['utf-8', 'latin1']
-    for encoding in encodings:
-        try:
-            return b.decode(encoding = encoding)
-        except UnicodeDecodeError:
-            pass
-
-    return b.decode()
-
-def fix_encoding(path):
-    content = guess_encoding(path.read_bytes())
-    with OpenWithNoModificationTime(path) as file:
-        file.write(content)
 
 def format_with_leading_zeroes(x, bound):
     num_digits = len(str(bound - 1))
@@ -454,33 +303,6 @@ def format_timespan_using(delta, time_unit, precision = 2):
 def format_timespan(delta, precision = 2):
     return format_timespan_using(delta, appropriate_time_unit(delta), precision)
 
-def add_to_path(dir):
-    path = str(dir.resolve())
-    assert(not (':' in path))
-    os.environ['PATH'] = path + ':' + os.environ['PATH']
-
-@contextlib.contextmanager
-def temp_fifo():
-    with tempfile.TemporaryDirectory() as dir:
-        fifo = Path(dir) / 'fifo'
-        os.mkfifo(fifo)
-        try:
-            yield fifo
-        finally:
-            fifo.unlink()
-
-@contextlib.contextmanager
-def temp_dir():
-    with tempfile.TemporaryDirectory() as dir:
-        yield Path(dir)
-
-@contextlib.contextmanager
-def temp_file(name = None):
-    if name == None:
-        name = 'file'
-    with temp_dir() as dir:
-        yield dir / name
-
 def Popen(cmd, **kwargs):
     print(shlex.join(cmd), file = sys.stderr)
     fds = list(kwargs.get('pass_fds', []))
@@ -502,42 +324,16 @@ def pipe(min_size):
     fcntl.fcntl(r, F_SETPIPE_SZ, min_size)
     return (r, w)
 
-@contextlib.contextmanager
-def working_dir(path):
-    old = os.getcwd()
-    os.chdir(path)
-    try:
-        yield
-    finally:
-        os.chdir(old)
-
 def log_command(logger, cmd, working_dir = False):
-    logger.debug('running command{}:\n{}'.format(' in {}'.format(shlex.quote(os.getcwd())) if working_dir else '', shlex.join(cmd)))
+    logger.debug('running command{}:\n{}'.format(
+        ' in {}'.format(shlex.quote(os.getcwd())) if working_dir else '',
+        shlex.join(map(str, cmd)),
+    ))
 
 def wait_and_check(process, cmd):
     r = process.wait()
     if r != 0:
         raise subprocess.CalledProcessError(r, cmd)
-
-# Detection seems not to be so good.
-# A Unicode file with 'Markus Järveläinen' is detected as EUC-KR.
-def detect_encoding(files):
-    detector = chardet.universaldetector.UniversalDetector()
-    for file in files:
-        if isinstance(file, str):
-            file = Path(file)
-        detector.feed(file.read_bytes())
-    detector.close()
-    return detector.result['encoding']
-
-def read_text_detect_encoding(path):
-    try:
-        return path.read_text()
-    except UnicodeDecodeError:
-        return path.read_text(encoding = detect_encoding([path]))
-
-def read_without_comments(path):
-    return list(filter(lambda s: s and not s.startswith('#'), path.read_text().splitlines()))
 
 def unique_list(xs):
     return list(dict.fromkeys(xs))
@@ -562,21 +358,6 @@ def filter_keywords(keywords, s):
     The result is a list of (not necessarily unique) keys of dictionary in the order they appear in text.
     '''
     return [k for i, k in find_all_many(keywords, s)]
-
-# A context manager for file paths.
-class ScopedFiles:
-    def __init__(self):
-        self.files = []
-
-    def add(self, file):
-        self.files.append(file)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        for file in reversed(self.files):
-            file.unlink()
 
 Lens = namedtuple('Lens', ['get', 'set'])
 
@@ -688,7 +469,7 @@ def len_range(range):
 
 def range_is_empty(range):
     (start, end) = range
-    return start != None and end != None and start >= end
+    return start is not None and end is not None and start >= end
 
 def range_from_size(i, n):
     return (i, i + n)
@@ -722,20 +503,6 @@ def canonical_keys(items, key = None):
                 yield (x, out_key)
     return dict(f())
 
-@functools.cache
-def path_separator():
-    return ';' if platform.system() == 'Windows' else ':'
-
-def join_paths(paths):
-    '''
-    Join paths using the platform-specific path separator.
-    Useful e.g. for the PATH environment variable.
-
-    Arguments:
-    * paths: Iterable of instances of string or PurePath.
-    '''
-    return path_separator().join(map(str, paths))
-
 def split_dict(u, f):
     '''
     Split the dictionary u into two parts, based on the key filter function f.
@@ -761,13 +528,13 @@ def recursive_dict_values(u):
         yield u
 
 def expand_hierarchy(v, key_split, initial_value = None):
-    r = dict() if initial_value == None else initial_value
+    r = dict() if initial_value is None else initial_value
     for (combined_key, value) in v.items():
         last_key = None
         for part in key_split(combined_key):
-            x = r if last_key == None else x.setdefault(last_key, dict())
+            x = r if last_key is None else x.setdefault(last_key, dict())  # noqa: F821
             last_key = part
-        if last_key == None:
+        if last_key is None:
             r = value
         else:
             x[last_key] = value

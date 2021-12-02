@@ -1,13 +1,14 @@
 import contextlib
 import functools
-import git
-import gitlab
-import gitlab.v4.objects.tags
 import logging
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 import shutil
 import tempfile
 import types
+
+import git
+import gitlab
+import gitlab.v4.objects.tags
 
 import item_parser
 import general
@@ -18,6 +19,7 @@ import grading_sheet
 import group_project
 import instance_cache
 import live_submissions_table
+
 
 class Lab:
     '''
@@ -71,9 +73,9 @@ class Lab:
         self.logger = logger
         self.course = course
         self.id = id
-        self.dir = Path(dir) if dir != None else None
+        self.dir = None if dir is None else Path(dir)
 
-        self.config = config if config != None else self.course.config.labs[id]
+        self.config = self.course.config.labs[id] if config is None else config
 
         # Naming config
         self.id_str = self.course.config.lab.id.print(self.id)
@@ -104,7 +106,8 @@ class Lab:
         '''
         The group for this lab on Chalmers GitLab.
         '''
-        r = gitlab_tools.CachedGroup(**self.entity_cached_params,
+        r = gitlab_tools.CachedGroup(
+            **self.entity_cached_params,
             path = self.path,
             name = self.name_full,
         )
@@ -151,7 +154,10 @@ class Lab:
     #                     shutil.copytree(self.outer.config.path_source / name, dir, dirs_exist_ok = True)
     #                     repo.git.add('--all', '--force')
     #                     repo.git.commit(message = message)
-    #                     repo.git.push(self.outer.official_project.ssh_url_to_repo, git_tools.refspec(git_tools.head, git_tools.local_branch(name), force = True))
+    #                     repo.git.push(
+    #                         self.outer.official_project.ssh_url_to_repo,
+    #                         git_tools.refspec(git_tools.head, git_tools.local_branch(name), force = True)
+    #                     )
     #
     #                 if self.config.path_gitignore:
     #                     shutil.copyfile(self.outer.config.path_gitignore, Path(dir) / '.gitignore')
@@ -170,7 +176,8 @@ class Lab:
           So make sure the problem and solution subdirectories are clean beforehand.
         * Problem and solution branches are set up.
         '''
-        r = gitlab_tools.CachedProject(**self.entity_cached_params,
+        r = gitlab_tools.CachedProject(
+            **self.entity_cached_params,
             path = self.path / self.course.config.path_lab.official,
             name = '{} — official repository'.format(self.name),
         )
@@ -195,7 +202,7 @@ class Lab:
                         shutil.copyfile(self.config.path_gitignore, Path(dir) / '.gitignore')
                     push_branch(self.course.config.branch.problem, 'Initial commit.')
                     push_branch(self.course.config.branch.solution, 'Official solution.')
-            except:
+            except:  # noqa: E722
                 r.delete()
                 raise
         r.create = create
@@ -208,7 +215,8 @@ class Lab:
         The staging project on Chalmers GitLab.
         When created, forked from the official project and modified to prepare for forking of student projects.
         '''
-        r = gitlab_tools.CachedProject(**self.entity_cached_params,
+        r = gitlab_tools.CachedProject(
+            **self.entity_cached_params,
             path = self.path / self.course.config.path_lab.staging,
             name = '{} — staging repository'.format(self.name),
         )
@@ -231,7 +239,7 @@ class Lab:
                 r.get.save()
                 r.get.branches.get(self.course.config.branch.problem, lazy = True).delete()
                 r.get.branches.get(self.course.config.branch.solution, lazy = True).delete()
-            except:
+            except:  # noqa: E722
                 r.delete()
                 raise
         r.create = create
@@ -252,7 +260,8 @@ class Lab:
         The grading project on Chalmers GitLab.
         When created, it is empty.
         '''
-        r = gitlab_tools.CachedProject(**self.entity_cached_params,
+        r = gitlab_tools.CachedProject(
+            **self.entity_cached_params,
             path = self.path / self.course.config.path_lab.grading,
             name = '{} — grading repository'.format(self.name),
         )
@@ -325,7 +334,7 @@ class Lab:
             )
             self.repo_fetch_official()
 
-            # Configure offical grading repository and student group
+            # Configure offical grading repository and student groups.
             self.repo_add_remote(
                 self.course.config.path_lab.grading,
                 self.grading_project.get,
@@ -333,7 +342,7 @@ class Lab:
                 push_tags = [git_tools.wildcard],
             )
             self.repo_add_groups_remotes(ignore_missing = True)
-        except:
+        except:  # noqa: E722
             shutil.rmtree(self.dir)
             raise
         self.repo = repo
@@ -399,7 +408,7 @@ class Lab:
                     self.student_group(group_id).project.get = project
                     del projects[group_id]
                     self.student_group(group_id).repo_add_remote()
-            except:
+            except:  # noqa: E722
                 for project in projects.values():
                     project.delete()
                 raise
@@ -463,7 +472,7 @@ class Lab:
             for group in self.student_groups:
                 hooks[group.id] = group.hook_create(netloc)
             return hooks
-        except:
+        except:  # noqa: E722
             for (group_id, hook) in hooks.items():
                 self.student_group(group_id).hook_delete(hook)
             raise
@@ -496,6 +505,7 @@ class Lab:
         with contextlib.ExitStack() as stack:
             try:
                 self.logger.info('Creating project hooks in all student projects')
+
                 def f():
                     for group in self.student_groups:
                         yield (group.id, stack.enter_context(group.hook_manager(netloc)))
@@ -564,6 +574,7 @@ class Lab:
           Update responses before updating requests to avoid responses with no matching request.
         '''
         self.logger.info('Processing requests.')
+        self.submission_solution.process_request()
         for group in self.student_groups:
             group.process_requests()
 
@@ -579,7 +590,7 @@ class Lab:
         Parsing this on first access takes an HTTP call.
         None if no submission review is configured.
         '''
-        if self.submission_handler.review_response_key == None:
+        if self.submission_handler.review_response_key is None:
             return None
 
         self.logger.debug('Retrieving template issue.')
@@ -587,7 +598,7 @@ class Lab:
         def parser(issue):
             try:
                 self.course.config.grading_response_template.parse(issue.title)
-            except:
+            except Exception:
                 return None
             return ((), issue)
 
@@ -629,8 +640,26 @@ class Lab:
         return git_tools.normalize_branch(self.repo, self.course.config.branch.solution)
 
     @functools.cached_property
+    def submission_problem(self):
+        return group_project.RequestAndResponses(
+            self,
+            None,
+            self.course.config.branch.problem,
+            (self.head_problem, self.head_problem.commit),
+        )
+
+    @functools.cached_property
+    def submission_solution(self):
+        return group_project.RequestAndResponses(
+            self,
+            None,
+            self.course.config.branch.solution,
+            (self.head_solution, self.head_solution.commit),
+        )
+
+    @functools.cached_property
     def compiler(self):
-        if self.config.compiler != None:
+        if self.config.compiler is not None:
             self.config.compiler.setup(self)
         return self.config.compiler
 
@@ -641,7 +670,7 @@ class Lab:
     @contextlib.contextmanager
     def checkout_and_compile_problem(self):
         with self.checkout_with_empty_bin_manager(self.head_problem) as (src, bin):
-            if self.compiler != None:
+            if self.compiler is not None:
                 self.compiler.compile(src, bin)
                 yield (src, bin)
 
@@ -662,7 +691,7 @@ class Lab:
             for (response_type, pp) in spec.issue.__dict__.items():
                 try:
                     return (request_type, response_type, pp.parse(issue.title))
-                except:
+                except Exception:
                     continue
 
     def parse_grading_issues(self):
@@ -701,7 +730,7 @@ class Lab:
                 continue
 
             for (query, submission) in enumerate(group.submissions_relevant(deadline)):
-                if submission.outcome == None:
+                if submission.outcome is None:
                     grader = None
                     outcome = None
                 else:

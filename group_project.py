@@ -1,19 +1,21 @@
 import contextlib
 import functools
 import general
-import git
-import gitlab
-import gitlab.v4.objects
 import json
 import logging
 from pathlib import PurePosixPath
 import shlex
+
+import git
+import gitlab
+import gitlab.v4.objects
 
 import instance_cache
 import item_parser
 import git_tools
 import gitlab_tools
 import print_parse
+
 
 class RequestAndResponses:
     '''
@@ -30,13 +32,17 @@ class RequestAndResponses:
     Each instances of this class is managed by an instance of HandlerData.
     Instances are rather transient.
     They are reconstructed every time request tags or response issues are refreshed.
+
+    There are special instances of this class for the official problem and solution.
+    In that case, the handler_data parameter is None and tag_data is a pair of
+    the corresponding head and commit in the grading repository.
     '''
-    def __init__(self, handler_data, request_name, tag_data):
-        self.course = handler_data.course
-        self.lab = handler_data.lab
-        self.group = handler_data.group
+    def __init__(self, lab, handler_data, request_name, tag_data):
+        self.course = lab.course
+        self.lab = lab
+        self.group = None if handler_data is None else handler_data.group
         self.handler_data = handler_data
-        self.logger = handler_data.logger
+        self.logger = lab.logger if handler_data is None else handler_data.logger
 
         self.request_name = request_name
         if isinstance(tag_data, gitlab.v4.objects.ProjectTag):
@@ -58,21 +64,25 @@ class RequestAndResponses:
     def date(self):
         return git_tools.commit_date(self.repo_remote_commit)
 
+    @property
+    def _group(self):
+        return self.lab if self.group is None else self.group
+
     def repo_tag(self, segments = ['tag']):
         '''Forwards to self.group.repo_tag.'''
-        return self.group.repo_tag(self.request_name, segments)
+        return GroupProject.repo_tag(self._group, self.request_name, segments)
 
     def repo_tag_exist(self, segments):
         '''Forwards to self.group.repo_tag_exist.'''
-        return self.group.repo_tag_exist(self.request_name, segments)
+        return GroupProject.repo_tag_exist(self._group, self.request_name, segments)
 
     def repo_tag_create(self, segments = ['tag'], ref = None, **kwargs):
         '''Forwards to self.group.repo_tag_create.'''
-        return self.group.repo_tag_create(self.request_name, segments, ref, **kwargs)
+        return GroupProject.repo_tag_create(self._group, self.request_name, segments, ref, **kwargs)
 
     def repo_tag_delete(self, segments = ['tag']):
         '''Forwards to self.group.repo_tag_delete.'''
-        return self.group.repo_tag_delete(self.request_name, segments)
+        return GroupProject.repo_tag_delete(self._group, self.request_name, segments)
 
     def repo_tag_create_json(self, segments, ref = None, data = None, **kwargs):
         '''
@@ -84,7 +94,7 @@ class RequestAndResponses:
         return self.repo_tag_create(
             segments,
             ref,
-            message = None if data == None else json.dumps(data, indent = 2),
+            message = None if data is None else json.dumps(data, indent = 2),
             **kwargs,
         )
 
@@ -152,7 +162,7 @@ class RequestAndResponses:
         '''
         self.repo_tag_create_json(RequestAndResponses.segment_handled, data = data)
         self.handled = True
-        if data != None:
+        if data is not None:
             self.handled_result = data
 
     @functools.cached_property
@@ -188,7 +198,7 @@ class RequestAndResponses:
         '''
         # Review issues must be configured to proceed.
         response_key = self.handler_data.handler.review_response_key
-        if response_key == None:
+        if response_key is None:
             return None
 
         return self.responses.get(response_key)
@@ -200,7 +210,7 @@ class RequestAndResponses:
         Only valid for accepted submission requests.
         First checks for a review issue and then the result of the submission handler.
         '''
-        if self.review != None:
+        if self.review is not None:
             return self.handler_data.handler.review_response_key
 
         return self.handled_result.get('outcome_response_key')
@@ -214,7 +224,7 @@ class RequestAndResponses:
         - issue is an instance of gitlab.v4.objects.ProjectIssue.
         Only valid for accepted submission requests.
         '''
-        if self.outcome_response_key == None:
+        if self.outcome_response_key is None:
             return None
 
         (issue, title_data) = self.responses[self.outcome_response_key]
@@ -226,7 +236,7 @@ class RequestAndResponses:
         The outcome part of 'outcome_with_issue'.
         None if the latter is None.
         '''
-        if self.outcome_with_issue == None:
+        if self.outcome_with_issue is None:
             return None
 
         (outcome, outcome_issue) = self.outcome_with_issue
@@ -238,7 +248,7 @@ class RequestAndResponses:
         The outcome issue part of 'outcome_with_issue'.
         None if the latter is None.
         '''
-        if self.outcome_with_issue == None:
+        if self.outcome_with_issue is None:
             return None
 
         (outcome, outcome_issue) = self.outcome_with_issue
@@ -250,7 +260,7 @@ class RequestAndResponses:
         Get the informal name the reviewer, or 'Lab system' if there is none.
         Only valid for submission requests with an outcome.
         '''
-        if self.review == None:
+        if self.review is None:
             return 'Lab system'
 
         gitlab_username = self.outcome_issue.author['username']
@@ -296,11 +306,11 @@ class RequestAndResponses:
     #         self.repo_tag_create_json(RequestAndResponses.segment_review, data = result,force = True)
     #     return True
 
-    def _repo_tag_after_segments(self, prev_name):
-        return ['after', prev_name]
+    def _repo_tag_after_segments(self, prev_name, segments = []):
+        return [*segments, 'after', prev_name]
 
     @instance_cache.instance_cache
-    def repo_tag_after(self, prev_name):
+    def repo_tag_after(self, prev_name, segments = []):
         '''
         Returns an instance of git.TagReference for the tag with name
             <full group id>/<request name>/after/<prev_name>
@@ -309,25 +319,24 @@ class RequestAndResponses:
         This points to a descendant commit of self.repo_remote_commit, identical in content,
         that is additionally a descendant of whatever commit prev_name refers to.
         '''
-        return self._repo_tag_after_segments(prev_name)
+        return self._repo_tag_after_segments(prev_name, segments)
 
-    def repo_tag_after_create(self, prev_name, prev_ref):
+    def repo_tag_after_create(self, prev_name, prev_ref, segments = []):
         '''
         Given a reference prev_ref in the grading repository, create a tag
-            <full group id>/<request name>/after/<prev_name>
-        for a commit that is a descendant of both self.repo_tag and prev_ref.
+            <full group id>/<request name>/<segments>/after/<prev_name>
+        for a commit that is a descendant of both self.repo_tag([*segments, 'tag']) and prev_ref.
 
-        If self.repo_tag is a descendant of prev_commit, the commit is self.repo_remote_commit.
+        If the repository tag is a descendant of prev_commit, the commit is self.repo_remote_commit.
         Otherwise, it is created as a one-sided merge.
 
         Returns an instance of git.TagReference for the created tag.
         '''
         prev_commit = git_tools.resolve(self.lab.repo, prev_ref)
-        if self.lab.repo.is_ancestor(prev_commit, self.repo_remote_commit):
-            commit = self.repo_remote_commit
-        else:
-            commit = git_tools.onesided_merge(self.lab.repo, self.repo_remote_commit, prev_commit)
-        return self.repo_tag_create(self._repo_tag_after_segments(prev_name), commit, force = True)
+        commit = self.repo_tag([*segments, 'tag']).commit if segments else self.repo_remote_commit
+        if not self.lab.repo.is_ancestor(prev_commit, commit):
+            commit = git_tools.onesided_merge(self.lab.repo, commit, prev_commit)
+        return self.repo_tag_create(self._repo_tag_after_segments(prev_name, segments), commit, force = True)
 
     def post_response_issue(self, response_key, title_data = dict(), description = str()):
         # Only allow posting if there is not already a response issue of the same type.
@@ -369,7 +378,8 @@ class RequestAndResponses:
         if self.get_handled():
             return
 
-        self.logger.info(f'Processing request {self.request_name} in {self.group.name}.')
+        where = '' if self.group is None else f' in {self.group.name}'
+        self.logger.info(f'Processing request {self.request_name}{where}.')
 
         # Create tag <full group id>/<request name>/tag copying the request tag.
         self.repo_tag_create(
@@ -378,13 +388,17 @@ class RequestAndResponses:
             force = True,
         )
 
-        # Call handler with this object as argment.
-        self.logger.debug(
-            f'Handling request {self.request_name} in {self.group.name} '
-            f'using handler {self.handler_data.handler_key}'
-        )
-        result = self.handler_data.handler.handle_request(self)
-        if result != None:
+        if self.group:
+            # Call handler with this object as argment.
+            self.logger.debug(
+                f'Handling request {self.request_name} {where} '
+                f'using handler {self.handler_data.handler_key}'
+            )
+            result = self.handler_data.handler.handle_request(self)
+        else:  # Fake submission (official problem or solution).
+            result = self.lab.submission_handler.handle_request(self)
+
+        if result is not None:
             self.logger.debug(general.join_lines(['Handler result:', str(result)]))
 
         # Create tag <full-group-id>/<request_name>/handled
@@ -426,7 +440,7 @@ class HandlerData:
         # Initialized with inner dictionaries set to None.
         self.responses = {
             response_key: None
-            for (response_key, issue_title) in self.handler.response_titles.items()
+            for response_key in self.handler.response_titles.keys()
         }
 
         # Is this the submission handler?
@@ -440,7 +454,7 @@ class HandlerData:
         '''
         def parser(item):
             (tag_name, tag_data) = item
-            if self.handler.request_matcher.parse(tag_name) == None:
+            if self.handler.request_matcher.parse(tag_name) is None:
                 return None
             return (tag_name, tag_data)
 
@@ -460,7 +474,7 @@ class HandlerData:
                 parse = response_title.parse.__call__
                 try:
                     r = parse(title)
-                except:
+                except Exception:
                     return None
                 return (r['tag'], (issue, r))
 
@@ -479,12 +493,12 @@ class HandlerData:
         '''
         result = dict()
         for (request_name, tag_data) in self.requests.items():
-            result[request_name] = RequestAndResponses(self, request_name, tag_data)
+            result[request_name] = RequestAndResponses(self.lab, self, request_name, tag_data)
 
         for (response_key, u) in self.responses.items():
             for (request_name, issue_data) in u.items():
                 request_and_responses = result.get(request_name)
-                if request_and_responses == None:
+                if request_and_responses is None:
                     self.logger.warning(gitlab_tools.format_issue_metadata(
                         issue_data[0],
                         f'Response issue in {self.group.name} with no matching request tag:'
@@ -543,7 +557,7 @@ class GroupProject:
         def create():
             project = gitlab_tools.CachedProject.create(r, self.course.group(self.id).get)
             try:
-                self.lab.repo.git.push(
+                self.repo.git.push(
                     project.ssh_url_to_repo,
                     git_tools.refspec(
                         git_tools.local_branch(self.course.config.branch.problem),
@@ -553,7 +567,7 @@ class GroupProject:
                 )
                 self.course.configure_student_project(project)
                 self.repo_add_remote()
-            except:
+            except:  # noqa: E722
                 r.delete()
                 raise
         r.create = create
@@ -615,19 +629,30 @@ class GroupProject:
         '''
         return gitlab_tools.append_mentions(text, self.members)
 
+    @property
+    def repo(self):
+        return self.lab.repo
+
     def repo_fetch(self):
         '''
         Make sure the local repository as up to date with respect to
         the contents of the student repository on GitLab Chalmers.
         '''
         self.logger.info(f'Fetching from student repository, remote {self.remote}.')
-        self.lab.repo.remote(self.remote).fetch('--update-head-ok')
+        self.repo.remote(self.remote).fetch('--update-head-ok')
 
     def repo_tag(self, request_name, segments = ['tag']):
         '''
         Construct a tag reference object for the current lab group.
         This only constructs an in-memory object and does not yet interact with the grading repository.
         The tag's name with habe the group's remote prefixed.
+
+        HACK:
+        This method and the following related ones may
+        also be called with self an instance of lab.Lab.
+        In that case, the remote is omitted from the tag name.
+        This is used for the pseudo-instances of SubmissionAndResponse
+        for the official problem and solution.
 
         Arguments:
         * tag_name: Instance of PurePosixPath, str, or gitlab.v4.objects.tags.ProjectTag.
@@ -642,8 +667,11 @@ class GroupProject:
         if isinstance(request_name, gitlab.v4.objects.tags.ProjectTag):
             request_name = request_name.name
 
-        request_name = git_tools.qualify(self.remote, request_name) / PurePosixPath(*segments)
-        return git_tools.normalize_tag(self.lab.repo, request_name)
+        base = request_name
+        if isinstance(self, GroupProject):
+            base = git_tools.qualify(self.remote, request_name)
+        request_name = base / PurePosixPath(*segments)
+        return git_tools.normalize_tag(self.repo, request_name)
 
     def repo_tag_exist(self, request_name, segments = ['tag']):
         '''
@@ -651,7 +679,7 @@ class GroupProject:
         Arguments are as for repo_tag.
         Returns a boolean.
         '''
-        return git_tools.tag_exist(self.repo_tag(request_name, segments))
+        return git_tools.tag_exist(GroupProject.repo_tag(self, request_name, segments))
 
     def repo_tag_create(self, request_name, segments = ['tag'], ref = None, **kwargs):
         '''
@@ -675,15 +703,16 @@ class GroupProject:
 
         Returns an instance of git.Tag.
         '''
-        if ref == None:
-            ref = self.repo_tag(request_name).commit
+        if ref is None:
+            ref = GroupProject.repo_tag(self, request_name).commit
 
-        tag = self.lab.repo.create_tag(
-            self.repo_tag(request_name, segments).name,
+        tag = self.repo.create_tag(
+            GroupProject.repo_tag(self, request_name, segments).name,
             ref = ref,
             **kwargs,
         )
-        self.lab.repo_updated = True
+
+        (self.lab if isinstance(self, GroupProject) else self).repo_updated = True
         return tag
 
     def repo_tag_delete(self, request_name, segments):
@@ -694,8 +723,8 @@ class GroupProject:
         Arguments:
         * request_name, segments: As for repo_tag.
         '''
-        self.lab.delete_tag(self.repo_tag(request_name, segments).name)
-        self.lab.repo_updated = True
+        self.lab.delete_tag(GroupProject.repo_tag(self, request_name, segments).name)
+        (self.lab if isinstance(self, GroupProject) else self).repo_updated = True
 
     def hotfix_group(self, branch_hotfix, branch_group):
         '''
@@ -716,7 +745,7 @@ class GroupProject:
             return
 
         master = git_tools.remote_branch(self.remote, branch_group)
-        index = git.IndexFile.from_tree(self.lab.repo, problem, master, hotfix, i = '-i')
+        index = git.IndexFile.from_tree(self.repo, problem, master, hotfix, i = '-i')
         merge = index.write_tree()
         diff = merge.diff(master)
         if not diff:
@@ -726,17 +755,17 @@ class GroupProject:
             self.logger.info(x)
 
         commit = git.Commit.create_from_tree(
-            self.lab.repo,
+            self.repo,
             merge,
             hotfix.message,
-            parent_commits = [git_tools.resolve(self.lab.repo, master)],
+            parent_commits = [git_tools.resolve(self.repo, master)],
             author = hotfix.author,
             committer = hotfix.committer,
             author_date = hotfix.authored_datetime,
             commit_date = hotfix.committed_datetime,
         )
 
-        return self.lab.repo.remote(self.remote).push(git_tools.refspec(
+        return self.repo.remote(self.remote).push(git_tools.refspec(
             commit.hexsha,
             self.course.config.branch.master,
             force = False,
@@ -852,9 +881,9 @@ class GroupProject:
             ),
             f(),
             {
-                True: self.tags_from_gitlab(),
-                False: self.tags_from_repo(),
-            }[from_gitlab],
+                True: self.tags_from_gitlab,
+                False: self.tags_from_repo,
+            }[from_gitlab](),
         )
 
         # Clear requests and responses cache.
@@ -920,7 +949,7 @@ class GroupProject:
         submission_handler_data = self.handler_data[self.lab.config.submission_handler_key]
         for request_and_responses in submission_handler_data.requests_and_responses.values():
             if request_and_responses.accepted:
-                if deadline == None or request_and_responses.date <= deadline:
+                if deadline is None or request_and_responses.date <= deadline:
                     yield request_and_responses
 
     def submissions_with_outcome(self, deadline = None):
@@ -930,7 +959,7 @@ class GroupProject:
         Returns an iterable of instances of SubmissionAndRequests ordered by the date.
         '''
         for submission in self.submissions(deadline = deadline):
-            if submission.outcome != None:
+            if submission.outcome is not None:
                 yield submission
 
     def submissions_relevant(self, deadline = None):
@@ -941,7 +970,7 @@ class GroupProject:
         '''
         submissions = list(self.submissions(deadline = deadline))
         for (i, submission) in enumerate(submissions):
-            if i + 1 == len(submissions) or submission.outcome != None:
+            if i + 1 == len(submissions) or submission.outcome is not None:
                 yield submission
 
     def submission_current(self, deadline = None):
@@ -953,5 +982,5 @@ class GroupProject:
         submissions = list(self.submissions(deadline = deadline))
         if submissions:
             submission_last = submissions[-1]
-            if submission_last.outcome == None:
+            if submission_last.outcome is None:
                 return submission_last

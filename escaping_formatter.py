@@ -69,13 +69,14 @@ class EscapingFormatter(string.Formatter):
                 # expand the format spec, if needed
                 format_spec, auto_arg_index = self._vformat(
                     format_spec, args, kwargs,
-                    used_args, recursion_depth-1,
-                    auto_arg_index=auto_arg_index)
+                    used_args, recursion_depth - 1,
+                    auto_arg_index=auto_arg_index,
+                )
 
                 # format the object and append to the result
                 result.append(self.format_field(obj, format_spec))
 
-        return ''.join(result), auto_arg_index        
+        return (''.join(result), auto_arg_index)
 
 class RegexEscapingFormatter(EscapingFormatter):
     '''

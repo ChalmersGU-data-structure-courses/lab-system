@@ -9,6 +9,11 @@ import print_parse
 import robograder_java
 from this_dir import this_dir
 
+# Personal configuration.
+# These configuration options are likely to differ per user
+# or contain private information such as authentication tokens.
+from gitlab_config_personal import *  # noqa: F401, F403
+
 # Canvas config
 canvas = SimpleNamespace(
     # Standard values:
@@ -21,7 +26,8 @@ canvas = SimpleNamespace(
 
     # Name of Canvas group set where students sign up for lab groups.
     # We recommend to use a zero-based numerical naming scheme such as 'Lab group 0', 'Lab group 1', etc.
-    # If you allow students to create their own group name, you have to define further down how this should translate to group names on GitLab.
+    # If you allow students to create their own group name,
+    # you have to define further down how this should translate to group names on GitLab.
     # There are special characters allowed for Canvas group names, but forbidden for GitLab group names.
     group_set = 'Lab groups',
 
@@ -29,10 +35,6 @@ canvas = SimpleNamespace(
     # This folder needs to exist.
     grading_path = 'temp',
 )
-
-# Personal configuration.
-# These configuration options are likely to differ per user or contain private information such as authentication tokens.
-from gitlab_config_personal import *
 
 # Base URL for Chalmers GitLab
 base_url = 'https://git.chalmers.se/'
@@ -98,8 +100,8 @@ _course_path = PurePosixPath('courses/XXX')
 # Absolute paths on Chalmers GitLab to the groups described above.
 path = SimpleNamespace(
     graders = _course_path / 'graders',
-    labs    = _course_path / 'labs',
-    groups  = _course_path / 'groups',
+    labs    = _course_path / 'labs',    # noqa: E221
+    groups  = _course_path / 'groups',  # noqa: E221
 )
 
 # Relative paths to the repositories in each lab as described above.
@@ -154,7 +156,7 @@ grading_response = print_parse.compose(
     print_parse.on(general.component('outcome'), outcome.name),
     print_parse.regex_non_canonical_keyed(
         'Grading for {tag}: {outcome}',
-        'grading\s+(?:for|of)\s+(?P<tag>[^: ]*)\s*:\s*(?P<outcome>[^:\\.!]*)[\\.!]*',
+        'grading\\s+(?:for|of)\\s+(?P<tag>[^: ]*)\\s*:\\s*(?P<outcome>[^:\\.!]*)[\\.!]*',
         flags = re.IGNORECASE,
     )
 )
@@ -293,28 +295,33 @@ _lab_config = SimpleNamespace(
 
 _language = 'java'
 
+
 # TODO: fix
 class _LabConfig:
     def __init__(self, k, lab_folder, has_robograder):
         self.path_source = _code_root / 'labs' / lab_folder / _language
         self.path_gitignore = _code_root / 'Other' / 'lab-gitignore' / f'{_language}.gitignore'
         self.grading_sheet = lab.name.print(k)
-        self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-awaiting-grading.html'.format(lab.full_id.print(k))
+        self.canvas_path_awaiting_grading = (
+            PurePosixPath('temp') / '{}-awaiting-grading.html'.format(lab.full_id.print(k))
+        )
 
         self.compiler = robograder_java.compile
         self.submission_handlers = [
             robograder_java.Robograder(self.path_source, machine_speed = 1) if has_robograder else None
         ]
 
+
 def _lab_item(k, *args):
     return (k, _LabConfig(k, *args))
 
+
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
-    _lab_item(1, 'sorting-complexity'  , False),
-    _lab_item(2, 'autocomplete'        , True ),
-    _lab_item(3, 'plagiarism-detection', True ),
-    _lab_item(4, 'path-finder'         , True ),
+    _lab_item(1, 'sorting-complexity'),
+    _lab_item(2, 'autocomplete'),
+    _lab_item(3, 'plagiarism-detection'),
+    _lab_item(4, 'path-finder'),
 ])
 
 # Students taking part in labs who are not registered on Canvas.
@@ -341,6 +348,7 @@ _cid_gitlab_exceptions = print_parse.from_dict([
 # Format GU ID as email address (GU-ID@gu.se).
 _gu_id = print_parse.regex('{}@gu.se')
 
+
 # Retrieve the Chalmers GitLab username for a user id on Chalmers/GU Canvas.
 # This is needed to:
 # * add teachers as retrieved from Canvas to the grader group on GitLab,
@@ -357,6 +365,7 @@ def gitlab_username_from_canvas_user_id(course, user_id):
         return _cid_gitlab_exceptions.print(cid)
     except KeyError:
         return cid
+
 
 # Used for programmatic push notifications on GitLab.
 # Value doesn't matter, but should not be guessable.
