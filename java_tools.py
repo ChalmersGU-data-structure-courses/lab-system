@@ -36,7 +36,7 @@ def java_version():
 
 def sourcepath_option(paths):
     if paths is not None:
-        yield from ['-classpath', path_tools.search_path_join(paths)]
+        yield from ['-sourcepath', path_tools.search_path_join(paths)]
 
 def classpath_option(paths):
     if paths is not None:
