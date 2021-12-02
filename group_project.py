@@ -32,13 +32,17 @@ class RequestAndResponses:
     Each instances of this class is managed by an instance of HandlerData.
     Instances are rather transient.
     They are reconstructed every time request tags or response issues are refreshed.
+
+    There are special instances of this class for the official problem and solution.
+    In that case, the handler_data parameter is None and tag_data is a pair of
+    the corresponding head and commit in the grading repository.
     '''
-    def __init__(self, handler_data, request_name, tag_data):
-        self.course = handler_data.course
-        self.lab = handler_data.lab
-        self.group = handler_data.group
+    def __init__(self, lab, handler_data, request_name, tag_data):
+        self.course = lab.course
+        self.lab = lab
+        self.group = None if handler_data is None else handler_data.group
         self.handler_data = handler_data
-        self.logger = handler_data.logger
+        self.logger = lab.logger if handler_data is None else handler_data.logger
 
         self.request_name = request_name
         if isinstance(tag_data, gitlab.v4.objects.ProjectTag):
@@ -60,21 +64,25 @@ class RequestAndResponses:
     def date(self):
         return git_tools.commit_date(self.repo_remote_commit)
 
+    @property
+    def _group(self):
+        return self.lab if self.group is None else self.group
+
     def repo_tag(self, segments = ['tag']):
         '''Forwards to self.group.repo_tag.'''
-        return self.group.repo_tag(self.request_name, segments)
+        return GroupProject.repo_tag(self._group, self.request_name, segments)
 
     def repo_tag_exist(self, segments):
         '''Forwards to self.group.repo_tag_exist.'''
-        return self.group.repo_tag_exist(self.request_name, segments)
+        return GroupProject.repo_tag_exist(self._group, self.request_name, segments)
 
     def repo_tag_create(self, segments = ['tag'], ref = None, **kwargs):
         '''Forwards to self.group.repo_tag_create.'''
-        return self.group.repo_tag_create(self.request_name, segments, ref, **kwargs)
+        return GroupProject.repo_tag_create(self._group, self.request_name, segments, ref, **kwargs)
 
     def repo_tag_delete(self, segments = ['tag']):
         '''Forwards to self.group.repo_tag_delete.'''
-        return self.group.repo_tag_delete(self.request_name, segments)
+        return GroupProject.repo_tag_delete(self._group, self.request_name, segments)
 
     def repo_tag_create_json(self, segments, ref = None, data = None, **kwargs):
         '''
@@ -371,7 +379,8 @@ class RequestAndResponses:
         if self.get_handled():
             return
 
-        self.logger.info(f'Processing request {self.request_name} in {self.group.name}.')
+        where = '' if self.group is None else f' in {self.group.name}'
+        self.logger.info(f'Processing request {self.request_name}{where}.')
 
         # Create tag <full group id>/<request name>/tag copying the request tag.
         self.repo_tag_create(
@@ -380,12 +389,16 @@ class RequestAndResponses:
             force = True,
         )
 
-        # Call handler with this object as argment.
-        self.logger.debug(
-            f'Handling request {self.request_name} in {self.group.name} '
-            f'using handler {self.handler_data.handler_key}'
-        )
-        result = self.handler_data.handler.handle_request(self)
+        if self.group:
+            # Call handler with this object as argment.
+            self.logger.debug(
+                f'Handling request {self.request_name} {where} '
+                f'using handler {self.handler_data.handler_key}'
+            )
+            result = self.handler_data.handler.handle_request(self)
+        else:  # Fake submission (official problem or solution).
+            result = self.lab.submission_handler.handle_request(self)
+
         if result is not None:
             self.logger.debug(general.join_lines(['Handler result:', str(result)]))
 
@@ -481,7 +494,7 @@ class HandlerData:
         '''
         result = dict()
         for (request_name, tag_data) in self.requests.items():
-            result[request_name] = RequestAndResponses(self, request_name, tag_data)
+            result[request_name] = RequestAndResponses(self.lab, self, request_name, tag_data)
 
         for (response_key, u) in self.responses.items():
             for (request_name, issue_data) in u.items():
@@ -635,6 +648,13 @@ class GroupProject:
         This only constructs an in-memory object and does not yet interact with the grading repository.
         The tag's name with habe the group's remote prefixed.
 
+        HACK:
+        This method and the following related ones may
+        also be called with self an instance of lab.Lab.
+        In that case, the remote is omitted from the tag name.
+        This is used for the pseudo-instances of SubmissionAndResponse
+        for the official problem and solution.
+
         Arguments:
         * tag_name: Instance of PurePosixPath, str, or gitlab.v4.objects.tags.ProjectTag.
         * segments:
@@ -648,8 +668,11 @@ class GroupProject:
         if isinstance(request_name, gitlab.v4.objects.tags.ProjectTag):
             request_name = request_name.name
 
-        request_name = git_tools.qualify(self.remote, request_name) / PurePosixPath(*segments)
-        return git_tools.normalize_tag(self.lab.repo, request_name)
+        base = request_name
+        if isinstance(self, GroupProject):
+            base = git_tools.qualify(self.remote, request_name)
+        request_name = base / PurePosixPath(*segments)
+        return git_tools.normalize_tag(self.repo, request_name)
 
     def repo_tag_exist(self, request_name, segments = ['tag']):
         '''
@@ -657,7 +680,7 @@ class GroupProject:
         Arguments are as for repo_tag.
         Returns a boolean.
         '''
-        return git_tools.tag_exist(self.repo_tag(request_name, segments))
+        return git_tools.tag_exist(GroupProject.repo_tag(self, request_name, segments))
 
     def repo_tag_create(self, request_name, segments = ['tag'], ref = None, **kwargs):
         '''
@@ -682,14 +705,15 @@ class GroupProject:
         Returns an instance of git.Tag.
         '''
         if ref is None:
-            ref = self.repo_tag(request_name).commit
+            ref = GroupProject.repo_tag(self, request_name).commit
 
-        tag = self.lab.repo.create_tag(
-            self.repo_tag(request_name, segments).name,
+        tag = self.repo.create_tag(
+            GroupProject.repo_tag(self, request_name, segments).name,
             ref = ref,
             **kwargs,
         )
-        self.lab.repo_updated = True
+
+        (self.lab if isinstance(self, GroupProject) else self).repo_updated = True
         return tag
 
     def repo_tag_delete(self, request_name, segments):
@@ -700,8 +724,8 @@ class GroupProject:
         Arguments:
         * request_name, segments: As for repo_tag.
         '''
-        self.lab.delete_tag(self.repo_tag(request_name, segments).name)
-        self.lab.repo_updated = True
+        self.lab.delete_tag(GroupProject.repo_tag(self, request_name, segments).name)
+        (self.lab if isinstance(self, GroupProject) else self).repo_updated = True
 
     def hotfix_group(self, branch_hotfix, branch_group):
         '''
