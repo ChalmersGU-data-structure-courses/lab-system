@@ -53,6 +53,8 @@
 
 * Update robograder for autocomplete lab to not test with negative weights.
 
+* Construct only one instance of the Robograder (if it esists) and pass it to the lab handlers.
+
 ## Proot
 
 * Find the cause of the following bug.
