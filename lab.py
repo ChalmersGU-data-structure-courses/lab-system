@@ -761,6 +761,7 @@ class Lab:
 
         Passes the deadline parameters to the methods update_grading_sheet and update_live_submissions_table.
         '''
+        self.setup_request_handlers()
         self.parse_response_issues()
         self.repo_fetch_all()
         self.parse_request_tags(False)
