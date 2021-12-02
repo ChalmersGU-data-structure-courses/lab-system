@@ -854,9 +854,9 @@ class GroupProject:
             ),
             f(),
             {
-                True: self.tags_from_gitlab(),
-                False: self.tags_from_repo(),
-            }[from_gitlab],
+                True: self.tags_from_gitlab,
+                False: self.tags_from_repo,
+            }[from_gitlab](),
         )
 
         # Clear requests and responses cache.
