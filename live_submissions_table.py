@@ -386,7 +386,7 @@ class SubmissionFilesColumn(Column):
         else:
             def f():
                 try:
-                    return self.lab.grading_template_issue.description
+                    return self.lab.review_template_issue.description
                 except AttributeError:
                     return ''
 
