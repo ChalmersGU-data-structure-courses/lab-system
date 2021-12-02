@@ -145,7 +145,7 @@ def all_up_to_date(
     * src: The source directory.
     * src_files: An iterable of source files.
     '''
-    return all(is_up_to_date(get_src_files(src, src_files)))
+    return all(map(is_up_to_date, get_src_files(src, src_files)))
 
 def compile_unknown(
     src,
@@ -258,7 +258,7 @@ def compile(
     '''
     src_files = get_src_files(src, src_files)
 
-    if skip_if_exist and all(is_up_to_date, src_files):
+    if skip_if_exist and all(map(is_up_to_date, src_files)):
         logger.debug('All source files are up to date, skipping compilation.')
         return
 
