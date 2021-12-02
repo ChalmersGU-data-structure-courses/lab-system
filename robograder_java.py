@@ -233,7 +233,7 @@ dir_lib_src = dir_lib / 'src'
 # Subdirectory of the robograder in the lab directory.
 rel_dir_robograder = Path('robograder')
 
-def compile_lib(self, force = False):
+def compile_lib(force = False):
     '''
     Compile the robograder library.
     Compilation is skipped if all compiled class files are up-to-date.
@@ -256,7 +256,7 @@ class RobograderMissingException(Exception):
 
 class LabRobograder:
     '''
-    A robograder class for robograders following the architecture
+    A class for Java robograders following the architecture
     that is currently implemented for the following Java labs:
     - autocomplete,
     - plagiarism-detector,
