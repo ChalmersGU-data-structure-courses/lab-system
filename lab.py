@@ -334,7 +334,7 @@ class Lab:
             )
             self.repo_fetch_official()
 
-            # Configure offical grading repository and student group
+            # Configure offical grading repository and student groups.
             self.repo_add_remote(
                 self.course.config.path_lab.grading,
                 self.grading_project.get,
@@ -574,6 +574,7 @@ class Lab:
           Update responses before updating requests to avoid responses with no matching request.
         '''
         self.logger.info('Processing requests.')
+        self.submission_solution.process_request()
         for group in self.student_groups:
             group.process_requests()
 
@@ -637,6 +638,24 @@ class Lab:
     @functools.cached_property
     def head_solution(self):
         return git_tools.normalize_branch(self.repo, self.course.config.branch.solution)
+
+    @functools.cached_property
+    def submission_problem(self):
+        return group_project.RequestAndResponses(
+            self,
+            None,
+            self.course.config.branch.problem,
+            (self.head_problem, self.head_problem.commit),
+        )
+
+    @functools.cached_property
+    def submission_solution(self):
+        return group_project.RequestAndResponses(
+            self,
+            None,
+            self.course.config.branch.solution,
+            (self.head_solution, self.head_solution.commit),
+        )
 
     @functools.cached_property
     def compiler(self):
