@@ -82,9 +82,9 @@ class CompilationAndRobogradingColumn(live_submissions_table.Column):
 
     def format_header_cell(self, cell):
         with cell:
-            dominate.tags.span('Compilation &', display = 'inline-block')
-            dominate.util.text(' ')
-            dominate.tags.span('Robograding', display = 'inline-block')
+            dominate.util.text('Compilation &')
+            dominate.tags.br()
+            dominate.util.text('Robograding')
 
     def get_value(self, group_id):
         group = super().get_value(group_id)
@@ -144,15 +144,13 @@ class SubmissionHandler(lab_handlers.SubmissionHandler):
         super().setup(lab)
 
         def f():
-            yield ('compilation', CompilationColumn)
-
             # Set up robograder.
             try:
                 self.robograder = robograder_java.LabRobograder(lab.config.path_source, self.machine_speed)
                 self.robograder.compile()
-                yield ('robograding', RobogradingColumn)
+                yield ('robograding', CompilationAndRobogradingColumn)
             except robograder_java.RobograderMissingException:
-                pass
+                yield ('compilation', CompilationColumn)
         self.grading_columns = live_submissions_table.with_standard_columns(dict(f()))
 
     def _handle_request(self, request_and_responses, src, bin, report):
