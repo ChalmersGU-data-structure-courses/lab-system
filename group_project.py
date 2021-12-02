@@ -545,7 +545,7 @@ class GroupProject:
         def create():
             project = gitlab_tools.CachedProject.create(r, self.course.group(self.id).get)
             try:
-                self.lab.repo.git.push(
+                self.repo.git.push(
                     project.ssh_url_to_repo,
                     git_tools.refspec(
                         git_tools.local_branch(self.course.config.branch.problem),
@@ -617,13 +617,17 @@ class GroupProject:
         '''
         return gitlab_tools.append_mentions(text, self.members)
 
+    @property
+    def repo(self):
+        return self.lab.repo
+
     def repo_fetch(self):
         '''
         Make sure the local repository as up to date with respect to
         the contents of the student repository on GitLab Chalmers.
         '''
         self.logger.info(f'Fetching from student repository, remote {self.remote}.')
-        self.lab.repo.remote(self.remote).fetch('--update-head-ok')
+        self.repo.remote(self.remote).fetch('--update-head-ok')
 
     def repo_tag(self, request_name, segments = ['tag']):
         '''
@@ -718,7 +722,7 @@ class GroupProject:
             return
 
         master = git_tools.remote_branch(self.remote, branch_group)
-        index = git.IndexFile.from_tree(self.lab.repo, problem, master, hotfix, i = '-i')
+        index = git.IndexFile.from_tree(self.repo, problem, master, hotfix, i = '-i')
         merge = index.write_tree()
         diff = merge.diff(master)
         if not diff:
@@ -728,17 +732,17 @@ class GroupProject:
             self.logger.info(x)
 
         commit = git.Commit.create_from_tree(
-            self.lab.repo,
+            self.repo,
             merge,
             hotfix.message,
-            parent_commits = [git_tools.resolve(self.lab.repo, master)],
+            parent_commits = [git_tools.resolve(self.repo, master)],
             author = hotfix.author,
             committer = hotfix.committer,
             author_date = hotfix.authored_datetime,
             commit_date = hotfix.committed_datetime,
         )
 
-        return self.lab.repo.remote(self.remote).push(git_tools.refspec(
+        return self.repo.remote(self.remote).push(git_tools.refspec(
             commit.hexsha,
             self.course.config.branch.master,
             force = False,
