@@ -116,6 +116,8 @@ if __name__ == '__main__':
     logging.getLogger().setLevel(logging.DEBUG)
 
     dir_lab = Path('../labs/autocomplete/python')
-    tester = LabTester(dir_lab)
+    dir_submission = Path('python_test/lab-2')
+    dir_out = Path('out')
 
-    tester.run_tests(dir_lab / 'out', dir_lab / 'build')
+    tester = LabTester(dir_lab)
+    tester.run_tests(dir_out, dir_submission)

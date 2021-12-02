@@ -18,54 +18,58 @@ def setup_seccomp(callback = None):
     Adapted from output of 'help(seccomp)'.
 
     If something unexpectedly fails, run it under strace to see what it was trying to do.
+
+    Supported configurations (add yours):
+    * x64 Linux with glibc
     '''
     import errno
-    from seccomp import Arg, ALLOW, EQ, MASKED_EQ
+    from seccomp import Arg, ALLOW, MASKED_EQ
 
     # Make the system call return an error if the policy is violated.
     f = seccomp.SyscallFilter(defaction = seccomp.ERRNO(errno.EPERM))
 
     # Allow exiting.
     f.add_rule(ALLOW, "exit_group")
+
+    # Allow basic interrupt handling
     f.add_rule(ALLOW, "rt_sigaction")
     f.add_rule(ALLOW, "rt_sigreturn")
     f.add_rule(ALLOW, "rt_sigprocmask")
 
-    # Allow memory allocation.
+    # Allow memory allocation and mapping.
     f.add_rule(ALLOW, "brk")
-    f.add_rule(ALLOW, "mmap", Arg(4, EQ, 0xffffffff))
-    f.add_rule(ALLOW, "mmap", Arg(4, EQ, 0xffffffffffffffff))
+    f.add_rule(ALLOW, "mmap")
     f.add_rule(ALLOW, "munmap")
     f.add_rule(ALLOW, "mprotect")
-    f.add_rule(ALLOW, "madvise")
+    f.add_rule(ALLOW, "madvise")  # INFO NEEDED: Needed for which system configuration?
 
     # Allow opening files read-only and closing files.
     f.add_rule(ALLOW, "open", Arg(2, MASKED_EQ, 0b11, 0))
     f.add_rule(ALLOW, "openat", Arg(2, MASKED_EQ, 0b11, 0))
-    f.add_rule(ALLOW, "mmap", Arg(3, MASKED_EQ, 0b11, 2))
     f.add_rule(ALLOW, "close")
 
-    # Allow statting files and listing directory entries.
-    f.add_rule(ALLOW, "stat")
-    f.add_rule(ALLOW, "fstat")
+    # Allow statting files, listing directory entries, and reading currrent working directory.
+    f.add_rule(ALLOW, "stat")   # INFO NEEDED: Needed for which system configuration?
+    f.add_rule(ALLOW, "fstat")  # INFO NEEDED: Needed for which system configuration?
     f.add_rule(ALLOW, "newfstatat")
     f.add_rule(ALLOW, "getdents64")
+    f.add_rule(ALLOW, "getcwd")  # Documented to never fail.
 
-    # Allow reading and seeking open fles.
+    # Allow reading, writing, seeking, and controlling open files.
     f.add_rule(ALLOW, "read")
+    f.add_rule(ALLOW, "write")
     f.add_rule(ALLOW, "lseek")
     f.add_rule(ALLOW, "fcntl")
-    f.add_rule(ALLOW, "pselect6")
 
-    # Allow writing to stdout/stderr only.
-    f.add_rule(ALLOW, "write", Arg(0, EQ, sys.stdout.fileno()))
-    f.add_rule(ALLOW, "write", Arg(0, EQ, sys.stderr.fileno()))
+    # RESEARCH NEEDED: Only needed interactively?
+    #f.add_rule(ALLOW, "pselect6")
 
     # Documented to never fail.
-    f.add_rule(ALLOW, "getcwd")
-    f.add_rule(ALLOW, "getpid")
-    f.add_rule(ALLOW, "getppid")
-    f.add_rule(ALLOW, "gettid")
+    # (But note that many other calls are also documented to never return EPERM.)
+    # Forbid them for now (reduced system information leakage).
+    #f.add_rule(ALLOW, "getpid")
+    #f.add_rule(ALLOW, "getppid")
+    #f.add_rule(ALLOW, "gettid")
 
     # Allow the caller to modify the filter.
     if callback is not None:

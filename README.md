@@ -23,8 +23,9 @@ Install the required packages via this command:
 pip install -r requirements.txt
 ```
 
-Install the package `python-libsecomp` for your system (proving the `seccomp` module for Python).
-This is needed for securely running student submissions (except for Java).
+Install `libsebcomp` and its Python bindings for your system.
+Depending on your distribution, these might for example be called `python-libsecomp`, `python3-seccomp`, or such.
+This is needed for securely running student submissions (except for Java, which uses the Java security manager for this job).
 
 Create an untracked copy of `gitlab_config_personal.py.template` and remove the suffix.
 This file stores personal configuration such as access keys and paths local to your filesystem.
