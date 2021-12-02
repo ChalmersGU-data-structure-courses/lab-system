@@ -15,7 +15,7 @@ from general import (
     from_singleton, group_by, doublequote, JSONObject, json_encoder, print_error,
     on, eq, without_adjacent_dups, join_lines,
 )
-from pathlib import (
+from path_tools import (
     add_suffix, format_path,
     set_modification_time, OpenWithModificationTime, modify_no_modification_time,
     fix_encoding,
