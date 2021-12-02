@@ -87,12 +87,12 @@ def parse_items(config, parser, parser_name, parse_results, items):
                 if callable(config.on_duplicate):
                     value = config.on_duplicate(key, value_prev, value)
                 else:
-                    msg = f'Duplicate {parser_name} {config.item_name} with key {key} in {config.location_name}'
+                    msg = f'Duplicate {parser_name} {config.item_name} with key {key} in {config.location_name}\n'
                     if config.on_duplicate is None:
                         raise ValueError(msg)
 
                     msg += format(f'First {config.item_name}:', item_prev)
-                    msg + format(f'Second {config.item_name}:', item)
+                    msg += format(f'Second {config.item_name}:', item)
                     (item, value, ignore) = {
                         True: (item_prev, value_prev, 'second'),
                         False: (item, value, 'first'),
