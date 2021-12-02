@@ -67,24 +67,51 @@ class LabTester:
                 env = env,
             )
 
-            def store(suffix, result):
-                path_tools.add_suffix(out / name, suffix).write_text(result)
+            def store(kind, result):
+                path_tools.add_suffix(out / name, f'.{kind}').write_text(result)
 
             general.log_command(logger, cmd)
-            process = subprocess.run(
+            logger.debug(f'Timeout value is {test.timeout / self.machine_speed} seconds.')
+            process = subprocess.Popen(
                 cmd,
                 text = True,
-                input = test.input,
-                capture_output = True,
-                timeout = test.timeout,
+                stdin = subprocess.PIPE,
+                stdout = subprocess.PIPE,
+                stderr = subprocess.PIPE,
+                #TODO: on Windows
+                #creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
             )
-            logger.debug(f'Test exit code: {process.returncode}')
-
-            store('.res', str(process.returncode))
-            store('.out', process.stdout)
-            store('.err', process.stderr)
+            # TODO: Terminate if size of out or err exceeds to be configured threshold.
+            # TODO: Store out/err also if timeout occurred.
+            try:
+                (stdout, stderr) = process.communicate(
+                    input = test.input,
+                    timeout = None if test.timeout is None else test.timeout / self.machine_speed
+                )
+                logger.debug(f'Test exit code: {process.returncode}')
+                store('res', general.join_lines([str(process.returncode)]))
+                store('out', stdout)
+                store('err', stderr)
+            except subprocess.TimeoutExpired:
+                logger.debug(f'Test timed out after {test.timeout / self.machine_speed} seconds.')
+                process.kill()
+                #(out, err) = process.communicate()
+                # Be machine-agnostic in the reported timeout value.
+                store('res', general.join_lines([f'timed out after {test.timeout} seconds']))
 
     def run_tests(self, out, src):
         logger.info(f'Running tester on {path_tools.format_path(self.dir_lab)}.')
         for (name, test) in self.tests.items():
             self.run_test(out, src, name, test)
+
+if __name__ == '__main__':
+    from pathlib import Path
+    import logging
+
+    logging.basicConfig()
+    logging.getLogger().setLevel(logging.DEBUG)
+
+    dir_lab = Path('../labs/autocomplete/python')
+    tester = LabTester(dir_lab)
+
+    tester.run_tests(dir_lab / 'out', dir_lab / 'build')
