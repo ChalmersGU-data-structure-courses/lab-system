@@ -451,7 +451,6 @@ class GroupProject:
 
         self.process_submission(next(reversed(x.keys())))
 
-
         # how do we know a submission has been processed?
         # ultimately, we can never know: we might have crashed.
         # we could run with a flag 'force' to indicate that we don't know.

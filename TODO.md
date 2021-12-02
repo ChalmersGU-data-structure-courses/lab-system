@@ -4,6 +4,8 @@
 
 * Do per group caching of remote_tags.
 
+* Cache resolved commits in group_project.
+
 * Fix configure_student_project method:
   make it use the request handlers of the lab config.
 
@@ -46,3 +48,15 @@
 * Display default sorting in live submissions table.
 
 * Allow hiding of columns in live submissions table (user interface).
+
+## Robograder
+
+* Update robograder for autocomplete lab to not test with negative weights.
+
+## Proot
+
+* Find the cause of the following bug.
+  When running the command line
+    proot -r /root -w /jail/main -b '/bin:/bin!' -b '/lib64:/lib64!' -b '/lib:/lib!' -b '/usr/bin:/usr/bin!' -b '/usr/lib64:/usr/lib64!' -b '/usr/lib:/usr/lib!' -b '/home/noname:/jail/main!'
+  the directory /bin is copied as /bin *and* /jail/bin.
+

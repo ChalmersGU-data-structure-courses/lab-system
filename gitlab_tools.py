@@ -1,13 +1,15 @@
 import contextlib
 import dateutil
 import functools
-import gitlab
 import operator
 from pathlib import Path, PurePosixPath
 import time
 import urllib.parse
 
+import gitlab
+
 import general
+
 
 def read_private_token(x):
     if isinstance(x, Path):
@@ -64,7 +66,8 @@ def protect_tags(gl, project_id, patterns, delete_existing = False, exist_ok = T
             x.delete()
         protected_prev = list()
     if exist_ok:
-        patterns_prev = set(protect.name
+        patterns_prev = set(
+            protect.name
             for protect in protected_prev
             if [level['access_level'] for level in protect.create_access_levels] == [30]
         )
@@ -102,7 +105,7 @@ class CachedGroup:
     def create(self, group = None, **kwargs):
         if self.logger:
             self.logger.info(f'Creating group {self.path}')
-        if group == None:
+        if group is None:
             group = self.gl.groups.get(str(self.path.parent))
         self.get = self.gl.groups.create({
             # The GitLab API should permit to give path instead of id.
@@ -155,7 +158,7 @@ class CachedProject:
     def create(self, group = None, **kwargs):
         if self.logger:
             self.logger.info(f'Creating project {self.path}')
-        if group == None:
+        if group is None:
             group = self.gl.groups.get(str(self.path.parent))
         self.get = self.gl.projects.create({
             # The GitLab API should permit to give path instead of id.
@@ -227,8 +230,8 @@ def invitation_create(gitlab_client, entity, email, access_level, **kwargs):
                 'Already a member',
                 'Invite email has already been taken',
                 'The member\'s email address has already been taken',
-                'User already exists in source'
-            ]):
+                'User already exists in source',
+        ]):
             response_code = 409
         raise gitlab.exceptions.GitlabCreateError(message, response_code = response_code)
 
@@ -263,6 +266,7 @@ def mentions(users):
 def append_paragraph(text, paragraph):
     '''Append a paragraph to a given Markdown text.'''
     lines = text.splitlines()
+
     def f():
         if len(lines) != 0:
             yield from lines

@@ -3,7 +3,6 @@ import collections
 import contextlib
 import functools
 import logging
-import operator
 
 import general
 import gspread
@@ -101,7 +100,7 @@ def parse_grading_columns(config, header_row):
             value = value['userEnteredValue']
             value = value['stringValue']
             j = headers.query.parse(value)
-        except:
+        except Exception:
             continue
 
         if j != len(query_column_groups):
@@ -134,7 +133,7 @@ def parse_group_rows(config, values):
                 value = value['userEnteredValue']
                 value = google_tools.sheets.extended_value_extract_primitive(value)
                 yield (config.group.as_cell.parse(value), i)
-            except:
+            except Exception:
                 continue
     return general.sdict(f())
 
@@ -197,16 +196,16 @@ def guess_group_row_range(sheet_data):
     end = None
     for row in range(1, sheet_data.num_rows):
         if is_row_non_empty(sheet_data, row):
-            if start != None:
+            if start is not None:
                 end = row
                 break
         else:
-            if start == None:
+            if start is None:
                 start = row
 
-    if start == None:
+    if start is None:
         start = sheet_data.num_rows
-    if end == None:
+    if end is None:
         end = sheet_data.num_rows
     if start == end:
         raise ValueError('unable to guess group row range')
@@ -233,7 +232,7 @@ class GradingSheet:
             self.gspread_worksheet = gspread_worksheet
 
         pp = self.grading_spreadsheet.config.lab.name
-        if name != None:
+        if name is not None:
             self.lab_id = pp.parse(name)
             self.name = name
         else:
@@ -411,7 +410,7 @@ class GradingSheet:
         If num_queries is not given, the value is calculated from preceding calls to cell writing methods.
         Automatically called in the flush method before executing a request buffer.
         '''
-        if num_queries == None:
+        if num_queries is None:
             num_queries = self.needed_num_queries
         while len(self.sheet_parsed.query_column_groups) < num_queries:
             self.add_query_column_group()
@@ -610,10 +609,10 @@ class GradingSheet:
         '''
         for field in Query._fields:
             x = query_values._asdict()[field]
-            if x != None:
+            if x is not None:
                 try:
                     (value, fields) = x
-                except:
+                except Exception:
                     value = x
                     fields = 'userEnteredValue'
                 self.write_query_cell(
@@ -660,7 +659,7 @@ class GradingSpreadsheet:
             try:
                 lab_id = self.config.lab.name.parse(worksheet.title)
                 yield (lab_id, GradingSheet(self, name = worksheet.title, gspread_worksheet = worksheet))
-            except:
+            except Exception:
                 pass
 
     @functools.cached_property
@@ -684,7 +683,7 @@ class GradingSpreadsheet:
     def sheet_manager(self, sheet_id):
         try:
             yield
-        except:
+        except:  # noqa: E722
             import traceback
             print(traceback.format_exc())
             self.update(google_tools.sheets.request_delete_sheet(sheet_id))
@@ -705,8 +704,9 @@ class GradingSpreadsheet:
             userEnteredValue = google_tools.sheets.extended_value_number_or_string(
                 self.config.group.as_cell.print(group_id)
             ),
-            userEnteredFormat =
-                None if group_link == None else google_tools.sheets.linked_cell_format(group_link(group_id)),
+            userEnteredFormat = (
+                None if group_link is None else google_tools.sheets.linked_cell_format(group_link(group_id))
+            ),
         )
 
     @functools.cached_property
@@ -738,7 +738,7 @@ class GradingSpreadsheet:
             self.update(google_tools.sheets.request_update_title(id, title))
             sheet_properties['title'] = title
             return sheet_properties
-        except:
+        except Exception:
             self.update(google_tools.sheets.request_delete_sheet(id))
             raise
 
@@ -789,7 +789,7 @@ class GradingSpreadsheet:
         try:
             grading_sheet = GradingSheet(self, lab_id = lab_id, gspread_worksheet = worksheet)
             grading_sheet.setup_groups(groups, group_link, delete_previous = True)
-        except:
+        except Exception:
             self.update(google_tools.sheets.request_delete_sheet(worksheet.id))
             raise
 

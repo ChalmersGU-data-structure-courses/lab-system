@@ -3,12 +3,16 @@ from pathlib import PurePosixPath
 import re
 from types import SimpleNamespace
 
-import general
-import lab_interfaces
+import lab_handlers_java
+import robograder_java
 import print_parse
-import submission_handler_java
-import robograding_handler_java
 from this_dir import this_dir
+
+# Personal configuration.
+# These configuration options are likely to differ per user
+# or contain private information such as authentication tokens.
+from gitlab_config_personal import *
+
 
 # Canvas config
 canvas = SimpleNamespace(
@@ -22,7 +26,8 @@ canvas = SimpleNamespace(
 
     # Name of Canvas group set where students sign up for lab groups.
     # We recommend to use a zero-based numerical naming scheme such as 'Lab group 0', 'Lab group 1', etc.
-    # If you allow students to create their own group name, you have to define further down how this should translate to group names on GitLab.
+    # define further down how this should translate to group names on GitLab.
+    # There are special characters allowed for Canvas group names, but forbidden for GitLab group names.
     # There are special characters allowed for Canvas group names, but forbidden for GitLab group names.
     group_set = 'Lab groups',
 
@@ -30,10 +35,6 @@ canvas = SimpleNamespace(
     # This folder needs to exist.
     grading_path = 'temp',
 )
-
-# Personal configuration.
-# These configuration options are likely to differ per user or contain private information such as authentication tokens.
-from gitlab_config_personal import *
 
 # Base URL for Chalmers GitLab
 base_url = 'https://git.chalmers.se/'
@@ -121,13 +122,6 @@ branch = SimpleNamespace(
     master = 'main',
 )
 
-# Value of type RequestMatcher.
-# Determines what tag name students can use to make a submission in their lab project on GitLab Chalmers.
-submission_request = lab_interfaces.RegexRequestMatcher(
-    ['submission*', 'Submission*'],
-    '(?:s|S)ubmission[^/: ]*',
-)
-
 # Parsing and printing of outcomes.
 outcome = SimpleNamespace(
     # Full name.
@@ -145,19 +139,6 @@ outcome = SimpleNamespace(
 # An integer or a string.
 # The below definition is the identity, but checks the domain is correct.
 outcome.as_cell = print_parse.compose(outcome.name, print_parse.invert(outcome.name))
-
-# Printer-parser (print_parse.PrintParse) for grading issue titles.
-# The domain of the printer-parser is a map with the following keys:
-# - 'tag': the submission tag name,
-# - 'outcome': the grading outcome.
-grading_response = print_parse.compose(
-    print_parse.on(general.component('outcome'), outcome.name),
-    print_parse.regex_non_canonical_keyed(
-        'Grading for {tag}: {outcome}',
-        'grading\s+(?:for|of)\s+(?P<tag>[^: ]*)\s*:\s*(?P<outcome>[^:\\.!]*)[\\.!]*',
-        flags = re.IGNORECASE,
-    )
-)
 
 # Printer-parser for grading template issue title in official project.
 # Used in the live submissions table as template for grading issues.
@@ -263,8 +244,6 @@ grading_sheet = SimpleNamespace(
 # Root of the code repository.
 _code_root = this_dir.parent
 
-import lab_interfaces
-
 # Example lab configuration (for purpose of documentation).
 _lab_config = SimpleNamespace(
     # Filesystem path to the lab source.
@@ -314,9 +293,12 @@ class _LabConfig:
         # The order of the dictionary determines the order in which the request matchers
         # of the request handlers are tested on a student repository tag.
         def f():
-            yield ('submission', submission_handler_java.SubmissionHandler(submission_request, grading_response))
-            if (self.path_source / 'robograder').is_dir():
-                yield ('robograding', robograding_handler_java.RobogradingHandler())
+            yield ('submission', lab_handlers_java.SubmissionHandler())
+            try:
+                robograder_java.LabRobograder(self.path_source)
+                yield ('robograding', lab_handlers_java.RobogradingHandler())
+            except robograder_java.RobograderMissingException:
+                pass
         self.request_handlers = dict(f())
 
     # Key of submission handler in the dictionary of request handlers.

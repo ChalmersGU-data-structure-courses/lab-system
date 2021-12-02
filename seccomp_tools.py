@@ -1,10 +1,12 @@
-import os
-from pathlib import PurePath
+# Stand-alone script used as initialization script
+# for reduced-privilege processes running in a sandbox.
+from pathlib import Path, PurePath
 import sys
+
 
 def setup_seccomp(callback = None):
     '''Sandbox the current process using the Kernel mechanism libseccomp.
-    
+
     Only minimal permissions are granted by default.
     Filesystem interaction is read-only.
 
@@ -13,7 +15,7 @@ def setup_seccomp(callback = None):
     Use it to specify additional allowed syscalls.
 
     Adapted from output of 'help(seccomp)'.
-    
+
     If something unexpectedly fails, run it under strace to see what it was trying to do.
     '''
     import errno
@@ -30,7 +32,7 @@ def setup_seccomp(callback = None):
     #f.add_rule(ALLOW, "rt_sigaction")
     #f.add_rule(ALLOW, "rt_sigreturn")
     #f.add_rule(ALLOW, "rt_sigprocmask")
-    
+
     # Allow memory allocation.
     f.add_rule(ALLOW, "brk")
     f.add_rule(ALLOW, "mmap", Arg(4, EQ, 0xffffffff))
@@ -63,7 +65,7 @@ def setup_seccomp(callback = None):
     f.add_rule(ALLOW, "getcwd")
 
     # Allow the caller to modify the filter.
-    if callback != None:
+    if callback is not None:
         callback(f)
 
     # Tell the kernel to enforce the rules on the current process.
@@ -94,17 +96,24 @@ def main():
     '''
     import runpy
 
-    print('sys.argv', sys.argv)
-    print('sys.path', sys.path)
-    print('__file__', __file__)
-    print('__name__', __name__)
+    #print('sys.argv', sys.argv)
+    #print('sys.path', sys.path)
+    #print('__file__', __file__)
+    #print('__name__', __name__)
 
     try:
         path = PurePath(sys.argv[1])
         del sys.argv[1]
-    except:
-        print('Usage: python3 <script> <script to run> [<arguments>...]', file = sys.stderr)
+    except Exception:
+        print('Usage: python3 <this script> <script to run> [<arguments>...]', file = sys.stderr)
         sys.exit(-1)
+
+    # def print_hierarchy(path):
+    #     print(path, path.is_dir())
+    #     if path.is_dir():
+    #         for child in path.iterdir():
+    #             print_hierarchy(child)
+    # print_hierarchy(Path('/jail'))
 
     if not sys.flags.isolated:
         path_pop(PurePath(__file__).parent)
