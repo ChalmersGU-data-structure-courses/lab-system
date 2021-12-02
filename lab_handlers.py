@@ -63,9 +63,9 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
 
     @property
     def response_titles(self):
-        value = self.grading_response_for_outcome(
-            self.lab.course.config.outcome.name,
-        ) if hasattr(self, 'lab') else None
+        # TODO: Fix. Why do we need qualification SubmissionHandler?
+        f = SubmissionHandler.grading_response_for_outcome
+        value = f(self.lab.course.config.outcome.name) if hasattr(self, 'lab') else None
         return {self.review_response_key: value}
 
 class RobogradingHandler(lab_interfaces.RequestHandler):
