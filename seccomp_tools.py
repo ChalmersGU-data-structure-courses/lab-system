@@ -1,6 +1,7 @@
 # Stand-alone script used as initialization script
 # for reduced-privilege processes running in a sandbox.
-from pathlib import Path, PurePath
+from pathlib import PurePath
+import seccomp
 import sys
 
 
@@ -19,7 +20,6 @@ def setup_seccomp(callback = None):
     If something unexpectedly fails, run it under strace to see what it was trying to do.
     '''
     import errno
-    import seccomp
     from seccomp import Arg, ALLOW, EQ, MASKED_EQ
 
     # Make the system call return an error if the policy is violated.

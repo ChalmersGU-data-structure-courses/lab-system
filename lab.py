@@ -614,7 +614,7 @@ class Lab:
             [(parser, f'{self.submission_handler.review_response_key} template issue', u)],
             gitlab_tools.list_all(self.official_project.lazy.issues),
         )
-        return u[()]
+        return u.get(())
 
     def handle_requests(self):
         self.logger.info('Handling request tags.')
