@@ -38,7 +38,7 @@ def autograde_all(cfg):
 
     with open(pjoin(cfg.outfolder, 'index.html'), 'w') as OUT:
         print(
-            HEADER % relpath(os.curdir, cfg.outfolder),
+            HEADER,
             H('h1', f'{cfg.labname} autograding'),
             H('p', ['Files to submit:', H('strong', ', '.join(sorted(cfg.required)))]),
             H('p', ['Total submissions:', H('strong', str(len(cfg.labgroups)))]),
@@ -124,7 +124,7 @@ def autograde(group, submissionfolder, cfg):
     row += [
         H('td', joinBR(
             diff_and_link(pjoin(outfolder, f), pjoin(cfg.outfolder, "solution", f),
-                              'OUT', 'GOLD', pjoin(outfolder, f))
+                              'OUT', 'GOLD', pjoin(outfolder, f), cfg)
             for f in sorted(set(output(f) for f in cfg.testscripts))
         )),
         H('td', joinBR(runtime_errors)),
@@ -139,8 +139,9 @@ def output(script):
 GIT_DIFF_CMD = 'git diff --no-index --histogram --unified=1000 --ignore-space-at-eol'.split()
 DIFF2HTML_CMD = 'diff2html --style side --summary open --input file'.split()
 
-def diff_and_link(afile, bfile, atitle, btitle, diffile):
+def diff_and_link(afile, bfile, atitle, btitle, diffile, cfg):
     diffile += '.diff'
+    diffurl = relpath(diffile, cfg.outfolder)
     try:
         atext = readfile(afile)
     except FileNotFoundError:
@@ -154,7 +155,7 @@ def diff_and_link(afile, bfile, atitle, btitle, diffile):
         diffile += '.txt'
         with open(diffile, 'w') as F:
             print(atext, file=F)
-        return f'{NBSP}={NBSP}' + H('a', basename(afile), href=diffile, klass='grey')
+        return f'{NBSP}={NBSP}' + H('a', basename(afile), href=diffurl, klass='grey')
 
     if USE_GIT_DIFF2HTML:
         cmd = GIT_DIFF_CMD + [afile, bfile]
@@ -169,7 +170,7 @@ def diff_and_link(afile, bfile, atitle, btitle, diffile):
             '--', diffile,
         ]
         subprocess.run(cmd)
-        diffile += '.html'
+        diffurl += '.html'
 
     else: # use difflib
         alines = atext.splitlines()
@@ -182,21 +183,20 @@ def diff_and_link(afile, bfile, atitle, btitle, diffile):
         diffile += '.html'
         with open(diffile, 'w') as F:
             print(
-                HEADER % '.',
-                H('h1', diffile),
+                HEADER,
+                H('h1', diffurl),
                 difftable,
                 FOOTER,
                 file=F
             )
 
-    return f'{100*sim:.0f}%{NBSP}' + H('a', basename(afile), href=diffile)
+    return f'{100*sim:.0f}%{NBSP}' + H('a', basename(afile), href=diffurl)
 
 
 
 HEADER = """
 <html>
 <head>
-<base href="%s" target="_blank">
 <meta charset="UTF-8">
 <title>Grading</title>
 <style>
