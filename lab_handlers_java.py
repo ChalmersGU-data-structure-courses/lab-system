@@ -143,18 +143,16 @@ class SubmissionHandler(lab_handlers.SubmissionHandler):
     def setup(self, lab):
         super().setup(lab)
 
-        # Set up robograder.
-        try:
-            self.robograder = robograder_java.LabRobograder(lab.config.path_source, self.machine_speed)
-            self.robograder.compile()
-        except robograder_java.RobograderMissingException:
-            pass
-
-        # Set up grading columns.
         def f():
             yield ('compilation', CompilationColumn)
-            if self.has_robograder:
+
+            # Set up robograder.
+            try:
+                self.robograder = robograder_java.LabRobograder(lab.config.path_source, self.machine_speed)
+                self.robograder.compile()
                 yield ('robograding', RobogradingColumn)
+            except robograder_java.RobograderMissingException:
+                pass
         self.grading_columns = live_submissions_table.with_standard_columns(dict(f()))
 
     def _handle_request(self, request_and_responses, src, bin, report):
