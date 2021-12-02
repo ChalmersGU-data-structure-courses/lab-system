@@ -287,7 +287,7 @@ class _LabConfig:
         self.path_source = _code_root / 'labs' / lab_folder / _language
         self.path_gitignore = _code_root / 'Other' / 'lab-gitignore' / f'{_language}.gitignore'
         self.grading_sheet = lab.name.print(k)
-        self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-to-be-graded-test.html'.format(lab.full_id.print(k))
+        self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-to-be-graded.html'.format(lab.full_id.print(k))
 
     # Dictionary of request handlers.
     # Its keys should be string-convertible.
