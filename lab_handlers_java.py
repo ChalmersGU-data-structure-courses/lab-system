@@ -187,8 +187,12 @@ class RobogradingHandler(lab_handlers.RobogradingHandler):
     A submission handler for Java labs.
 
     You can configure certain aspects by overriding attributes.
-    See the base class.
+    In addition to those of the base class:
+    * machine_speed:
+        The machine speed parameter of the robograder, if it exists.
+        Defaults to 1.
     '''
+    machine_speed = 1
 
     def setup(self, lab):
         super().setup(lab)
