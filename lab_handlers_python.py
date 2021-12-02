@@ -62,7 +62,8 @@ class SubmissionHandler(lab_handlers.SubmissionHandler):
         self.grading_columns = live_submissions_table.with_standard_columns(dict(f()))
 
     def _handle_request(self, request_and_responses, src):
-        self.test_submission(request_and_responses, src)
+        if hasattr(self, 'tester'):
+            self.test_submission(request_and_responses, src)
         return {
             'accepted': True,
             'review_needed': True,
