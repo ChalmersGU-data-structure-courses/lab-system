@@ -314,7 +314,7 @@ def search_path_add(path_string, paths):
 
     Returns the modified search path (string).
     '''
-    search_path_join(itertools.chain(paths, search_path_split(path_string)))
+    return search_path_join(itertools.chain(paths, search_path_split(path_string)))
 
 def search_path_add_env(environment, name, paths):
     '''
@@ -327,7 +327,10 @@ def search_path_add_env(environment, name, paths):
     * name: Key of the search path entry to modify.
     * paths: Iterable of instances of string or pathlib.PurePath.
     '''
-    environment[system_path] = search_path_add(environment.get(system_path), paths)
+    r = environment.get(name)
+    r = search_path_add(r, paths)
+    if r:
+        environment[name] = r
 
 system_path = 'PATH'
 
