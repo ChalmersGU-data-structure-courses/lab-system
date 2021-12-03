@@ -99,7 +99,7 @@ ControlPath /tmp/%r@%h:%p
 
 Before running the lab scripts, execute the following command and leave it running until you are finished:
 
-```ssh -MNT git@github.com```
+```ssh -MNT git@git.chalmers.se```
 
 This will establish a single master connection that each individual remote git repository interaction will then run over.
 The options mean the following:

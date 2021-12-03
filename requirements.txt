@@ -3,7 +3,6 @@ atomicwrites==1.4.0
 chardet==4.0.0
 dominate==2.6.0
 gitdb==4.0.7
-gitlab==1.0.2
 GitPython==3.1.24
 google_api_python_client==2.32.0
 google_auth_oauthlib==0.4.2
