@@ -71,6 +71,11 @@ class LabTester:
                 env = env,
             )
 
+            # Workaround for check in test files.
+            # (Only needed on the 2021-lp2 branch.)
+            if self.dir_lab.parent.name == 'autocomplete':
+                env['NO_SANDBOX'] = '1'
+
             def store(kind, result):
                 path_tools.add_suffix(out / name, f'.{kind}').write_text(result)
 
@@ -82,6 +87,7 @@ class LabTester:
                 stdin = subprocess.PIPE,
                 stdout = subprocess.PIPE,
                 stderr = subprocess.PIPE,
+                env = env,
                 #TODO: on Windows
                 #creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
             )
@@ -116,7 +122,7 @@ if __name__ == '__main__':
     logging.getLogger().setLevel(logging.DEBUG)
 
     dir_lab = Path('../labs/autocomplete/python')
-    dir_submission = Path('python_test/lab-2')
+    dir_submission = Path('python/lab-2')
     dir_out = Path('out')
 
     tester = LabTester(dir_lab)
