@@ -224,11 +224,8 @@ def partition(f, xs):
         (us if f(x) else vs).append(x)
     return (us, vs)
 
-def join_lines(lines):
-    return ''.join(line + '\n' for line in lines)
-
-def join_null(lines):
-    return ''.join(line + '\0' for line in lines)
+def join_lines(lines, terminator = '\n'):
+    return ''.join(line + terminator for line in lines)
 
 def doublequote(s):
     return '"' + s.replace('\\', '\\\\').replace('"', '\\"') + '"'
