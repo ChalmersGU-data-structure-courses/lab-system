@@ -1,3 +1,4 @@
+import distutils.spawn
 import logging
 from pathlib import Path
 import shutil
@@ -69,6 +70,7 @@ class LabTester:
                 guest_args = test.args,
                 host_dir_main = dir,
                 env = env,
+                proot_executable = distutils.spawn.find_executable(Path('proot')),
             )
 
             def store(kind, result):
