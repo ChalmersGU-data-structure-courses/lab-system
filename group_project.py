@@ -114,14 +114,17 @@ class RequestAndResponses:
         with git_tools.checkout_manager(self.lab.repo, self.repo_tag(segments)) as src:
             yield src
 
-    def repo_report_create(self, segments, dir, follow_symlinks = False, commit_message = '', **kwargs):
+    def repo_report_create(self, segments, dir, commit_message = '', **kwargs):
         '''
         Commit the directory 'dir' as a descendant of self.repo_remote_commit
         and tag it as <group full id>/<request name>/<segments>.
         Further arguments are passed to self.repo_tag_create_json.
         Returns the created tag.
+
+        Symlinks are currently handled transparently.
+        We may wish to allow for committing symlinks in the future.
         '''
-        tree = git_tools.create_tree_from_dir(self.lab.repo, dir, follow_symlinks = follow_symlinks)
+        tree = git_tools.create_tree_from_dir(self.lab.repo, dir)
         commit = git.Commit.create_from_tree(
             repo = self.lab.repo,
             tree = tree,

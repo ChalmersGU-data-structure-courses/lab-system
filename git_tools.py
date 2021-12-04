@@ -3,7 +3,6 @@ import copy
 import datetime
 from enum import Enum, auto
 import functools
-import io
 import logging
 import operator
 from pathlib import PurePosixPath, Path
@@ -313,47 +312,70 @@ def checkout_manager(repo, ref):
         checkout(repo, dir, ref)
         yield dir
 
-def make_tree(repo, entries):
+def format_entry(entry, as_log_message = False):
     '''
-    Create a tree from the given iterable of tree entries and save it to the database.
+    Formats a triple (binsha, mode, name) as a non-terminated string for use with git mktree.
+    If as_log_message is set, shell-escapes the name.
+    '''
+    (binsha, mode, name) = entry
+    hexsha = gitdb.util.bin_to_hex(binsha).decode()
+    kind = {
+        stat.S_IFREG: 'blob',
+        stat.S_IFDIR: 'tree',
+    }[stat.S_IFMT(mode)]
+    # The last whitespace is a tab character.
+    return f'{mode:06o} {kind} {hexsha}	{name if as_log_message else path_tools.format_path(name)}'
+
+def create_blob_from_file(repo, file):
+    '''
+    Loads a blob for the given file into the given repository.
+    Returns an instance of git.Blob.
+    '''
+    hexsha = repo.git.hash_object(file, '-w', '--no-filters')
+    binsha = gitdb.util.hex_to_bin(hexsha)
+    return git.Blob(repo, binsha, mode = file.stat().st_mode)
+
+def create_tree_from_entries(repo, entries):
+    '''
+    Creates a tree for the given entries in the given repository.
+    Entries is an iterable of triples (binsha, mode, name).
     Returns an instance of git.Tree.
-
-    Adapted from the test suite of GitPython.
     '''
-    # Sort entries
-    entries = list(entries)
-    git.objects.tree.merge_sort(entries, git.objects.tree.git_cmp)
-
-    sio = io.BytesIO()
-    git.objects.fun.tree_to_stream(entries, sio.write)
-    sio.seek(0)
-    binsha = repo.odb.store(gitdb.IStream(gitdb.typ.str_tree_type, len(sio.getvalue()), sio)).binsha
-    logger.debug(f'Created tree object {gitdb.util.bin_to_hex(binsha)}')
+    process = repo.git.mktree(
+        '-z',
+        istream = subprocess.PIPE,
+        as_process = True,
+        universal_newlines = True,
+    )
+    (out, err) = process.communicate(general.join_lines(map(format_entry, entries), terminator = '\0'))
+    if process.returncode:
+        raise git.GitCommandError(shlex.join(process.args), process.returncode, out, err)
+    binsha = gitdb.util.hex_to_bin(out.strip())
     return git.Tree(repo, binsha)
 
-def create_tree_from_dir(repo, dir, follow_symlinks = True):
+def create_tree_from_dir(repo, dir):
     '''
-    Create a tree from a given directory.
-    This recursively adds all files in directory to the tree.
-    The boolean argument follow_symlinks determines
-    if symlinks are respected or treated as regular files.
+    Loads a tree for the given directory into the given repository.
+    This loads blobs for all contained files and recursively
+    loads trees for the contained directories.
     Returns an instance of git.Tree.
+
+    TODO:
+    Currently, this implementation does one process call per descendant of dir.
+    If performance becomes an issue, we can switch to batch calls
+    of git hash-object and git mktree.
     '''
-    logger.debug('Building tree from directory {}'.format(shlex.quote(str(dir))))
-
     def entries():
-        for file in dir.rglob('*'):
-            if file.is_file() or (not follow_symlinks and file.is_symlink()):
-                # GitPython calls git with changed working directory.
-                # Thus, we resolve the file here.
-                name = str(file.relative_to(dir))
-                hexsha = repo.git.hash_object(file.resolve(), '-w', '--no-filters')
-                binsha = gitdb.util.hex_to_bin(hexsha)
-                mode = stat.S_IFREG | file.stat().st_mode
-                logger.debug(f'{mode:06o} blob {hexsha}	{name}')
-                yield (binsha, mode, name)
+        for path in dir.iterdir():
+            if path.is_file():
+                obj = create_blob_from_file(repo, path)
+            elif path.is_dir():
+                obj = create_tree_from_dir(repo, path)
+            else:
+                raise ValueError('not a file or directory: {path_tools.format_path(path)}')
+            yield (obj.binsha, obj.mode, path.name)
 
-    return make_tree(repo, entries())
+    return create_tree_from_entries(repo, entries())
 
 def read_text_file_from_tree(tree, path):
     path = str(PurePosixPath(path))

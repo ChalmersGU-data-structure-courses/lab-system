@@ -59,9 +59,13 @@ class LabTester:
 
     def run_test(self, dir_out, dir_src, name, test: test_lib.PythonTest):
         logger.debug(f'Running test {name}.')
-        # TODO: use folder for each test.
-        #dir_result = out / name
-        #dir_result.mkdir()
+
+        dir_result = dir_out / name
+        dir_result.mkdir()
+
+        def store(kind, result):
+            (dir_result / kind).write_text(result)
+
         with path_tools.temp_dir() as dir:
             shutil.copytree(dir_src, dir, symlinks = True, dirs_exist_ok = True)
             shutil.copytree(self.dir_test, dir, dirs_exist_ok = True)
