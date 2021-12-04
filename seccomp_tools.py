@@ -45,7 +45,7 @@ def setup_seccomp(callback = None):
     f.add_rule(ALLOW, "madvise")  # INFO NEEDED: Needed for which system configuration?
 
     # Allow opening files read-only and closing files.
-    f.add_rule(ALLOW, "open", Arg(2, MASKED_EQ, 0b11, 0))
+    f.add_rule(ALLOW, "open", Arg(1, MASKED_EQ, 0b11, 0))
     f.add_rule(ALLOW, "openat", Arg(2, MASKED_EQ, 0b11, 0))
     f.add_rule(ALLOW, "close")
 
