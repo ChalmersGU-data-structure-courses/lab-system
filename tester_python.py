@@ -1,7 +1,9 @@
 import distutils.spawn
 import logging
+import os
 from pathlib import Path
 import shutil
+import signal
 import subprocess
 
 # The following module is not needed here, but when tests are run.
@@ -55,13 +57,13 @@ class LabTester:
 
         self.tests = test_lib.parse_python_tests(self.dir_test / 'tests.py')
 
-    def run_test(self, out, src, name, test: test_lib.PythonTest):
+    def run_test(self, dir_out, dir_src, name, test: test_lib.PythonTest):
         logger.debug(f'Running test {name}.')
         # TODO: use folder for each test.
         #dir_result = out / name
         #dir_result.mkdir()
         with path_tools.temp_dir() as dir:
-            shutil.copytree(src, dir, symlinks = True, dirs_exist_ok = True)
+            shutil.copytree(dir_src, dir, symlinks = True, dirs_exist_ok = True)
             shutil.copytree(self.dir_test, dir, dirs_exist_ok = True)
 
             env = {}
@@ -74,41 +76,63 @@ class LabTester:
             )
 
             def store(kind, result):
-                path_tools.add_suffix(out / name, f'.{kind}').write_text(result)
+                path_tools.add_suffix(dir_out / name, f'.{kind}').write_text(result)
 
             general.log_command(logger, cmd)
             logger.debug(f'Timeout value is {test.timeout / self.machine_speed} seconds.')
+
+            # proot does not use PTRACE_O_EXITKILL on traced processes.
+            # So killing proot does not kill the processes it has spawned.
+            # To compensate for this, we use the following hack (TODO: improve).
+            #
+            # HACK:
+            # We start proot in a new process group (actually, a new session).
+            # On timeout, we kill the process group.
+            #
+            # BUG:
+            # There is a race condition.
+            # When the proot (the tracer) is killed, its tracees are detached.
+            # From the documentation of the syscall proot:
+            # > If the tracer dies, all tracees are automatically detached and
+            # > restarted, unless they were in group-stop
+            # So if SIGKILL is processed for tracer before it is processed for its tracee,
+            # then in between the tracee has escaped the ptrace jail.
             process = subprocess.Popen(
                 cmd,
                 text = True,
                 stdin = subprocess.PIPE,
                 stdout = subprocess.PIPE,
                 stderr = subprocess.PIPE,
-                #TODO: on Windows
-                #creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
+                start_new_session = True,
             )
             # TODO: Terminate if size of out or err exceeds to be configured threshold.
-            # TODO: Store out/err also if timeout occurred.
             try:
-                (stdout, stderr) = process.communicate(
+                (out, err) = process.communicate(
                     input = test.input,
-                    timeout = None if test.timeout is None else test.timeout / self.machine_speed
+                    timeout = None if test.timeout is None else test.timeout / self.machine_speed,
                 )
                 logger.debug(f'Test exit code: {process.returncode}')
-                store('res', general.join_lines([str(process.returncode)]))
-                store('out', stdout)
-                store('err', stderr)
+                result = process.returncode
             except subprocess.TimeoutExpired:
                 logger.debug(f'Test timed out after {test.timeout / self.machine_speed} seconds.')
-                process.kill()
-                #(out, err) = process.communicate()
+                os.killpg(process.pid, signal.SIGKILL)
+                (out, err) = process.communicate()
                 # Be machine-agnostic in the reported timeout value.
-                store('res', general.join_lines([f'timed out after {test.timeout} seconds']))
+                result = f'timed out after {test.timeout} seconds'
 
-    def run_tests(self, out, src):
-        logger.info(f'Running tester on {path_tools.format_path(self.dir_lab)}.')
+            # The ordering of files in a diff on GitLab seems to be alphabetical.
+            # We prefix the name fragments numerically to enforce the desired ordering.
+            store('_0_res', general.join_lines([str(result)]))
+            store('_1_out', out)
+            store('_2_err', err)
+
+    def run_tests(self, dir_out, dir_src):
+        logger.info(
+            f'Running tester for {path_tools.format_path(self.dir_lab)} '
+            f'on {path_tools.format_path(dir_src)}.'
+        )
         for (name, test) in self.tests.items():
-            self.run_test(out, src, name, test)
+            self.run_test(dir_out, dir_src, name, test)
 
 if __name__ == '__main__':
     from pathlib import Path
