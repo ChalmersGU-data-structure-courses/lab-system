@@ -1,6 +1,7 @@
 # Stand-alone script used as initialization script
 # for reduced-privilege processes running in a sandbox.
 import errno
+import fcntl
 from pathlib import PurePath
 import sys
 import os
@@ -25,7 +26,7 @@ def setup_seccomp(callback = None):
     Supported configurations (add yours):
     * x64 Linux with glibc
     '''
-    from seccomp import Arg, ALLOW, MASKED_EQ
+    from seccomp import Arg, ALLOW, EQ, MASKED_EQ
 
     # Make the system call return an error if the policy is violated.
     f = seccomp.SyscallFilter(defaction = seccomp.ERRNO(errno.EPERM))
@@ -60,11 +61,19 @@ def setup_seccomp(callback = None):
     # TODO: probably not needed.
     f.add_rule(ALLOW, "getcwd")
 
-    # Allow reading, writing, seeking, and controlling open files.
+    # Allow reading, writing, and seeking open files.
     f.add_rule(ALLOW, "read")
     f.add_rule(ALLOW, "write")
     f.add_rule(ALLOW, "lseek")
-    f.add_rule(ALLOW, "fcntl")
+
+    # Allow getting and setting file descriptor flags (such as FD_CLOEXEC).
+    #
+    # Warning.
+    # Generally allowing fcntl is dangerous.
+    # The combination of F_SETFL, F_SETOWN, F_SETSIG allows a process
+    # to send signals such as SIGKILL to other processes.
+    f.add_rule(ALLOW, "fcntl", Arg(1, EQ, fcntl.F_GETFD))
+    f.add_rule(ALLOW, "fcntl", Arg(1, EQ, fcntl.F_SETFD))
 
     # RESEARCH NEEDED: Only needed interactively?
     #f.add_rule(ALLOW, "pselect6")
