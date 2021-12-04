@@ -94,7 +94,7 @@ class LabTester:
             # When the proot (the tracer) is killed, its tracees are detached.
             # From the documentation of the syscall proot:
             # > If the tracer dies, all tracees are automatically detached and
-            # > restarted, unless they were in group-stop
+            # > restarted, unless they were in group-stop.
             # So if SIGKILL is processed for tracer before it is processed for its tracee,
             # then in between the tracee has escaped the ptrace jail.
             process = subprocess.Popen(
