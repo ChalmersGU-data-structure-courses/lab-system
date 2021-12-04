@@ -3,6 +3,7 @@
 import errno
 from pathlib import PurePath
 import sys
+import os
 
 import seccomp
 
@@ -45,16 +46,19 @@ def setup_seccomp(callback = None):
     f.add_rule(ALLOW, "madvise")  # INFO NEEDED: Needed for which system configuration?
 
     # Allow opening files read-only and closing files.
-    f.add_rule(ALLOW, "open", Arg(1, MASKED_EQ, 0b11, 0))
-    f.add_rule(ALLOW, "openat", Arg(2, MASKED_EQ, 0b11, 0))
+    f.add_rule(ALLOW, "open", Arg(1, MASKED_EQ, os.O_ACCMODE, os.O_RDONLY))
+    f.add_rule(ALLOW, "openat", Arg(2, MASKED_EQ, os.O_ACCMODE, os.O_RDONLY))
     f.add_rule(ALLOW, "close")
 
-    # Allow statting files, listing directory entries, and reading currrent working directory.
+    # Allow statting files and listing directory entries.
     f.add_rule(ALLOW, "stat")   # INFO NEEDED: Needed for which system configuration?
     f.add_rule(ALLOW, "fstat")  # INFO NEEDED: Needed for which system configuration?
     f.add_rule(ALLOW, "newfstatat")
     f.add_rule(ALLOW, "getdents64")
-    f.add_rule(ALLOW, "getcwd")  # Documented to never fail.
+
+    # Allow reading current working directory.
+    # TODO: probably not needed.
+    f.add_rule(ALLOW, "getcwd")
 
     # Allow reading, writing, seeking, and controlling open files.
     f.add_rule(ALLOW, "read")
