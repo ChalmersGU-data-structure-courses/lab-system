@@ -771,3 +771,22 @@ class Lab:
         self.update_live_submissions_table(deadline = deadline)
         self.update_grading_sheet(deadline = deadline)
         self.repo_push()  # Needed because update_grading_sheet might add stuff to repo.
+
+    def checkout_tag_hierarchy(self, dir):
+        '''
+        Check out all tags in the grading repository in a hierarchy based at dir.
+        The directory dir and its parents are created if they do not exist.
+        Tags whose last path segment is 'handled' are omitted.
+        This is to save space; the content of these tags is identical to that of the request tag.
+
+        Use this function to more quickly debug issues with contents of the grading repository.
+        '''
+        refs = git_tools.references_hierarchy(self.repo)
+        tags = refs[git_tools.refs.name][git_tools.tags.name]
+        for (path, tag) in git_tools.flatten_references_hierarchy(tags).items():
+            if path.name == 'handled':
+                continue
+
+            out = dir / path
+            out.mkdir(parents = True)
+            git_tools.checkout(self.repo, out, tag)
