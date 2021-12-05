@@ -19,6 +19,7 @@ import grading_sheet
 import group_project
 import instance_cache
 import live_submissions_table
+import path_tools
 
 
 class Lab:
@@ -674,16 +675,27 @@ class Lab:
                 self.compiler.compile(src, bin)
                 yield (src, bin)
 
+    def groups_with_live_submissions(self, deadline = None):
+        '''A generator for groups with live submissions for the given optional deadline.'''
+        for group_id in self.course.groups:
+            group = self.student_group(group_id)
+            if group.submission_current(deadline = deadline) is not None:
+                yield group_id
+
     def update_live_submissions_table(self, deadline = None):
         self.logger.info('Updating live submissions table')
-        table = live_submissions_table.LiveSubmissionsTable(self)
-        with tempfile.TemporaryDirectory() as dir:
-            path = Path(dir) / 'index.html'
-            table.build(path, deadline = deadline, columns = self.submission_handler.grading_columns)
+        config = live_submissions_table.Config(deadline = deadline)
+        table = live_submissions_table.LiveSubmissionsTable(
+            self,
+            config = config,
+            column_types = self.submission_handler.grading_columns,
+        )
+        with path_tools.temp_file() as file:
+            table.build(file, build_missing_rows = True)
             self.logger.info('Posting live submissions table to Canvas')
             target = self.config.canvas_path_awaiting_grading
             folder = self.course.canvas_course.get_folder_by_path(target.parent)
-            self.course.canvas_course.post_file(path, folder.id, target.name)
+            self.course.canvas_course.post_file(file, folder.id, target.name)
 
     def parse_issue(self, issue):
         request_types = self.config.request.__dict__
