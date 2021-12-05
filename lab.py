@@ -50,7 +50,10 @@ class Lab:
 
     It also manages a live submissions table on Canvas.
     Related attributes and methods:
-    - update_live_submissions_table(self, deadline = None):
+    - setup_live_submissions_table(self, deadline = None):
+    - update_live_submissions_table(self):
+
+    See update_grading_sheet_and_live_submissions_table for an example interaction.
 
     This class is configured by the config argument to its constructor.
     The format of this argument is documented in gitlab.config.py.template under _lab_config.
@@ -532,6 +535,19 @@ class Lab:
         for handler in self.config.request_handlers.values():
             handler.setup(self)
 
+    def setup_live_submission_table(self, deadline = None):
+        '''
+        Setup the live submissions table.
+        Takes an optional deadline parameter for limiting submissions to include.
+        Request handlers should be set up before calling this method.
+        '''
+        config = live_submissions_table.Config(deadline = deadline)
+        self.live_submissions_table = live_submissions_table.LiveSubmissionsTable(
+            self,
+            config = config,
+            column_types = self.submission_handler.grading_columns,
+        )
+
     def parse_request_tags(self, from_gitlab = True):
         '''
         Parse request tags for group projects in this lab.
@@ -682,16 +698,10 @@ class Lab:
             if group.submission_current(deadline = deadline) is not None:
                 yield group_id
 
-    def update_live_submissions_table(self, deadline = None):
+    def update_live_submissions_table(self, deadline = None, build_missing_rows = True):
         self.logger.info('Updating live submissions table')
-        config = live_submissions_table.Config(deadline = deadline)
-        table = live_submissions_table.LiveSubmissionsTable(
-            self,
-            config = config,
-            column_types = self.submission_handler.grading_columns,
-        )
         with path_tools.temp_file() as file:
-            table.build(file, build_missing_rows = True)
+            self.live_submissions_table.build(file, build_missing_rows = build_missing_rows)
             self.logger.info('Posting live submissions table to Canvas')
             target = self.config.canvas_path_awaiting_grading
             folder = self.course.canvas_course.get_folder_by_path(target.parent)
@@ -780,7 +790,8 @@ class Lab:
         self.setup_request_handlers()
         self.process_requests()
         self.repo_push()
-        self.update_live_submissions_table(deadline = deadline)
+        self.setup_live_submissions_table(deadline = deadline)
+        self.update_live_submissions_table()
         self.update_grading_sheet(deadline = deadline)
         self.repo_push()  # Needed because update_grading_sheet might add stuff to repo.
 
