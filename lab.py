@@ -358,6 +358,8 @@ class Lab:
         '''
         self.logger.info('Fetching from official repository.')
         self.repo.remote(self.course.config.path_lab.official).fetch('--update-head-ok')
+        with contextlib.suppress(AttributeError):
+            del self.remote_tags
 
     def repo_push(self, force = False):
         '''
@@ -459,6 +461,17 @@ class Lab:
                 value = remote_tags.get(self.course.config.group.full_id.print(group_id), dict())
                 yield (group_id, git_tools.flatten_references_hierarchy(value))
         return dict(f())
+
+    @functools.cached_property
+    def tags(self):
+        '''
+        A dictionary hierarchy of tag path name segments
+        with values in tags in the local grading repository.
+
+        Clear this cached property after constructing tags.
+        '''
+        refs = git_tools.references_hierarchy(self.repo)
+        return refs[git_tools.refs.name][git_tools.tags.name]
 
     def hooks_create(self, netloc):
         '''
