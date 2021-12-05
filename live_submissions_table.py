@@ -552,12 +552,15 @@ class LiveSubmissionsTable:
         self.group_rows = dict()
         self.need_push = False
 
-    def build_row(self, group):
-        logger.info(f'building row for {group.name} in live submissions table')
-        self.group_rows[group.id] = {
-            column_name: column.get_value(group)
-            for (column_name, column) in self.columns.items()
-        }
+    def update_row(self, group):
+        logger.info(f'updating row for {group.name} in live submissions table')
+        if group.submission_current(deadline = self.config.deadline):
+            self.group_rows[group.id] = {
+                column_name: column.get_value(group)
+                for (column_name, column) in self.columns.items()
+            }
+        else:
+            self.group_rows.pop(group.id, None)
         self.need_push = True
 
     def build(self, file, group_ids = None, build_missing_rows = False):
@@ -592,7 +595,7 @@ class LiveSubmissionsTable:
             if not group_id in self.group_rows:
                 group = self.lab.student_group(group_id)
                 if build_missing_rows:
-                    self.build_row(group)
+                    self.update_row(group)
                 else:
                     raise ValueError(f'live submissions table misses row for {group.name}')
 
