@@ -395,9 +395,8 @@ class Lab:
 
         self.logger.debug('Protecting tags')
         gitlab_tools.protect_tags(self.gl, project.id, patterns())
-        self.logger.debug('Waiting for potential fork to finish')
         project = gitlab_tools.wait_for_fork(self.gl, project)
-        self.logger.debug(f'Protecting branch {self.config.branch.master}')
+        self.logger.debug(f'Protecting branch {self.course.config.branch.master}')
         gitlab_tools.protect_branch(self.gl, project.id, self.course.config.branch.master)
         return project
 
@@ -438,7 +437,7 @@ class Lab:
                     self.student_group(group_id).repo_add_remote()
             except:  # noqa: E722
                 for project in projects.values():
-                    project.delete()
+                    self.gl.projects.delete(project.path_with_namespace)
                 raise
 
     def create_group_projects(self):
