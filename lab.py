@@ -812,15 +812,19 @@ class Lab:
         '''
         Check out all tags in the grading repository in a hierarchy based at dir.
         The directory dir and its parents are created if they do not exist.
-        Tags whose last path segment is 'handled' are omitted.
-        This is to save space; the content of these tags is identical to that of the request tag.
+        To save space, tags are omitted if they satisfy one of the following conditions:
+        - ultimate path segment is 'handled',
+        - penultimate path segment is 'after'.
+        This is to save space; the content of these tags
+        # is identical to that the respective parent tag.
 
         Use this function to more quickly debug issues with contents of the grading repository.
         '''
-        refs = git_tools.references_hierarchy(self.repo)
-        tags = refs[git_tools.refs.name][git_tools.tags.name]
-        for (path, tag) in git_tools.flatten_references_hierarchy(tags).items():
-            if path.name == 'handled':
+        for (path, tag) in git_tools.flatten_references_hierarchy(self.tags).items():
+            if any([
+                path.name == 'handled',
+                len(path.parents) > 0 and path.parent.name == 'after',
+            ]):
                 continue
 
             out = dir / path
