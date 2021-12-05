@@ -15,8 +15,7 @@ class TestingColumn(live_submissions_table.Column):
         with cell:
             dominate.util.text('Testing')
 
-    def get_value(self, group_id):
-        group = super().get_value(group_id)
+    def get_value(self, group):
         submission_current = group.submission_current(deadline = self.deadline)
         solution_test_tag = self.lab.submission_solution.repo_tag(segments_test_tag)
         tag_after = submission_current.repo_tag_after_create(
