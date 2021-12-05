@@ -148,13 +148,12 @@ class Column:
         '''
         raise NotImplementedError()
 
-    def get_value(self, group_id):
+    def get_value(self, group):
         '''
-        Return the column value for a given group_id.
-        The default implementation returns the instance of GroupProject for group_id
-        in the lab this object has been initialized with.
+        Return the column value (instance of ColumnValue) for
+        a given group project (instance of group_GroupProject).
         '''
-        return self.lab.student_group(group_id)
+        raise NotImplementedError()
 
 class CallbackColumnValue(ColumnValue):
     '''
@@ -222,8 +221,7 @@ class DateColumn(Column):
                     dominate.tags.attr(title = self.date.strftime('%z (%Z)'))
                     dominate.tags.attr(style = 'text-align: center;')
 
-    def get_value(self, group_id):
-        group = super().get_value(group_id)
+    def get_value(self, group):
         submission = group.submission_current(deadline = self.deadline)
         return DateColumn.Value(submission.date)
 
@@ -235,11 +233,11 @@ class GroupColumn(Column):
             dominate.tags.attr(style = 'text-align: center;')
             dominate.util.text('Group')
 
-    def get_value(self, group_id):
+    def get_value(self, group):
         group_config = self.lab.course.config.group
         return StandardColumnValue(
-            group_config.id.print(group_id),
-            group_config.sort_key(group_id),
+            group_config.id.print(group.id),
+            group_config.sort_key(group.id),
         )
 
 class MembersColumn(Column):
@@ -281,8 +279,7 @@ class MembersColumn(Column):
                     with dominate.tags.p():
                         self.fill_in_member(*member)
 
-    def get_value(self, group_id):
-        group = super().get_value(group_id)
+    def get_value(self, group):
         members = [
             (member, self.course.canvas_user_by_gitlab_username.get(member.username))
             for member in group.members
@@ -312,8 +309,7 @@ class QueryNumberColumn(Column):
                 dominate.util.text(f'#{self.number + 1}')
                 dominate.tags.attr(style = 'text-align: center;')
 
-    def get_value(self, group_id):
-        group = super().get_value(group_id)
+    def get_value(self, group):
         submissions_with_outcome = group.submissions_with_outcome(deadline = self.deadline)
         return QueryNumberColumn.Value(general.ilen(submissions_with_outcome))
 
@@ -339,8 +335,7 @@ class MessageColumn(Column):
                 if self.message is not None:
                     dominate.tags.pre(self.message)
 
-    def get_value(self, group_id):
-        group = super().get_value(group_id)
+    def get_value(self, group):
         submission_current = group.submission_current(deadline = self.deadline)
         message = git_tools.tag_message(
             submission_current.repo_remote_tag,
@@ -376,8 +371,7 @@ class SubmissionFilesColumn(Column):
                 with dominate.tags.p():
                     format_url(*self.linked_open_grading_issue)
 
-    def get_value(self, group_id):
-        group = super().get_value(group_id)
+    def get_value(self, group):
         submission = group.submission_current(deadline = self.deadline)
 
         response_key = self.lab.submission_handler.review_response_key
@@ -435,8 +429,7 @@ class SubmissionDiffPreviousColumn(Column):
         with cell:
             dominate.util.text('previous..')
 
-    def get_value(self, group_id):
-        group = super().get_value(group_id)
+    def get_value(self, group):
         submissions_with_outcome = list(group.submissions_with_outcome(deadline = self.deadline))
         if not submissions_with_outcome:
             return SubmissionDiffColumnValue(None)
@@ -467,8 +460,7 @@ class SubmissionDiffOfficialColumn(Column):
         with cell:
             dominate.util.text(self.branch.name)
 
-    def get_value(self, group_id):
-        group = super().get_value(group_id)
+    def get_value(self, group):
         submission_current = group.submission_current(deadline = self.deadline)
         tag_after = submission_current.repo_tag_after_create(
             self.branch.name,
@@ -572,7 +564,10 @@ class LiveSubmissionsTable:
             for (column_name, column_type) in columns.items():
                 r = types.SimpleNamespace()
                 r.column = column_type(config)
-                r.values = dict((group_id, r.column.get_value(group_id)) for group_id in group_ids)
+                r.values = dict(
+                    (group_id, r.column.get_value(self.lab.student_group(group_id)))
+                    for group_id in group_ids
+                )
                 if any(value.has_content() for value in r.values.values()):
                     if r.column.sortable:
                         r.canonical_sort_keys = general.canonical_keys(

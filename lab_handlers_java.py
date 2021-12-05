@@ -21,8 +21,7 @@ class CompilationColumn(live_submissions_table.Column):
         with cell:
             dominate.util.text('Compilation')
 
-    def get_value(self, group_id):
-        group = super().get_value(group_id)
+    def get_value(self, group):
         submission_current = group.submission_current(deadline = self.deadline)
 
         report = submission_current.repo_tag(report_segments)
@@ -58,8 +57,7 @@ class RobogradingColumn(live_submissions_table.Column):
         with cell:
             dominate.util.text('Robograding')
 
-    def get_value(self, group_id):
-        group = super().get_value(group_id)
+    def get_value(self, group):
         submission_current = group.submission_current(deadline = self.deadline)
         if not submission_current.handled_result['compilation_succeded']:
             return live_submissions_table.CallbackColumnValue(has_content = False)
@@ -86,8 +84,7 @@ class CompilationAndRobogradingColumn(live_submissions_table.Column):
             dominate.tags.br()
             dominate.util.text('Robograding')
 
-    def get_value(self, group_id):
-        group = super().get_value(group_id)
+    def get_value(self, group):
         submission_current = group.submission_current(deadline = self.deadline)
 
         report = submission_current.repo_tag(report_segments)
