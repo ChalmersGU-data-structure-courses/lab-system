@@ -1,4 +1,3 @@
-import distutils.spawn
 import logging
 import os
 from pathlib import Path
@@ -76,7 +75,6 @@ class LabTester:
                 guest_args = test.args,
                 host_dir_main = dir,
                 env = env,
-                proot_executable = distutils.spawn.find_executable(Path('proot')),
             )
 
             general.log_command(logger, cmd)
@@ -143,8 +141,10 @@ if __name__ == '__main__':
     logging.getLogger().setLevel(logging.DEBUG)
 
     dir_lab = Path('../labs/autocomplete/python')
-    dir_submission = Path('python_test/lab-2')
+    dir_submission = dir_lab / 'build'  # Path('python_test/lab-2')
     dir_out = Path('out')
+
+    path_tools.mkdir_fresh(dir_out)
 
     tester = LabTester(dir_lab)
     tester.run_tests(dir_out, dir_submission)
