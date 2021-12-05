@@ -62,22 +62,28 @@ class Lab:
     See student_group and student_groups.
     Each instance of this class is managed by an instance of course.Course.
     '''
-    def __init__(self, course, id, config = None, dir = None, logger = logging.getLogger(__name__)):
+    def __init__(self, course, id, config = None, dir = None, deadline = None, logger = logging.getLogger(__name__)):
         '''
         Initialize lab manager.
         Arguments:
         * course: course manager.
         * id: lab id, typically used as key in a lab configuration dictionary (see 'gitlab_config.py.template')
-        * config: lab configuration, typically the value in a lab configuration dictionary.
-                  If None, will be taken from labs dictionary in course configuration.
-        * dir: Local directory used as local copy of the grading repository.
-               Only its parent directory has to exist.
+        * config:
+            lab configuration, typically the value in a lab configuration dictionary.
+            If None, will be taken from labs dictionary in course configuration.
+        * dir:
+            Local directory used as local copy of the grading repository.
+            Only its parent directory has to exist.
+        * deadline:
+            Optional deadline to use for the grading sheet and live submissions table.
+            Only submissions in time for the deadline will be considered.
         '''
 
         self.logger = logger
         self.course = course
         self.id = id
         self.dir = None if dir is None else Path(dir)
+        self.deadline = deadline
 
         self.config = self.course.config.labs[id] if config is None else config
 
@@ -552,8 +558,12 @@ class Lab:
         '''
         Setup the live submissions table.
         Takes an optional deadline parameter for limiting submissions to include.
+        If not set, we use self.deadline.
         Request handlers should be set up before calling this method.
         '''
+        if deadline is None:
+            deadline = self.deadline
+
         config = live_submissions_table.Config(deadline = deadline)
         self.live_submissions_table = live_submissions_table.LiveSubmissionsTable(
             self,
@@ -747,17 +757,32 @@ class Lab:
             lambda group_id: self.student_group(group_id).project.get.web_url
         )
 
-    def update_grading_sheet(self, deadline = None):
+    def update_grading_sheet(self, group_ids = None, deadline = None):
+        '''
+        Update the grading sheet.
+
+        Arguments:
+        * group_ids:
+            If set, restrict the update to the given group ids.
+        * deadline:
+            Deadline to use for submissions.
+            If not set, we use self.deadline.
+        '''
+        if group_ids is None:
+            group_ids = self.course.groups.keys()
+        groups = list(map(self.student_group, group_ids))
+
+        if deadline is None:
+            deadline = self.deadline
+
         # Ensure grading sheet exists and has sufficient query group columns.
         self.grading_sheet.ensure_num_queries(max(
-            (general.ilen(group.submissions_relevant(deadline)) for group in self.student_groups),
+            (general.ilen(group.submissions_relevant(deadline)) for group in groups),
             default = 0,
         ))
 
         request_buffer = self.course.grading_spreadsheet.create_request_buffer()
-        for group_id in self.course.groups:
-            group = self.student_group(group_id)
-
+        for group in groups:
             # HACK (for now).
             # Only include non-empty groups.
             # Should output warning if an empty group has a submission.
@@ -777,7 +802,7 @@ class Lab:
 
                 self.grading_sheet.write_query(
                     request_buffer,
-                    group_id,
+                    group.id,
                     query,
                     grading_sheet.Query(
                         submission = google_tools.sheets.cell_link_with_fields(
