@@ -561,6 +561,28 @@ class Lab:
     #     finally:
     #         self.hooks_delete(hooks)
 
+    def hook_callback(self, event, group):
+        '''
+        Assumes that all groups have been processed and all rows in the live
+        submissions table have been generated before this event is handled.
+        '''
+        event_name = event['event_name']
+        if event_name == 'tag_push':
+            self.logger.info(f'Handling new tags for {group.name} in {self.name}.')
+            group.repo_fetch()
+            group.parse_request_tags(from_gitlab = False)
+            group.process_requests()
+        elif event_name == 'issue':
+            self.logger.info(f'Handling new issues for {group.name} in {self.name}.')
+            group.parse_response_issues()
+        else:
+            raise(f'Unknown event {event_name}')
+
+        self.update_grading_sheet(group_ids = [group.id])
+        if hasattr(self, 'live_submissions_table'):
+            self.live_submissions_table.update_row(group)
+            self.update_live_submissions_table(build_missing_rows = False)
+
     def setup_request_handlers(self):
         '''
         Setup the configured request handlers.

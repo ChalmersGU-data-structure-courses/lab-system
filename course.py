@@ -778,11 +778,12 @@ class Course:
             self.logger.info('Deleted project hooks in all labs')
 
     def hook_callback(self, event):
+        '''Only supports hooks in student group projects.'''
         try:
             # Only handle certain kinds of callbacks.
             event_name = event['event_name']
             if not event_name in ['tag_push', 'issue']:
-                return
+                raise(f'Unknown event {event_name}')
 
             # Find the relevant lab and group project.
             project_path = PurePosixPath(event['project']['path_with_namespace'])
@@ -796,17 +797,15 @@ class Course:
             # Find the group project.
             group_id = self.config.group.id_gitlab.parse(group_id_gitlab)
             group = lab.student_group(group_id)
+
+            # Delegate to the lab.
+            lab.hook_callback(self, event, group)
+
+            # Find the group project.
+            group_id = self.config.group.id_gitlab.parse(group_id_gitlab)
+            group = lab.student_group(group_id)
         except Exception as e:
             raise HookCallbackError(e) from e
-
-        if event_name == 'tag_push':
-            self.logger.info(f'Handling new tags for {group.name} in {lab.name}.')
-            group.repo_fetch()
-            group.process_requests()
-        elif event_name == 'issue':
-            self.logger.info(f'Handling new issues for {group.name} in {lab.name}.')
-            # TODO: clear response issue cache.
-            # Process non-script issued response issues.
 
     @functools.cached_property
     def grading_spreadsheet(self):
