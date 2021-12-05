@@ -18,14 +18,16 @@ We require Python version at least 3.9.
 Unless mentioned otherwise, the working directory is the folder `Lab-grading`.
 
 Install the required packages via this command:
-
 ```
 pip install -r requirements.txt
 ```
 
-Install `libsebcomp` and its Python bindings for your system.
-Depending on your distribution, these might for example be called `python-libsecomp`, `python3-seccomp`, or such.
-This is needed for securely running student submissions (except for Java, which uses the Java security manager for this job).
+If you plan to use testing of student submissions in Python, you must also install the following sandboxing dependencies on your system.
+They should be provided as packages by your distribution:
+
+* `proot`
+* `libsebcomp` and its Python bindings for your system.
+  Depending on your distribution, these might for example be called `python-libsecomp`, `python3-seccomp`, or such.
 
 Create an untracked copy of `gitlab_config_personal.py.template` and remove the suffix.
 This file stores personal configuration such as access keys and paths local to your filesystem.
