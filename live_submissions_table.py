@@ -1,4 +1,5 @@
 import collections
+import contextlib
 import logging
 from pathlib import Path
 import types
@@ -561,7 +562,19 @@ class LiveSubmissionsTable:
             }
         else:
             self.group_rows.pop(group.id, None)
+
         self.need_push = True
+
+        # Getting a column value may unfortunately involve
+        # the construction of a tag in the local repository.
+        # This is because GitLab only supports merge diffs,
+        # not ordinary diffs.
+        # TODO: simplify once GitLab implements ordinary diffs.
+        #
+        # Clear cache of tags in the local grading repository.
+        with contextlib.suppress(AttributeError):
+            del self.lab.tags
+
 
     def build(self, file, group_ids = None, build_missing_rows = False):
         '''

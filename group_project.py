@@ -408,6 +408,10 @@ class RequestAndResponses:
         # and store handler's result JSON-encoded as its message.
         self.set_handled(result)
 
+        # Clear cache of tags in the local grading repository.
+        with contextlib.suppress(AttributeError):
+            del self.lab.tags
+
 class HandlerData:
     '''
     This class abstracts over a request handler handling a single type of request
@@ -638,11 +642,13 @@ class GroupProject:
 
     def repo_fetch(self):
         '''
-        Make sure the local repository as up to date with respect to
+        Make sure the local grading repository as up to date with respect to
         the contents of the student repository on GitLab Chalmers.
         '''
         self.logger.info(f'Fetching from student repository, remote {self.remote}.')
         self.repo.remote(self.remote).fetch('--update-head-ok')
+        with contextlib.suppress(AttributeError):
+            del self.lab.remote_tags
 
     def repo_tag(self, request_name, segments = ['tag']):
         '''
