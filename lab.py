@@ -385,6 +385,22 @@ class Lab:
     def student_groups(self):
         return [self.student_group(group_id) for group_id in self.course.groups]
 
+    def configure_student_project(self, project):
+        self.logger.debug('Configuring student project {project.path_with_namespace}')
+
+        def patterns():
+            # TODO: collect protection patterns from handlers
+            for pattern in self.submission_handler.request_matcher.protection_patterns:
+                yield pattern
+
+        self.logger.debug('Protecting tags')
+        gitlab_tools.protect_tags(self.gl, project.id, patterns())
+        self.logger.debug('Waiting for potential fork to finish')
+        project = gitlab_tools.wait_for_fork(self.gl, project)
+        self.logger.debug(f'Protecting branch {self.config.branch.master}')
+        gitlab_tools.protect_branch(self.gl, project.id, self.course.config.branch.master)
+        return project
+
     # TODO:
     # Debug what happens when running this without the grading project having been created.
     # For some reason, project.delete seems to trigger an exception.
@@ -415,7 +431,7 @@ class Lab:
                             raise
 
                 for (group_id, project) in tuple(projects.items()):
-                    project = self.course.configure_student_project(project)
+                    project = self.configure_student_project(project)
                     project.delete_fork_relation()
                     self.student_group(group_id).project.get = project
                     del projects[group_id]

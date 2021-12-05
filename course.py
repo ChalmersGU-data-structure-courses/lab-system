@@ -759,22 +759,6 @@ class Course:
             [gitlab.DEVELOPER_ACCESS, gitlab.MAINTAINER_ACCESS]
         )
 
-    def configure_student_project(self, project):
-        self.logger.debug('Configuring student project {project.path_with_namespace}')
-
-        def patterns():
-            # TODO: collect protection patterns from handlers
-            for pattern in self.config.submission_request.protection_patterns:
-                yield pattern
-
-        self.logger.debug('Protecting tags')
-        gitlab_tools.protect_tags(self.gl, project.id, patterns())
-        self.logger.debug('Waiting for potential fork to finish')
-        project = gitlab_tools.wait_for_fork(self.gl, project)
-        self.logger.debug(f'Protecting branch {self.config.branch.master}')
-        gitlab_tools.protect_branch(self.gl, project.id, self.config.branch.master)
-        return project
-
     @contextlib.contextmanager
     def hook_manager(self, netloc):
         '''
