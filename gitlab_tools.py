@@ -1,6 +1,7 @@
 import contextlib
 import dateutil
 import functools
+import logging
 import operator
 from pathlib import Path, PurePosixPath
 import time
@@ -10,6 +11,8 @@ import gitlab
 
 import general
 
+
+logger = logging.getLogger(__name__)
 
 def read_private_token(x):
     if isinstance(x, Path):
@@ -45,14 +48,15 @@ def exist_ok_check(enabled = False):
 def wait_for_fork(gl, project, fork_poll_interval = 0.5, check_immediately = True):
     # The GitLab API does not have a synchronous fork command.
     # This is the currently recommended workaround.
+    logger.debug(f'Waiting for fork of {project.path_with_namespace}...')
     while not project.import_status in ['none', 'finished']:
-        print(f'YYYYYYYYYYYYYYY {project.import_status}')
         if check_immediately:
             check_immediately = False
         else:
             time.sleep(fork_poll_interval)
-            print('XXXXXXX getting')
         project = gl.projects.get(project.id)
+        logger.debug(f'Import status: {project.import_status}')
+    logger.debug('Finished waiting for fork.')
     return project
 
 def protect_tags(gl, project_id, patterns, delete_existing = False, exist_ok = True):
