@@ -572,7 +572,7 @@ class GroupProject:
                         force = True,
                     )
                 )
-                self.course.configure_student_project(project)
+                self.lab.configure_student_project(project)
                 self.repo_add_remote()
             except:  # noqa: E722
                 r.delete()
