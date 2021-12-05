@@ -494,7 +494,7 @@ class Lab:
         refs = git_tools.references_hierarchy(self.repo)
         return refs[git_tools.refs.name][git_tools.tags.name]
 
-    def hooks_create(self, netloc):
+    def hooks_create(self, netloc = None):
         '''
         Create webhooks in all group project in this lab on GitLab with the given net location.
         See group_project.GroupProject.hook_create.
@@ -525,7 +525,7 @@ class Lab:
         for group in self.student_groups:
             group.hook_delete(hooks[group.id])
 
-    def hooks_delete_all(self, netloc):
+    def hooks_delete_all(self, netloc = None):
         '''
         Delete all webhooks in all group project in this lab set up with the given netloc on GitLab.
         See group_project.GroupProject.hook_delete_all.
@@ -534,7 +534,7 @@ class Lab:
             group.hook_delete_all(netloc)
 
     @contextlib.contextmanager
-    def hooks_manager(self, netloc):
+    def hooks_manager(self, netloc = None):
         '''
         A context manager for installing GitLab web hooks for all student projects in this lab.
         This is an expensive operation, setting up and cleaning up costs one HTTP call per project.

@@ -17,6 +17,7 @@ import canvas
 import gitlab_tools
 import grading_sheet
 from instance_cache import instance_cache
+import ip_tools
 import print_parse
 
 #===============================================================================
@@ -759,13 +760,71 @@ class Course:
             [gitlab.DEVELOPER_ACCESS, gitlab.MAINTAINER_ACCESS]
         )
 
+    @functools.cached_property
+    def hook_netloc_default(self):
+        return print_parse.NetLoc(
+            host = ip_tools.get_local_ip_routing_to(print_parse.NetLoc(
+                host = print_parse.url.parse(self.config.base_url).netloc.host,
+                # TODO: determine port from self.config.base_url.
+                port = 443,
+            )),
+            port = self.config.webhook.local_port,
+        )
+
+    def hooks_create(self, netloc = None):
+        '''
+        Create webhooks in all group project in this course on GitLab with the given net location.
+        See group_project.GroupProject.hook_create.
+        Returns a dictionary mapping each lab to a dictionary mapping each group id to a hook.
+
+        Use this method only if you intend to create and
+        delete webhooks over separate program invocations.
+        Otherwise, the context manager hooks_manager is more appropriate.
+        '''
+        self.logger.info('Creating project hooks in all labs')
+        hooks = dict()
+        try:
+            for lab in self.labs.values():
+                hooks[lab.id] = lab.hooks_create(netloc)
+            return hooks
+        except:  # noqa: E722
+            for (lab_id, hook) in hooks.items():
+                self.labs[lab_id].hooks_delete(hook)
+            raise
+
+    def hooks_delete(self, hooks):
+        '''
+        Delete webhooks in student projects in labs in this course on GitLab.
+        Takes a dictionary mapping each lab id to a dictionary mapping each group id to its hook.
+        See group_project.GroupProject.hook_delete.
+        '''
+        self.logger.info('Deleting project hooks in all labs')
+        for lab in self.labs.values():
+            lab.hooks_delete(hooks[lab.id])
+
+    def hooks_delete_all(self, netloc = None):
+        '''
+        Delete all webhooks in all group project in all labs set up with the given netloc on GitLab.
+        See group_project.GroupProject.hook_delete_all.
+
+        If netloc is not given, it is set as follows:
+        * ip address: address of the local interface routing to git.chalmers.se,
+        * port: as configured in course configuration.
+        '''
+        for lab in self.labs.values():
+            lab.hooks_delete_all(netloc)
+
     @contextlib.contextmanager
-    def hook_manager(self, netloc):
+    def hook_manager(self, netloc = None):
         '''
         A context manager for installing GitLab web hooks for all student projects in all lab.
         This is an expensive operation, setting up and cleaning up costs one HTTP call per project.
         Yields a dictionary mapping each lab id to a dictionary mapping each group id
         to the hook installed in the project of that group.
+
+        If netloc is not given, it is set as follows:
+        * ip address: address of the local interface routing to git.chalmers.se,
+        * port: as configured in course configuration.
         '''
         self.logger.info('Creating project hooks in all labs')
         try:

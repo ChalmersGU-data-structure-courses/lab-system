@@ -348,7 +348,6 @@ _cid_gitlab_exceptions = print_parse.from_dict([
 # Format GU ID as email address (GU-ID@gu.se).
 _gu_id = print_parse.regex('{}@gu.se')
 
-
 # Retrieve the Chalmers GitLab username for a user id on Chalmers/GU Canvas.
 # This is needed to:
 # * add teachers as retrieved from Canvas to the grader group on GitLab,
@@ -366,7 +365,23 @@ def gitlab_username_from_canvas_user_id(course, user_id):
     except KeyError:
         return cid
 
+# Configuration for webhooks on Chalmers GitLab.
+# These are used for programmatic push notifications.
+#
+# We asume that there is no NAT between us and Chalmers GitLab.
+# If there is you need to do one of the the following:
+# * Run the lab script with Chalmers VPN.
+# * Support an explicit netloc argument to the webhook functions.
+#   Organize for connections to the net location given to Chalmers GitLab
+#   to each us at the net location used for listening.
+#   For example, you might use SSH reverse port forwarding:
+#       ssh -R *:<remote port>:localhost:<local port: <server>
+#   and give (<server>, <remote port>) to Chalmers GitLab
+#   while binding locally to (localhost, <local port>).
+webhook = SimpleNamespace(
+    # Value doesn't matter, but should not be guessable.
+    secret_token = 'a not-so-well-chosen secret',
 
-# Used for programmatic push notifications on GitLab.
-# Value doesn't matter, but should not be guessable.
-gitlab_webhook_secret_token = 'a not-so-well-chosen secret'
+    # Local port to listen on for webhook notifications.
+    local_port = 4200,
+)

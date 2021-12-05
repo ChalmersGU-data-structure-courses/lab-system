@@ -781,24 +781,33 @@ class GroupProject:
         ))
 
     def _hook_url(self, netloc):
-        return print_parse.url.print(print_parse.URL_HTTPS(netloc))
+        return print_parse.url.print(
+            print_parse.URL_HTTPS(netloc)
+        )
 
-    def hook_create(self, netloc):
+    def hook_create(self, netloc = None):
         '''
         Create webhook in the student project on GitLab with the given net location.
         The hook is triggered via HTTPS if tags are updated or issues are changed.
         The argument netloc is an instance of print_parse.NetLoc.
 
+        If netloc is not given, it is set as follows:
+        * ip address: address of the local interface routing to git.chalmers.se,
+        * port: as configured in course configuration.
+
         Note: Due to a GitLab bug, the hook is not called when an issue is deleted.
               Thus, before deleting a response issue, you should first rename it
               (triggering the hook)  so that it is no longer recognized as a response issue.
         '''
+        if netloc is None:
+            netloc = self.course.hook_netloc_default
+
         url = self._hook_url(netloc)
         self.logger.debug(f'Creating project hook with url {url}')
         return self.project.lazy.hooks.create({
             'url': url,
             'enable_ssl_verification': 'false',
-            'token': self.course.config.gitlab_webhook_secret_token,
+            'token': self.course.config.webhook.secret_token,
             'issues_events': 'true',
             'tag_push_events': 'true',
         })
@@ -808,7 +817,7 @@ class GroupProject:
         self.logger.debug(f'Deleting project hook with url {hook.url}')
         hook.delete()
 
-    def hook_delete_all(self, netloc):
+    def hook_delete_all(self, netloc = None):
         '''
         Delete all webhook in the student project with the given netloc on GitLab.
         The argument netloc is an instance of print_parse.NetLoc.
@@ -817,14 +826,19 @@ class GroupProject:
         * when using hook_manager:
             if previous program runs where killed or stopped in a non-standard fashion
             that prevented cleanup and have left lingering webhooks.
+
+        If netloc is not given, it is set as described in hook_create.
         '''
+        if netloc is None:
+            netloc = self.course.hook_netloc_default
+
         url = self._hook_url(netloc)
         for hook in self.project.lazy.hooks.list(all = True):
             if hook.url == url:
                 self.hook_delete(hook)
 
     @contextlib.contextmanager
-    def hook_manager(self, netloc):
+    def hook_manager(self, netloc = None):
         '''
         A context manager for a webhook.
         Encapsulates hook_create and hool_delete.
