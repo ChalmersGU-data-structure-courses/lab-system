@@ -10,7 +10,7 @@ import git_tools
 import gitlab_tools
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__file__)
 
 def add_class(element, class_name):
     '''
@@ -64,29 +64,6 @@ def embed_js(path):
 # * When should a cell in this column be considered empty?
 # * A function that generates the cell content for a given group
 
-Config = collections.namedtuple(
-    'Config',
-    ['course', 'lab', 'deadline', 'logger'],
-)
-Config.__doc__ = '''
-    Configuration and data sources for a live submissions table.
-    * course: The relevant course instance (course.Course).
-    * lab: The relevant lab instance (lab.Lab).
-    * deadline:
-        The deadline to which to restrict submissions to.
-        An instance of datetime.datetime.
-        None if all submissions are to be taken into account.
-    '''
-
-def build_config(lab, deadline = None, logger = logger):
-    '''Smart constructor for an instance of Config.'''
-    return Config(
-        course = lab.course,
-        lab = lab,
-        deadline = deadline,
-        logger = logger,
-    )
-
 class ColumnValue:
     '''
     The column value associated to a group.
@@ -129,14 +106,16 @@ class Column:
     '''
     sortable = False
 
-    def __init__(self, config):
+    def __init__(self, table):
         '''
         Store the given configuration under self.config.
         Inline its fields as instance attributes.
         '''
-        self.config = config
-        for field in Config._fields:
-            setattr(self, field, config._asdict()[field])
+        self.table = table
+        self.course = table.course
+        self.lab = table.lab
+        self.config = table.config
+        self.logger = table.logger
 
     def format_header_cell(self, cell):
         '''
@@ -222,7 +201,7 @@ class DateColumn(Column):
                     dominate.tags.attr(style = 'text-align: center;')
 
     def get_value(self, group):
-        submission = group.submission_current(deadline = self.deadline)
+        submission = group.submission_current(deadline = self.config.deadline)
         return DateColumn.Value(submission.date)
 
 class GroupColumn(Column):
@@ -287,7 +266,6 @@ class MembersColumn(Column):
         members.sort(key = lambda x: str.casefold(x[0].username))
         return MembersColumn.Value(members, self.logger)
 
-# TODO: implement deadlines in lab config.
 class QueryNumberColumn(Column):
     sortable = True
 
@@ -310,7 +288,7 @@ class QueryNumberColumn(Column):
                 dominate.tags.attr(style = 'text-align: center;')
 
     def get_value(self, group):
-        submissions_with_outcome = group.submissions_with_outcome(deadline = self.deadline)
+        submissions_with_outcome = group.submissions_with_outcome(deadline = self.config.deadline)
         return QueryNumberColumn.Value(general.ilen(submissions_with_outcome))
 
 class MessageColumn(Column):
@@ -336,7 +314,7 @@ class MessageColumn(Column):
                     dominate.tags.pre(self.message)
 
     def get_value(self, group):
-        submission_current = group.submission_current(deadline = self.deadline)
+        submission_current = group.submission_current(deadline = self.config.deadline)
         message = git_tools.tag_message(
             submission_current.repo_remote_tag,
             default_to_commit_message = True,
@@ -372,7 +350,7 @@ class SubmissionFilesColumn(Column):
                     format_url(*self.linked_open_grading_issue)
 
     def get_value(self, group):
-        submission = group.submission_current(deadline = self.deadline)
+        submission = group.submission_current(deadline = self.config.deadline)
 
         response_key = self.lab.submission_handler.review_response_key
         if response_key is None:
@@ -430,11 +408,11 @@ class SubmissionDiffPreviousColumn(Column):
             dominate.util.text('previous..')
 
     def get_value(self, group):
-        submissions_with_outcome = list(group.submissions_with_outcome(deadline = self.deadline))
+        submissions_with_outcome = list(group.submissions_with_outcome(deadline = self.config.deadline))
         if not submissions_with_outcome:
             return SubmissionDiffColumnValue(None)
 
-        submission_current = group.submission_current(deadline = self.deadline)
+        submission_current = group.submission_current(deadline = self.config.deadline)
         submission_previous = submissions_with_outcome[-1]
         tag_after = submission_current.repo_tag_after_create(
             submission_previous.request_name,
@@ -461,7 +439,7 @@ class SubmissionDiffOfficialColumn(Column):
             dominate.util.text(self.branch.name)
 
     def get_value(self, group):
-        submission_current = group.submission_current(deadline = self.deadline)
+        submission_current = group.submission_current(deadline = self.config.deadline)
         tag_after = submission_current.repo_tag_after_create(
             self.branch.name,
             self.branch,
@@ -533,52 +511,114 @@ standard_columns = with_standard_columns()
 #                 if self.similarity == 1:
 #                     dominate.tags.attr(_class = 'grayed-out')
 
+
+Config = collections.namedtuple(
+    'Config',
+    ['deadline', 'sort_order'],
+    defaults = [None, ['query-number', 'group', 'date']],
+)
+Config.__doc__ = '''
+    Configuration for a live submissions table.
+    * deadline:
+        The deadline to which to restrict submissions to.
+        An instance of datetime.datetime.
+        None if all submissions are to be taken into account.
+    * sort_order:
+        A list of column names.
+        Determines the initial sort order.
+        This is according to the lexicographic ordering
+        of the column values specified by the given list.
+        Unknown column names are currently ignored,
+        but this feature should not be relied upon.
+    '''
+
 class LiveSubmissionsTable:
-    def __init__(self, lab, logger = logging.getLogger(__name__)):
+    def __init__(
+        self,
+        lab,
+        config,
+        column_types = standard_columns,
+        logger = logging.getLogger(__name__)
+    ):
         self.lab = lab
         self.course = lab.course
-        self.config = lab.course.config
+        self.config = config
         self.logger = logger
 
-    def build(
-        self,
-        out,
-        deadline = None,
-        columns = standard_columns,
-        sort_order = ['query-number', 'group', 'date'],
-    ):
+        self.columns = {
+            column_name: column_type(self)
+            for (column_name, column_type) in column_types.items()
+        }
+        self.group_rows = dict()
+        self.need_push = False
+
+    def build_row(self, group):
+        logger.info(f'building row for {group.name} in live submissions table')
+        self.group_rows[group.id] = {
+            column_name: column.get_value(group)
+            for (column_name, column) in self.columns.items()
+        }
+        self.need_push = True
+
+    def build(self, file, group_ids = None, build_missing_rows = False):
+        '''
+        Build the live submissions table.
+
+        Arguments:
+        * file:
+            The filename the output HTML file should be written to.
+            The generated HTML file is self-contained and only contains absolute links.
+        * group_ids:
+            An optional iterable of group ids to produce rows for.
+            Currently, only group with a current submission
+            for the specified deadline are supported.
+            (Each supplied column type is responsible for this.)
+        * build_missing_rows:
+            Whether to build a row if it is missing for some group.
+            Note: if this option is enabled, the grading repository will be
+            updated and might contain new tags that the produced table relies on.
+        '''
         logger.info('building live submissions table...')
-        config = build_config(self.lab, deadline, logger)
 
         # Compute the list of group ids with live submissions.
-        def f():
-            for group_id in self.course.groups:
+        if group_ids:
+            group_ids = list(group_ids)
+        else:
+            group_ids = list(self.lab.groups_with_live_submissions(deadline = self.config.deadline))
+        logger.debug(f'building live submissions table for the following groups: {group_ids}')
+
+        # Make sure all needed group rows are built.
+        for group_id in group_ids:
+            if not group_id in self.group_rows:
                 group = self.lab.student_group(group_id)
-                if group.submission_current(deadline = deadline) is not None:
-                    yield group_id
-        group_ids = list(f())
-        logger.debug(f'groups with live submission: {group_ids}')
+                if build_missing_rows:
+                    self.build_row(group)
+                else:
+                    raise ValueError(f'live submissions table misses row for {group.name}')
 
         # Compute the columns (with column values) for these submissions.
+        # We omit empty columns.
         def f():
-            for (column_name, column_type) in columns.items():
+            for (name, column) in self.columns.items():
                 r = types.SimpleNamespace()
-                r.column = column_type(config)
                 r.values = dict(
-                    (group_id, r.column.get_value(self.lab.student_group(group_id)))
+                    (group_id, column.get_value(self.lab.student_group(group_id)))
                     for group_id in group_ids
                 )
                 if any(value.has_content() for value in r.values.values()):
-                    if r.column.sortable:
+                    if column.sortable:
                         r.canonical_sort_keys = general.canonical_keys(
                             group_ids,
                             lambda group_id: r.values[group_id].sort_key()
                         )
-                    yield (column_name, r)
+                    yield (name, r)
         column_data = dict(f())
 
         # Pre-sort the list of group ids with live submissions according to the given sort order.
-        sort_order = list(filter(lambda column_name: column_name in column_data, sort_order))
+        sort_order = list(filter(
+            lambda column_name: column_name in column_data,
+            self.config.sort_order,
+        ))
         group_ids.sort(key = lambda group_id: tuple(
             column_data[name].values[group_id].sort_key()
             for name in sort_order
@@ -610,25 +650,27 @@ class LiveSubmissionsTable:
         with doc.body:
             with dominate.tags.table(id = 'results'):
                 with dominate.tags.thead():
-                    for (name, data) in column_data.items():
+                    for (name, column) in self.columns.items():
                         cell = dominate.tags.th()
                         add_class(cell, name)
-                        if data.column.sortable:
+                        if column.sortable:
                             add_class(cell, 'sortable')
-                            if [name] == sort_order[:1]:  # want to write: is_prefix([name], sort_order)
+                            # want to write: is_prefix([name], sort_order)
+                            if [name] == sort_order[:1]:
                                 add_class(cell, 'sortable-order-asc')
-                        data.column.format_header_cell(cell)
+                        column.format_header_cell(cell)
                 with dominate.tags.tbody():
                     for group_id in group_ids:
                         logger.debug(f'processing group {self.lab.student_group(group_id)}')
                         with dominate.tags.tr():
-                            for (name, data) in column_data.items():
+                            for (name, column) in self.columns.items():
+                                data = column_data[name]
                                 cell = dominate.tags.td()
                                 cell.is_pretty = False
                                 add_class(cell, name)
-                                if data.column.sortable:
+                                if column.sortable:
                                     cell['data-sort-key'] = str(data.canonical_sort_keys[group_id])
                                 data.values[group_id].format_cell(cell)
 
-        out.write_text(doc.render(pretty = True))
+        file.write_text(doc.render(pretty = True))
         logger.info('building live submissions table: done')
