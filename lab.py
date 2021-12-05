@@ -19,6 +19,7 @@ import grading_sheet
 import group_project
 import instance_cache
 import live_submissions_table
+import path_tools
 
 
 class Lab:
@@ -49,7 +50,10 @@ class Lab:
 
     It also manages a live submissions table on Canvas.
     Related attributes and methods:
-    - update_live_submissions_table(self, deadline = None):
+    - setup_live_submissions_table(self, deadline = None):
+    - update_live_submissions_table(self):
+
+    See update_grading_sheet_and_live_submissions_table for an example interaction.
 
     This class is configured by the config argument to its constructor.
     The format of this argument is documented in gitlab.config.py.template under _lab_config.
@@ -58,22 +62,28 @@ class Lab:
     See student_group and student_groups.
     Each instance of this class is managed by an instance of course.Course.
     '''
-    def __init__(self, course, id, config = None, dir = None, logger = logging.getLogger(__name__)):
+    def __init__(self, course, id, config = None, dir = None, deadline = None, logger = logging.getLogger(__name__)):
         '''
         Initialize lab manager.
         Arguments:
         * course: course manager.
         * id: lab id, typically used as key in a lab configuration dictionary (see 'gitlab_config.py.template')
-        * config: lab configuration, typically the value in a lab configuration dictionary.
-                  If None, will be taken from labs dictionary in course configuration.
-        * dir: Local directory used as local copy of the grading repository.
-               Only its parent directory has to exist.
+        * config:
+            lab configuration, typically the value in a lab configuration dictionary.
+            If None, will be taken from labs dictionary in course configuration.
+        * dir:
+            Local directory used as local copy of the grading repository.
+            Only its parent directory has to exist.
+        * deadline:
+            Optional deadline to use for the grading sheet and live submissions table.
+            Only submissions in time for the deadline will be considered.
         '''
 
         self.logger = logger
         self.course = course
         self.id = id
         self.dir = None if dir is None else Path(dir)
+        self.deadline = deadline
 
         self.config = self.course.config.labs[id] if config is None else config
 
@@ -354,6 +364,8 @@ class Lab:
         '''
         self.logger.info('Fetching from official repository.')
         self.repo.remote(self.course.config.path_lab.official).fetch('--update-head-ok')
+        with contextlib.suppress(AttributeError):
+            del self.remote_tags
 
     def repo_push(self, force = False):
         '''
@@ -372,6 +384,21 @@ class Lab:
     @functools.cached_property
     def student_groups(self):
         return [self.student_group(group_id) for group_id in self.course.groups]
+
+    def configure_student_project(self, project):
+        self.logger.debug('Configuring student project {project.path_with_namespace}')
+
+        def patterns():
+            # TODO: collect protection patterns from handlers
+            for pattern in self.submission_handler.request_matcher.protection_patterns:
+                yield pattern
+
+        self.logger.debug('Protecting tags')
+        gitlab_tools.protect_tags(self.gl, project.id, patterns())
+        project = gitlab_tools.wait_for_fork(self.gl, project)
+        self.logger.debug(f'Protecting branch {self.course.config.branch.master}')
+        gitlab_tools.protect_branch(self.gl, project.id, self.course.config.branch.master)
+        return project
 
     # TODO:
     # Debug what happens when running this without the grading project having been created.
@@ -403,14 +430,14 @@ class Lab:
                             raise
 
                 for (group_id, project) in tuple(projects.items()):
-                    project = self.course.configure_student_project(project)
+                    project = self.configure_student_project(project)
                     project.delete_fork_relation()
                     self.student_group(group_id).project.get = project
                     del projects[group_id]
                     self.student_group(group_id).repo_add_remote()
             except:  # noqa: E722
                 for project in projects.values():
-                    project.delete()
+                    self.gl.projects.delete(project.path_with_namespace)
                 raise
 
     def create_group_projects(self):
@@ -455,6 +482,17 @@ class Lab:
                 value = remote_tags.get(self.course.config.group.full_id.print(group_id), dict())
                 yield (group_id, git_tools.flatten_references_hierarchy(value))
         return dict(f())
+
+    @functools.cached_property
+    def tags(self):
+        '''
+        A dictionary hierarchy of tag path name segments
+        with values in tags in the local grading repository.
+
+        Clear this cached property after constructing tags.
+        '''
+        refs = git_tools.references_hierarchy(self.repo)
+        return refs[git_tools.refs.name][git_tools.tags.name]
 
     def hooks_create(self, netloc):
         '''
@@ -522,6 +560,28 @@ class Lab:
     #     finally:
     #         self.hooks_delete(hooks)
 
+    def hook_callback(self, event, group):
+        '''
+        Assumes that all groups have been processed and all rows in the live
+        submissions table have been generated before this event is handled.
+        '''
+        event_name = event['event_name']
+        if event_name == 'tag_push':
+            self.logger.info(f'Handling new tags for {group.name} in {self.name}.')
+            group.repo_fetch()
+            group.parse_request_tags(from_gitlab = False)
+            group.process_requests()
+        elif event_name == 'issue':
+            self.logger.info(f'Handling new issues for {group.name} in {self.name}.')
+            group.parse_response_issues()
+        else:
+            raise(f'Unknown event {event_name}')
+
+        self.update_grading_sheet(group_ids = [group.id])
+        if hasattr(self, 'live_submissions_table'):
+            self.live_submissions_table.update_row(group)
+            self.update_live_submissions_table(build_missing_rows = False)
+
     def setup_request_handlers(self):
         '''
         Setup the configured request handlers.
@@ -530,6 +590,23 @@ class Lab:
         self.logger.info('Setting up request handlers')
         for handler in self.config.request_handlers.values():
             handler.setup(self)
+
+    def setup_live_submission_table(self, deadline = None):
+        '''
+        Setup the live submissions table.
+        Takes an optional deadline parameter for limiting submissions to include.
+        If not set, we use self.deadline.
+        Request handlers should be set up before calling this method.
+        '''
+        if deadline is None:
+            deadline = self.deadline
+
+        config = live_submissions_table.Config(deadline = deadline)
+        self.live_submissions_table = live_submissions_table.LiveSubmissionsTable(
+            self,
+            config = config,
+            column_types = self.submission_handler.grading_columns,
+        )
 
     def parse_request_tags(self, from_gitlab = True):
         '''
@@ -674,16 +751,21 @@ class Lab:
                 self.compiler.compile(src, bin)
                 yield (src, bin)
 
-    def update_live_submissions_table(self, deadline = None):
+    def groups_with_live_submissions(self, deadline = None):
+        '''A generator for groups with live submissions for the given optional deadline.'''
+        for group_id in self.course.groups:
+            group = self.student_group(group_id)
+            if group.submission_current(deadline = deadline) is not None:
+                yield group_id
+
+    def update_live_submissions_table(self, deadline = None, build_missing_rows = True):
         self.logger.info('Updating live submissions table')
-        table = live_submissions_table.LiveSubmissionsTable(self)
-        with tempfile.TemporaryDirectory() as dir:
-            path = Path(dir) / 'index.html'
-            table.build(path, deadline = deadline, columns = self.submission_handler.grading_columns)
+        with path_tools.temp_file() as file:
+            self.live_submissions_table.build(file, build_missing_rows = build_missing_rows)
             self.logger.info('Posting live submissions table to Canvas')
             target = self.config.canvas_path_awaiting_grading
             folder = self.course.canvas_course.get_folder_by_path(target.parent)
-            self.course.canvas_course.post_file(path, folder.id, target.name)
+            self.course.canvas_course.post_file(file, folder.id, target.name)
 
     def parse_issue(self, issue):
         request_types = self.config.request.__dict__
@@ -712,17 +794,32 @@ class Lab:
             lambda group_id: self.student_group(group_id).project.get.web_url
         )
 
-    def update_grading_sheet(self, deadline = None):
+    def update_grading_sheet(self, group_ids = None, deadline = None):
+        '''
+        Update the grading sheet.
+
+        Arguments:
+        * group_ids:
+            If set, restrict the update to the given group ids.
+        * deadline:
+            Deadline to use for submissions.
+            If not set, we use self.deadline.
+        '''
+        if group_ids is None:
+            group_ids = self.course.groups.keys()
+        groups = list(map(self.student_group, group_ids))
+
+        if deadline is None:
+            deadline = self.deadline
+
         # Ensure grading sheet exists and has sufficient query group columns.
         self.grading_sheet.ensure_num_queries(max(
-            (general.ilen(group.submissions_relevant(deadline)) for group in self.student_groups),
+            (general.ilen(group.submissions_relevant(deadline)) for group in groups),
             default = 0,
         ))
 
         request_buffer = self.course.grading_spreadsheet.create_request_buffer()
-        for group_id in self.course.groups:
-            group = self.student_group(group_id)
-
+        for group in groups:
             # HACK (for now).
             # Only include non-empty groups.
             # Should output warning if an empty group has a submission.
@@ -742,7 +839,7 @@ class Lab:
 
                 self.grading_sheet.write_query(
                     request_buffer,
-                    group_id,
+                    group.id,
                     query,
                     grading_sheet.Query(
                         submission = google_tools.sheets.cell_link_with_fields(
@@ -768,7 +865,8 @@ class Lab:
         self.setup_request_handlers()
         self.process_requests()
         self.repo_push()
-        self.update_live_submissions_table(deadline = deadline)
+        self.setup_live_submissions_table(deadline = deadline)
+        self.update_live_submissions_table()
         self.update_grading_sheet(deadline = deadline)
         self.repo_push()  # Needed because update_grading_sheet might add stuff to repo.
 
@@ -776,15 +874,19 @@ class Lab:
         '''
         Check out all tags in the grading repository in a hierarchy based at dir.
         The directory dir and its parents are created if they do not exist.
-        Tags whose last path segment is 'handled' are omitted.
-        This is to save space; the content of these tags is identical to that of the request tag.
+        To save space, tags are omitted if they satisfy one of the following conditions:
+        - ultimate path segment is 'handled',
+        - penultimate path segment is 'after'.
+        This is to save space; the content of these tags
+        # is identical to that the respective parent tag.
 
         Use this function to more quickly debug issues with contents of the grading repository.
         '''
-        refs = git_tools.references_hierarchy(self.repo)
-        tags = refs[git_tools.refs.name][git_tools.tags.name]
-        for (path, tag) in git_tools.flatten_references_hierarchy(tags).items():
-            if path.name == 'handled':
+        for (path, tag) in git_tools.flatten_references_hierarchy(self.tags).items():
+            if any([
+                path.name == 'handled',
+                len(path.parents) > 0 and path.parent.name == 'after',
+            ]):
                 continue
 
             out = dir / path

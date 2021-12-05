@@ -759,22 +759,6 @@ class Course:
             [gitlab.DEVELOPER_ACCESS, gitlab.MAINTAINER_ACCESS]
         )
 
-    def configure_student_project(self, project):
-        self.logger.debug('Configuring student project {project.path_with_namespace}')
-
-        def patterns():
-            # TODO: collect protection patterns from handlers
-            for pattern in self.config.submission_request.protection_patterns:
-                yield pattern
-
-        self.logger.debug('Protecting tags')
-        gitlab_tools.protect_tags(self.gl, project.id, patterns())
-        self.logger.debug('Waiting for potential fork to finish')
-        project = gitlab_tools.wait_for_fork(self.gl, project)
-        self.logger.debug(f'Protecting branch {self.config.branch.master}')
-        gitlab_tools.protect_branch(self.gl, project.id, self.config.branch.master)
-        return project
-
     @contextlib.contextmanager
     def hook_manager(self, netloc):
         '''
@@ -794,11 +778,12 @@ class Course:
             self.logger.info('Deleted project hooks in all labs')
 
     def hook_callback(self, event):
+        '''Only supports hooks in student group projects.'''
         try:
             # Only handle certain kinds of callbacks.
             event_name = event['event_name']
             if not event_name in ['tag_push', 'issue']:
-                return
+                raise(f'Unknown event {event_name}')
 
             # Find the relevant lab and group project.
             project_path = PurePosixPath(event['project']['path_with_namespace'])
@@ -812,17 +797,15 @@ class Course:
             # Find the group project.
             group_id = self.config.group.id_gitlab.parse(group_id_gitlab)
             group = lab.student_group(group_id)
+
+            # Delegate to the lab.
+            lab.hook_callback(self, event, group)
+
+            # Find the group project.
+            group_id = self.config.group.id_gitlab.parse(group_id_gitlab)
+            group = lab.student_group(group_id)
         except Exception as e:
             raise HookCallbackError(e) from e
-
-        if event_name == 'tag_push':
-            self.logger.info(f'Handling new tags for {group.name} in {lab.name}.')
-            group.repo_fetch()
-            group.process_requests()
-        elif event_name == 'issue':
-            self.logger.info(f'Handling new issues for {group.name} in {lab.name}.')
-            # TODO: clear response issue cache.
-            # Process non-script issued response issues.
 
     @functools.cached_property
     def grading_spreadsheet(self):
