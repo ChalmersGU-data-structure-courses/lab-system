@@ -1,14 +1,17 @@
+import distutils.spawn
 from pathlib import Path, PurePath
 
 import path_tools
 
+# Find proot executable at module import to make sure it exists.
+proot = distutils.spawn.find_executable(Path('proot'))
 
 def proot_args(
     args,
     working_directory,
     bindings = [],
     root = Path('/root'),
-    proot_executable = Path('proot'),
+    proot_executable = proot,
 ):
     '''Produce argument list for a program call of proot.
 
