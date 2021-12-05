@@ -82,14 +82,11 @@ def check_return(pred):
         raise ValueError(f'Forbidden value {x}')
     return f
 
-def with_default(f, x, default):
-    return default if x is None else x
-
-def with_none(f, x):
-    return with_default(f, x, None)
+def with_default(f, x, default = None):
+    return default if x is None else f(x)
 
 def maybe(f):
-    return lambda x: with_none(f, x)
+    return lambda x: with_default(f, x)
 
 def defaulting_to(default, value, key = None):
     return default if value == key else value
