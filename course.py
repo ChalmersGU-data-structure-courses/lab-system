@@ -9,6 +9,7 @@ import json
 import logging
 import operator
 from pathlib import Path, PurePosixPath
+import random
 import shlex
 import types
 import urllib.parse
@@ -760,6 +761,11 @@ class Course:
             [gitlab.DEVELOPER_ACCESS, gitlab.MAINTAINER_ACCESS]
         )
 
+    def student_projects(self):
+        '''A generator for all contained student group projects.'''
+        for lab in self.labs.values():
+            yield from lab.student_groups
+
     @functools.cached_property
     def hook_netloc_default(self):
         return print_parse.NetLoc(
@@ -771,6 +777,18 @@ class Course:
             port = self.config.webhook.local_port,
         )
 
+    def hook_normalize_netloc(self, netloc = None):
+        '''
+        Normalize the given net location.
+
+        If netloc is not given, it is set as follows:
+        * ip address: address of the local interface routing to git.chalmers.se,
+        * port: as configured in course configuration.
+        '''
+        if netloc is None:
+            netloc = self.hook_netloc_default
+        return print_parse.netloc_normalize(netloc)
+
     def hooks_create(self, netloc = None):
         '''
         Create webhooks in all group project in this course on GitLab with the given net location.
@@ -780,19 +798,21 @@ class Course:
         Use this method only if you intend to create and
         delete webhooks over separate program invocations.
         Otherwise, the context manager hooks_manager is more appropriate.
+
+        If 'netloc' is None, uses the configured default (see Course.hook_normalize_netloc).
         '''
         self.logger.info('Creating project hooks in all labs')
         hooks = dict()
         try:
             for lab in self.labs.values():
-                hooks[lab.id] = lab.hooks_create(netloc)
+                hooks[lab.id] = lab.hooks_create(netloc = netloc)
             return hooks
         except:  # noqa: E722
             for (lab_id, hook) in hooks.items():
-                self.labs[lab_id].hooks_delete(hook)
+                self.labs[lab_id].hooks_delete(hook, netloc = netloc)
             raise
 
-    def hooks_delete(self, hooks):
+    def hooks_delete(self, hooks, netloc = None):
         '''
         Delete webhooks in student projects in labs in this course on GitLab.
         Takes a dictionary mapping each lab id to a dictionary mapping each group id to its hook.
@@ -800,38 +820,60 @@ class Course:
         '''
         self.logger.info('Deleting project hooks in all labs')
         for lab in self.labs.values():
-            lab.hooks_delete(hooks[lab.id])
+            lab.hooks_delete(hooks[lab.id], netloc = netloc)
 
-    def hooks_delete_all(self, netloc = None):
+    def hooks_delete_all(self, except_for = ()):
         '''
         Delete all webhooks in all group project in all labs set up with the given netloc on GitLab.
         See group_project.GroupProject.hook_delete_all.
-
-        If netloc is not given, it is set as follows:
-        * ip address: address of the local interface routing to git.chalmers.se,
-        * port: as configured in course configuration.
         '''
+        self.logger.info('Deleting all project hooks in all labs')
         for lab in self.labs.values():
-            lab.hooks_delete_all(netloc)
+            lab.hooks_delete_all(except_for = except_for)
+
+    def hooks_ensure(self, netloc = None, sample_size = 10):
+        '''
+        Ensure that all hooks for student projects in this course are correctly configured.
+        By default, only a random sample is checked.
+
+        If 'netloc' is None, uses the configured default (see Course.hook_normalize_netloc).
+
+        If sample_size is None, checks all student projects.
+        '''
+        self.logger.info('Ensuring webhook configuration.')
+        if sample_size is None:
+            for group in self.student_projects():
+                group.hook_ensure(netloc = netloc)
+        else:
+            netloc = self.hook_normalize_netloc(netloc = netloc)
+            all_groups = list(self.student_projects())
+            random_sample = random.sample(all_groups, min(len(all_groups), sample_size))
+            try:
+                for group in random_sample:
+                    group.check_hooks(netloc = netloc)
+            except ValueError as e:
+                self.logger.info(
+                    f'Hook configuration for {group.name} in {group.lab.name} incorrect: {str(e)}'
+                )
+                self.hooks_delete_all()
+                self.hooks_create(netloc = netloc)
 
     @contextlib.contextmanager
-    def hook_manager(self, netloc = None):
+    def hooks_manager(self, netloc = None):
         '''
         A context manager for installing GitLab web hooks for all student projects in all lab.
         This is an expensive operation, setting up and cleaning up costs one HTTP call per project.
         Yields a dictionary mapping each lab id to a dictionary mapping each group id
         to the hook installed in the project of that group.
 
-        If netloc is not given, it is set as follows:
-        * ip address: address of the local interface routing to git.chalmers.se,
-        * port: as configured in course configuration.
+        If 'netloc' is None, uses the configured default (see Course.hook_normalize_netloc).
         '''
         self.logger.info('Creating project hooks in all labs')
         try:
             with contextlib.ExitStack() as stack:
                 def f():
                     for lab in self.labs.values():
-                        yield (lab.id, stack.enter_context(lab.hook_manager(netloc)))
+                        yield (lab.id, stack.enter_context(lab.hook_manager(netloc = netloc)))
                 yield dict(f())
         finally:
             self.logger.info('Deleted project hooks in all labs')
