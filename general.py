@@ -1,4 +1,5 @@
 from collections import defaultdict, namedtuple
+import dataclasses
 from datetime import datetime, timedelta, timezone
 import decimal
 import fcntl
@@ -548,3 +549,7 @@ def flatten_hierarchy_prefix(u, key_combine, prefix):
 
 def flatten_hierarchy(u, key_combine = tuple):
     return dict(flatten_hierarchy_prefix(u, key_combine, []))
+
+@dataclasses.dataclass
+class BoolException(Exception):
+    value: bool
