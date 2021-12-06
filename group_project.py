@@ -801,6 +801,7 @@ class GroupProject:
         '''
         if netloc is None:
             netloc = self.course.hook_netloc_default
+        netloc = print_parse.netloc_normalize(netloc)
 
         url = self._hook_url(netloc)
         self.logger.debug(f'Creating project hook with url {url}')
@@ -831,6 +832,7 @@ class GroupProject:
         '''
         if netloc is None:
             netloc = self.course.hook_netloc_default
+        netloc = print_parse.netloc_normalize(netloc)
 
         url = self._hook_url(netloc)
         for hook in self.project.lazy.hooks.list(all = True):
