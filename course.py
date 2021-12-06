@@ -15,11 +15,13 @@ import types
 import urllib.parse
 
 import canvas
+import events
 import gitlab_tools
 import grading_sheet
 from instance_cache import instance_cache
 import ip_tools
 import print_parse
+import webhook_listener
 
 #===============================================================================
 # Tools
@@ -211,10 +213,10 @@ class Course:
     @functools.cached_property
     def grader_ids(self):
         '''
-        The frozenset of grader ids (members of the graders group.
+        A dictionary from grader ids to users on Chalmers GitLab.
         Derived from self.graders.
         '''
-        return frozenset(user.id for user in self.graders.values())
+        return dict({user.id: user for user in self.graders.values()})
 
     @functools.cached_property
     def labs(self):
@@ -886,13 +888,100 @@ class Course:
         finally:
             self.logger.info('Deleted project hooks in all labs')
 
+    def parse_hook_event(self, event, strict = False):
+        '''
+        Takes an event received from a webhook and returns
+        a corresponding instance of events.GroupProjectEvent.
+
+        if 'strict' is set, raises an exception if
+        the event is not one of the types we can handle.
+
+        Returns None if the event should be ignored.
+
+        Uses self.graders, which takes an HTTP call
+        to compute the first time it is accessed.
+        Make sure to precompute this attribute before you
+        call this method in a time-sensitive environment.
+
+        For a tag push event, we always generate a queue event.
+        TODO: check that the tag name matches a request matcher.
+
+        For an issue event, we only generate a queue event if both:
+        - the (current or previous) author is a grader,
+        - the title has changed.
+        '''
+        # Find the relevant lab and group project.
+        project_path = PurePosixPath(event['project']['path_with_namespace'])
+        project_path = project_path.relative_to(self.config.path.groups)
+        (group_id_gitlab, lab_full_id) = project_path.parts
+
+        # Find the lab and group ids.
+        lab_id = self.config.lab.full_id.parse(lab_full_id)
+        lab = self.labs[lab_id]
+
+        group_id = self.config.group.id_gitlab.parse(group_id_gitlab)
+        group = lab.student_group(group_id)
+
+        kwargs = {
+            'lab_id': lab_id,
+            'group_id': group_id,
+            'event': event,
+        }
+
+        event_type = webhook_listener.event_type(event)
+        if event_type == 'tag_push':
+            self.logger.debug(f'Received a tag push event for {group.name} in {lab.name}.')
+            return events.GroupProjectEventTag(**kwargs)
+        elif event_type == 'issue':
+            self.logger.debug(f'Received an issue event for {group.name} in {lab.name}.')
+            changes = event.get('changes')
+
+            def author_id():
+                object_attributes = event.get('object_attributes')
+                if object_attributes is not None:
+                    return object_attributes['author_id']
+
+                author_id_changes = changes['author_id']
+                for version in ['current', 'previous']:
+                    author_id = author_id_changes[version]
+                    if author_id is not None:
+                        return author_id
+
+                raise ValueError('Could not determine author id in the following issue event: {event}')
+            author_id = author_id()
+            author_is_grader = author_id in self.grader_ids
+            self.logger.debug(
+                f'Detected issue author id {author_id}, member of graders: {author_is_grader}'
+            )
+
+            def title_change():
+                if changes is None:
+                    return False
+
+                title_changes = changes.get('title')
+                if title_changes is None:
+                    return False
+
+                return title_changes['current'] != title_changes['previous']
+            title_change = title_change()
+            self.logger.debug(f'Detected title change: {title_change}')
+
+            if author_is_grader and title_change:
+                return events.GroupProjectEventTag(**kwargs)
+        else:
+            if strict:
+                raise(f'Unknown event {event_type}')
+            self.logger.debug(f'Received unexpected event with type {event_type}.')
+
+        return None
+
     def hook_callback(self, event):
         '''Only supports hooks in student group projects.'''
         try:
             # Only handle certain kinds of callbacks.
-            event_name = event['event_name']
-            if not event_name in ['tag_push', 'issue']:
-                raise(f'Unknown event {event_name}')
+            event_type = event['event_type']
+            if not event_type in ['tag_push', 'issue']:
+                raise(f'Unknown event type {event_type}')
 
             # Find the relevant lab and group project.
             project_path = PurePosixPath(event['project']['path_with_namespace'])
