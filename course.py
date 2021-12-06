@@ -202,6 +202,21 @@ class Course:
         )
 
     @functools.cached_property
+    def graders(self):
+        return gitlab_tools.members_from_access(
+            self.graders_group.lazy,
+            [gitlab.OWNER_ACCESS]
+        )
+
+    @functools.cached_property
+    def grader_ids(self):
+        '''
+        The frozenset of grader ids (members of the graders group.
+        Derived from self.graders.
+        '''
+        return frozenset(user.id for user in self.graders.values())
+
+    @functools.cached_property
     def labs(self):
         return frozenset(
             self.config.lab.id_gitlab.parse(lab.path)
@@ -743,13 +758,6 @@ class Course:
 
                 if not stored_invitations:
                     history.pop(str(user.id))
-
-    @functools.cached_property
-    def graders(self):
-        return gitlab_tools.members_from_access(
-            self.graders_group.lazy,
-            [gitlab.OWNER_ACCESS]
-        )
 
     def student_members(self, cached_entity):
         '''
