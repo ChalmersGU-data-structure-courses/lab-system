@@ -31,7 +31,7 @@ class Lab:
     - official_project, grading_project
     - create_group_projects, create_group_projects_fast
     - delete_group_projects
-    - hook_manager
+    - hooks_manager
 
     This class also manages a local repository called the grading repository
     that fetches from official and student projects on Chalmers GitLab
@@ -508,7 +508,7 @@ class Lab:
         hooks = dict()
         try:
             for group in self.student_groups:
-                hooks[group.id] = group.hook_create(netloc)
+                hooks[group.id] = group.hook_create(netloc = netloc)
             return hooks
         except:  # noqa: E722
             for (group_id, hook) in hooks.items():
@@ -525,13 +525,13 @@ class Lab:
         for group in self.student_groups:
             group.hook_delete(hooks[group.id])
 
-    def hooks_delete_all(self, netloc = None):
+    def hooks_delete_all(self, except_for = ()):
         '''
         Delete all webhooks in all group project in this lab set up with the given netloc on GitLab.
         See group_project.GroupProject.hook_delete_all.
         '''
         for group in self.student_groups:
-            group.hook_delete_all(netloc)
+            group.hooks_delete_all(except_for = except_for)
 
     @contextlib.contextmanager
     def hooks_manager(self, netloc = None):
@@ -546,7 +546,7 @@ class Lab:
 
                 def f():
                     for group in self.student_groups:
-                        yield (group.id, stack.enter_context(group.hook_manager(netloc)))
+                        yield (group.id, stack.enter_context(group.hook_manager(netloc = netloc)))
                 yield dict(f())
             finally:
                 self.logger.info('Deleting project hooks in all student projects (do not interrupt)')
