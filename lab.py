@@ -806,7 +806,7 @@ class Lab:
             If not set, we use self.deadline.
         '''
         if group_ids is None:
-            group_ids = self.course.groups.keys()
+            group_ids = self.course.groups
         groups = list(map(self.student_group, group_ids))
 
         if deadline is None:
