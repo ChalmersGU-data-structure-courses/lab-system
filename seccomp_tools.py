@@ -23,8 +23,9 @@ def setup_seccomp(callback = None):
 
     If something unexpectedly fails, run it under strace to see what it was trying to do.
 
-    Supported configurations (add yours):
-    * x64 Linux with glibc
+    Supported configurations (add yours after testing; add calls if needed):
+    * x64 Linux 5.15 with glibc 2.33
+    * x64 Linux with musl
     '''
     from seccomp import Arg, ALLOW, EQ, MASKED_EQ
 
@@ -34,27 +35,34 @@ def setup_seccomp(callback = None):
     # Allow exiting.
     f.add_rule(ALLOW, "exit_group")
 
-    # Allow basic interrupt handling
-    f.add_rule(ALLOW, "rt_sigaction")
+    # Allow returning from an interrupt.
     f.add_rule(ALLOW, "rt_sigreturn")
-    f.add_rule(ALLOW, "rt_sigprocmask")
+    # In the future, we might discover that more signal syscalls are needed.
+    # These seem safe in general.
+    # For example, we might add:
+    #f.add_rule(ALLOW, "rt_sigaction")
+    #f.add_rule(ALLOW, "rt_sigprocmask")
 
-    # Allow memory allocation and mapping.
+    # Allow memory-related syscalls.
     f.add_rule(ALLOW, "brk")
     f.add_rule(ALLOW, "mmap")
     f.add_rule(ALLOW, "munmap")
     f.add_rule(ALLOW, "mprotect")
-    f.add_rule(ALLOW, "madvise")  # INFO NEEDED: Needed for which system configuration?
+    f.add_rule(ALLOW, "madvise")  # Used by musl with MADV_FREE.
 
     # Allow opening files read-only and closing files.
     f.add_rule(ALLOW, "open", Arg(1, MASKED_EQ, os.O_ACCMODE, os.O_RDONLY))
     f.add_rule(ALLOW, "openat", Arg(2, MASKED_EQ, os.O_ACCMODE, os.O_RDONLY))
     f.add_rule(ALLOW, "close")
 
-    # Allow statting files and listing directory entries.
-    f.add_rule(ALLOW, "stat")   # INFO NEEDED: Needed for which system configuration?
-    f.add_rule(ALLOW, "fstat")  # INFO NEEDED: Needed for which system configuration?
+    # Allow statting files.
+    # The first two calls are used by musl even on x64
+    # (instead of the new unifying call newfstatat).
+    f.add_rule(ALLOW, "stat")
+    f.add_rule(ALLOW, "fstat")
     f.add_rule(ALLOW, "newfstatat")
+
+    # Allow listing directory entries.
     f.add_rule(ALLOW, "getdents64")
 
     # Allow reading current working directory.
@@ -78,12 +86,11 @@ def setup_seccomp(callback = None):
     # RESEARCH NEEDED: Only needed interactively?
     #f.add_rule(ALLOW, "pselect6")
 
-    # Documented to never fail.
-    # (But note that many other calls are also documented to never return EPERM.)
-    # Forbid them for now (reduced system information leakage).
-    #f.add_rule(ALLOW, "getpid")
-    #f.add_rule(ALLOW, "getppid")
-    #f.add_rule(ALLOW, "gettid")
+    # Allow calls that do not have a documented failure mode.
+    # If we forbid them, we should kill the process.
+    f.add_rule(ALLOW, "getpid")
+    f.add_rule(ALLOW, "getppid")
+    f.add_rule(ALLOW, "gettid")
 
     # Allow the caller to modify the filter.
     if callback is not None:

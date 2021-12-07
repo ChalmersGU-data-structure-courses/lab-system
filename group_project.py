@@ -376,10 +376,12 @@ class RequestAndResponses:
         Process request.
         This only proceeds if the request is not already
         marked handled in the local grading repository.
+
+        Returns a boolean indicating if the request was not handled before.
         '''
         # Skip processing if we already handled this request.
         if self.get_handled():
-            return
+            return False
 
         where = '' if self.group is None else f' in {self.group.name}'
         self.logger.info(f'Processing request {self.request_name}{where}.')
@@ -412,6 +414,8 @@ class RequestAndResponses:
         with contextlib.suppress(AttributeError):
             del self.lab.tags
 
+        return True
+
 class HandlerData:
     '''
     This class abstracts over a request handler handling a single type of request
@@ -441,7 +445,7 @@ class HandlerData:
         self.requests = None
 
         # A dictionary mapping keys of response titles to dictionaries
-        # mapping request names to issues and issue title parsings.
+        # mapping request names to pairs of issues and issue title parsings.
         #
         # Populated by GroupProject.parse_response_issues.
         # Initialized with inner dictionaries set to None.
@@ -519,9 +523,14 @@ class HandlerData:
         Process requests.
         This method assumes that requests_and_responses has been set up.
         It skips requests already marked as handled in the local grading repository.
+
+        Returns the set of request names that were newly handled.
         '''
-        for request_and_responses in self.requests_and_responses.values():
-            request_and_responses.process_request()
+        def f():
+            for request_and_responses in self.requests_and_responses.values():
+                if request_and_responses.process_request():
+                    yield request_and_responses.request_name
+        return set(f())
 
 class GroupProject:
     '''
@@ -1006,6 +1015,37 @@ class GroupProject:
             if issue.author['id'] in self.course.graders:
                 yield issue
 
+    @property
+    def submission_handler_data(self):
+        '''The instance of HandlerData for the submission handler.'''
+        return self.handler_data[self.lab.config.submission_handler_key]
+
+    @property
+    def reviews(self):
+        '''
+        The review response dictionary of the submission handler.
+        This is a dictionary mapping request names to response issue title parsings.
+        Is None before parse_response_issues is called.
+
+        Only valid if review issues are configured.
+        '''
+        return self.submission_handler_data.responses.get(
+            self.lab.submission_handler.review_response_key
+        )
+
+    @property
+    def reviews_data(self):
+        '''
+        Modified version get_reviews.
+        The returned dictionary has as values only the issue title parsing.
+        Is None before parse_response_issues is called.
+        '''
+        def action(x):
+            (_, r) = x
+            return r
+
+        return general.maybe(functools.partial(general.map_values, action))(self.get_reviews)
+
     def parse_response_issues(self):
         '''
         Parse response issues for this project on Chalmers GitLab
@@ -1014,7 +1054,14 @@ class GroupProject:
 
         This method needs to be called before requests_and_responses
         in each contained handler data instance can be accessed.
+
+        Returns a boolean indicating if there is
+        a change in the review responses, if configured.
+        This includes the full issue title parsing, in particular the outcome.
         '''
+        if self.lab.have_reviews:
+            data_previous = self.reviews_data
+
         def f():
             for handler_data in self.handler_data.values():
                 yield from handler_data.response_issue_parser_data()
@@ -1035,13 +1082,24 @@ class GroupProject:
             with contextlib.suppress(AttributeError):
                 del handler_data.requests_and_responses
 
+        if self.lab.have_reviews:
+            data_current = self.reviews_data
+            if data_previous is None:
+                return True
+            return frozenset(data_current.items()) != frozenset(data_previous.items())
+        return False
+
     def process_requests(self):
         '''
         Process requests.
         This skips requests already marked as handled in the local grading repository.
+
+        Returns a dictionary mapping handler keys to sets of newly handed request names.
         '''
-        for handler_data in self.handler_data.values():
-            handler_data.process_requests()
+        return {
+            handler_key: handler_data.process_requests()
+            for (handler_key, handler_data) in self.handler_data.items()
+        }
 
     def submissions(self, deadline = None):
         '''
