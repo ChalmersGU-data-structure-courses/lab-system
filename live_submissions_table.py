@@ -666,7 +666,8 @@ class LiveSubmissionsTable:
         with doc.body:
             with dominate.tags.table(id = 'results'):
                 with dominate.tags.thead():
-                    for (name, column) in self.columns.items():
+                    for name in column_data.keys():
+                        column = columns[name]
                         cell = dominate.tags.th()
                         add_class(cell, name)
                         if column.sortable:
@@ -679,8 +680,8 @@ class LiveSubmissionsTable:
                     for group_id in group_ids:
                         logger.debug(f'processing group {self.lab.student_group(group_id)}')
                         with dominate.tags.tr():
-                            for (name, column) in self.columns.items():
-                                data = column_data[name]
+                            for (name, data) in column_data.items():
+                                column = columns[name]
                                 cell = dominate.tags.td()
                                 cell.is_pretty = False
                                 add_class(cell, name)
