@@ -15,15 +15,15 @@ class ProgramTermination(QueueEvent):
     pass
 
 @dataclass_incomparable
-class LabEntry:
+class LabEvent:
     lab_id: typing.Any
 
 @dataclass_incomparable
-class LabRefresh(LabEntry):
+class LabRefresh(LabEvent):
     pass
 
 @dataclass_incomparable
-class GroupProjectEvent(LabEntry):
+class GroupProjectEvent(LabEvent):
     group_id: typing.Any
     event: dict
 
@@ -50,10 +50,10 @@ def less_than(a, b):
     try:
         test_top(ProgramTermination)
 
-        assert both_instance(LabEntry)
+        assert both_instance(LabEvent)
         if not a.lab_id == b.lab_id:
-            raise R(False)
 
+            raise R(False)
         test_top(LabRefresh)
 
         assert both_instance(GroupProjectEvent)
