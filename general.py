@@ -424,7 +424,7 @@ def remove_prefix(xs, prefix, strict = True):
     return xs
 
 def map_values(f, u):
-    return dict((key, f(value)) for (key, value) in u.items())
+    return {key: f(value) for (key, value) in u.items()}
 
 def eq_on(x, y, f = identity):
     return f(x) == f(y)
