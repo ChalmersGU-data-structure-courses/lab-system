@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class SymlinkException(Exception, markdown.Markdown):
     def __init__(self, path):
         self.path = path
-        self.path_formatted = general.format_path(path)
+        self.path_formatted = path_tools.format_path(path)
 
 class HasSymlinkException(SymlinkException):
     def __str__(self):
