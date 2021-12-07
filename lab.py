@@ -880,6 +880,10 @@ class Lab:
             raise ValueError(f'cannot handle event of type {type(event)}:\n{event}')
 
         if isinstance(event, events.LabRefresh):
+            # Clear group members cache.
+            for group in self.student_groups():
+                group.members_clear()
+
             self.parse_response_issues()
             self.repo_fetch_all()
             groups_ids_with_new_reviews = self.parse_request_tags(from_gitlab = False)
@@ -889,7 +893,10 @@ class Lab:
                 group_ids = groups_ids_with_new_submissions | groups_ids_with_new_reviews
             )
         elif isinstance(event, events.GroupProjectEvent):
+            # Clear group members cache for this group.
             group = self.student_group(event.group_id)
+            group.members_clear()
+
             if isinstance(event, event.GroupProjectEventTag):
                 group.repo_fetch()
                 # Setting from_gitlab = True results in a single HTTP call.
