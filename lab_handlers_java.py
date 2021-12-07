@@ -22,7 +22,7 @@ class CompilationColumn(live_submissions_table.Column):
             dominate.util.text('Compilation')
 
     def get_value(self, group):
-        submission_current = group.submission_current(deadline = self.deadline)
+        submission_current = group.submission_current(deadline = self.config.deadline)
 
         report = submission_current.repo_tag(report_segments)
         url = gitlab_tools.url_blob(
@@ -58,7 +58,7 @@ class RobogradingColumn(live_submissions_table.Column):
             dominate.util.text('Robograding')
 
     def get_value(self, group):
-        submission_current = group.submission_current(deadline = self.deadline)
+        submission_current = group.submission_current(deadline = self.config.deadline)
         if not submission_current.handled_result['compilation_succeded']:
             return live_submissions_table.CallbackColumnValue(has_content = False)
 
@@ -85,7 +85,7 @@ class CompilationAndRobogradingColumn(live_submissions_table.Column):
             dominate.util.text('Robograding')
 
     def get_value(self, group):
-        submission_current = group.submission_current(deadline = self.deadline)
+        submission_current = group.submission_current(deadline = self.config.deadline)
 
         report = submission_current.repo_tag(report_segments)
 
