@@ -10,6 +10,7 @@ import git
 import gitlab
 import gitlab.v4.objects.tags
 
+import events
 import item_parser
 import general
 import git_tools
@@ -560,28 +561,6 @@ class Lab:
     #     finally:
     #         self.hooks_delete(hooks)
 
-    def hook_callback(self, event, group):
-        '''
-        Assumes that all groups have been processed and all rows in the live
-        submissions table have been generated before this event is handled.
-        '''
-        event_name = event['event_name']
-        if event_name == 'tag_push':
-            self.logger.info(f'Handling new tags for {group.name} in {self.name}.')
-            group.repo_fetch()
-            group.parse_request_tags(from_gitlab = False)
-            group.process_requests()
-        elif event_name == 'issue':
-            self.logger.info(f'Handling new issues for {group.name} in {self.name}.')
-            group.parse_response_issues()
-        else:
-            raise(f'Unknown event {event_name}')
-
-        self.update_grading_sheet(group_ids = [group.id])
-        if hasattr(self, 'live_submissions_table'):
-            self.live_submissions_table.update_row(group)
-            self.update_live_submissions_table(build_missing_rows = False)
-
     def setup_request_handlers(self):
         '''
         Setup the configured request handlers.
@@ -631,34 +610,70 @@ class Lab:
 
         This method needs to be called before requests_and_responses
         in each contained handler data instance can be accessed.
+
+        Returns the frozen set of group ids with changes in review issues (if configured).
         '''
         self.logger.info('Parsing response issues.')
-        for group in self.student_groups:
-            group.parse_response_issues()
+
+        def f():
+            for group in self.student_groups:
+                if group.parse_response_issues():
+                    yield group.id
+        return frozenset(f())
 
     def parse_requests_and_responses(self, from_gitlab = True):
         '''Calls parse_request_tags and parse_response_issues.'''
         self.parse_request_tags(from_gitlab = from_gitlab)
         self.parse_response_issues()
 
+    def process_group_request(self, group):
+        '''
+        Process a request in a group and update the lab system.
+        See GroupProject.process_request.
+
+        Returns a boolean indicating if a submission was newly processed.
+        In that case, we update the corresponding live submissions table row.
+        '''
+        requests_new = group.process_requests()
+        new_submission = requests_new[self.config.submission_handler_key]
+        if new_submission and hasattr(self, 'live_submissions_table'):
+            self.live_submissions_table.update_row(group)
+        return new_submission
+
     def process_requests(self):
         '''
-        Parse response issues for group projects in this lab.
+        Process requests in Parse response issues for group projects in this lab.
         This skips requests already marked as handled in the local grading repository.
         Before calling this method, the following setups steps need to have been executed:
         * self.setup_handlers()
         * requests and responses need to be up to date.
           Update responses before updating requests to avoid responses with no matching request.
+
+        The live submissions table is updated if it is set up.
+
+        Returns the frozen set of group ids with newly processed submissions.
         '''
         self.logger.info('Processing requests.')
         self.submission_solution.process_request()
-        for group in self.student_groups:
-            group.process_requests()
+
+        def f():
+            for group in self.student_groups:
+                requests_new = group.process_requests()
+                if requests_new[self.config.submission_handler_key]:
+                    if hasattr(self, 'live_submissions_table'):
+                        self.live_submissions_table.update_row(group)
+                    yield group.id
+        return frozenset(f())
 
     @functools.cached_property
     def submission_handler(self):
         '''The submission handler specified by the lab configuration.'''
         return self.config.request_handlers[self.config.submission_handler_key]
+
+    @functools.cached_property
+    def have_reviews(self):
+        '''Whether review response issues are configured.'''
+        return self.submission_handler.review_response_key is not None
 
     @functools.cached_property
     def review_template_issue(self):
@@ -851,6 +866,48 @@ class Lab:
                     ),
                 )
         request_buffer.flush()
+
+    def handle_event(self, event: events.LabEvent):
+        '''
+        Handle a lab event.
+        This could be:
+        * a request to refresh all group data
+          (requests and responses) from Chalmers GitLab,
+        * a notification that some group has created a new (potentially) request tag
+          or there was a change (create or edit) in a (potentially response) issue.
+        '''
+        def unknown_event():
+            raise ValueError(f'cannot handle event of type {type(event)}:\n{event}')
+
+        if isinstance(event, events.LabRefresh):
+            self.parse_response_issues()
+            self.repo_fetch_all()
+            groups_ids_with_new_reviews = self.parse_request_tags(from_gitlab = False)
+            groups_ids_with_new_submissions = self.process_requests()
+            self.repo_push()
+            self.update_grading_sheet(
+                group_ids = groups_ids_with_new_submissions | groups_ids_with_new_reviews
+            )
+        elif isinstance(event, events.GroupProjectEvent):
+            group = self.student_group(event.group_id)
+            if isinstance(event, event.GroupProjectEventTag):
+                group.repo_fetch()
+                # Setting from_gitlab = True results in a single HTTP call.
+                # It might be faster if we have a large number of remote tags.
+                group.parse_request_tags(from_gitlab = False)
+                new_submission = group.process_request()
+                if new_submission:
+                    self.update_grading_sheet(group_ids = [group.id])
+            elif isinstance(event, events.GroupProjectEventIssue):
+                review_change = group.parse_response_issues()
+                if review_change:
+                    if hasattr(self, 'live_submissions_table'):
+                        self.live_submissions_table.update_row(group)
+                    self.update_grading_sheet(group_ids = [group.id])
+            else:
+                unknown_event()
+        else:
+            unknown_event()
 
     def update_grading_sheet_and_live_submissions_table(self, deadline = None):
         '''
