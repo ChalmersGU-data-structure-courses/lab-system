@@ -780,35 +780,95 @@ class GroupProject:
             force = False,
         ))
 
-    def _hook_url(self, netloc):
+    def _hook_url(self, netloc = None):
+        '''
+        The URL to register for the given net location.
+        If 'netloc' is None, uses the configured default (see Course.hook_normalize_netloc).
+        '''
+        netloc = self.course.hook_normalize_netloc(netloc = netloc)
         return print_parse.url.print(print_parse.URL_HTTPS(netloc))
 
-    def hook_create(self, netloc):
+    def hooks_get(self):
+        '''
+        Get the currently installed webhooks in this group projects.
+        Returns a dictionary from net locations to lists of hooks.
+        '''
+        def f():
+            for hook in gitlab_tools.list_all(self.project.lazy.hooks):
+                url = print_parse.url.parse(hook.url)
+                yield (url.netloc, hook)
+        return general.multidict(f())
+
+    @staticmethod
+    def check_hook_configuration(hook):
+        '''
+        Check that the given hook is set up like expected.
+        That means:
+        * It should have notifications for the needed events enabled.
+        * It should have SSL certificate verification disabled.
+
+        Problems are raised as instances of ValueError.
+        '''
+        if not hook.tag_push_events:
+            raise ValueError('tag push events are not configured')
+        if not hook.issues_events:
+            raise ValueError('issue events are not configured')
+        if hook.enable_ssl_verification:
+            raise ValueError('hook does not have SSL certificate verification disabled')
+
+    def check_hooks(self, hooks = None, netloc = None):
+        '''
+        Check that the given hooks dictionary (as returned
+        by hooks_get) corresponds to a correct configuration.
+        Here, correct means: as created by a single call to hook_create.
+
+        If 'hooks' is None, get the hooks from the project.
+        If 'netloc' is None, uses the configured default (see Course.hook_normalize_netloc).
+
+        Raises ValueError if the hooks are not correct.
+        '''
+        if hooks is None:
+            hooks = self.hooks_get()
+        netloc = self.course.hook_normalize_netloc(netloc = netloc)
+
+        for (netloc_key, hook_list) in hooks.items():
+            if not netloc_key == netloc:
+                raise ValueError(f'hook for incorrect netloc {print_parse.netloc.print(netloc)}')
+
+            if len(hook_list) > 1:
+                raise ValueError(f'more than one hook for given netloc {print_parse.netloc.print(netloc)}')
+            [hook] = hook_list
+
+            self.check_hook_configuration(hook)
+
+    def hook_create(self, netloc = None):
         '''
         Create webhook in the student project on GitLab with the given net location.
         The hook is triggered via HTTPS if tags are updated or issues are changed.
         The argument netloc is an instance of print_parse.NetLoc.
 
+        If 'netloc' is None, uses the configured default (see Course.hook_normalize_netloc).
+
         Note: Due to a GitLab bug, the hook is not called when an issue is deleted.
               Thus, before deleting a response issue, you should first rename it
               (triggering the hook)  so that it is no longer recognized as a response issue.
         '''
-        url = self._hook_url(netloc)
+        url = self._hook_url(netloc = netloc)
         self.logger.debug(f'Creating project hook with url {url}')
         return self.project.lazy.hooks.create({
             'url': url,
             'enable_ssl_verification': 'false',
-            'token': self.course.config.gitlab_webhook_secret_token,
+            'token': self.course.config.webhook.secret_token,
             'issues_events': 'true',
             'tag_push_events': 'true',
         })
 
     def hook_delete(self, hook):
         ''' Delete a webhook in the student project on GitLab. '''
-        self.logger.debug(f'Deleting project hook with url {hook.url}')
+        self.logger.debug(f'Deleting project hook {hook.id} with url {hook.url}')
         hook.delete()
 
-    def hook_delete_all(self, netloc):
+    def hooks_delete_all(self, hooks = None, except_for = ()):
         '''
         Delete all webhook in the student project with the given netloc on GitLab.
         The argument netloc is an instance of print_parse.NetLoc.
@@ -817,19 +877,54 @@ class GroupProject:
         * when using hook_manager:
             if previous program runs where killed or stopped in a non-standard fashion
             that prevented cleanup and have left lingering webhooks.
+
+        If 'hooks' is None, get the hooks from the project.
+
+        If except_for is set, skips hooks that match the specified net location.
+        If that is None, uses the configured default (see Course.hook_normalize_netloc).
         '''
-        url = self._hook_url(netloc)
-        for hook in self.project.lazy.hooks.list(all = True):
-            if hook.url == url:
-                self.hook_delete(hook)
+        if except_for == ():
+            self.logger.debug('Deleting all project hooks')
+        else:
+            netloc = self.course.hook_normalize_netloc(except_for)
+            self.logger.debug(
+                'Deleting all project hooks except those with '
+                f'net location {print_parse.netloc.print(netloc)}'
+            )
+
+        if hooks is None:
+            hooks = self.hooks_get()
+
+        for (netloc_key, hook_list) in hooks.items():
+            for hook in hook_list:
+                if not (except_for != () and netloc_key == netloc):
+                    self.hook_delete(hook)
+
+    def hook_ensure(self, hooks = None, netloc = None):
+        '''
+        Ensure that the hook in this student project is correctly configured.
+        Also makes sure there are no other hooks.
+        (This is to deal with cases of changing IP addresses.)
+
+        If 'hooks' is None, get the hooks from the project.
+        If 'netloc' is None, uses the configured default (see Course.hook_normalize_netloc).
+        '''
+        self.logger.info('Ensuring webhook configuration.')
+        if hooks is None:
+            hooks = self.hooks_get()
+        try:
+            self.check_hooks(netloc = netloc)
+        except ValueError:
+            self.hook_delete_all()
+            self.hook_create(netloc = netloc)
 
     @contextlib.contextmanager
-    def hook_manager(self, netloc):
+    def hook_manager(self, netloc = None):
         '''
         A context manager for a webhook.
         Encapsulates hook_create and hool_delete.
         '''
-        hook = self.hook_create(netloc)
+        hook = self.hook_create(netloc = netloc)
         try:
             yield hook
         finally:

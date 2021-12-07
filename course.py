@@ -9,15 +9,19 @@ import json
 import logging
 import operator
 from pathlib import Path, PurePosixPath
+import random
 import shlex
 import types
 import urllib.parse
 
 import canvas
+import events
 import gitlab_tools
 import grading_sheet
 from instance_cache import instance_cache
+import ip_tools
 import print_parse
+import webhook_listener
 
 #===============================================================================
 # Tools
@@ -198,6 +202,21 @@ class Course:
             path = self.config.path.graders,
             name = 'Graders',
         )
+
+    @functools.cached_property
+    def graders(self):
+        return gitlab_tools.members_from_access(
+            self.graders_group.lazy,
+            [gitlab.OWNER_ACCESS]
+        )
+
+    @functools.cached_property
+    def grader_ids(self):
+        '''
+        A dictionary from grader ids to users on Chalmers GitLab.
+        Derived from self.graders.
+        '''
+        return dict({user.id: user for user in self.graders.values()})
 
     @functools.cached_property
     def labs(self):
@@ -742,13 +761,6 @@ class Course:
                 if not stored_invitations:
                     history.pop(str(user.id))
 
-    @functools.cached_property
-    def graders(self):
-        return gitlab_tools.members_from_access(
-            self.graders_group.lazy,
-            [gitlab.OWNER_ACCESS]
-        )
-
     def student_members(self, cached_entity):
         '''
         Get the student members of a group or project.
@@ -759,31 +771,217 @@ class Course:
             [gitlab.DEVELOPER_ACCESS, gitlab.MAINTAINER_ACCESS]
         )
 
+    def student_projects(self):
+        '''A generator for all contained student group projects.'''
+        for lab in self.labs.values():
+            yield from lab.student_groups
+
+    @functools.cached_property
+    def hook_netloc_default(self):
+        return print_parse.NetLoc(
+            host = ip_tools.get_local_ip_routing_to(print_parse.NetLoc(
+                host = print_parse.url.parse(self.config.base_url).netloc.host,
+                # TODO: determine port from self.config.base_url.
+                port = 443,
+            )),
+            port = self.config.webhook.local_port,
+        )
+
+    def hook_normalize_netloc(self, netloc = None):
+        '''
+        Normalize the given net location.
+
+        If netloc is not given, it is set as follows:
+        * ip address: address of the local interface routing to git.chalmers.se,
+        * port: as configured in course configuration.
+        '''
+        if netloc is None:
+            netloc = self.hook_netloc_default
+        return print_parse.netloc_normalize(netloc)
+
+    def hooks_create(self, netloc = None):
+        '''
+        Create webhooks in all group project in this course on GitLab with the given net location.
+        See group_project.GroupProject.hook_create.
+        Returns a dictionary mapping each lab to a dictionary mapping each group id to a hook.
+
+        Use this method only if you intend to create and
+        delete webhooks over separate program invocations.
+        Otherwise, the context manager hooks_manager is more appropriate.
+
+        If 'netloc' is None, uses the configured default (see Course.hook_normalize_netloc).
+        '''
+        self.logger.info('Creating project hooks in all labs')
+        hooks = dict()
+        try:
+            for lab in self.labs.values():
+                hooks[lab.id] = lab.hooks_create(netloc = netloc)
+            return hooks
+        except:  # noqa: E722
+            for (lab_id, hook) in hooks.items():
+                self.labs[lab_id].hooks_delete(hook, netloc = netloc)
+            raise
+
+    def hooks_delete(self, hooks, netloc = None):
+        '''
+        Delete webhooks in student projects in labs in this course on GitLab.
+        Takes a dictionary mapping each lab id to a dictionary mapping each group id to its hook.
+        See group_project.GroupProject.hook_delete.
+        '''
+        self.logger.info('Deleting project hooks in all labs')
+        for lab in self.labs.values():
+            lab.hooks_delete(hooks[lab.id], netloc = netloc)
+
+    def hooks_delete_all(self, except_for = ()):
+        '''
+        Delete all webhooks in all group project in all labs set up with the given netloc on GitLab.
+        See group_project.GroupProject.hook_delete_all.
+        '''
+        self.logger.info('Deleting all project hooks in all labs')
+        for lab in self.labs.values():
+            lab.hooks_delete_all(except_for = except_for)
+
+    def hooks_ensure(self, netloc = None, sample_size = 10):
+        '''
+        Ensure that all hooks for student projects in this course are correctly configured.
+        By default, only a random sample is checked.
+
+        If 'netloc' is None, uses the configured default (see Course.hook_normalize_netloc).
+
+        If sample_size is None, checks all student projects.
+        '''
+        self.logger.info('Ensuring webhook configuration.')
+        if sample_size is None:
+            for group in self.student_projects():
+                group.hook_ensure(netloc = netloc)
+        else:
+            netloc = self.hook_normalize_netloc(netloc = netloc)
+            all_groups = list(self.student_projects())
+            random_sample = random.sample(all_groups, min(len(all_groups), sample_size))
+            try:
+                for group in random_sample:
+                    group.check_hooks(netloc = netloc)
+            except ValueError as e:
+                self.logger.info(
+                    f'Hook configuration for {group.name} in {group.lab.name} incorrect: {str(e)}'
+                )
+                self.hooks_delete_all()
+                self.hooks_create(netloc = netloc)
+
     @contextlib.contextmanager
-    def hook_manager(self, netloc):
+    def hooks_manager(self, netloc = None):
         '''
         A context manager for installing GitLab web hooks for all student projects in all lab.
         This is an expensive operation, setting up and cleaning up costs one HTTP call per project.
         Yields a dictionary mapping each lab id to a dictionary mapping each group id
         to the hook installed in the project of that group.
+
+        If 'netloc' is None, uses the configured default (see Course.hook_normalize_netloc).
         '''
         self.logger.info('Creating project hooks in all labs')
         try:
             with contextlib.ExitStack() as stack:
                 def f():
                     for lab in self.labs.values():
-                        yield (lab.id, stack.enter_context(lab.hook_manager(netloc)))
+                        yield (lab.id, stack.enter_context(lab.hook_manager(netloc = netloc)))
                 yield dict(f())
         finally:
             self.logger.info('Deleted project hooks in all labs')
+
+    def parse_hook_event(self, event, strict = False):
+        '''
+        Takes an event received from a webhook and returns
+        a corresponding instance of events.GroupProjectEvent.
+
+        if 'strict' is set, raises an exception if
+        the event is not one of the types we can handle.
+
+        Returns None if the event should be ignored.
+
+        Uses self.graders, which takes an HTTP call
+        to compute the first time it is accessed.
+        Make sure to precompute this attribute before you
+        call this method in a time-sensitive environment.
+
+        For a tag push event, we always generate a queue event.
+        TODO: check that the tag name matches a request matcher.
+
+        For an issue event, we only generate a queue event if both:
+        - the (current or previous) author is a grader,
+        - the title has changed.
+        '''
+        # Find the relevant lab and group project.
+        project_path = PurePosixPath(event['project']['path_with_namespace'])
+        project_path = project_path.relative_to(self.config.path.groups)
+        (group_id_gitlab, lab_full_id) = project_path.parts
+
+        # Find the lab and group ids.
+        lab_id = self.config.lab.full_id.parse(lab_full_id)
+        lab = self.labs[lab_id]
+
+        group_id = self.config.group.id_gitlab.parse(group_id_gitlab)
+        group = lab.student_group(group_id)
+
+        kwargs = {
+            'lab_id': lab_id,
+            'group_id': group_id,
+            'event': event,
+        }
+
+        event_type = webhook_listener.event_type(event)
+        if event_type == 'tag_push':
+            self.logger.debug(f'Received a tag push event for {group.name} in {lab.name}.')
+            return events.GroupProjectEventTag(**kwargs)
+        elif event_type == 'issue':
+            self.logger.debug(f'Received an issue event for {group.name} in {lab.name}.')
+            changes = event.get('changes')
+
+            def author_id():
+                object_attributes = event.get('object_attributes')
+                if object_attributes is not None:
+                    return object_attributes['author_id']
+
+                author_id_changes = changes['author_id']
+                for version in ['current', 'previous']:
+                    author_id = author_id_changes[version]
+                    if author_id is not None:
+                        return author_id
+
+                raise ValueError('Could not determine author id in the following issue event: {event}')
+            author_id = author_id()
+            author_is_grader = author_id in self.grader_ids
+            self.logger.debug(
+                f'Detected issue author id {author_id}, member of graders: {author_is_grader}'
+            )
+
+            def title_change():
+                if changes is None:
+                    return False
+
+                title_changes = changes.get('title')
+                if title_changes is None:
+                    return False
+
+                return title_changes['current'] != title_changes['previous']
+            title_change = title_change()
+            self.logger.debug(f'Detected title change: {title_change}')
+
+            if author_is_grader and title_change:
+                return events.GroupProjectEventTag(**kwargs)
+        else:
+            if strict:
+                raise(f'Unknown event {event_type}')
+            self.logger.debug(f'Received unexpected event with type {event_type}.')
+
+        return None
 
     def hook_callback(self, event):
         '''Only supports hooks in student group projects.'''
         try:
             # Only handle certain kinds of callbacks.
-            event_name = event['event_name']
-            if not event_name in ['tag_push', 'issue']:
-                raise(f'Unknown event {event_name}')
+            event_type = event['event_type']
+            if not event_type in ['tag_push', 'issue']:
+                raise(f'Unknown event type {event_type}')
 
             # Find the relevant lab and group project.
             project_path = PurePosixPath(event['project']['path_with_namespace'])
