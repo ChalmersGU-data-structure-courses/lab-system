@@ -376,10 +376,12 @@ class RequestAndResponses:
         Process request.
         This only proceeds if the request is not already
         marked handled in the local grading repository.
+
+        Returns a boolean indicating if the request was not handled before.
         '''
         # Skip processing if we already handled this request.
         if self.get_handled():
-            return
+            return False
 
         where = '' if self.group is None else f' in {self.group.name}'
         self.logger.info(f'Processing request {self.request_name}{where}.')
@@ -411,6 +413,8 @@ class RequestAndResponses:
         # Clear cache of tags in the local grading repository.
         with contextlib.suppress(AttributeError):
             del self.lab.tags
+
+        return True
 
 class HandlerData:
     '''
@@ -519,9 +523,14 @@ class HandlerData:
         Process requests.
         This method assumes that requests_and_responses has been set up.
         It skips requests already marked as handled in the local grading repository.
+
+        Returns the set of request names that were newly handled.
         '''
-        for request_and_responses in self.requests_and_responses.values():
-            request_and_responses.process_request()
+        def f():
+            for request_and_responses in self.requests_and_responses.values():
+                if request_and_responses.process_request():
+                    yield request_and_responses.request_name
+        return set(f())
 
 class GroupProject:
     '''
@@ -1039,9 +1048,13 @@ class GroupProject:
         '''
         Process requests.
         This skips requests already marked as handled in the local grading repository.
+
+        Returns a dictionary mapping handler keys to sets of newly handed request names.
         '''
-        for handler_data in self.handler_data.values():
-            handler_data.process_requests()
+        return {
+            handler_key: handler_data.process_requests()
+            for (handler_key, handler_data) in self.handler_data.items()
+        }
 
     def submissions(self, deadline = None):
         '''
