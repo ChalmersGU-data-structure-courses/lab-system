@@ -119,12 +119,16 @@ def run(
             yield (dir, [java_tools.permission_all])
         yield (submission_bin, [java_tools.permission_file(submission_src.resolve(), True), *permissions])
 
+    # Necessary we call java_tools.run in a different working directory
+    # and the generator resolves paths.
+    policy_entries = list(policy_entries())
+
     # Run the robograder.
     logger.debug('Running robograder.')
     with path_tools.working_dir(submission_src):
         process = java_tools.run(
             entrypoint,
-            policy_entries = policy_entries(),
+            policy_entries = policy_entries,
             args = arguments,
             classpath = [submission_bin, *classpath],
             stdout = subprocess.PIPE,
