@@ -23,8 +23,8 @@ def setup_seccomp(callback = None):
 
     If something unexpectedly fails, run it under strace to see what it was trying to do.
 
-    Supported configurations (add yours):
-    * x64 Linux with glibc
+    Supported configurations (add yours after testing; add calls if needed):
+    * x64 Linux 5.15 with glibc 2.33
     * x64 Linux with musl
     '''
     from seccomp import Arg, ALLOW, EQ, MASKED_EQ
