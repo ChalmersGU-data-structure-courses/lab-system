@@ -591,7 +591,7 @@ class Lab:
         for handler in self.config.request_handlers.values():
             handler.setup(self)
 
-    def setup_live_submission_table(self, deadline = None):
+    def setup_live_submissions_table(self, deadline = None):
         '''
         Setup the live submissions table.
         Takes an optional deadline parameter for limiting submissions to include.
