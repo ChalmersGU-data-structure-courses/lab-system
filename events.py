@@ -7,11 +7,11 @@ import general
 dataclass_incomparable = dataclasses.dataclass(eq = False)
 
 @dataclass_incomparable
-class QueueEvent:
+class Event:
     pass
 
 @dataclass_incomparable
-class ProgramTermination(QueueEvent):
+class ProgramTermination(Event):
     pass
 
 @dataclass_incomparable
