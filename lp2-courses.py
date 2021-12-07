@@ -4,7 +4,7 @@ from course import Course
 from this_dir import this_dir
 
 logging.basicConfig()
-logging.getLogger().setLevel(logging.INFO)
+logging.getLogger().setLevel(logging.DEBUG)
 
 import java.gitlab_config as config_java
 course_java = Course(config_java, dir = this_dir / 'java')
