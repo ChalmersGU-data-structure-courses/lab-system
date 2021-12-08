@@ -13,6 +13,7 @@ import os
 import shlex
 import subprocess
 import sys
+import threading
 
 
 def identity(x):
@@ -553,3 +554,9 @@ def flatten_hierarchy(u, key_combine = tuple):
 @dataclasses.dataclass
 class BoolException(Exception):
     value: bool
+
+# From https://stackoverflow.com/a/48741004.
+class RepeatTimer(Timer):
+    def run(self):
+        while not self.finished.wait(self.interval):
+            self.function(*self.args, **self.kwargs)
