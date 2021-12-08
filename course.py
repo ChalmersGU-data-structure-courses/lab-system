@@ -1067,7 +1067,10 @@ class Course:
                     self.webhook_server.server_forever()
                 finally:
                     self.event_queue.add(events.ProgramTermination)
-            self.webhook_server_thread = threading.Thread(target = webhook_server_run)
+            self.webhook_server_thread = threading.Thread(
+                target = webhook_server_run,
+                name = 'webhook-server-listener',
+            )
             thread_managers.append(general.add_cleanup(
                 threading_tools.thread_manager(self.webhook_server_thread),
                 self.webhook_server.shutdown
@@ -1081,6 +1084,7 @@ class Course:
                     self.config.webhook.event_loop_runtime.total_seconds(),
                     shutdown,
                 )
+                self.shutdown_timer = 'shutdown-timer'
                 thread_managers.append(self.shutdown_timer)
 
             # Set up lab refresh event timers.
@@ -1097,6 +1101,7 @@ class Course:
                         refresh_lab,
                         lab.id,
                     )
+                    lab.refresh_timer.name = f'lab-refresh-timer<{lab.name}>'
                     thread_managers.append(lab.refresh_timer)
 
             # Start the threads.

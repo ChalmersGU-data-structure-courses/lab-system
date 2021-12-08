@@ -15,6 +15,7 @@ class RepeatTimer(threading.Timer):
 
 @contextlib.contextmanager
 def thread_manager(thread):
+    logger.debug(f'starting thread {thread.name}')
     thread.start()
     try:
         yield
