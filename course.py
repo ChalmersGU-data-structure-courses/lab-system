@@ -16,6 +16,8 @@ import threading
 import types
 import urllib.parse
 
+import more_itertools
+
 import canvas
 import events
 import gitlab_tools
@@ -24,6 +26,7 @@ from instance_cache import instance_cache
 import ip_tools
 import print_parse
 import subsuming_queue
+import threading_tools
 import webhook_listener
 
 #===============================================================================
@@ -1030,34 +1033,87 @@ class Course:
         for lab in self.labs.values():
             lab.initial_run()
 
-    def run_event_loop(self):
+    def run_event_loop(self, netloc = None):
+        '''
+        Run the event loop.
+        This method only returns after an event of
+        kind ProgramTermination has been processed.
+
+        Arguments:
+        * netloc:
+            The local net location to listen to for webhook notifications.
+            If 'netloc' is None, uses the configured default (see Course.hook_normalize_netloc).
+        '''
+        # List of context managers for managing threads we create.
+        thread_managers = []
+
+        # The event queue.
         self.event_queue = subsuming_queue.SubsumingQueue()
 
-        # Set up program termination event.
-        def shutdown():
-            self.event_queue.add(events.ProgramTermination())
-            for lab in self.labs.values():
-                lab.refresh_timer.cancel()
+        # Set up the server for listening for group project events.
+        def add_webhook_event(hook_event):
+            print(hook_event)
+            event = self.parse_hook_event(hook_event)
+            self.event_queue.add(event)
+        netloc = self.hook_normalize_netloc(netloc)
+        webhook_listener_manager = webhook_listener.listener_manager(
+            netloc,
+            self.config.webhook.secret_token,
+            add_webhook_event,
+        )
+        with webhook_listener_manager as self.webhook_server:
+            def webhook_server_run():
+                try:
+                    self.webhook_server.server_forever()
+                finally:
+                    self.event_queue.add(events.ProgramTermination)
+            self.webhook_server_thread = threading.Thread(target = webhook_server_run)
+            thread_managers.append(general.add_cleanup(
+                threading_tools.thread_manager(self.webhook_server_thread),
+                self.webhook_server.shutdown
+            ))
 
-        if self.config.webhook.event_loop_runtime is not None:
-            self.shutdown_timer = threading.Timer(
-                self.config.webhook.event_loop_runtime.total_seconds(),
-                shutdown
-            )
-
-        # Set up lab refresh events.
-        def refresh_lab(lab_id):
-            self.even_queue.add(events.LabRefresh(lab_id))
-
-        delay = datetime.timedelta()
-        for lab in self.labs.values():
-            if lab.config.refresh_period is not None:
-                lab.refresh_timer = general.RepeatTimer(
-                    lab.config.refresh_duration + delay,
-                    refresh_lab,
-                    lab.id,
+            # Set up program termination timer.
+            def shutdown():
+                self.event_queue.add(events.ProgramTermination())
+            if self.config.webhook.event_loop_runtime is not None:
+                self.shutdown_timer = threading.Timer(
+                    self.config.webhook.event_loop_runtime.total_seconds(),
+                    shutdown,
                 )
-                delay = delay + self.config.webhook.first_lab_refresh_delay
+                thread_managers.append(self.shutdown_timer)
+
+            # Set up lab refresh event timers.
+            def refresh_lab(lab_id):
+                self.event_queue.add(events.LabRefresh(lab_id))
+            delays = more_itertools.iterate(
+                lambda x: x + self.config.webhook.first_lab_refresh_delay,
+                datetime.timedelta()
+            )
+            for lab in self.labs.values():
+                if lab.config.refresh_period is not None:
+                    lab.refresh_timer = general.RepeatTimer(
+                        lab.config.refresh_duration + next(delays),
+                        refresh_lab,
+                        lab.id,
+                    )
+                    thread_managers.append(lab.refresh_timer)
+
+            # Start the threads.
+            with contextlib.ExitStack() as stack:
+                for manager in thread_managers:
+                    stack.enter_context(manager)
+
+                # The event loop.
+                while True:
+                    event = self.event_queue.remove()
+                    if isinstance(event, events.ProgramTermination):
+                        self.info('Program termination event received, shutting down.')
+                        return
+                    elif isinstance(event, events.LabEvent):
+                        self.labs[event.lab_id].handle_event(event)
+                    else:
+                        raise ValueError(f'cannot handle event of type {type(event)}:\n{event}')
 
     @contextlib.contextmanager
     def error_reporter(self):
