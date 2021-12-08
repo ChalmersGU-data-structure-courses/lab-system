@@ -1,4 +1,5 @@
 # Variables starting with an underscore are only used locally.
+import datetime
 from pathlib import PurePosixPath
 import re
 from types import SimpleNamespace
@@ -291,25 +292,55 @@ _lab_config = SimpleNamespace(
     # Key of submission handler in the dictionary of request handlers.
     # Its value must be an instance of SubmissionHandler.
     submission_handler_key = None,
+
+    # Lab refresh period if the script is run in an event loop.
+    # The webhooks on GitLab may fail to trigger in some cases:
+    # * too many tags pushed at the same time,
+    # * transient network failure,
+    # * hook misconfiguration.
+    # For that reason, we reprocess the entire lab every so often.
+    # The period in which this happen is sepcified by this variable.
+    # If it is None, no period reprocessing happens.
+    #
+    # Some hints on choosing suitable values:
+    # * Not so busy labs can have longer refresh periods.
+    # * A lower bound is 15 minutes, even for very busy labs.
+    # * It is good if the refresh periods of
+    #   different labs are not very close to
+    #   each other and do not form simple ratios.
+		#   If they are identical, configure webhook.first_lab_refresh_delay
+		#   so that refreshes of different labs
+		#   are not scheduled for the same time.
+		#   This would cause a lack of responsiveness
+		#   for webhook-triggered updates.
+    # * Values of several hours are acceptable
+    #   if the webhook notifications work reliably.
+    refresh_period = datetime.timedelta(minutes = 15)
 )
 
 _language = 'java'
 
-
-# TODO: fix
 class _LabConfig:
-    def __init__(self, k, lab_folder, has_robograder):
+    def __init__(self, k, lab_folder, refresh_period):
         self.path_source = _code_root / 'labs' / lab_folder / _language
         self.path_gitignore = _code_root / 'Other' / 'lab-gitignore' / f'{_language}.gitignore'
         self.grading_sheet = lab.name.print(k)
-        self.canvas_path_awaiting_grading = (
-            PurePosixPath('temp') / '{}-awaiting-grading.html'.format(lab.full_id.print(k))
-        )
+        self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-to-be-graded.html'.format(lab.full_id.print(k))
 
-        self.compiler = robograder_java.compile
-        self.submission_handlers = [
-            robograder_java.Robograder(self.path_source, machine_speed = 1) if has_robograder else None
-        ]
+        def f():
+            yield ('submission', lab_handlers_java.SubmissionHandler())
+            try:
+                robograder_java.LabRobograder(self.path_source)
+                yield ('robograding', lab_handlers_java.RobogradingHandler())
+            except robograder_java.RobograderMissingException:
+                pass
+        self.request_handlers = dict(f())
+
+        self.refresh_duration = refresh_period
+
+    # Key of submission handler in the dictionary of request handlers.
+    # Its value must be an instance of SubmissionHandler.
+    submission_handler_key = 'submission'
 
 
 def _lab_item(k, *args):
@@ -318,10 +349,10 @@ def _lab_item(k, *args):
 
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
-    _lab_item(1, 'sorting-complexity'),
-    _lab_item(2, 'autocomplete'),
-    _lab_item(3, 'plagiarism-detection'),
-    _lab_item(4, 'path-finder'),
+    _lab_item(1, 'sorting-complexity'  , datetime.timedelta(minutes = 15)),
+    _lab_item(2, 'autocomplete'        , datetime.timedelta(minutes = 15)),
+    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15)),
+    _lab_item(4, 'path-finder'         , datetime.timedelta(minutes = 15)),
 ])
 
 # Students taking part in labs who are not registered on Canvas.
@@ -384,4 +415,18 @@ webhook = SimpleNamespace(
 
     # Local port to listen on for webhook notifications.
     local_port = 4200,
+
+    # Maximal runtime of the event loop.
+    # If None, the event loop runs forever.
+    # After this period, a program termination
+    # event (highest priority) is scheduled.
+    event_loop_runtime = datetime.timedelta(days = 1)
+
+    # Artificial delay to between the first scheduling of
+    # lab refresh events for successive labs with lab refreshes.
+    # The k-th lab with lab refreshed is scheduled for a refresh after:
+    #     lab_refresh_period + k * first_lab_refresh_delay.
+    # Useful to avoid processing whole labs contiguously,
+    # causing longer response periods for webhook-triggered updates.
+    first_lab_refresh_delay = datetime.timedelta(minutes = 3),
 )
