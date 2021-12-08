@@ -1,5 +1,6 @@
 import atomicwrites
 import contextlib
+import datetime
 import dateutil.parser
 import enum
 import functools
@@ -11,6 +12,7 @@ import operator
 from pathlib import Path, PurePosixPath
 import random
 import shlex
+import threading
 import types
 import urllib.parse
 
@@ -21,6 +23,7 @@ import grading_sheet
 from instance_cache import instance_cache
 import ip_tools
 import print_parse
+import subsuming_queue
 import webhook_listener
 
 #===============================================================================
@@ -1016,6 +1019,45 @@ class Course:
             return ((), issue)
 
         return functools.partial(self.parse_issues, 'grading template', parser, parsed_issues)
+
+    def setup(self):
+        '''Sets up all labs.'''
+        for lab in self.labs.values():
+            lab.setup()
+
+    def initial_run(self):
+        '''Does initial runs of all labs.'''
+        for lab in self.labs.values():
+            lab.initial_run()
+
+    def run_event_loop(self):
+        self.event_queue = subsuming_queue.SubsumingQueue()
+
+        # Set up program termination event.
+        def shutdown():
+            self.event_queue.add(events.ProgramTermination())
+            for lab in self.labs.values():
+                lab.refresh_timer.cancel()
+
+        if self.config.webhook.event_loop_runtime is not None:
+            self.shutdown_timer = threading.Timer(
+                self.config.webhook.event_loop_runtime.total_seconds(),
+                shutdown
+            )
+
+        # Set up lab refresh events.
+        def refresh_lab(lab_id):
+            self.even_queue.add(events.LabRefresh(lab_id))
+
+        delay = datetime.timedelta()
+        for lab in self.labs.values():
+            if lab.config.refresh_period is not None:
+                lab.refresh_timer = general.RepeatTimer(
+                    lab.config.refresh_duration + delay,
+                    refresh_lab,
+                    lab.id,
+                )
+                delay = delay + self.config.webhook.first_lab_refresh_delay
 
     @contextlib.contextmanager
     def error_reporter(self):
