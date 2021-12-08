@@ -582,13 +582,32 @@ class Lab:
         '''
         if deadline is None:
             deadline = self.deadline
-
         config = live_submissions_table.Config(deadline = deadline)
+
         self.live_submissions_table = live_submissions_table.LiveSubmissionsTable(
             self,
             config = config,
             column_types = self.submission_handler.grading_columns,
         )
+
+    def setup(self, deadline = None, use_live_submissions_table = True):
+        '''
+        General setup method.
+        Call before any request processing is started.
+
+        Arguments:
+        * deadline:
+            Passed to setup_live_submissions_table.
+            If set, overrides self.deadline.
+        * use_live_submissions_table:
+            Whether to build and update a live submissions table
+            of submissions needing reviews (by graders).
+        '''
+        if deadline is None:
+            deadline = self.deadline
+
+        self.setup_request_handlers()
+        self.setup_live_submissions_table(deadline = self.deadline)
 
     def parse_request_tags(self, from_gitlab = True):
         '''
@@ -776,10 +795,19 @@ class Lab:
             if group.submission_current(deadline = deadline) is not None:
                 yield group_id
 
-    def update_live_submissions_table(self, deadline = None, build_missing_rows = True):
+    def update_live_submissions_table(self, group_ids = None, build_missing_rows = False):
+        '''
+        Updates the live submissions table on Canvas.
+
+        See LiveSubmissionsTable.build for argument descriptions.
+        '''
         self.logger.info('Updating live submissions table')
         with path_tools.temp_file() as file:
-            self.live_submissions_table.build(file, build_missing_rows = build_missing_rows)
+            self.live_submissions_table.build(
+                file,
+                group_ids = group_ids,
+                build_missing_rows = build_missing_rows
+            )
             self.logger.info('Posting live submissions table to Canvas')
             target = self.config.canvas_path_awaiting_grading
             folder = self.course.canvas_course.get_folder_by_path(target.parent)
@@ -870,6 +898,27 @@ class Lab:
                 )
         request_buffer.flush()
 
+    def initial_run(self, deadline = None):
+        '''
+        Does an initial run of processing everything.
+
+        Assumes that setup has already occurred.
+        After this method is called, the instance is ready
+        to lab handle events as described in handle_event.
+
+        Arguments:
+        * deadline:
+            Passed to update_grading_sheet.
+            If set, overrides self.deadline.
+        '''
+        self.parse_response_issues()
+        self.repo_fetch_all()
+        self.parse_request_tags(False)
+        self.process_requests()
+        self.repo_push()
+        self.update_live_submissions_table()
+        self.update_grading_sheet(deadline = deadline)
+
     def handle_event(self, event: events.LabEvent):
         '''
         Handle a lab event.
@@ -892,6 +941,7 @@ class Lab:
             groups_ids_with_new_reviews = self.parse_request_tags(from_gitlab = False)
             groups_ids_with_new_submissions = self.process_requests()
             self.repo_push()
+            self.update_live_submissions_table()
             self.update_grading_sheet(
                 group_ids = groups_ids_with_new_submissions | groups_ids_with_new_reviews
             )
@@ -907,12 +957,14 @@ class Lab:
                 group.parse_request_tags(from_gitlab = False)
                 new_submission = group.process_request()
                 if new_submission:
+                    self.update_live_submissions_table()
                     self.update_grading_sheet(group_ids = [group.id])
             elif isinstance(event, events.GroupProjectEventIssue):
                 review_change = group.parse_response_issues()
                 if review_change:
                     if hasattr(self, 'live_submissions_table'):
                         self.live_submissions_table.update_row(group)
+                        self.update_live_submissions_table()
                     self.update_grading_sheet(group_ids = [group.id])
             else:
                 unknown_event()
@@ -920,22 +972,9 @@ class Lab:
             unknown_event()
 
     def update_grading_sheet_and_live_submissions_table(self, deadline = None):
-        '''
-        Does what its name says.
-
-        Passes the deadline parameters to the methods update_grading_sheet and update_live_submissions_table.
-        '''
-        self.setup_request_handlers()
-        self.parse_response_issues()
-        self.repo_fetch_all()
-        self.parse_request_tags(False)
-        self.setup_request_handlers()
-        self.process_requests()
-        self.repo_push()
-        self.setup_live_submissions_table(deadline = deadline)
-        self.update_live_submissions_table()
-        self.update_grading_sheet(deadline = deadline)
-        self.repo_push()  # Needed because update_grading_sheet might add stuff to repo.
+        '''Does what it says.'''
+        self.setup(deadline = deadline)
+        self.initial_run(deadline = deadline)
 
     def checkout_tag_hierarchy(self, dir):
         '''
