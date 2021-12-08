@@ -512,7 +512,8 @@ class HandlerData:
                 if request_and_responses is None:
                     self.logger.warning(gitlab_tools.format_issue_metadata(
                         issue_data[0],
-                        f'Response issue in {self.group.name} with no matching request tag:'
+                        f'Response issue in {self.group.name} '
+                        'with no matching request tag (ignoring):'
                     ))
                 else:
                     request_and_responses.responses[response_key] = issue_data

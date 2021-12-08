@@ -575,7 +575,6 @@ class LiveSubmissionsTable:
         with contextlib.suppress(AttributeError):
             del self.lab.tags
 
-
     def build(self, file, group_ids = None, build_missing_rows = False):
         '''
         Build the live submissions table.
@@ -590,9 +589,13 @@ class LiveSubmissionsTable:
             for the specified deadline are supported.
             (Each supplied column type is responsible for this.)
         * build_missing_rows:
-            Whether to build a row if it is missing for some group.
-            Note: if this option is enabled, the grading repository will be
-            updated and might contain new tags that the produced table relies on.
+            If set, group rows that are missing in the current state of
+            the live submissions table and required by this call are built.
+            In that case, the grading repository may have been updated
+            with new tags that the produced table relies on,
+            so you should follow up with pushing it.
+            The recommended way to run this method
+            is with build_missing_rows not set.
         '''
         logger.info('building live submissions table...')
 
@@ -608,6 +611,7 @@ class LiveSubmissionsTable:
             if not group_id in self.group_rows:
                 group = self.lab.student_group(group_id)
                 if build_missing_rows:
+                    logger.warning(f'row data for {group.name} is missing, rebuilding')
                     self.update_row(group)
                 else:
                     raise ValueError(f'live submissions table misses row for {group.name}')

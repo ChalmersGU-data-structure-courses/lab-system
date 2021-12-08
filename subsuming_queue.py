@@ -34,7 +34,8 @@ def rebuild_queue(queue_it, item):
 class SubsumingQueue:
     '''
     A subsuming queue for elements of a partial order.
-    Existing queue entries can be replaced by items that have priority over them.
+    Existing queue entries are replaced by items that have
+    priority over them (except if they have the same priority).
 
     Queue invariant:
     No two entries have comparable priority.
