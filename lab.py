@@ -76,10 +76,13 @@ class Lab:
             Local directory used as local copy of the grading repository.
             Only its parent directory has to exist.
         * deadline:
-            Optional deadline to use for the grading sheet and live submissions table.
-            Only submissions in time for the deadline will be considered.
+            Optional deadline for submissioms.
+            If set, submissions to consider for the grading sheet
+            and live submissions table are limited by this deadline.
+            It is up to lab handlers how they want to treat late submissions.
+            At the moment, all lab handler implementations
+            do not inspect the lab deadline.
         '''
-
         self.logger = logger
         self.course = course
         self.id = id
@@ -632,7 +635,7 @@ class Lab:
         See GroupProject.process_request.
 
         Returns a boolean indicating if a submission was newly processed.
-        In that case, we update the corresponding live submissions table row.
+        In that case, we update the corresponding group row in the live submissions table.
         '''
         requests_new = group.process_requests()
         new_submission = requests_new[self.config.submission_handler_key]
@@ -649,7 +652,7 @@ class Lab:
         * requests and responses need to be up to date.
           Update responses before updating requests to avoid responses with no matching request.
 
-        The live submissions table is updated if it is set up.
+        The changed group rows in the live submissions table (if set up) are updated.
 
         Returns the frozen set of group ids with newly processed submissions.
         '''
