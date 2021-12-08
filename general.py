@@ -1,4 +1,5 @@
 from collections import defaultdict, namedtuple
+import contextlib
 import dataclasses
 from datetime import datetime, timedelta, timezone
 import decimal
@@ -13,7 +14,6 @@ import os
 import shlex
 import subprocess
 import sys
-import threading
 
 
 def identity(x):
@@ -555,8 +555,21 @@ def flatten_hierarchy(u, key_combine = tuple):
 class BoolException(Exception):
     value: bool
 
-# From https://stackoverflow.com/a/48741004.
-class RepeatTimer(Timer):
-    def run(self):
-        while not self.finished.wait(self.interval):
-            self.function(*self.args, **self.kwargs)
+@contextlib.contextmanager
+def add_cleanup(manager, action):
+    '''
+    Adds a cleanup action to a context manager.
+
+    Arguments:
+    * manager: The manager to modify.
+    * action:
+        A nullary callback function.
+        Called just before the manager.__exit__ is called.
+
+    Returns the new context manager.
+    '''
+    with manager:
+        try:
+            yield
+        finally:
+            action()
