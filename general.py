@@ -568,8 +568,8 @@ def add_cleanup(manager, action):
 
     Returns the new context manager.
     '''
-    with manager:
+    with manager as value:
         try:
-            yield
+            yield value
         finally:
             action()

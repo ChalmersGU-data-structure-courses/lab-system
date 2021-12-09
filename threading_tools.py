@@ -1,4 +1,5 @@
 import contextlib
+import datetime
 import logging
 import threading
 
@@ -13,6 +14,37 @@ class RepeatTimer(threading.Timer):
         while not self.finished.wait(self.interval):
             self.function(*self.args, **self.kwargs)
 
+def Timer(
+    interval,
+    callback,
+    args = list(),
+    kwargs = dict(),
+    name = None,
+    repeat = False,
+):
+    '''
+    Wrapper around the constructors of threading.Timer and RepeatTimer.
+
+    Arguments:
+    * interval:
+        The timer interval specified as either:
+        - an instance of datetime.timedelta,
+        - an integer or floating-point number.
+    * callback:
+        As for the constructor of threading.Timer.
+    * args, kwargs:
+        The positional and keyword arguments for the constructor of threading.Timer.
+    * name:
+        An optional thread name for the timer thread.
+    * repeat:
+        Whether the timer should trigger repeatedly after each interval instead of just one.
+    '''
+    interval = interval.total_seconds() if isinstance(interval, datetime.timedelta) else interval
+    cls = RepeatTimer if repeat else threading.Timer
+    timer = cls(interval, callback, args = args, kwargs = kwargs)
+    timer.name = name
+    return timer
+
 @contextlib.contextmanager
 def thread_manager(thread):
     logger.debug(f'starting thread {thread.name}')
@@ -22,9 +54,8 @@ def thread_manager(thread):
     finally:
         logger.debug(f'waiting for thread {thread.name} to join...')
         thread.join()
-        logger.debug('thread {thread.name} has joined')
+        logger.debug(f'thread {thread.name} has joined')
 
-@contextlib.contextmanager
 def timer_manager(timer):
     def cleanup():
         logger.debug(f'cancelling timer {timer.name}')
