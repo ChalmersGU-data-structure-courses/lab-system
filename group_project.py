@@ -848,13 +848,20 @@ class GroupProject:
 
         for (netloc_key, hook_list) in hooks.items():
             if not netloc_key == netloc:
-                raise ValueError(f'hook for incorrect netloc {print_parse.netloc.print(netloc)}')
+                raise ValueError(f'hook for incorrect netloc {print_parse.netloc.print(netloc_key)}')
 
-            if len(hook_list) > 1:
-                raise ValueError(f'more than one hook for given netloc {print_parse.netloc.print(netloc)}')
+        hook_list = hooks.get(netloc)
+        if not hook_list:
+            raise ValueError(f'hook missing for given netloc {print_parse.netloc.print(netloc)}')
+
+        try:
             [hook] = hook_list
+        except ValueError:
+            raise ValueError(
+                f'more than one hook given netloc {print_parse.netloc.print(netloc)}'
+            ) from None
 
-            self.check_hook_configuration(hook)
+        self.check_hook_configuration(hook)
 
     def hook_create(self, netloc = None):
         '''
