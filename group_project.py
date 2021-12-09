@@ -700,6 +700,12 @@ class GroupProject:
         '''
         return git_tools.tag_exist(GroupProject.repo_tag(self, request_name, segments))
 
+    def repo_tag_mark_repo_updated(self):
+        # Mark local grading repository as updated and clear cache of tags.
+        (self.lab if isinstance(self, GroupProject) else self).repo_updated = True
+        with contextlib.suppress(AttributeError):
+            del self.lab.tags
+
     def repo_tag_create(self, request_name, segments = ['tag'], ref = None, **kwargs):
         '''
         Create a tag in the grading repository for the current lab group.
@@ -730,8 +736,7 @@ class GroupProject:
             ref = ref,
             **kwargs,
         )
-
-        (self.lab if isinstance(self, GroupProject) else self).repo_updated = True
+        self.repo_tag_mark_repo_updated()
         return tag
 
     def repo_tag_delete(self, request_name, segments):
@@ -743,7 +748,7 @@ class GroupProject:
         * request_name, segments: As for repo_tag.
         '''
         self.lab.delete_tag(GroupProject.repo_tag(self, request_name, segments).name)
-        (self.lab if isinstance(self, GroupProject) else self).repo_updated = True
+        self.repo_tag_mark_repo_updated()
 
     def hotfix_group(self, branch_hotfix, branch_group):
         '''
