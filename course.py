@@ -972,8 +972,15 @@ class Course:
             title_change = title_change()
             self.logger.debug(f'Detected title change: {title_change}')
 
+            # TODO.
+            # We could go further and only queue and event
+            # if the old or new title parses as a review issue.
+            # But then GroupProjectEventIssue should be renamed GroupProjectEventReviewIssue.
+            # We don't do mch work in handling GroupProjectEventIssue for non-review issues anyway.
+            # And it might be beneficial to be up-to-date also with non-review response issues.
+            # So keeping this as is for now.
             if author_is_grader and title_change:
-                return events.GroupProjectEventTag(**kwargs)
+                return events.GroupProjectEventIssue(**kwargs)
         else:
             if strict:
                 raise(f'Unknown event {event_type}')
