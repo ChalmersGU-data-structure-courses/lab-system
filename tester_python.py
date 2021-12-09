@@ -108,6 +108,7 @@ class LabTester:
                 stdout = subprocess.PIPE,
                 stderr = subprocess.PIPE,
                 start_new_session = True,
+                env = env,
             )
             # TODO: Terminate if size of out or err exceeds to be configured threshold.
             try:
