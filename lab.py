@@ -954,14 +954,14 @@ class Lab:
             self.parse_request_tags(from_gitlab = False)
             group_ids_with_new_submissions |= self.process_requests()
         elif isinstance(event, events.GroupProjectEvent):
-            group_name = self.config.group.name.print(event.group_id)
+            group_name = self.course.config.group.name.print(event.group_id)
             self.logger.debug(f'Group project event received for {group_name}.')
 
             # Clear group members cache for this group.
             group = self.student_group(event.group_id)
             group.members_clear()
 
-            if isinstance(event, event.GroupProjectEventTag):
+            if isinstance(event, events.GroupProjectEventTag):
                 self.logger.info(
                     f'Group project tag event received for {group_name} in {lab_name}.'
                 )
@@ -969,7 +969,7 @@ class Lab:
                 # Setting from_gitlab = True results in a single HTTP call.
                 # It might be faster if we have a large number of remote tags.
                 group.parse_request_tags(from_gitlab = False)
-                if group.process_request():
+                if self.process_group_request(group):
                     group_ids_with_new_submissions.add(event.group_id)
             elif isinstance(event, events.GroupProjectEventIssue):
                 self.logger.info(
