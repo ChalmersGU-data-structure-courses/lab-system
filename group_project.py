@@ -877,13 +877,23 @@ class GroupProject:
         '''
         url = self._hook_url(netloc = netloc)
         self.logger.debug(f'Creating project hook with url {url}')
-        return self.project.lazy.hooks.create({
-            'url': url,
-            'enable_ssl_verification': 'false',
-            'token': self.course.config.webhook.secret_token,
-            'issues_events': 'true',
-            'tag_push_events': 'true',
-        })
+        try:
+            return self.project.lazy.hooks.create({
+                'url': url,
+                'enable_ssl_verification': 'false',
+                'token': self.course.config.webhook.secret_token,
+                'issues_events': 'true',
+                'tag_push_events': 'true',
+            })
+        except gitlab.exceptions.GitlabCreateError as e:
+            if e.response_code == 422 and e.error_message == 'Invalid url given':
+                host = print_parse.url.parse(self.course.config.base_url).netloc.host
+                raise ValueError(
+                    f'Invalid net location {print_parse.netloc.print(netloc)} '
+                    f'for a GitLab webhook at {host}.'
+                ) from None
+            else:
+                raise
 
     def hook_delete(self, hook):
         ''' Delete a webhook in the student project on GitLab. '''
