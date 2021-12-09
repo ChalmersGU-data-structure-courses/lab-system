@@ -83,7 +83,8 @@ def server_manager(netloc, secret_token, callback, logger = logger):
                 server.socket,
                 certfile = file_cert,
                 keyfile = file_key,
-                server_side = True)
+                server_side = True
+            )
 
             # Set the server attributes used by the handler.
             server.secret_token = secret_token
