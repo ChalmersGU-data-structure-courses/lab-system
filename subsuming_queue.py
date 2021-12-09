@@ -74,5 +74,7 @@ class SubsumingQueue:
             try:
                 return next(self.queue)
             except StopIteration:
-                self.inhabited.wait()
-                return next(self.queue)
+                pass
+
+            self.inhabited.wait()
+            return next(self.queue)
