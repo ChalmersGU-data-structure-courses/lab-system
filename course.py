@@ -1080,12 +1080,12 @@ class Course:
             def shutdown():
                 self.event_queue.add(events.ProgramTermination())
             if self.config.webhook.event_loop_runtime is not None:
-                self.shutdown_timer = threading.Timer(
-                    self.config.webhook.event_loop_runtime.total_seconds(),
+                self.shutdown_timer = threading_tools.Timer(
+                    self.config.webhook.event_loop_runtime,
                     shutdown,
+                    name = 'shutdown-timer',
                 )
-                self.shutdown_timer = 'shutdown-timer'
-                thread_managers.append(self.shutdown_timer)
+                thread_managers.append(threading_tools.timer_manager(self.shutdown_timer))
 
             # Set up lab refresh event timers.
             def refresh_lab(lab_id):
@@ -1096,13 +1096,14 @@ class Course:
             )
             for lab in self.labs.values():
                 if lab.config.refresh_period is not None:
-                    lab.refresh_timer = general.RepeatTimer(
-                        lab.config.refresh_duration + next(delays),
+                    lab.refresh_timer = threading_tools.Timer(
+                        lab.config.refresh_period + next(delays),
                         refresh_lab,
-                        lab.id,
+                        args = [lab.id],
+                        name = f'lab-refresh-timer<{lab.name}>',
+                        repeat = True,
                     )
-                    lab.refresh_timer.name = f'lab-refresh-timer<{lab.name}>'
-                    thread_managers.append(lab.refresh_timer)
+                    thread_managers.append(threading_tools.timer_manager(lab.refresh_timer))
 
             # Start the threads.
             with contextlib.ExitStack() as stack:
