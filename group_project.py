@@ -702,9 +702,10 @@ class GroupProject:
 
     def repo_tag_mark_repo_updated(self):
         # Mark local grading repository as updated and clear cache of tags.
-        (self.lab if isinstance(self, GroupProject) else self).repo_updated = True
+        lab = self.lab if isinstance(self, GroupProject) else self
+        lab.repo_updated = True
         with contextlib.suppress(AttributeError):
-            del self.lab.tags
+            del lab.tags
 
     def repo_tag_create(self, request_name, segments = ['tag'], ref = None, **kwargs):
         '''
@@ -736,7 +737,7 @@ class GroupProject:
             ref = ref,
             **kwargs,
         )
-        self.repo_tag_mark_repo_updated()
+        GroupProject.repo_tag_mark_repo_updated(self)
         return tag
 
     def repo_tag_delete(self, request_name, segments):
@@ -748,7 +749,7 @@ class GroupProject:
         * request_name, segments: As for repo_tag.
         '''
         self.lab.delete_tag(GroupProject.repo_tag(self, request_name, segments).name)
-        self.repo_tag_mark_repo_updated()
+        GroupProject.repo_tag_mark_repo_updated(self)
 
     def hotfix_group(self, branch_hotfix, branch_group):
         '''
