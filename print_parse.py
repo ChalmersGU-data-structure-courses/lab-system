@@ -321,6 +321,10 @@ NetLoc = collections.namedtuple(
     defaults = [None, None, None]
 )
 
+def netloc_normalize(it):
+    '''Normalize an iterable into a net location.'''
+    return NetLoc(*it)
+
 # Exercise.
 # Merge _netloc_print and _netloc_regex_parse into a nice printer-parser network.
 def _netloc_print(netloc):

@@ -82,9 +82,6 @@ class LabTester:
             if self.dir_lab.parent.name == 'autocomplete':
                 env['NO_SANDBOX'] = '1'
 
-            def store(kind, result):
-                path_tools.add_suffix(dir_out / name, f'.{kind}').write_text(result)
-
             general.log_command(logger, cmd)
             logger.debug(f'Timeout value is {test.timeout / self.machine_speed} seconds.')
 
