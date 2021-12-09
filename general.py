@@ -573,3 +573,15 @@ def add_cleanup(manager, action):
             yield value
         finally:
             action()
+
+def partial_ordering(cls):
+    '''
+    Class decorator that fills in missing ordering methods for a partial order.
+    The given class must define __le_.
+    For this, we define __lt__.
+    '''
+    def __lt__(a, b):
+        return a <= b and not b <= a
+
+    cls.__lt__ = __lt__
+    return cls

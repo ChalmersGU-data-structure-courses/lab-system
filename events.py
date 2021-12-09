@@ -15,7 +15,7 @@ class ProgramTermination(Event):
     pass
 
 @dataclass_incomparable
-class LabEvent:
+class LabEvent(Event):
     lab_id: typing.Any
 
 @dataclass_incomparable
@@ -35,9 +35,9 @@ class GroupProjectEventTag(GroupProjectEvent):
 class GroupProjectEventIssue(GroupProjectEvent):
     pass
 
-def less_than(a, b):
+def __le__(a, b):
     R = general.BoolException
-    cases = [(a, False), (b, True)]
+    cases = [(a, True), (b, False)]
 
     def test_top(cls):
         for (x, result) in cases:
@@ -52,7 +52,6 @@ def less_than(a, b):
 
         assert both_instance(LabEvent)
         if not a.lab_id == b.lab_id:
-
             raise R(False)
         test_top(LabRefresh)
 
@@ -66,3 +65,6 @@ def less_than(a, b):
         raise R(False)
     except R as e:
         return e.value
+
+Event.__le__ = __le__
+general.partial_ordering(Event)
