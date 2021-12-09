@@ -948,8 +948,8 @@ class Lab:
 
         lab_name = self.course.config.lab.name.print(event.lab_id)
 
-        group_ids_with_review_updates = set()
-        group_ids_with_new_submissions = set()
+        groups_with_review_updates = set()
+        groups_with_new_submissions = set()
 
         if isinstance(event, events.LabRefresh):
             self.logger.info(f'Lab refresh event received for {lab_name}.')
@@ -959,10 +959,10 @@ class Lab:
                 group.members_clear()
 
             # Process requests and responses.
-            group_ids_with_review_updates |= self.parse_response_issues()
+            groups_with_review_updates |= self.parse_response_issues()
             self.repo_fetch_all()
             self.parse_request_tags(from_gitlab = False)
-            group_ids_with_new_submissions |= self.process_requests()
+            groups_with_new_submissions |= self.process_requests()
         elif isinstance(event, events.GroupProjectEvent):
             group_name = self.course.config.group.name.print(event.group_id)
             self.logger.debug(f'Group project event received for {group_name}.')
@@ -980,33 +980,33 @@ class Lab:
                 # It might be faster if we have a large number of remote tags.
                 group.parse_request_tags(from_gitlab = False)
                 if self.process_group_request(group):
-                    group_ids_with_new_submissions.add(event.group_id)
+                    groups_with_new_submissions.add(event.group_id)
             elif isinstance(event, events.GroupProjectEventIssue):
                 self.logger.info(
                     f'Group project issue event received for {group_name} in {lab_name}.'
                 )
                 if group.parse_response_issues():
-                    group_ids_with_review_updates.add(event.group_id)
+                    groups_with_review_updates.add(event.group_id)
             else:
                 unknown_event()
         else:
             unknown_event()
 
         # Identify groups with submission updates.
-        self.logger.info(f'Groups with new submissions: {group_ids_with_new_submissions}')
-        self.logger.info(f'Groups with review updates: {group_ids_with_review_updates}')
-        group_ids_with_submission_updates = (
-            group_ids_with_review_updates | group_ids_with_new_submissions
+        self.logger.info(f'Groups with new submissions: {groups_with_new_submissions}')
+        self.logger.info(f'Groups with review updates: {groups_with_review_updates}')
+        groups_with_submission_updates = (
+            groups_with_review_updates | groups_with_new_submissions
         )
 
         # Update submission systems.
         if hasattr(self, 'live_submissions_table'):
-            self.live_submissions_table.update_rows(group_ids = group_ids_with_submission_updates)
+            self.live_submissions_table.update_rows(group_ids = groups_with_submission_updates)
         self.repo_push()
-        if group_ids_with_submission_updates:
+        if groups_with_submission_updates:
             if hasattr(self, 'live_submissions_table'):
                 self.update_live_submissions_table()
-            self.update_grading_sheet(group_ids = group_ids_with_submission_updates)
+            self.update_grading_sheet(group_ids = groups_with_submission_updates)
 
     def update_grading_sheet_and_live_submissions_table(self, deadline = None):
         '''Does what it says.'''

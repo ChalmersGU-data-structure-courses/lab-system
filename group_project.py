@@ -1107,9 +1107,12 @@ class GroupProject:
 
         if self.lab.have_reviews:
             data_current = self.reviews_data
+            self.logger.debug(f'current reviews: {data_current}')
             if data_previous is None:
+                self.logger.debug('previous reviews not fetched')
                 return True
-            return frozenset(data_current.items()) != frozenset(data_previous.items())
+            self.logger.debug(f'previous reviews: {data_previous}')
+            return data_current != data_previous
         return False
 
     def process_requests(self):
