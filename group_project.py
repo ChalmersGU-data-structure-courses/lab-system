@@ -1037,7 +1037,7 @@ class GroupProject:
     @property
     def reviews_data(self):
         '''
-        Modified version get_reviews.
+        Modified version of reviews.
         The returned dictionary has as values only the issue title parsing.
         Is None before parse_response_issues is called.
         '''
@@ -1045,7 +1045,7 @@ class GroupProject:
             (_, r) = x
             return r
 
-        return general.maybe(functools.partial(general.map_values, action))(self.get_reviews)
+        return general.maybe(functools.partial(general.map_values, action))(self.reviews)
 
     def parse_response_issues(self):
         '''

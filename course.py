@@ -1023,10 +1023,10 @@ class Course:
 
         return functools.partial(self.parse_issues, 'grading template', parser, parsed_issues)
 
-    def setup(self):
+    def setup(self, use_live_submissions_table = True):
         '''Sets up all labs.'''
         for lab in self.labs.values():
-            lab.setup()
+            lab.setup(use_live_submissions_table = use_live_submissions_table)
 
     def initial_run(self):
         '''Does initial runs of all labs.'''
@@ -1056,7 +1056,7 @@ class Course:
             event = self.parse_hook_event(hook_event)
             self.event_queue.add(event)
         netloc = self.hook_normalize_netloc(netloc)
-        webhook_listener_manager = webhook_listener.listener_manager(
+        webhook_listener_manager = webhook_listener.server_manager(
             netloc,
             self.config.webhook.secret_token,
             add_webhook_event,
@@ -1064,16 +1064,16 @@ class Course:
         with webhook_listener_manager as self.webhook_server:
             def webhook_server_run():
                 try:
-                    self.webhook_server.server_forever()
+                    self.webhook_server.serve_forever()
                 finally:
-                    self.event_queue.add(events.ProgramTermination)
+                    self.event_queue.add(events.ProgramTermination())
             self.webhook_server_thread = threading.Thread(
                 target = webhook_server_run,
                 name = 'webhook-server-listener',
             )
             thread_managers.append(general.add_cleanup(
                 threading_tools.thread_manager(self.webhook_server_thread),
-                self.webhook_server.shutdown
+                self.webhook_server.shutdown,
             ))
 
             # Set up program termination timer.
@@ -1111,12 +1111,17 @@ class Course:
                     stack.enter_context(manager)
 
                 # The event loop.
+                self.logger.info('Entering event loop.')
                 while True:
                     event = self.event_queue.remove()
                     if isinstance(event, events.ProgramTermination):
-                        self.info('Program termination event received, shutting down.')
+                        self.logger.info('Program termination event received, shutting down.')
                         return
                     elif isinstance(event, events.LabEvent):
+                        self.logger.debug(
+                            f'Lab event received for {self.config.lab.name.print(event.lab_id)}, '
+                            'forwarding to lab event handler.'
+                        )
                         self.labs[event.lab_id].handle_event(event)
                     else:
                         raise ValueError(f'cannot handle event of type {type(event)}:\n{event}')

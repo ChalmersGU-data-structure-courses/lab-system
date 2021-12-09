@@ -931,26 +931,49 @@ class Lab:
         def unknown_event():
             raise ValueError(f'cannot handle event of type {type(event)}:\n{event}')
 
+        lab_name = self.course.config.lab.name.print(event.lab_id)
         if isinstance(event, events.LabRefresh):
+            self.logger.info(f'Lab refresh event received for {lab_name}.')
+
             # Clear group members cache.
-            for group in self.student_groups():
+            for group in self.student_groups:
                 group.members_clear()
 
-            self.parse_response_issues()
+            # Process requests and responses.
+            group_ids_with_new_reviews = self.parse_response_issues()
             self.repo_fetch_all()
-            groups_ids_with_new_reviews = self.parse_request_tags(from_gitlab = False)
-            groups_ids_with_new_submissions = self.process_requests()
-            self.repo_push()
-            self.update_live_submissions_table()
-            self.update_grading_sheet(
-                group_ids = groups_ids_with_new_submissions | groups_ids_with_new_reviews
+            self.parse_request_tags(from_gitlab = False)
+            group_ids_with_new_submissions = self.process_requests()
+
+            # Identify groups with submission updates.
+            self.logger.info(f'Groups with new review issues: {group_ids_with_new_reviews}')
+            self.logger.info(f'Groups with new submissions: {group_ids_with_new_submissions}')
+            group_ids_submission_update = (
+                group_ids_with_new_submissions | group_ids_with_new_reviews
             )
+
+            # Update submission systems.
+            if group_ids_submission_update:
+                self.repo_push()
+                self.update_live_submissions_table()
+                self.update_grading_sheet(
+                    group_ids = group_ids_submission_update
+                )
         elif isinstance(event, events.GroupProjectEvent):
+            group_name = self.config.group.name.print(event.group_id)
+            self.logger.debug(
+                f'Group project event received for {group_name}, '
+                'forwarding to group project event handler.'
+            )
+
             # Clear group members cache for this group.
             group = self.student_group(event.group_id)
             group.members_clear()
 
             if isinstance(event, event.GroupProjectEventTag):
+                self.logger.info(
+                    f'Group project tag event received for {group_name} in {lab_name}.'
+                )
                 group.repo_fetch()
                 # Setting from_gitlab = True results in a single HTTP call.
                 # It might be faster if we have a large number of remote tags.
@@ -960,6 +983,9 @@ class Lab:
                     self.update_live_submissions_table()
                     self.update_grading_sheet(group_ids = [group.id])
             elif isinstance(event, events.GroupProjectEventIssue):
+                self.logger.info(
+                    f'Group project issue event received for {group_name} in {lab_name}.'
+                )
                 review_change = group.parse_response_issues()
                 if review_change:
                     if hasattr(self, 'live_submissions_table'):
