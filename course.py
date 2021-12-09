@@ -1036,8 +1036,12 @@ class Course:
     def run_event_loop(self, netloc = None):
         '''
         Run the event loop.
+
         This method only returns after an event of
         kind ProgramTermination has been processed.
+
+        The event loop starts with processing of all labs.
+        So it is unnecessary to prefix it with a call to initial_run.
 
         Arguments:
         * netloc:
@@ -1087,7 +1091,7 @@ class Course:
                 )
                 thread_managers.append(threading_tools.timer_manager(self.shutdown_timer))
 
-            # Set up lab refresh event timers.
+            # Set up lab refresh event timers and add initial lab refreshes.
             def refresh_lab(lab_id):
                 self.event_queue.add(events.LabRefresh(lab_id))
             delays = more_itertools.iterate(
@@ -1096,6 +1100,7 @@ class Course:
             )
             for lab in self.labs.values():
                 if lab.config.refresh_period is not None:
+                    self.event_queue.add(events.LabRefresh(lab.id))
                     lab.refresh_timer = threading_tools.Timer(
                         lab.config.refresh_period + next(delays),
                         refresh_lab,
@@ -1111,8 +1116,8 @@ class Course:
                     stack.enter_context(manager)
 
                 # The event loop.
-                self.logger.info('Entering event loop.')
                 while True:
+                    self.logger.info('Waiting for event.')
                     event = self.event_queue.remove()
                     if isinstance(event, events.ProgramTermination):
                         self.logger.info('Program termination event received, shutting down.')
