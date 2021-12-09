@@ -1,4 +1,5 @@
 # Variables starting with an underscore are only used locally.
+import datetime
 from pathlib import PurePosixPath
 import re
 from types import SimpleNamespace
@@ -278,16 +279,41 @@ _lab_config = SimpleNamespace(
 
     # Key of review issue title printer-parser in specified submission handler.
     review_issue_title_key = 'grading',
+
+    # Lab refresh period if the script is run in an event loop.
+    # The webhooks on GitLab may fail to trigger in some cases:
+    # * too many tags pushed at the same time,
+    # * transient network failure,
+    # * hook misconfiguration.
+    # For that reason, we reprocess the entire lab every so often.
+    # The period in which this happen is sepcified by this variable.
+    # If it is None, no periodic reprocessing happens.
+    #
+    # Some hints on choosing suitable values:
+    # * Not so busy labs can have longer refresh periods.
+    # * A lower bound is 15 minutes, even for very busy labs.
+    # * It is good if the refresh periods of
+    #   different labs are not very close to
+    #   each other and do not form simple ratios.
+    #   If they are identical, configure webhook.first_lab_refresh_delay
+    #   so that refreshes of different labs
+    #   are not scheduled for the same time.
+    #   This would cause a lack of responsiveness
+    #   for webhook-triggered updates.
+    # * Values of several hours are acceptable
+    #   if the webhook notifications work reliably.
+    refresh_period = datetime.timedelta(minutes = 15)
 )
 
 _language = 'python'
 
 class _LabConfig:
-    def __init__(self, k, lab_folder):
+    def __init__(self, k, lab_folder, refresh_period):
         self.path_source = _code_root / 'labs' / lab_folder / _language
         self.path_gitignore = _code_root / 'Other' / 'lab-gitignore' / f'{_language}.gitignore'
         self.grading_sheet = lab.name.print(k)
         self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-to-be-graded.html'.format(lab.full_id.print(k))
+        self.refresh_period = refresh_period
 
     # Dictionary of request handlers.
     # Its keys should be string-convertible.
@@ -307,11 +333,9 @@ def _lab_item(k, *args):
 
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
-    _lab_item(1, 'sorting-complexity'),
-    _lab_item(2, 'autocomplete'),
-    _lab_item(3, 'plagiarism-detection'),
-#    _lab_item(4, 'path-finder'),
-
+    _lab_item(1, 'sorting-complexity'  , datetime.timedelta(minutes = 30)),  # noqa: E203
+    _lab_item(2, 'autocomplete'        , datetime.timedelta(minutes = 30)),  # noqa: E203
+    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 30)),  # noqa: E203
 ])
 
 # Students taking part in labs who are not registered on Canvas.
@@ -352,6 +376,37 @@ def gitlab_username_from_canvas_user_id(course, user_id):
     except KeyError:
         return cid
 
-# Used for programmatic push notifications on GitLab.
-# Value doesn't matter, but should not be guessable.
-gitlab_webhook_secret_token = 'a not-so-well-chosen secret'
+# Configuration for webhooks on Chalmers GitLab.
+# These are used for programmatic push notifications.
+#
+# We asume that there is no NAT between us and Chalmers GitLab.
+# If there is you need to do one of the the following:
+# * Run the lab script with Chalmers VPN.
+# * Support an explicit netloc argument to the webhook functions.
+#   Organize for connections to the net location given to Chalmers GitLab
+#   to each us at the net location used for listening.
+#   For example, you might use SSH reverse port forwarding:
+#       ssh -R *:<remote port>:localhost:<local port: <server>
+#   and give (<server>, <remote port>) to Chalmers GitLab
+#   while binding locally to (localhost, <local port>).
+webhook = SimpleNamespace(
+    # Value doesn't matter, but should not be guessable.
+    secret_token = 'a not-so-well-chosen secret',
+
+    # Local port to listen on for webhook notifications.
+    local_port = 4201,
+
+    # Maximal runtime of the event loop.
+    # If None, the event loop runs forever.
+    # After this period, a program termination
+    # event (highest priority) is scheduled.
+    event_loop_runtime = datetime.timedelta(days = 1),
+
+    # Artificial delay to between the first scheduling of
+    # lab refresh events for successive labs with lab refreshes.
+    # The k-th lab with lab refreshed is scheduled for a refresh after:
+    #     lab_refresh_period + k * first_lab_refresh_delay.
+    # Useful to avoid processing whole labs contiguously,
+    # causing longer response periods for webhook-triggered updates.
+    first_lab_refresh_delay = datetime.timedelta(minutes = 3),
+)
