@@ -5,6 +5,9 @@ import path_tools
 
 # Find proot executable at module import to make sure it exists.
 proot = distutils.spawn.find_executable(Path('proot'))
+if proot is None:
+    raise ValueError('executable proot not found (suggested fix: install system package proot)')
+proot = Path(proot)
 
 def proot_args(
     args,
