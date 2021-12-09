@@ -31,10 +31,15 @@ def rebuild_queue(queue_it, item):
         # No decision yet, emit current entry.
         yield entry
 
+    # Priority of item unrelated to queue entries.
+    # Add it to the end.
+    yield item
+
 class SubsumingQueue:
     '''
     A subsuming queue for elements of a partial order.
-    Existing queue entries can be replaced by items that have priority over them.
+    Existing queue entries are replaced by items that have
+    priority over them (except if they have the same priority).
 
     Queue invariant:
     No two entries have comparable priority.
@@ -66,5 +71,8 @@ class SubsumingQueue:
         Waits until an entry becomes available.
         '''
         with self.mutex:
-            self.inhabited.wait()
-            return next(self.queue)
+            try:
+                return next(self.queue)
+            except StopIteration:
+                self.inhabited.wait()
+                return next(self.queue)

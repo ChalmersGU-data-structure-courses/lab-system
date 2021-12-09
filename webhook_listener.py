@@ -1,3 +1,4 @@
+import contextlib
 import json
 import http.server
 import logging
@@ -33,8 +34,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
             )
             return
 
-        print(self.headers)
-
         # Read data and conclude request.
         data_raw = self.rfile.read(int(self.headers['Content-Length']))
         self.send_response(200)
@@ -45,10 +44,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.server.logger.debug('received hook callback with data:\n' + str(self.info))
         self.server.callback(self.info)
 
-def listen_forever(netloc, secret_token, callback, logger = logger):
+@contextlib.contextmanager
+def server_manager(netloc, secret_token, callback, logger = logger):
     '''
-    Listens forever on the given net location.
-    We only process webhook notifications from GitLab with the correct secret token.
+    Context manager for an HTTP server that processes webhook notifications from GitLab.
+    Only notifications with the correct secret token are considered.
 
     Arguments:
     * netloc:
@@ -83,12 +83,12 @@ def listen_forever(netloc, secret_token, callback, logger = logger):
                 server.socket,
                 certfile = file_cert,
                 keyfile = file_key,
-                server_side = True)
+                server_side = True
+            )
 
             # Set the server attributes used by the handler.
             server.secret_token = secret_token
             server.callback = callback
             server.logger = logger
 
-            # Serve forever.
-            server.serve_forever()
+            yield server

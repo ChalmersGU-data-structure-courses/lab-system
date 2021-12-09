@@ -512,7 +512,8 @@ class HandlerData:
                 if request_and_responses is None:
                     self.logger.warning(gitlab_tools.format_issue_metadata(
                         issue_data[0],
-                        f'Response issue in {self.group.name} with no matching request tag:'
+                        f'Response issue in {self.group.name} '
+                        'with no matching request tag (ignoring):'
                     ))
                 else:
                     request_and_responses.responses[response_key] = issue_data
@@ -699,6 +700,12 @@ class GroupProject:
         '''
         return git_tools.tag_exist(GroupProject.repo_tag(self, request_name, segments))
 
+    def repo_tag_mark_repo_updated(self):
+        # Mark local grading repository as updated and clear cache of tags.
+        (self.lab if isinstance(self, GroupProject) else self).repo_updated = True
+        with contextlib.suppress(AttributeError):
+            del self.lab.tags
+
     def repo_tag_create(self, request_name, segments = ['tag'], ref = None, **kwargs):
         '''
         Create a tag in the grading repository for the current lab group.
@@ -729,8 +736,7 @@ class GroupProject:
             ref = ref,
             **kwargs,
         )
-
-        (self.lab if isinstance(self, GroupProject) else self).repo_updated = True
+        self.repo_tag_mark_repo_updated()
         return tag
 
     def repo_tag_delete(self, request_name, segments):
@@ -742,7 +748,7 @@ class GroupProject:
         * request_name, segments: As for repo_tag.
         '''
         self.lab.delete_tag(GroupProject.repo_tag(self, request_name, segments).name)
-        (self.lab if isinstance(self, GroupProject) else self).repo_updated = True
+        self.repo_tag_mark_repo_updated()
 
     def hotfix_group(self, branch_hotfix, branch_group):
         '''
@@ -842,13 +848,20 @@ class GroupProject:
 
         for (netloc_key, hook_list) in hooks.items():
             if not netloc_key == netloc:
-                raise ValueError(f'hook for incorrect netloc {print_parse.netloc.print(netloc)}')
+                raise ValueError(f'hook for incorrect netloc {print_parse.netloc.print(netloc_key)}')
 
-            if len(hook_list) > 1:
-                raise ValueError(f'more than one hook for given netloc {print_parse.netloc.print(netloc)}')
+        hook_list = hooks.get(netloc)
+        if not hook_list:
+            raise ValueError(f'hook missing for given netloc {print_parse.netloc.print(netloc)}')
+
+        try:
             [hook] = hook_list
+        except ValueError:
+            raise ValueError(
+                f'more than one hook given netloc {print_parse.netloc.print(netloc)}'
+            ) from None
 
-            self.check_hook_configuration(hook)
+        self.check_hook_configuration(hook)
 
     def hook_create(self, netloc = None):
         '''
@@ -864,13 +877,23 @@ class GroupProject:
         '''
         url = self._hook_url(netloc = netloc)
         self.logger.debug(f'Creating project hook with url {url}')
-        return self.project.lazy.hooks.create({
-            'url': url,
-            'enable_ssl_verification': 'false',
-            'token': self.course.config.webhook.secret_token,
-            'issues_events': 'true',
-            'tag_push_events': 'true',
-        })
+        try:
+            return self.project.lazy.hooks.create({
+                'url': url,
+                'enable_ssl_verification': 'false',
+                'token': self.course.config.webhook.secret_token,
+                'issues_events': 'true',
+                'tag_push_events': 'true',
+            })
+        except gitlab.exceptions.GitlabCreateError as e:
+            if e.response_code == 422 and e.error_message == 'Invalid url given':
+                host = print_parse.url.parse(self.course.config.base_url).netloc.host
+                raise ValueError(
+                    f'Invalid net location {print_parse.netloc.print(netloc)} '
+                    f'for a GitLab webhook at {host}.'
+                ) from e
+            else:
+                raise
 
     def hook_delete(self, hook):
         ''' Delete a webhook in the student project on GitLab. '''
@@ -1036,7 +1059,7 @@ class GroupProject:
     @property
     def reviews_data(self):
         '''
-        Modified version get_reviews.
+        Modified version of reviews.
         The returned dictionary has as values only the issue title parsing.
         Is None before parse_response_issues is called.
         '''
@@ -1044,7 +1067,7 @@ class GroupProject:
             (_, r) = x
             return r
 
-        return general.maybe(functools.partial(general.map_values, action))(self.get_reviews)
+        return general.maybe(functools.partial(general.map_values, action))(self.reviews)
 
     def parse_response_issues(self):
         '''
@@ -1084,9 +1107,12 @@ class GroupProject:
 
         if self.lab.have_reviews:
             data_current = self.reviews_data
+            self.logger.debug(f'current reviews: {data_current}')
             if data_previous is None:
+                self.logger.debug('previous reviews not fetched')
                 return True
-            return frozenset(data_current.items()) != frozenset(data_previous.items())
+            self.logger.debug(f'previous reviews: {data_previous}')
+            return data_current != data_previous
         return False
 
     def process_requests(self):

@@ -1,4 +1,5 @@
 from collections import defaultdict, namedtuple
+import contextlib
 import dataclasses
 from datetime import datetime, timedelta, timezone
 import decimal
@@ -556,3 +557,34 @@ def flatten_hierarchy(u, key_combine = tuple):
 @dataclasses.dataclass
 class BoolException(Exception):
     value: bool
+
+@contextlib.contextmanager
+def add_cleanup(manager, action):
+    '''
+    Adds a cleanup action to a context manager.
+
+    Arguments:
+    * manager: The manager to modify.
+    * action:
+        A nullary callback function.
+        Called just before the manager.__exit__ is called.
+
+    Returns the new context manager.
+    '''
+    with manager as value:
+        try:
+            yield value
+        finally:
+            action()
+
+def partial_ordering(cls):
+    '''
+    Class decorator that fills in missing ordering methods for a partial order.
+    The given class must define __le_.
+    For this, we define __lt__.
+    '''
+    def __lt__(a, b):
+        return a <= b and not b <= a
+
+    cls.__lt__ = __lt__
+    return cls

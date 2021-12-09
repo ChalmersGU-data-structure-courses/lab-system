@@ -31,6 +31,7 @@ class CompilationColumn(live_submissions_table.Column):
             report_compilation,
         )
 
+        # TODO: fix spelling mistake in next version.
         if not submission_current.handled_result['compilation_succeded']:
             cl = 'error'
             sort_key = 0

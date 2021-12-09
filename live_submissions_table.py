@@ -1,5 +1,4 @@
 import collections
-import contextlib
 import logging
 from pathlib import Path
 import types
@@ -11,7 +10,7 @@ import git_tools
 import gitlab_tools
 
 
-logger = logging.getLogger(__file__)
+logger = logging.getLogger(__name__)
 
 def add_class(element, class_name):
     '''
@@ -553,7 +552,14 @@ class LiveSubmissionsTable:
         self.group_rows = dict()
         self.need_push = False
 
-    def update_row(self, group):
+    def update_row(self, group_id):
+        '''
+        Update the row in this live submissions table for a given group id.
+        If the group has no current submission, the row is deleted.
+        This method can update the local grading repository, so a push is
+        required afterwards before building or uploading the live submissions table.
+        '''
+        group = self.lab.student_group(group_id)
         logger.info(f'updating row for {group.name} in live submissions table')
         if group.submission_current(deadline = self.config.deadline):
             self.group_rows[group.id] = {
@@ -563,22 +569,22 @@ class LiveSubmissionsTable:
         else:
             self.group_rows.pop(group.id, None)
 
-        self.need_push = True
+    def update_rows(self, group_ids = None):
+        '''
+        Update rows in this live submissions table for given group ids.
+        If the argument group_ids is not given, all rows are updated.
+        '''
+        group_ids = self.lab.normalize_group_ids(group_ids)
+        for group_id in group_ids:
+            self.update_row(group_id)
 
-        # Getting a column value may unfortunately involve
-        # the construction of a tag in the local repository.
-        # This is because GitLab only supports merge diffs,
-        # not ordinary diffs.
-        # TODO: simplify once GitLab implements ordinary diffs.
-        #
-        # Clear cache of tags in the local grading repository.
-        with contextlib.suppress(AttributeError):
-            del self.lab.tags
-
-
-    def build(self, file, group_ids = None, build_missing_rows = False):
+    def build(self, file, group_ids = None):
         '''
         Build the live submissions table.
+
+        Before calling this method, all required group rows need to have been updated.
+        As this can update the local grading repository, a push is required
+        before building or uploading the live submissions table.
 
         Arguments:
         * file:
@@ -589,10 +595,6 @@ class LiveSubmissionsTable:
             Currently, only group with a current submission
             for the specified deadline are supported.
             (Each supplied column type is responsible for this.)
-        * build_missing_rows:
-            Whether to build a row if it is missing for some group.
-            Note: if this option is enabled, the grading repository will be
-            updated and might contain new tags that the produced table relies on.
         '''
         logger.info('building live submissions table...')
 
@@ -607,10 +609,7 @@ class LiveSubmissionsTable:
         for group_id in group_ids:
             if not group_id in self.group_rows:
                 group = self.lab.student_group(group_id)
-                if build_missing_rows:
-                    self.update_row(group)
-                else:
-                    raise ValueError(f'live submissions table misses row for {group.name}')
+                raise ValueError(f'live submissions table misses row for {group.name}')
 
         # Compute the columns (with column values) for these submissions.
         # We omit empty columns.

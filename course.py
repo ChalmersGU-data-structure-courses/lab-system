@@ -1,5 +1,6 @@
 import atomicwrites
 import contextlib
+import datetime
 import dateutil.parser
 import enum
 import functools
@@ -11,8 +12,11 @@ import operator
 from pathlib import Path, PurePosixPath
 import random
 import shlex
+import threading
 import types
 import urllib.parse
+
+import more_itertools
 
 import canvas
 import events
@@ -21,6 +25,8 @@ import grading_sheet
 from instance_cache import instance_cache
 import ip_tools
 import print_parse
+import subsuming_queue
+import threading_tools
 import webhook_listener
 
 #===============================================================================
@@ -966,8 +972,15 @@ class Course:
             title_change = title_change()
             self.logger.debug(f'Detected title change: {title_change}')
 
+            # TODO.
+            # We could go further and only queue and event
+            # if the old or new title parses as a review issue.
+            # But then GroupProjectEventIssue should be renamed GroupProjectEventReviewIssue.
+            # We don't do mch work in handling GroupProjectEventIssue for non-review issues anyway.
+            # And it might be beneficial to be up-to-date also with non-review response issues.
+            # So keeping this as is for now.
             if author_is_grader and title_change:
-                return events.GroupProjectEventTag(**kwargs)
+                return events.GroupProjectEventIssue(**kwargs)
         else:
             if strict:
                 raise(f'Unknown event {event_type}')
@@ -1016,6 +1029,112 @@ class Course:
             return ((), issue)
 
         return functools.partial(self.parse_issues, 'grading template', parser, parsed_issues)
+
+    def setup(self, use_live_submissions_table = True):
+        '''Sets up all labs.'''
+        for lab in self.labs.values():
+            lab.setup(use_live_submissions_table = use_live_submissions_table)
+
+    def initial_run(self):
+        '''Does initial runs of all labs.'''
+        for lab in self.labs.values():
+            lab.initial_run()
+
+    def run_event_loop(self, netloc = None):
+        '''
+        Run the event loop.
+
+        This method only returns after an event of
+        kind ProgramTermination has been processed.
+
+        The event loop starts with processing of all labs.
+        So it is unnecessary to prefix it with a call to initial_run.
+
+        Arguments:
+        * netloc:
+            The local net location to listen to for webhook notifications.
+            If 'netloc' is None, uses the configured default (see Course.hook_normalize_netloc).
+        '''
+        # List of context managers for managing threads we create.
+        thread_managers = []
+
+        # The event queue.
+        self.event_queue = subsuming_queue.SubsumingQueue()
+
+        # Set up the server for listening for group project events.
+        def add_webhook_event(hook_event):
+            self.event_queue.add(self.parse_hook_event(hook_event))
+        netloc = self.hook_normalize_netloc(netloc)
+        webhook_listener_manager = webhook_listener.server_manager(
+            netloc,
+            self.config.webhook.secret_token,
+            add_webhook_event,
+        )
+        with webhook_listener_manager as self.webhook_server:
+            def webhook_server_run():
+                try:
+                    self.webhook_server.serve_forever()
+                finally:
+                    self.event_queue.add(events.ProgramTermination())
+            self.webhook_server_thread = threading.Thread(
+                target = webhook_server_run,
+                name = 'webhook-server-listener',
+            )
+            thread_managers.append(general.add_cleanup(
+                threading_tools.thread_manager(self.webhook_server_thread),
+                self.webhook_server.shutdown,
+            ))
+
+            # Set up program termination timer.
+            def shutdown():
+                self.event_queue.add(events.ProgramTermination())
+            if self.config.webhook.event_loop_runtime is not None:
+                self.shutdown_timer = threading_tools.Timer(
+                    self.config.webhook.event_loop_runtime,
+                    shutdown,
+                    name = 'shutdown-timer',
+                )
+                thread_managers.append(threading_tools.timer_manager(self.shutdown_timer))
+
+            # Set up lab refresh event timers and add initial lab refreshes.
+            def refresh_lab(lab_id):
+                self.event_queue.add(events.LabRefresh(lab_id))
+            delays = more_itertools.iterate(
+                lambda x: x + self.config.webhook.first_lab_refresh_delay,
+                datetime.timedelta()
+            )
+            for lab in self.labs.values():
+                if lab.config.refresh_period is not None:
+                    self.event_queue.add(events.LabRefresh(lab.id))
+                    lab.refresh_timer = threading_tools.Timer(
+                        lab.config.refresh_period + next(delays),
+                        refresh_lab,
+                        args = [lab.id],
+                        name = f'lab-refresh-timer<{lab.name}>',
+                        repeat = True,
+                    )
+                    thread_managers.append(threading_tools.timer_manager(lab.refresh_timer))
+
+            # Start the threads.
+            with contextlib.ExitStack() as stack:
+                for manager in thread_managers:
+                    stack.enter_context(manager)
+
+                # The event loop.
+                while True:
+                    self.logger.info('Waiting for event.')
+                    event = self.event_queue.remove()
+                    if isinstance(event, events.ProgramTermination):
+                        self.logger.info('Program termination event received, shutting down.')
+                        return
+                    elif isinstance(event, events.LabEvent):
+                        self.logger.debug(
+                            f'Lab event received for {self.config.lab.name.print(event.lab_id)}, '
+                            'forwarding to lab event handler.'
+                        )
+                        self.labs[event.lab_id].handle_event(event)
+                    else:
+                        raise ValueError(f'cannot handle event of type {type(event)}:\n{event}')
 
     @contextlib.contextmanager
     def error_reporter(self):

@@ -66,11 +66,11 @@ import logging
 logging.basicConfig()
 
 logger = logging.getLogger()
-logger.setLevel(
-    logging.WARNING if args.verbose == 0 else
-    logging.INFO    if args.verbose == 1 else  # noqa: E272
-    logging.DEBUG
-)
+logger.setLevel({
+    0: logging.WARNING,
+    1: logging.INFO,
+    2: logging.DEBUG,
+}[min(args.verbose, 2)])
 
 logger.debug(f'Submission directory: {path_tools.format_path(args.submission)}')
 logger.debug(f'Lab directory: {path_tools.format_path(args.lab)}')
