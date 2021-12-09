@@ -31,6 +31,10 @@ def rebuild_queue(queue_it, item):
         # No decision yet, emit current entry.
         yield entry
 
+    # Priority of item unrelated to queue entries.
+    # Add it to the end.
+    yield item
+
 class SubsumingQueue:
     '''
     A subsuming queue for elements of a partial order.
