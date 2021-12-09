@@ -832,16 +832,21 @@ class Lab:
 
     @functools.cached_property
     def grading_sheet(self):
-        return self.course.grading_spreadsheet.ensure_grading_sheet(
-            self.id,
-            # Restrict to non-empty groups.
-            [group_id for group_id in self.course.groups if self.student_group(group_id).non_empty()],
-            lambda group_id: self.student_group(group_id).project.get.web_url
-        )
+        return self.course.grading_spreadsheet.ensure_grading_sheet(self.id)
 
     def normalize_group_ids(self, group_ids = None):
         '''TODO: move to course.Course?'''
         return self.course.groups if group_ids is None else group_ids
+
+    def include_group_in_grading_sheet(self, group, deadline = None):
+        '''
+        We include a group in the grading sheet if it has a student member or a submission.
+        TOOD: make configurable in course configuration.
+        '''
+        if deadline is None:
+            deadline = self.deadline
+
+        return group.non_empty() or list(group.submissions_relevant(deadline))
 
     def update_grading_sheet(self, group_ids = None, deadline = None):
         '''
@@ -854,13 +859,24 @@ class Lab:
             Deadline to use for submissions.
             If not set, we use self.deadline.
         '''
-        group_ids = self.normalize_group_ids(group_ids)
-        groups = list(map(self.student_group, group_ids))
-
         if deadline is None:
             deadline = self.deadline
 
-        # Ensure grading sheet exists and has sufficient query group columns.
+        group_ids = self.normalize_group_ids(group_ids)
+        groups = [
+            group
+            for group in map(self.student_group, group_ids)
+            if self.include_group_in_grading_sheet(group, deadline)
+        ]
+
+        # Ensure grading sheet has rows for all required groups.
+        self.grading_sheet.setup_groups(
+            [group.id for group in groups],
+            group_link = lambda group_id: self.student_group(group_id).project.get.web_url,
+            delete_previous = False,
+        )
+
+        # Ensure grading sheet has sufficient query group columns.
         self.grading_sheet.ensure_num_queries(max(
             (general.ilen(group.submissions_relevant(deadline)) for group in groups),
             default = 0,
@@ -868,12 +884,6 @@ class Lab:
 
         request_buffer = self.course.grading_spreadsheet.create_request_buffer()
         for group in groups:
-            # HACK (for now).
-            # Only include non-empty groups.
-            # Should output warning if an empty group has a submission.
-            if not group.non_empty():
-                continue
-
             for (query, submission) in enumerate(group.submissions_relevant(deadline)):
                 if submission.outcome is None:
                     grader = None
