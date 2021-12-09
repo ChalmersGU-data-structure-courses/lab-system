@@ -71,5 +71,8 @@ class SubsumingQueue:
         Waits until an entry becomes available.
         '''
         with self.mutex:
-            self.inhabited.wait()
-            return next(self.queue)
+            try:
+                return next(self.queue)
+            except StopIteration:
+                self.inhabited.wait()
+                return next(self.queue)
