@@ -34,8 +34,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
             )
             return
 
-        print(self.headers)
-
         # Read data and conclude request.
         data_raw = self.rfile.read(int(self.headers['Content-Length']))
         self.send_response(200)

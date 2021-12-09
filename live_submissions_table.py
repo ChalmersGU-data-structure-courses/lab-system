@@ -1,5 +1,4 @@
 import collections
-import contextlib
 import logging
 from pathlib import Path
 import types
@@ -11,7 +10,7 @@ import git_tools
 import gitlab_tools
 
 
-logger = logging.getLogger(__file__)
+logger = logging.getLogger(__name__)
 
 def add_class(element, class_name):
     '''

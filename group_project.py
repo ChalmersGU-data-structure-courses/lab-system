@@ -891,7 +891,7 @@ class GroupProject:
                 raise ValueError(
                     f'Invalid net location {print_parse.netloc.print(netloc)} '
                     f'for a GitLab webhook at {host}.'
-                ) from None
+                ) from e
             else:
                 raise
 

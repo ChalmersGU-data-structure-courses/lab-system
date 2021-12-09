@@ -1056,9 +1056,7 @@ class Course:
 
         # Set up the server for listening for group project events.
         def add_webhook_event(hook_event):
-            print(hook_event)
-            event = self.parse_hook_event(hook_event)
-            self.event_queue.add(event)
+            self.event_queue.add(self.parse_hook_event(hook_event))
         netloc = self.hook_normalize_netloc(netloc)
         webhook_listener_manager = webhook_listener.server_manager(
             netloc,
