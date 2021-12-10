@@ -677,7 +677,7 @@ class LiveSubmissionsTable:
                         column.format_header_cell(cell)
                 with dominate.tags.tbody():
                     for group_id in group_ids:
-                        logger.debug(f'processing group {self.lab.student_group(group_id)}')
+                        logger.debug(f'processing {self.lab.student_group(group_id).name}')
                         with dominate.tags.tr():
                             for (name, data) in column_data.items():
                                 column = self.columns[name]
