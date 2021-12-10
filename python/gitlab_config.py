@@ -313,16 +313,17 @@ class _LabConfig:
         self.path_gitignore = _code_root / 'Other' / 'lab-gitignore' / f'{_language}.gitignore'
         self.grading_sheet = lab.name.print(k)
         self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-to-be-graded.html'.format(lab.full_id.print(k))
-        self.refresh_period = refresh_period
 
-    # Dictionary of request handlers.
-    # Its keys should be string-convertible.
-    # Its values are instances of the RequestHandler interface.
-    # The order of the dictionary determines the order in which the request matchers
-    # of the request handlers are tested on a student repository tag.
-    request_handlers = {
-        'submission': lab_handlers_python.SubmissionHandler()
-    }
+        # Dictionary of request handlers.
+        # Its keys should be string-convertible.
+        # Its values are instances of the RequestHandler interface.
+        # The order of the dictionary determines the order in which the request matchers
+        # of the request handlers are tested on a student repository tag.
+        self.request_handlers = {
+            'submission': lab_handlers_python.SubmissionHandler()
+        }
+
+        self.refresh_period = refresh_period
 
     # Key of submission handler in the dictionary of request handlers.
     # Its value must be an instance of SubmissionHandler.
