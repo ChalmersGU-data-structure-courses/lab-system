@@ -373,8 +373,7 @@ class Lab:
         '''
         self.logger.info('Fetching from official repository.')
         self.repo.remote(self.course.config.path_lab.official).fetch('--update-head-ok')
-        with contextlib.suppress(AttributeError):
-            del self.remote_tags
+        self.repo_updated = True
 
     def repo_push(self, force = False):
         '''
