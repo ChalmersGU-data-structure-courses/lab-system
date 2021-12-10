@@ -47,15 +47,22 @@ def __le__(a, b):
     def both_instance(cls):
         return all(isinstance(x, cls) for (x, _) in cases)
 
+    def failure():
+        raise ValueError(f'Unexpected event comparison:\n{a}\nvs.\n{b}')
+
     try:
         test_top(ProgramTermination)
 
-        assert both_instance(LabEvent)
+        if not both_instance(LabEvent):
+            failure()
+
         if not a.lab_id == b.lab_id:
             raise R(False)
         test_top(LabRefresh)
 
-        assert both_instance(GroupProjectEvent)
+        if not both_instance(GroupProjectEvent):
+            failure()
+
         if not a.group_id == b.group_id:
             raise R(False)
 
