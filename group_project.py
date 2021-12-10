@@ -657,6 +657,7 @@ class GroupProject:
         '''
         self.logger.info(f'Fetching from student repository, remote {self.remote}.')
         self.repo.remote(self.remote).fetch('--update-head-ok')
+        self.lab.repo_updated = True
         with contextlib.suppress(AttributeError):
             del self.lab.remote_tags
 
@@ -885,6 +886,7 @@ class GroupProject:
                 'token': self.course.config.webhook.secret_token,
                 'issues_events': 'true',
                 'tag_push_events': 'true',
+                'push_events': 'false',
             })
         except gitlab.exceptions.GitlabCreateError as e:
             if e.response_code == 422 and e.error_message == 'Invalid url given':
