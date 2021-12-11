@@ -7,6 +7,7 @@ import fcntl
 import functools
 import itertools
 import json
+import logging
 import re
 import time
 from types import SimpleNamespace
@@ -298,6 +299,25 @@ def format_timespan_using(delta, time_unit, precision = 2):
 
 def format_timespan(delta, precision = 2):
     return format_timespan_using(delta, appropriate_time_unit(delta), precision)
+
+@contextlib.contextmanager
+def timing(name = None, logger = None, level = logging.DEBUG):
+    # Perform measurement.
+    start = time.perf_counter()
+    yield
+    stop = time.perf_counter()
+
+    # Format message.
+    if name is None:
+        name = 'timing'
+    duration = format_timespan(timedelta(seconds = stop - start))
+    msg = f'{name}: {duration}'
+
+    # Log message.
+    if logger is None:
+        print(msg, file = sys.stderr)
+    else:
+        logger.log(level, msg)
 
 def Popen(cmd, **kwargs):
     print(shlex.join(cmd), file = sys.stderr)
