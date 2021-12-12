@@ -211,7 +211,7 @@ def iterdir_recursive(path, include_top_level = True, pre_order = True):
         yield from emit_top_level()
 
 
-# ## File and directory creation and deletion
+# ## File and directory creation and deletion.
 
 def mkdir_fresh(path):
     if path.exists():
@@ -265,6 +265,78 @@ def rmdir_safe(path):
         if e.errno == 39:
             return False
         raise
+
+# ## Comparison of files and directories.
+
+_file_object_content_eq_bufsize = 8 * 1024
+
+def file_object_binary_content_eq(file_object_a, file_object_b):
+    '''
+    Determine whether two binary file objects have the same content.
+    Only takes the part of each file after the current position into account.
+
+    Ripped from filecmp._do_cmp.
+    '''
+    bufsize = _file_object_content_eq_bufsize
+    while True:
+        buffer_a = file_object_a.read(bufsize)
+        buffer_b = file_object_b.read(bufsize)
+        if buffer_a != buffer_b:
+            return False
+        if not buffer_a:
+            return True
+
+def file_content_eq(file_a, file_b, missing_ok_a = False, missing_ok_b = False):
+    '''
+    Determine whether two files have the same content.
+
+    Arguments:
+    * file_a, file_b: Instances of pathlib.Path.
+    * missing_ok_b, missing_ok_b:
+        If set, allow the corresponding argument to refer to a missing file.
+        Otherwise (the default), the file must exist.
+        Missing files are compare as different to existing files,
+        but as equal among themselves.
+
+    Note.
+    Do not rely on this function to ensure the existence of
+    a file if you do not set the corresponding missing flag.
+    If exactly one of missing_ok_a and missing_ok_b is set,
+    the function might not end up opening both files.
+    '''
+    exit_stack = contextlib.ExitStack()
+
+    def open(file, missing_ok):
+        try:
+            return exit_stack.enter_context(file.open('rb'))
+        except FileNotFoundError:
+            if not missing_ok:
+                raise
+            return None
+
+    def open_a():
+        return open(file_a, missing_ok_a)
+
+    def open_b():
+        return open(file_b, missing_ok_b)
+
+    # Shortcut some comparisons.
+    if missing_ok_a:
+        file_object_a = open_a()
+        if file_object_a is None and not missing_ok_b:
+            return False
+        file_object_b = open_b()
+    else:
+        file_object_b = open_b()
+        if file_object_b is None:
+            return False
+        file_object_a = open_a()
+
+    if file_object_a is None and file_object_b is None:
+        return True
+    if file_object_a is None or file_object_b is None:
+        return False
+    return file_object_binary_content_eq(file_object_a, file_object_b)
 
 
 # ## Working with lists of search paths as typically stored in environment variables.
