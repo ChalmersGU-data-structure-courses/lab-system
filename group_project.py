@@ -38,11 +38,8 @@ class RequestAndResponses:
     the corresponding head and commit in the grading repository.
     '''
     def __init__(self, lab, handler_data, request_name, tag_data):
-        self.course = lab.course
         self.lab = lab
-        self.group = None if handler_data is None else handler_data.group
         self.handler_data = handler_data
-        self.logger = lab.logger if handler_data is None else handler_data.logger
 
         self.request_name = request_name
         if isinstance(tag_data, gitlab.v4.objects.ProjectTag):
@@ -51,6 +48,22 @@ class RequestAndResponses:
             self.gitlab_tag = None
             (self.repo_remote_tag, self.repo_remote_commit) = tag_data
         self.responses = dict()
+
+    @property
+    def course(self):
+        return self.lab.course
+
+    @property
+    def group(self):
+        return None if self.handler_data is None else self.handler_data.group
+
+    @property
+    def _group(self):
+        return self.lab if self.group is None else self.group
+
+    @property
+    def logger(self):
+        return self.lab.logger if self.handler_data is None else self.handler_data.logger
 
     @functools.cached_property
     def repo_remote_tag(self):
@@ -63,10 +76,6 @@ class RequestAndResponses:
     @functools.cached_property
     def date(self):
         return git_tools.commit_date(self.repo_remote_commit)
-
-    @property
-    def _group(self):
-        return self.lab if self.group is None else self.group
 
     def repo_tag(self, segments = ['tag']):
         '''Forwards to self.group.repo_tag.'''
@@ -427,11 +436,7 @@ class HandlerData:
     Each instance of this class is managed by an instance of GroupProject.
     '''
     def __init__(self, group, handler_key):
-        self.course = group.course
-        self.lab = group.lab
         self.group = group
-        self.logger = group.logger
-
         self.handler_key = handler_key
         self.handler = self.lab.config.request_handlers[handler_key]
 
@@ -456,6 +461,18 @@ class HandlerData:
 
         # Is this the submission handler?
         self.is_submission_handler = handler_key == self.lab.config.submission_handler_key
+
+    @property
+    def course(self):
+        return self.group.course
+
+    @property
+    def lab(self):
+        return self.group.lab
+
+    @property
+    def logger(self):
+        return self.group.logger
 
     def request_tag_parser_data(self):
         '''
@@ -540,7 +557,6 @@ class GroupProject:
     Each instances of this class is managed by an instance of lab.Lab.
     '''
     def __init__(self, lab, id, logger = logging.getLogger(__name__)):
-        self.course = lab.course
         self.lab = lab
         self.id = id
         self.logger = logger
@@ -552,6 +568,10 @@ class GroupProject:
             handler_key: HandlerData(self, handler_key)
             for handler_key in self.lab.config.request_handlers.keys()
         }
+
+    @property
+    def course(self):
+        return self.lab.course
 
     @functools.cached_property
     def gl(self):
