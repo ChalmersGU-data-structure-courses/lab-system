@@ -105,8 +105,9 @@ class Lab:
         # Gitlab config
         self.path = self.course.config.path.labs / self.course.config.lab.id_gitlab.print(self.id)
 
-        # Whether we have updated the grading repository
-        # and it needs to be pushed.
+        # Local grading repository config.
+        self.dir_repo = self.path / 'repo'
+        # Whether we have updated the repository and it needs to be pushed.
         self.repo_updated = False
 
     @functools.cached_property
@@ -299,7 +300,7 @@ class Lab:
         It fetches from the official lab repository and student group repositories.
         '''
         try:
-            return git.Repo(self.dir)
+            return git.Repo(self.dir_repo)
         except git.NoSuchPathError:
             self.repo_init()
             return self.repo
@@ -338,7 +339,7 @@ class Lab:
         Pushing remotes are just the grading repository.
         '''
         self.logger.info('Initializing local grading repository.')
-        repo = git.Repo.init(self.dir, bare = bare)
+        repo = git.Repo.init(self.dir_repo, bare = bare)
         try:
             with repo.config_writer() as c:
                 c.add_value('advice', 'detachedHead', 'false')
