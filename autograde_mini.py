@@ -309,7 +309,7 @@ def get_latest_submission(repo, group):
             sub = "submission"
 
             if submission_name[:len(sub)].lower() == sub:
-                submission_num = int(submission_name[len(sub):].replace("-","").replace("_",""))
+                submission_num = int(submission_name[len(sub):].replace("-","").replace("_","").replace("(","").replace(")",""))
                 if latest_num is None or latest_num < submission_num:
                     latest_num = submission_num
                     latest_name = submission_name
