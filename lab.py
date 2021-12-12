@@ -110,6 +110,13 @@ class Lab:
         # Whether we have updated the repository and it needs to be pushed.
         self.repo_updated = False
 
+        # Other local data.
+        self.file_live_submissions_table = self.dir / 'live-submissions-table.html'
+        self.file_live_submissions_table_staging = path_tools.add_suffix(
+            self.file_live_submissions_table,
+            '.staging',
+        )
+
     @functools.cached_property
     def gl(self):
         return self.course.gl
@@ -793,6 +800,13 @@ class Lab:
             if group.submission_current(deadline = deadline) is not None:
                 yield group_id
 
+    @contextlib.contextmanager
+    def live_submissions_table_staging_manager(self):
+        try:
+            yield
+        finally:
+            self.file_live_submissions_table_staging.unlink(missing_ok = True)
+
     def update_live_submissions_table(self, group_ids = None):
         '''
         Updates the live submissions table on Canvas.
@@ -802,15 +816,32 @@ class Lab:
         See LiveSubmissionsTable.build for argument descriptions.
         '''
         self.logger.info('Updating live submissions table')
-        with path_tools.temp_file() as file:
+        with self.live_submissions_table_staging_manager():
             self.live_submissions_table.build(
-                file,
+                self.file_live_submissions_table_staging,
                 group_ids = group_ids,
             )
-            self.logger.info('Posting live submissions table to Canvas')
-            target = self.config.canvas_path_awaiting_grading
-            folder = self.course.canvas_course.get_folder_by_path(target.parent)
-            self.course.canvas_course.post_file(file, folder.id, target.name)
+            if path_tools.file_content_eq(
+                self.file_live_submissions_table_staging,
+                self.file_live_submissions_table,
+                missing_ok_b = True,
+            ):
+                self.logger.debug(
+                    'Live submissions table has not changed, '
+                    'skipping upload to Canvas.'
+                )
+                self.file_live_submissions_table_staging.unlink()
+            else:
+                self.logger.info('Posting live submissions table to Canvas')
+                target = self.config.canvas_path_awaiting_grading
+                self.course.canvas_course.post_file(
+                    self.file_live_submissions_table_staging,
+                    self.course.canvas_course.get_folder_by_path(target.parent).id,
+                    target.name,
+                )
+                self.file_live_submissions_table_staging.replace(
+                    self.file_live_submissions_table,
+                )
 
     def parse_issue(self, issue):
         request_types = self.config.request.__dict__
