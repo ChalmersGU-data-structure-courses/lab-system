@@ -10,11 +10,13 @@ import git
 import gitlab
 import gitlab.v4.objects
 
+import events
 import instance_cache
 import item_parser
 import git_tools
 import gitlab_tools
 import print_parse
+import webhook_listener
 
 
 class RequestAndResponses:
@@ -1195,3 +1197,106 @@ class GroupProject:
             submission_last = submissions[-1]
             if submission_last.outcome is None:
                 return submission_last
+
+    def parse_hook_event_tag(self, hook_event, strict):
+        '''
+        For a tag push event, we always generate a queue event.
+        TODO (optimization): Check that the tag name matches a request matcher.
+        '''
+        self.logger.debug('Received a tag push event.')
+        ref = hook_event.get('ref')
+        self.logger.debug(f'Reference: {ref}.')
+        yield (
+            events.GroupProjectTagEvent(),
+            lambda: self.lab.refresh_group(self, refresh_responses = False),
+        )
+
+    def parse_hook_event_issue(self, hook_event, strict):
+        '''
+        We only generate a group projectevent if both:
+        - the (current or previous) author is a grader,
+        - the title has changed.
+
+        Note: uses self.course.graders.
+        '''
+        self.logger.debug('Received an issue event.')
+        object_attributes = hook_event.get('object_attributes')
+        title = None if object_attributes is None else object_attributes['title']
+        self.logger.debug(f'Issue title: {title}.')
+
+        changes = hook_event.get('changes')
+
+        def author_id():
+            if object_attributes is not None:
+                return object_attributes['author_id']
+
+            author_id_changes = changes['author_id']
+            for version in ['current', 'previous']:
+                author_id = author_id_changes[version]
+                if author_id is not None:
+                    return author_id
+
+            raise ValueError('author id missing')
+        author_id = author_id()
+        author_is_grader = author_id in self.course.grader_ids
+        self.logger.debug(
+            f'Detected issue author id {author_id}, member of graders: {author_is_grader}'
+        )
+
+        def title_change():
+            if changes is None:
+                return False
+
+            title_changes = changes.get('title')
+            if title_changes is None:
+                return False
+
+            return title_changes['current'] != title_changes['previous']
+        title_change = title_change()
+        self.logger.debug(f'Detected title change: {title_change}')
+
+        # TODO.
+        # We could go further and only queue and event
+        # if the old or new title parses as a review issue.
+        # Then GroupProjectIssueEvent should be renamed GroupProjectReviewEvent.
+        # We don't do much work in handling GroupProjectIssueEvent for non-review issues anyway.
+        # And it might be beneficial to be up-to-date also with non-review response issues.
+        # So keeping this as is for now.
+        if author_is_grader and title_change:
+            yield (
+                events.GroupProjectIssueEvent(),
+                lambda: self.lab.refresh_group(self, refresh_responses = True),
+            )
+
+    def parse_hook_event(self, hook_event, strict = False):
+        '''
+        Arguments:
+        * hook_event:
+            Dictionary (decoded JSON).
+            Event received from a webhook in this group project.
+        * strict:
+            Whether to fail on unknown events.
+
+        Returns an iterator of pairs of:
+        - an instance of events.GroupProjectEvent,
+        - a callback function to handle the event.
+        These are the group project events triggered by the webhook event.
+        '''
+        event_type = webhook_listener.event_type(hook_event)
+        if event_type == 'tag_push':
+            yield from self.parse_hook_event_tag(hook_event, strict)
+        elif event_type == 'issue':
+            yield from self.parse_hook_event_issue(hook_event, strict)
+        else:
+            if strict:
+                raise ValueError(f'Unknown event {event_type}')
+
+            self.logger.warning(f'Received unknown webhook event of type {event_type}.')
+            self.logger.debug(f'Webhook event:\n{hook_event}')
+
+    @property
+    def lab_event(self):
+        return lambda group_project_event: events.LabEventInGroupProject(
+            group_id = self.id,
+            group_project_event = group_project_event,
+        )
