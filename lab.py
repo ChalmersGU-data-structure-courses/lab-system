@@ -107,7 +107,7 @@ class Lab:
         self.path = self.course.config.path.labs / self.course.config.lab.id_gitlab.print(self.id)
 
         # Local grading repository config.
-        self.dir_repo = self.path / 'repo'
+        self.dir_repo = self.dir / 'repo'
         # Whether we have updated the repository and it needs to be pushed.
         self.repo_updated = False
 
