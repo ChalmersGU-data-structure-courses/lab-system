@@ -20,17 +20,11 @@ identity = PrintParse(
     parse = general.identity,
 )
 
-def compose(x, y):
-    return PrintParse(
-        print = general.compose(x.print, y.print),
-        parse = general.compose(y.parse, x.parse),
-    )
-
-def compose_many(*xs):
+def compose(*xs):
     xs = builtins.tuple(xs)
     return PrintParse(
-        print = general.compose_many(*(x.print for x in xs)),
-        parse = general.compose_many(*(x.parse for x in reversed(xs))),
+        print = general.compose(*(x.print for x in xs)),
+        parse = general.compose(*(x.parse for x in reversed(xs))),
     )
 
 def invert(x):

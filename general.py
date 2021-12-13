@@ -20,11 +20,11 @@ import sys
 def identity(x):
     return x
 
-def compose(f, g):
+def compose_binary(f, g):
     return lambda *x: g(f(*x))
 
-def compose_many(*fs):
-    return functools.reduce(compose, fs, identity)
+def compose(*fs):
+    return functools.reduce(compose_binary, fs, identity)
 
 def flatten(*xss):
     return list(itertools.chain(*xss))

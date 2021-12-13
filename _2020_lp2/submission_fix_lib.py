@@ -2,7 +2,7 @@ import re
 from pathlib import PurePath
 from types import FunctionType, SimpleNamespace
 
-from general import compose_many, join_lines
+from general import compose, join_lines
 
 ################################################################################
 # General tools
@@ -92,7 +92,7 @@ def uncomment_last(n):
         for i in range(len(lines) - n, len(lines)):
             lines[i] = '// SUBMISSION_EDIT ' + lines[i]
         return lines
-    return compose_many(str.splitlines, f, join_lines)
+    return compose(str.splitlines, f, join_lines)
 
 # Uncomment a package declaration.
 # All submitted classes are supposed to be in the default package.
@@ -115,6 +115,6 @@ def package_handlers(dict_handlers):
             if isinstance(a, FunctionType):
                 return a
             if isinstance(a, list):
-                return compose_many(*a)
+                return compose(*a)
         return None
     return f
