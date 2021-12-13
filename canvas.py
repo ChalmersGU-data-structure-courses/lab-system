@@ -1,4 +1,5 @@
 from datetime import timedelta
+import functools
 import logging
 import http_logging  # noqa F401
 import json
@@ -302,6 +303,7 @@ class Course:
 
     def __init__(self, canvas, course_id, use_cache = True):
         logger.info(f'loading course {course_id}.')
+        self._use_cache = use_cache
 
         self.canvas = canvas
         self.course_id = course_id
@@ -328,11 +330,22 @@ class Course:
         self.teachers = tuple(filter(Course.is_teacher, self.users))
         self.teacher_details = dict((user.id, user) for user in self.teachers)
 
+    def _init_assignments(self):
         self.assignments_name_to_id = dict()
         self.assignment_details = dict()
-        for assignment in self.get_assignments(use_cache = use_cache):
+        for assignment in self.get_assignments(use_cache = self._use_cache):
             self.assignment_details[assignment.id] = assignment
             self.assignments_name_to_id[assignment.name] = assignment.id
+
+    @functools.cached_property
+    def assignments_name_to_id(self):
+        self._init_assignments()
+        return self.assignments_name_to_id
+
+    @functools.cached_property
+    def assignment_details(self):
+        self._init_assignments()
+        return self.assignment_details
 
     def _user_maybe(self, user_id):
         return None if user_id is None else self.user_details[user_id]
