@@ -9,7 +9,7 @@ import gitlab
 import json
 import logging
 import operator
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 import random
 import shlex
 import threading
@@ -894,129 +894,53 @@ class Course:
         finally:
             self.logger.info('Deleted project hooks in all labs')
 
-    def parse_hook_event(self, event, strict = False):
+    def parse_hook_event(self, hook_event, lab_full_id, group_id_gitlab, strict = False):
         '''
-        Takes an event received from a webhook and returns
-        a corresponding instance of events.GroupProjectEvent.
+        Arguments:
+        * hook_event:
+            Dictionary (decoded JSON).
+            Event received from a webhook in this course.
+        * lab_full_id:
+            Lab id as appearing in the project path of the event.
+        * group_id_gitlab:
+            Group id as appearing in the project path of the event.
+        * strict:
+            Whether to fail on unknown events.
 
-        if 'strict' is set, raises an exception if
-        the event is not one of the types we can handle.
-
-        Returns None if the event should be ignored.
+        Returns an iterator of pairs of:
+        - an instance of events.CourseEvent,
+        - a callback function to handle the event.
+        These are the course events triggered by the webhook event.
 
         Uses self.graders, which takes an HTTP call
         to compute the first time it is accessed.
         Make sure to precompute this attribute before you
         call this method in a time-sensitive environment.
-
-        For a tag push event, we always generate a queue event.
-        TODO: check that the tag name matches a request matcher.
-
-        For an issue event, we only generate a queue event if both:
-        - the (current or previous) author is a grader,
-        - the title has changed.
         '''
-        # Find the relevant lab and group project.
-        project_path = PurePosixPath(event['project']['path_with_namespace'])
-        project_path = project_path.relative_to(self.config.path.groups)
-        (group_id_gitlab, lab_full_id) = project_path.parts
-
-        # Find the lab and group ids.
+        # Parse the lab and group id.
         lab_id = self.config.lab.full_id.parse(lab_full_id)
-        lab = self.labs[lab_id]
-
         group_id = self.config.group.id_gitlab.parse(group_id_gitlab)
-        group = lab.student_group(group_id)
 
-        kwargs = {
-            'lab_id': lab_id,
-            'group_id': group_id,
-            'event': event,
-        }
-
-        event_type = webhook_listener.event_type(event)
-        if event_type == 'tag_push':
-            self.logger.debug(f'Received a tag push event for {group.name} in {lab.name}.')
-            return events.GroupProjectEventTag(**kwargs)
-        elif event_type == 'issue':
-            self.logger.debug(f'Received an issue event for {group.name} in {lab.name}.')
-            changes = event.get('changes')
-
-            def author_id():
-                object_attributes = event.get('object_attributes')
-                if object_attributes is not None:
-                    return object_attributes['author_id']
-
-                author_id_changes = changes['author_id']
-                for version in ['current', 'previous']:
-                    author_id = author_id_changes[version]
-                    if author_id is not None:
-                        return author_id
-
-                raise ValueError('Could not determine author id in the following issue event: {event}')
-            author_id = author_id()
-            author_is_grader = author_id in self.grader_ids
-            self.logger.debug(
-                f'Detected issue author id {author_id}, member of graders: {author_is_grader}'
+        # Delegate event to lab.
+        lab = self.labs.get(lab_id)
+        if lab is not None:
+            yield from webhook_listener.map_with_callback(
+                lab.course_event,
+                lab.parse_hook_event(hook_event, group_id, strict = strict),
             )
-
-            def title_change():
-                if changes is None:
-                    return False
-
-                title_changes = changes.get('title')
-                if title_changes is None:
-                    return False
-
-                return title_changes['current'] != title_changes['previous']
-            title_change = title_change()
-            self.logger.debug(f'Detected title change: {title_change}')
-
-            # TODO.
-            # We could go further and only queue and event
-            # if the old or new title parses as a review issue.
-            # But then GroupProjectEventIssue should be renamed GroupProjectEventReviewIssue.
-            # We don't do mch work in handling GroupProjectEventIssue for non-review issues anyway.
-            # And it might be beneficial to be up-to-date also with non-review response issues.
-            # So keeping this as is for now.
-            if author_is_grader and title_change:
-                return events.GroupProjectEventIssue(**kwargs)
         else:
             if strict:
-                raise(f'Unknown event {event_type}')
-            self.logger.debug(f'Received unexpected event with type {event_type}.')
+                raise ValueError(f'Unknown lab id {lab_id}')
 
-        return None
+            self.logger.warning(f'Received webhook event for unknown lab id {lab_id}.')
+            self.logger.debug(f'Webhook event:\n{hook_event}')
 
-    def hook_callback(self, event):
-        '''Only supports hooks in student group projects.'''
-        try:
-            # Only handle certain kinds of callbacks.
-            event_type = event['event_type']
-            if not event_type in ['tag_push', 'issue']:
-                raise(f'Unknown event type {event_type}')
-
-            # Find the relevant lab and group project.
-            project_path = PurePosixPath(event['project']['path_with_namespace'])
-            project_path = project_path.relative_to(self.config.path.groups)
-            (group_id_gitlab, lab_full_id) = project_path.parts
-
-            # Find the lab.
-            lab_id = self.config.lab.full_id.parse(lab_full_id)
-            lab = self.labs[lab_id]
-
-            # Find the group project.
-            group_id = self.config.group.id_gitlab.parse(group_id_gitlab)
-            group = lab.student_group(group_id)
-
-            # Delegate to the lab.
-            lab.hook_callback(self, event, group)
-
-            # Find the group project.
-            group_id = self.config.group.id_gitlab.parse(group_id_gitlab)
-            group = lab.student_group(group_id)
-        except Exception as e:
-            raise HookCallbackError(e) from e
+    @property
+    def program_event(self):
+        return lambda course_event: events.ProgramEventInCourse(
+            course_dir = self.dir,
+            course_event = course_event,
+        )
 
     @functools.cached_property
     def grading_spreadsheet(self):
@@ -1045,7 +969,7 @@ class Course:
         Run the event loop.
 
         This method only returns after an event of
-        kind ProgramTermination has been processed.
+        kind TerminateProgram has been processed.
 
         The event loop starts with processing of all labs.
         So it is unnecessary to prefix it with a call to initial_run.
@@ -1061,9 +985,17 @@ class Course:
         # The event queue.
         self.event_queue = subsuming_queue.SubsumingQueue()
 
+        def shutdown():
+            self.event_queue.add((events.TerminateProgram(), None))
+
         # Set up the server for listening for group project events.
         def add_webhook_event(hook_event):
-            self.event_queue.add(self.parse_hook_event(hook_event))
+            for result in webhook_listener.parse_hook_event(
+                courses_by_groups_path = {self.config.path.groups: self},
+                hook_event = hook_event,
+                strict = False
+            ):
+                self.event_queue.add(result)
         netloc = self.hook_normalize_netloc(netloc)
         webhook_listener_manager = webhook_listener.server_manager(
             netloc,
@@ -1075,7 +1007,7 @@ class Course:
                 try:
                     self.webhook_server.serve_forever()
                 finally:
-                    self.event_queue.add(events.ProgramTermination())
+                    shutdown()
             self.webhook_server_thread = threading.Thread(
                 target = webhook_server_run,
                 name = 'webhook-server-listener',
@@ -1086,8 +1018,6 @@ class Course:
             ))
 
             # Set up program termination timer.
-            def shutdown():
-                self.event_queue.add(events.ProgramTermination())
             if self.config.webhook.event_loop_runtime is not None:
                 self.shutdown_timer = threading_tools.Timer(
                     self.config.webhook.event_loop_runtime,
@@ -1097,19 +1027,22 @@ class Course:
                 thread_managers.append(threading_tools.timer_manager(self.shutdown_timer))
 
             # Set up lab refresh event timers and add initial lab refreshes.
-            def refresh_lab(lab_id):
-                self.event_queue.add(events.LabRefresh(lab_id))
+            def refresh_lab(lab):
+                self.event_queue.add((
+                    self.program_event(lab.course_event(events.RefreshLab())),
+                    lab.refresh_lab,
+                ))
             delays = more_itertools.iterate(
                 lambda x: x + self.config.webhook.first_lab_refresh_delay,
                 datetime.timedelta()
             )
             for lab in self.labs.values():
                 if lab.config.refresh_period is not None:
-                    self.event_queue.add(events.LabRefresh(lab.id))
+                    refresh_lab(lab)
                     lab.refresh_timer = threading_tools.Timer(
                         lab.config.refresh_period + next(delays),
                         refresh_lab,
-                        args = [lab.id],
+                        args = [lab],
                         name = f'lab-refresh-timer<{lab.name}>',
                         repeat = True,
                     )
@@ -1123,18 +1056,13 @@ class Course:
                 # The event loop.
                 while True:
                     self.logger.info('Waiting for event.')
-                    event = self.event_queue.remove()
-                    if isinstance(event, events.ProgramTermination):
+                    (event, callback) = self.event_queue.remove()
+                    if isinstance(event, events.TerminateProgram):
                         self.logger.info('Program termination event received, shutting down.')
                         return
-                    elif isinstance(event, events.LabEvent):
-                        self.logger.debug(
-                            f'Lab event received for {self.config.lab.name.print(event.lab_id)}, '
-                            'forwarding to lab event handler.'
-                        )
-                        self.labs[event.lab_id].handle_event(event)
-                    else:
-                        raise ValueError(f'cannot handle event of type {type(event)}:\n{event}')
+
+                    self.logger.info(f'Handling event {event}')
+                    callback()
 
     @contextlib.contextmanager
     def error_reporter(self):
