@@ -12,9 +12,12 @@ import path_tools
 dir_executable = Path(sys.argv[0]).parent
 
 p = argparse.ArgumentParser(add_help = False, description = '''
-Run the robograder on a lab submission (compiling it first).
+Run the robograder on a lab submission (uncompiled).
 The resulting robograding (Markdown-formatted) is printed on stdout.
 If any errors arise, they are printed on stderr.
+
+The robograder has to be compiled before running.
+For example, see the flag '--compile'.
 ''', epilog = '''
 This Python script supports bash completion.
 For this, python-argparse needs to be installed and configured.
