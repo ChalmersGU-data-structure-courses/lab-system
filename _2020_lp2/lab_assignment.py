@@ -267,8 +267,9 @@ class LabAssignment(Assignment):
         return r['tests']
 
     def __init__(self, course, dir, use_name_handlers = True, use_content_handlers = True, use_cache = True):
-        if isinstance(dir, int):
-            dir = Path(__file__).parent.parent / 'lab{}'.format(dir)
+        # Obsolete.
+        #if isinstance(dir, int):
+        #    dir = Path(__file__).parent.parent / 'lab{}'.format(dir)
 
         self.dir = dir
         self.name = (dir / 'name').read_text()

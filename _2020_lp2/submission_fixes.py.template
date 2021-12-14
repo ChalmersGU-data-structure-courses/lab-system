@@ -1,5 +1,5 @@
 # This is not a self-contained python file.
-# It is read by code under ../Lab-grading to fix issues with submitted files in student submissions.
+# It is read by code in _2020_lp2 in the lab grading repository to fix issues with submitted files in student submissions.
 
 answers = 'answers.txt'
 
