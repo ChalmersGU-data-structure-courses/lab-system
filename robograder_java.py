@@ -227,11 +227,8 @@ def compile(
 # Entrypoint of the robograder.
 entrypoint = 'Robograder'
 
-# Root of the code repository.
-repo_root = this_dir.parent
-
 # Library used by robograders.
-dir_lib = repo_root / 'Other' / 'robograder' / 'java'
+dir_lib = this_dir.parent / 'labs' / 'robograder' / 'java'
 dir_lib_src = dir_lib / 'src'
 
 # Subdirectory of the robograder in the lab directory.
