@@ -71,6 +71,7 @@ def setup_seccomp(callback = None):
 
     # Allow reading, writing, and seeking open files.
     f.add_rule(ALLOW, "read")
+    f.add_rule(ALLOW, "pread64")
     f.add_rule(ALLOW, "write")
     f.add_rule(ALLOW, "lseek")
 
