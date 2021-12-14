@@ -71,6 +71,9 @@ def setup_seccomp(callback = None):
 
     # Allow reading, writing, and seeking open files.
     f.add_rule(ALLOW, "read")
+    # The following call is used by glibc when Python loads extension modules such as
+    # /usr/lib64/python3.9/lib-dynload/math.cpython-39-x86_64-linux-gnu.so.
+    f.add_rule(ALLOW, "pread64")
     f.add_rule(ALLOW, "write")
     f.add_rule(ALLOW, "lseek")
 

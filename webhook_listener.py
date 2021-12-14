@@ -2,6 +2,8 @@ import contextlib
 import json
 import http.server
 import logging
+from pathlib import PurePosixPath
+import shlex
 import ssl
 
 import path_tools
@@ -10,18 +12,6 @@ import openssl_tools
 
 
 logger = logging.getLogger(__name__)
-
-def event_type(event):
-    '''
-    For some reason, GitLab is inconsistent in the field
-    name of the event type attribute of a webhook event.
-    This function attempts to guess it, returning its value.
-    '''
-    for key in ['event_type', 'event_name']:
-        r = event.get(key)
-        if r is not None:
-            return r
-    raise ValueError(f'no event type found in event {event}')
 
 class Handler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
@@ -52,7 +42,7 @@ def server_manager(netloc, secret_token, callback, logger = logger):
 
     Arguments:
     * netloc:
-        Local network locatio to bind to.
+        Local network location to bind to.
         Only the host and port fields are used.
     * secret_token:
         Secret token to check for incoming webhook notifications.
@@ -92,3 +82,96 @@ def server_manager(netloc, secret_token, callback, logger = logger):
             server.logger = logger
 
             yield server
+
+def event_type(event):
+    '''
+    For some reason, GitLab is inconsistent in the field
+    name of the event type attribute of a webhook event.
+    This function attempts to guess it, returning its value.
+    '''
+    for key in ['event_type', 'event_name']:
+        r = event.get(key)
+        if r is not None:
+            return r
+    raise ValueError(f'no event type found in event {event}')
+
+class ParsingError(Exception):
+    def __init__(self, msg, event):
+        self.msg = msg
+        self.event = event
+
+    def __str__(self):
+        return f'{self.msg}\nevent: {self.event}'
+
+@contextlib.contextmanager
+def parsing_error_manager(event):
+    try:
+        yield
+    except Exception as e:
+        raise ParsingError(msg = str(e), event = event) from e
+
+def map_with_callback(f, xs):
+    for (e, callback) in xs:
+        yield (f(e), callback)
+
+def parse_hook_event(courses_by_groups_path, hook_event, strict = False):
+    '''
+    Parses an event received from a webhook.
+
+    This function completes fast.
+    Further processing that may involve expensive computation or IO
+    is deferred to the callback function of the generated events.
+
+    Triggered exceptions are raised as instances of ParsingError.
+
+    We currently only handle events in group projects.
+    The parsing in this function reflects that.
+
+    Arguments:
+    * courses_by_groups_path:
+        Dictionary sending student group namespace paths (instances of
+        pathlib.PurePosixPath) on Chalmers GitLab to instances of course.Course.
+        For example, a key may look like PurePosixPath('courses/my_course/groups').
+    * hook_event:
+        Dictionary (decoded JSON).
+        Event received from a webhook.
+    * strict:
+        Whether to fail on unknown events.
+        Not all assumptions are currently checked,
+        So even with strict set to False,
+        we might end up raising an instance of ParsingError.
+
+    Returns an iterable of pairs of:
+    - a program event (instance of events.ProgramEvent),
+    - a nullary callback function to handle the event.
+
+    if 'strict' is set, raises an exception if
+    the event is not one of the types we can handle.
+
+    Uses Course.graders for each supplied course.
+    See Course.parse_hook_event for a note on precaching.
+    '''
+    with parsing_error_manager(hook_event):
+        # Find the relevant lab and group project.
+        project_path = PurePosixPath(hook_event['project']['path_with_namespace'])
+        (lab_full_id, group_id_gitlab, *path_groups_parts_rev) = reversed(project_path.parts)
+        path_groups = PurePosixPath(*reversed(path_groups_parts_rev))
+
+        course = courses_by_groups_path.get(path_groups)
+        if course:
+            yield from map_with_callback(
+                course.program_event,
+                course.parse_hook_event(
+                    hook_event = hook_event,
+                    lab_full_id = lab_full_id,
+                    group_id_gitlab = group_id_gitlab,
+                    strict = strict
+                ),
+            )
+        else:
+            msg = f'unknown course with student groups path groups path {shlex.quote(path_groups)}'
+            if strict:
+                raise ValueError(msg)
+
+            logger.warning(f'Received webhook event for {msg}')
+            logger.debug(f'Webhook event:\n{hook_event}')

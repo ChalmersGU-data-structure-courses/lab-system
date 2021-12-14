@@ -64,10 +64,8 @@ def handlers():
         2: logging.DEBUG,
     }[min(args.verbose, 2)])
     yield stderr_handler
-
     if args.log_file:
-        file_handler = logging.FileHandler(args.log_file)
-        yield file_handler
+        yield logging.FileHandler(args.log_file)
 
 logging.basicConfig(
     format = '%(asctime)s %(levelname)s %(module)s: %(message)s',

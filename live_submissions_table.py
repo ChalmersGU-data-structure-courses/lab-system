@@ -112,10 +112,22 @@ class Column:
         Inline its fields as instance attributes.
         '''
         self.table = table
-        self.course = table.course
-        self.lab = table.lab
-        self.config = table.config
-        self.logger = table.logger
+
+    @property
+    def course(self):
+        return self.table.course
+
+    @property
+    def lab(self):
+        return self.table.lab
+
+    @property
+    def config(self):
+        return self.table.config
+
+    @property
+    def logger(self):
+        return self.table.logger
 
     def format_header_cell(self, cell):
         '''
@@ -538,7 +550,7 @@ class LiveSubmissionsTable:
         lab,
         config,
         column_types = standard_columns,
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger(__name__),
     ):
         self.lab = lab
         self.course = lab.course

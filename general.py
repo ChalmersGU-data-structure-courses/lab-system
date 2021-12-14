@@ -7,6 +7,7 @@ import fcntl
 import functools
 import itertools
 import json
+import logging
 import re
 import time
 from types import SimpleNamespace
@@ -19,11 +20,11 @@ import sys
 def identity(x):
     return x
 
-def compose(f, g):
+def compose_binary(f, g):
     return lambda *x: g(f(*x))
 
-def compose_many(*fs):
-    return functools.reduce(compose, fs, identity)
+def compose(*fs):
+    return functools.reduce(compose_binary, fs, identity)
 
 def flatten(*xss):
     return list(itertools.chain(*xss))
@@ -298,6 +299,25 @@ def format_timespan_using(delta, time_unit, precision = 2):
 
 def format_timespan(delta, precision = 2):
     return format_timespan_using(delta, appropriate_time_unit(delta), precision)
+
+@contextlib.contextmanager
+def timing(name = None, logger = None, level = logging.DEBUG):
+    # Perform measurement.
+    start = time.perf_counter()
+    yield
+    stop = time.perf_counter()
+
+    # Format message.
+    if name is None:
+        name = 'timing'
+    duration = format_timespan(timedelta(seconds = stop - start))
+    msg = f'{name}: {duration}'
+
+    # Log message.
+    if logger is None:
+        print(msg, file = sys.stderr)
+    else:
+        logger.log(level, msg)
 
 def Popen(cmd, **kwargs):
     print(shlex.join(cmd), file = sys.stderr)
@@ -574,14 +594,4 @@ def add_cleanup(manager, action):
         finally:
             action()
 
-def partial_ordering(cls):
-    '''
-    Class decorator that fills in missing ordering methods for a partial order.
-    The given class must define __le_.
-    For this, we define __lt__.
-    '''
-    def __lt__(a, b):
-        return a <= b and not b <= a
 
-    cls.__lt__ = __lt__
-    return cls

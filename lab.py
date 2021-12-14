@@ -21,6 +21,7 @@ import group_project
 import instance_cache
 import live_submissions_table
 import path_tools
+import webhook_listener
 
 
 class Lab:
@@ -105,9 +106,17 @@ class Lab:
         # Gitlab config
         self.path = self.course.config.path.labs / self.course.config.lab.id_gitlab.print(self.id)
 
-        # Whether we have updated the grading repository
-        # and it needs to be pushed.
+        # Local grading repository config.
+        self.dir_repo = self.dir / 'repo'
+        # Whether we have updated the repository and it needs to be pushed.
         self.repo_updated = False
+
+        # Other local data.
+        self.file_live_submissions_table = self.dir / 'live-submissions-table.html'
+        self.file_live_submissions_table_staging = path_tools.add_suffix(
+            self.file_live_submissions_table,
+            '.staging',
+        )
 
     @functools.cached_property
     def gl(self):
@@ -299,7 +308,7 @@ class Lab:
         It fetches from the official lab repository and student group repositories.
         '''
         try:
-            return git.Repo(self.dir)
+            return git.Repo(self.dir_repo)
         except git.NoSuchPathError:
             self.repo_init()
             return self.repo
@@ -338,7 +347,7 @@ class Lab:
         Pushing remotes are just the grading repository.
         '''
         self.logger.info('Initializing local grading repository.')
-        repo = git.Repo.init(self.dir, bare = bare)
+        repo = git.Repo.init(self.dir_repo, bare = bare)
         try:
             with repo.config_writer() as c:
                 c.add_value('advice', 'detachedHead', 'false')
@@ -655,7 +664,7 @@ class Lab:
 
     def process_group_request(self, group):
         '''
-        Process a request in a group and update the lab system.
+        Process a request in a group.
         See GroupProject.process_request.
 
         Returns a boolean indicating if a submission was newly processed.
@@ -792,6 +801,13 @@ class Lab:
             if group.submission_current(deadline = deadline) is not None:
                 yield group_id
 
+    @contextlib.contextmanager
+    def live_submissions_table_staging_manager(self):
+        try:
+            yield
+        finally:
+            self.file_live_submissions_table_staging.unlink(missing_ok = True)
+
     def update_live_submissions_table(self, group_ids = None):
         '''
         Updates the live submissions table on Canvas.
@@ -801,15 +817,32 @@ class Lab:
         See LiveSubmissionsTable.build for argument descriptions.
         '''
         self.logger.info('Updating live submissions table')
-        with path_tools.temp_file() as file:
+        with self.live_submissions_table_staging_manager():
             self.live_submissions_table.build(
-                file,
+                self.file_live_submissions_table_staging,
                 group_ids = group_ids,
             )
-            self.logger.info('Posting live submissions table to Canvas')
-            target = self.config.canvas_path_awaiting_grading
-            folder = self.course.canvas_course.get_folder_by_path(target.parent)
-            self.course.canvas_course.post_file(file, folder.id, target.name)
+            if path_tools.file_content_eq(
+                self.file_live_submissions_table_staging,
+                self.file_live_submissions_table,
+                missing_ok_b = True,
+            ):
+                self.logger.debug(
+                    'Live submissions table has not changed, '
+                    'skipping upload to Canvas.'
+                )
+                self.file_live_submissions_table_staging.unlink()
+            else:
+                self.logger.info('Posting live submissions table to Canvas')
+                target = self.config.canvas_path_awaiting_grading
+                self.course.canvas_course.post_file(
+                    self.file_live_submissions_table_staging,
+                    self.course.canvas_course.get_folder_by_path(target.parent).id,
+                    target.name,
+                )
+                self.file_live_submissions_table_staging.replace(
+                    self.file_live_submissions_table,
+                )
 
     def parse_issue(self, issue):
         request_types = self.config.request.__dict__
@@ -831,7 +864,11 @@ class Lab:
 
     @functools.cached_property
     def grading_sheet(self):
-        return self.course.grading_spreadsheet.ensure_grading_sheet(self.id)
+        return self.course.grading_spreadsheet.ensure_grading_sheet(
+            lab_id = self.id,
+            groups = self.course.groups,
+            group_link = lambda group_id: self.student_group(group_id).project.get.web_url,
+        )
 
     def normalize_group_ids(self, group_ids = None):
         '''TODO: move to course.Course?'''
@@ -868,12 +905,9 @@ class Lab:
             if self.include_group_in_grading_sheet(group, deadline)
         ]
 
-        # Ensure grading sheet has rows for all required groups.
-        self.grading_sheet.setup_groups(
-            [group.id for group in groups],
-            group_link = lambda group_id: self.student_group(group_id).project.get.web_url,
-            delete_previous = False,
-        )
+        # Refresh grading sheet cache.
+        with contextlib.suppress(AttributeError):
+            del self.grading_sheet
 
         # Ensure grading sheet has sufficient query group columns.
         self.grading_sheet.ensure_num_queries(max(
@@ -909,13 +943,43 @@ class Lab:
                 )
         request_buffer.flush()
 
+    def update_submission_systems(self, group_ids = None, deadline = None):
+        '''
+        Update the submission systems for specified groups.
+        The submission systems are:
+        - grading project on Chalmers GitLab,
+        - live submissions table (if set up),
+        - grading sheet.
+
+        Arguments:
+        * group_ids:
+            Iterable for group_ids to restrict updates to.
+            Defaults to all groups.
+        * deadline:
+            Passed to update_grading_sheet.
+            If set, overrides self.deadline.
+        '''
+        if group_ids is None:
+            group_ids = self.course.groups
+        group_ids = tuple(group_ids)
+
+        # Clear group members cache.
+        for group_id in group_ids:
+            self.student_group(group_id).members_clear()
+
+        # Update submission systems.
+        if hasattr(self, 'live_submissions_table'):
+            self.live_submissions_table.update_rows(group_ids = group_ids)
+        self.repo_push()
+        if group_ids:
+            if hasattr(self, 'live_submissions_table'):
+                self.update_live_submissions_table()
+            self.update_grading_sheet(group_ids = group_ids)
+
     def initial_run(self, deadline = None):
         '''
         Does an initial run of processing everything.
-
         Assumes that setup has already occurred.
-        After this method is called, the instance is ready
-        to lab handle events as described in handle_event.
 
         Arguments:
         * deadline:
@@ -926,86 +990,54 @@ class Lab:
         self.repo_fetch_all()
         self.parse_request_tags(False)
         self.process_requests()
-        if hasattr(self, 'live_submissions_table'):
-            self.live_submissions_table.update_rows()
-        self.repo_push()
-        if hasattr(self, 'live_submissions_table'):
-            self.update_live_submissions_table()
-        self.update_grading_sheet(deadline = deadline)
+        self.update_submission_systems(deadline = deadline)
 
-    def handle_event(self, event: events.LabEvent):
+    def refresh_lab(self):
         '''
-        Handle a lab event.
-        This could be:
-        * a request to refresh all group data
-          (requests and responses) from Chalmers GitLab,
-        * a notification that some group has created a new (potentially) request tag
-          or there was a change (create or edit) in a (potentially response) issue.
+        Refresh group project requests and responses.
+        Should be called regularly even if webhooks are in place.
+        This is because webhooks can fail to trigger
+        or the network connection may be done.
         '''
-        def unknown_event():
-            raise ValueError(f'cannot handle event of type {type(event)}:\n{event}')
+        self.logger.info('Refreshing lab.')
+        review_updates = frozenset(self.parse_response_issues())
 
-        lab_name = self.course.config.lab.name.print(event.lab_id)
+        self.repo_fetch_all()
+        self.parse_request_tags(from_gitlab = False)
+        new_submissions = frozenset(self.process_requests())
 
-        groups_with_review_updates = set()
-        groups_with_new_submissions = set()
+        # Update submission system.
+        self.logger.info(f'Groups with new submissions: {new_submissions}')
+        self.logger.info(f'Groups with review updates: {review_updates}')
+        self.update_submission_systems(group_ids = review_updates | new_submissions)
 
-        if isinstance(event, events.LabRefresh):
-            self.logger.info(f'Lab refresh event received for {lab_name}.')
+    def refresh_group(self, group, refresh_responses = True):
+        '''
+        Refresh requests and responses in a single group in this lab.
+        Typically called after notification by a webhook.
 
-            # Clear group members cache.
-            for group in self.student_groups:
-                group.members_clear()
+        Arguments:
+        * group_id: The id of the group to refresh.
+        * refresh_responses: If set to False, responses will not be updated.
+        '''
+        suffix = '' if refresh_responses else ' (requests only)'
+        self.logger.debug(f'Refreshing {group.name}{suffix}.')
 
-            # Process requests and responses.
-            groups_with_review_updates |= self.parse_response_issues()
-            self.repo_fetch_all()
-            self.parse_request_tags(from_gitlab = False)
-            groups_with_new_submissions |= self.process_requests()
-        elif isinstance(event, events.GroupProjectEvent):
-            group_name = self.course.config.group.name.print(event.group_id)
-            self.logger.debug(f'Group project event received for {group_name}.')
+        review_updates = refresh_responses and group.parse_response_issues()
+        group.repo_fetch()
+        # Setting from_gitlab = True results in a single HTTP call.
+        # It might be faster if we have a large number of remote tags.
+        group.parse_request_tags(from_gitlab = False)
+        new_submissions = self.process_group_request(group)
 
-            # Clear group members cache for this group.
-            group = self.student_group(event.group_id)
-            group.members_clear()
-
-            if isinstance(event, events.GroupProjectEventTag):
-                self.logger.info(
-                    f'Group project tag event received for {group_name} in {lab_name}.'
-                )
-                group.repo_fetch()
-                # Setting from_gitlab = True results in a single HTTP call.
-                # It might be faster if we have a large number of remote tags.
-                group.parse_request_tags(from_gitlab = False)
-                if self.process_group_request(group):
-                    groups_with_new_submissions.add(event.group_id)
-            elif isinstance(event, events.GroupProjectEventIssue):
-                self.logger.info(
-                    f'Group project issue event received for {group_name} in {lab_name}.'
-                )
-                if group.parse_response_issues():
-                    groups_with_review_updates.add(event.group_id)
-            else:
-                unknown_event()
-        else:
-            unknown_event()
-
-        # Identify groups with submission updates.
-        self.logger.info(f'Groups with new submissions: {groups_with_new_submissions}')
-        self.logger.info(f'Groups with review updates: {groups_with_review_updates}')
-        groups_with_submission_updates = (
-            groups_with_review_updates | groups_with_new_submissions
-        )
-
-        # Update submission systems.
-        if hasattr(self, 'live_submissions_table'):
-            self.live_submissions_table.update_rows(group_ids = groups_with_submission_updates)
-        self.repo_push()
-        if groups_with_submission_updates:
-            if hasattr(self, 'live_submissions_table'):
-                self.update_live_submissions_table()
-            self.update_grading_sheet(group_ids = groups_with_submission_updates)
+        # Update submission system.
+        if new_submissions:
+            self.logger.info('New submissions received.')
+        if review_updates:
+            self.logger.info('New review updates received.')
+        self.update_submission_systems(group_ids = filter(
+            lambda _: review_updates or new_submissions, [group.id]
+        ))
 
     def update_grading_sheet_and_live_submissions_table(self, deadline = None):
         '''Does what it says.'''
@@ -1034,3 +1066,39 @@ class Lab:
             out = dir / path
             out.mkdir(parents = True)
             git_tools.checkout(self.repo, out, tag)
+
+    def parse_hook_event(self, hook_event, group_id, strict = False):
+        '''
+        Arguments:
+        * hook_event:
+            Dictionary (decoded JSON).
+            Event received from a webhook in this lab.
+        * group_id:
+            Group id parsed from the event project path.
+        * strict:
+            Whether to fail on unknown events.
+
+        Returns an iterator of pairs of:
+        - an instance of events.LabEvent,
+        - a callback function to handle the event.
+        These are the lab events triggered by the webhook event.
+        '''
+        if group_id in self.course.groups:
+            group = self.student_group(group_id)
+            yield from webhook_listener.map_with_callback(
+                group.lab_event,
+                group.parse_hook_event(hook_event, strict = strict),
+            )
+        else:
+            if strict:
+                raise ValueError(f'Unknown group id {group_id}')
+
+            self.logger.warning(f'Received webhook event for unknown group id {group_id}.')
+            self.logger.debug(f'Webhook event:\n{hook_event}')
+
+    @property
+    def course_event(self):
+        return lambda lab_event: events.CourseEventInLab(
+            lab_id = self.id,
+            lab_event = lab_event,
+        )
