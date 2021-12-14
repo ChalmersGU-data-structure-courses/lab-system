@@ -242,14 +242,14 @@ grading_sheet = SimpleNamespace(
     template = ('1phOUdj_IynVKPiEU6KtNqI3hOXwNgIycc-bLwgChmUs', 'Generic lab'),
 )
 
-# Root of the code repository.
-_code_root = this_dir.parent
+# Root of the lab repository.
+_lab_repo = this_dir.parent.parent / 'labs'
 
 # Example lab configuration (for purpose of documentation).
 _lab_config = SimpleNamespace(
     # Filesystem path to the lab source.
-    path_source = _code_root / 'labs' / 'goose-recognizer' / 'java',
-    path_gitignore = _code_root / 'Other' / 'lab-gitignore' / 'java.gitignore',
+    path_source = _lab_repo / 'labs' / 'goose-recognizer' / 'java',
+    path_gitignore = _lab_repo / 'gitignores' / 'java.gitignore',
 
     # Worksheet identifier of the grading sheet for the lab.
     # This can be of the following types:
@@ -307,8 +307,8 @@ _language = 'java'
 
 class _LabConfig:
     def __init__(self, k, lab_folder, refresh_period):
-        self.path_source = _code_root / 'labs' / lab_folder / _language
-        self.path_gitignore = _code_root / 'Other' / 'lab-gitignore' / f'{_language}.gitignore'
+        self.path_source = _lab_repo / 'labs' / lab_folder / _language
+        self.path_gitignore = _lab_repo / 'lab-gitignore' / f'{_language}.gitignore'
         self.grading_sheet = lab.name.print(k)
         self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-to-be-graded.html'.format(lab.full_id.print(k))
 

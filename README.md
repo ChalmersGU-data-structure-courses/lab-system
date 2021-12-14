@@ -15,7 +15,7 @@ If some parts of a script require fine-tuning for a specific course (e.g. becaus
 
 We require Python version at least 3.9.
 
-Unless mentioned otherwise, the working directory is the folder `Lab-grading`.
+Unless mentioned otherwise, the working directory is the folder of this file.
 
 Install the required packages via this command:
 ```
