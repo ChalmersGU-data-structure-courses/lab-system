@@ -329,7 +329,8 @@ def switch_to_submission(repo, group, submission):
 
 def main():
     # These are passed into the child process
-    os.environ['PYTHONDONTWRITEBYTECODE']='1'
+    os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
+    os.environ['PYTHONHASHSEED'] = '0'
     if 'PYTHONPATH' in os.environ:
         os.environ['PYTHONPATH'] += ':.'
     else:
