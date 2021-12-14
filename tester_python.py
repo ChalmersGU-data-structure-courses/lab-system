@@ -69,7 +69,9 @@ class LabTester:
             shutil.copytree(dir_src, dir, symlinks = True, dirs_exist_ok = True)
             shutil.copytree(self.dir_test, dir, dirs_exist_ok = True)
 
-            env = {}
+            env = {
+                'PYTHONHASHSEED': '0',
+            }
             cmd = proot_tools.sandboxed_python_args(
                 test.script,
                 guest_args = test.args,
