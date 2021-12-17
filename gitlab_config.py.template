@@ -413,15 +413,6 @@ webhook = SimpleNamespace(
     # Value doesn't matter, but should not be guessable.
     secret_token = 'a not-so-well-chosen secret',
 
-    # Local port to listen on for webhook notifications.
-    local_port = 4200,
-
-    # Maximal runtime of the event loop.
-    # If None, the event loop runs forever.
-    # After this period, a program termination
-    # event (highest priority) is scheduled.
-    event_loop_runtime = datetime.timedelta(days = 1),
-
     # Artificial delay to between the first scheduling of
     # lab refresh events for successive labs with lab refreshes.
     # The k-th lab with lab refreshed is scheduled for a refresh after:
