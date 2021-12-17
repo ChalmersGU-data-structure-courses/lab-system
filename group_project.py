@@ -909,10 +909,9 @@ class GroupProject:
             })
         except gitlab.exceptions.GitlabCreateError as e:
             if e.response_code == 422 and e.error_message == 'Invalid url given':
-                host = print_parse.url.parse(self.course.config.base_url).netloc.host
                 raise ValueError(
                     f'Invalid net location {print_parse.netloc.print(netloc)} '
-                    f'for a GitLab webhook at {host}.'
+                    f'for a GitLab webhook at {self.course.gitlab_netloc.host}.'
                 ) from e
             else:
                 raise

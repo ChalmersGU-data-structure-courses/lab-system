@@ -173,17 +173,25 @@ class Course:
                     general.print_json(user._dict)
                     general.print_json(self.canvas.get(['users', user.id, 'profile'], use_cache = True)._dict)
 
+    @property
+    def gitlab_netloc(self):
+        return print_parse.NetLoc(
+            host = print_parse.url.parse(self.config.gitlab_url).netloc.host,
+            # TODO: determine port from self.config.gitlab_url.
+            port = 443,
+        )
+
     @functools.cached_property
     def gl(self):
         r = gitlab.Gitlab(
-            self.config.base_url,
+            self.config.gitlab_url,
             private_token = gitlab_tools.read_private_token(self.config.gitlab_private_token)
         )
         r.auth()
         return r
 
     def gitlab_url(self, path):
-        return urllib.parse.urljoin(self.config.base_url, str(path))
+        return urllib.parse.urljoin(self.config.gitlab_url, str(path))
 
     @functools.cached_property
     def entity_cached_params(self):
@@ -792,11 +800,7 @@ class Course:
     @functools.cached_property
     def hook_netloc_default(self):
         return print_parse.NetLoc(
-            host = ip_tools.get_local_ip_routing_to(print_parse.NetLoc(
-                host = print_parse.url.parse(self.config.base_url).netloc.host,
-                # TODO: determine port from self.config.base_url.
-                port = 443,
-            )),
+            host = ip_tools.get_local_ip_routing_to(self.gitlab_netloc),
             port = self.config.webhook.local_port,
         )
 
