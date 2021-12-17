@@ -6,6 +6,12 @@ from pathlib import Path, PurePath, PurePosixPath
 import shlex
 import shutil
 import tempfile
+import typing
+
+
+# ## Type annotations.
+
+PathLike = typing.TypeVar("PathLike", str, os.PathLike)
 
 
 # ## Operations on pure paths.
