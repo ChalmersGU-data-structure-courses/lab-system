@@ -27,8 +27,8 @@ canvas = SimpleNamespace(
 
     # Name of Canvas group set where students sign up for lab groups.
     # We recommend to use a zero-based numerical naming scheme such as 'Lab group 0', 'Lab group 1', etc.
-    # If you allow students to create their own group name, you have to
-    # define further down how this should translate to group names on GitLab.
+    # If you allow students to create their own group name,
+    # you have to define further down how this should translate to group names on GitLab.
     # There are special characters allowed for Canvas group names, but forbidden for GitLab group names.
     group_set = 'Lab groups',
 
@@ -39,6 +39,17 @@ canvas = SimpleNamespace(
 
 # URL for Chalmers GitLab.
 gitlab_url = 'https://git.chalmers.se'
+
+# SSH configuration for Chalmers GitLab.
+gitlab_ssh = SimpleNamespace(
+    # Instance of print_parse.NetLoc.
+    # Usually, the host is as in gitlab_url and the user is 'git'.
+    netloc = print_parse.NetLoc(host = 'git.chalmers.se', user = 'git'),
+
+    # Maximum number of parallel jobs to use for git fetches and pushes.
+    # Currently (2021-12), 5 seems to be the value of MaxSessions configured for sshd at Chalmers GitLab.
+    max_sessions = 5,
+)
 
 # Here is the group structure.
 # The top-level groups need to be created (with paths configured below).
@@ -395,15 +406,6 @@ def gitlab_username_from_canvas_user_id(course, user_id):
 webhook = SimpleNamespace(
     # Value doesn't matter, but should not be guessable.
     secret_token = 'a not-so-well-chosen secret',
-
-    # Local port to listen on for webhook notifications.
-    local_port = 4201,
-
-    # Maximal runtime of the event loop.
-    # If None, the event loop runs forever.
-    # After this period, a program termination
-    # event (highest priority) is scheduled.
-    event_loop_runtime = datetime.timedelta(days = 1),
 
     # Artificial delay to between the first scheduling of
     # lab refresh events for successive labs with lab refreshes.
