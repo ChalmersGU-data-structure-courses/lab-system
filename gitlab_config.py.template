@@ -40,6 +40,17 @@ canvas = SimpleNamespace(
 # URL for Chalmers GitLab.
 gitlab_url = 'https://git.chalmers.se'
 
+# SSH configuration for Chalmers GitLab.
+gitlab_ssh = SimpleNamespace(
+    # Instance of print_parse.NetLoc.
+    # Usually, the host is as in gitlab_url and the user is 'git'.
+    netloc = print_parse.NetLoc(host = 'git.chalmers.se', user = 'git'),
+
+    # Maximum number of parallel jobs to use for git fetches and pushes.
+    # Currently (2021-12), 5 seems to be the value of MaxSessions configured for sshd at Chalmers GitLab.
+    max_sessions = 5,
+)
+
 # Here is the group structure.
 # The top-level groups need to be created (with paths configured below).
 # The rest is managed by script.
