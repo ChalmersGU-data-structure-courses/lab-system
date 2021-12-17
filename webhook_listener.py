@@ -169,7 +169,7 @@ def parse_hook_event(courses_by_groups_path, hook_event, strict = False):
                 ),
             )
         else:
-            msg = f'unknown course with student groups path groups path {shlex.quote(path_groups)}'
+            msg = f'unknown course with student groups path groups path {shlex.quote(str(path_groups))}'
             if strict:
                 raise ValueError(msg)
 
