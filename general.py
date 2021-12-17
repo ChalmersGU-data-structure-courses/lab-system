@@ -13,6 +13,7 @@ import time
 from types import SimpleNamespace
 import os
 import shlex
+import string
 import subprocess
 import sys
 
@@ -594,4 +595,8 @@ def add_cleanup(manager, action):
         finally:
             action()
 
+def escape_percent(s):
+    return re.sub('%', '%%', s)
 
+def has_whitespace(s):
+    return any(c in s for c in string.whitespace)

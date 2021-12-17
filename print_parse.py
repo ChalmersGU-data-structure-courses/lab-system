@@ -5,6 +5,7 @@ import collections
 import functools
 import pathlib
 import re
+import shlex
 import urllib.parse
 
 from escaping_formatter import regex_escaping_formatter
@@ -390,4 +391,9 @@ url = compose(
         print = urllib.parse.urlunsplit,
         parse = urllib.parse.urlsplit,
     ),
+)
+
+command_line = PrintParse(
+    print = shlex.join,
+    parse = shlex.split,
 )
