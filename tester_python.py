@@ -81,8 +81,7 @@ class LabTester:
 
             # Workaround for check in test files.
             # (Only needed on the 2021-lp2 branch.)
-            if self.dir_lab.parent.name == 'autocomplete':
-                env['NO_SANDBOX'] = '1'
+            env['NO_SANDBOX'] = '1'
 
             general.log_command(logger, cmd)
             logger.debug(f'Timeout value is {test.timeout / self.machine_speed} seconds.')
