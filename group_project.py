@@ -678,10 +678,7 @@ class GroupProject:
         the contents of the student repository on GitLab Chalmers.
         '''
         self.logger.info(f'Fetching from student repository, remote {self.remote}.')
-        self.repo.remote(self.remote).fetch('--update-head-ok')
-        self.lab.repo_updated = True
-        with contextlib.suppress(AttributeError):
-            del self.lab.remote_tags
+        self.lab.repo_command_fetch([self.remote])
 
     def repo_tag(self, request_name, segments = ['tag']):
         '''
@@ -912,10 +909,9 @@ class GroupProject:
             })
         except gitlab.exceptions.GitlabCreateError as e:
             if e.response_code == 422 and e.error_message == 'Invalid url given':
-                host = print_parse.url.parse(self.course.config.base_url).netloc.host
                 raise ValueError(
                     f'Invalid net location {print_parse.netloc.print(netloc)} '
-                    f'for a GitLab webhook at {host}.'
+                    f'for a GitLab webhook at {self.course.gitlab_netloc.host}.'
                 ) from e
             else:
                 raise

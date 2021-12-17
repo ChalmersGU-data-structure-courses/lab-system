@@ -375,14 +375,43 @@ class Lab:
             raise
         self.repo = repo
 
+    def repo_remote_command(self, command):
+        if self.course.ssh_multiplexer is None:
+            self.repo.git._call_process(*command)
+        else:
+            self.course.ssh_multiplexer.git_cmd(self.repo, command)
+
+    def repo_command_fetch(self, remotes):
+        remotes = list(remotes)
+        self.logger.debug(f'Fetching from remotes: {remotes}.')
+
+        def command():
+            yield 'fetch'
+            yield '--update-head-ok'
+            yield from ['--jobs', str(self.course.config.gitlab_ssh.max_sessions)]
+            yield from ['--multiple', *remotes]
+        self.repo_remote_command(list(command()))
+
+        # Update caching mechanisms.
+        self.repo_updated = True
+        with contextlib.suppress(AttributeError):
+            del self.remote_tags
+
+    def repo_command_push(self, remote):
+        self.logger.debug(f'Pushing to remote: {remote}.')
+
+        def command():
+            yield 'push'
+            yield remote
+        self.repo_remote_command(list(command()))
+
     def repo_fetch_official(self):
         '''
         Fetch problem and solution branches from the offical
         repository on Chalmers GitLab to the local grading repository.
         '''
         self.logger.info('Fetching from official repository.')
-        self.repo.remote(self.course.config.path_lab.official).fetch('--update-head-ok')
-        self.repo_updated = True
+        self.repo_command_fetch([self.course.config.path_lab.official])
 
     def repo_push(self, force = False):
         '''
@@ -391,7 +420,7 @@ class Lab:
         '''
         if self.repo_updated or force:
             self.logger.info('Pushing to grading repository.')
-            self.repo.remote(self.course.config.path_lab.grading).push()
+            self.repo_command_push(self.course.config.path_lab.grading)
             self.repo_updated = False
 
     @instance_cache.instance_cache
@@ -478,9 +507,13 @@ class Lab:
         '''
         Fetch from the official repository and all student repositories.
         '''
-        self.repo_fetch_official()
-        for group in self.student_groups:
-            group.repo_fetch()
+        self.logger.info('Fetching from official project and student projects.')
+
+        def remotes():
+            yield self.course.config.path_lab.official
+            for group in self.student_groups:
+                yield group.remote
+        self.repo_command_fetch(remotes())
 
     @functools.cached_property
     def remote_tags(self):
@@ -1021,7 +1054,7 @@ class Lab:
         * refresh_responses: If set to False, responses will not be updated.
         '''
         suffix = '' if refresh_responses else ' (requests only)'
-        self.logger.debug(f'Refreshing {group.name}{suffix}.')
+        self.logger.info(f'Refreshing {group.name}{suffix}.')
 
         review_updates = refresh_responses and group.parse_response_issues()
         group.repo_fetch()
