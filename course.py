@@ -64,6 +64,11 @@ class Course:
 
     This class is configured by the config argument to its constructor.
     The format of this argument is a module as documented in gitlab.config.py.template.
+
+    Settable attributes:
+    * ssh_multiplexer:
+        An optional instance of ssh_tools.Multiplexer.
+        Used for executing git commands for Chalmers GitLab over SSH.
     '''
     def __init__(self, config, dir = None, *, logger = logging.getLogger(__name__)):
         '''
@@ -84,6 +89,8 @@ class Course:
             print_parse.on(general.component_tuple(0), self.config.group.full_id),
             print_parse.qualify_with_slash
         )
+
+        self.ssh_multiplexer = None
 
         import lab
         self.labs = dict(
