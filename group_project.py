@@ -678,10 +678,7 @@ class GroupProject:
         the contents of the student repository on GitLab Chalmers.
         '''
         self.logger.info(f'Fetching from student repository, remote {self.remote}.')
-        self.repo.remote(self.remote).fetch('--update-head-ok')
-        self.lab.repo_updated = True
-        with contextlib.suppress(AttributeError):
-            del self.lab.remote_tags
+        self.lab.repo_command_fetch([self.remote])
 
     def repo_tag(self, request_name, segments = ['tag']):
         '''
