@@ -190,9 +190,6 @@ class Course:
         r.auth()
         return r
 
-    def gitlab_url(self, path):
-        return urllib.parse.urljoin(self.config.gitlab_url, str(path))
-
     @functools.cached_property
     def entity_cached_params(self):
         return types.SimpleNamespace(
