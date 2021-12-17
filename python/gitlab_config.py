@@ -243,7 +243,7 @@ grading_sheet = SimpleNamespace(
 )
 
 # Root of the lab repository.
-_lab_repo = this_dir.parent.parent / 'labs'
+_lab_repo = this_dir.parent / 'labs'
 
 import lab_interfaces
 
