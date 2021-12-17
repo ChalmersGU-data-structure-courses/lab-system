@@ -104,6 +104,7 @@ class CachedGroup:
     def lazy(self):
         g = self.gl.groups.get(str(self.path), lazy = True)
         g.namespace_path = str(self.path)
+        g.web_url = urllib.parse.urljoin(self.gl.url, str(self.path))
         return g
 
     def create(self, group = None, **kwargs):
@@ -157,6 +158,7 @@ class CachedProject:
     def lazy(self):
         p = self.gl.projects.get(str(self.path), lazy = True)
         p.path_with_namespace = str(self.path)
+        p.web_url = urllib.parse.urljoin(self.gl.url, str(self.path))
         return p
 
     def create(self, group = None, **kwargs):

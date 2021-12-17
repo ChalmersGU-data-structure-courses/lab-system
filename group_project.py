@@ -1033,7 +1033,7 @@ class GroupProject:
             item_parser.Config(
                 location_name = self.name,
                 item_name = 'request tag',
-                item_formatter = lambda x: gitlab_tools.format_tag_metadata(self.project.get, x[0]),
+                item_formatter = lambda x: gitlab_tools.format_tag_metadata(self.project.lazy, x[0]),
                 logger = self.logger,
             ),
             f(),
