@@ -37,11 +37,13 @@ canvas = SimpleNamespace(
     grading_path = 'temp',
 )
 
-# Base URL for Chalmers GitLab
-base_url = 'https://git.chalmers.se/'
+# URL for Chalmers GitLab.
+gitlab_url = 'https://git.chalmers.se'
 
 # Here is the group structure.
-# The top-level group need to be created, the rest if managed by script.
+# The top-level groups need to be created (with paths configured below).
+# The rest is managed by script.
+# The group names don't matter for the script.
 #
 # * graders             # Who should be allowed to grade?
 #                       # Members of this group will have access to all lab groups and grading repositories.
