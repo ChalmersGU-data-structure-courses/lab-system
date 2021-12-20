@@ -45,6 +45,9 @@ body {
 #results .extension-column {
   border-left-color: lightgrey;
 }
+#results .block {
+  display: block;
+}
 #results .grayed-out {
   opacity: 0.5;
 }
