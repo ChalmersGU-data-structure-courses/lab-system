@@ -96,7 +96,7 @@ class CompilationAndRobogradingColumn(live_submissions_table.Column):
                 report.name,
                 path,
             ))
-            a['display'] = 'inline-block'
+            a['style'] = 'display: block;'
             return a
 
         if not submission_current.handled_result['compilation_succeded']:

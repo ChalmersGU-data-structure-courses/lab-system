@@ -356,10 +356,10 @@ class SubmissionFilesColumn(Column):
 
         def format_cell(self, cell):
             with cell:
-                with dominate.tags.p():
-                    format_url(*self.linked_name)
-                with dominate.tags.p():
-                    format_url(*self.linked_open_grading_issue)
+                a = format_url(*self.linked_name)
+                add_class(a, 'block')
+                a = format_url(*self.linked_open_grading_issue)
+                add_class(a, 'block')
 
     def get_value(self, group):
         submission = group.submission_current(deadline = self.config.deadline)
