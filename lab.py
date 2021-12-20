@@ -897,11 +897,7 @@ class Lab:
 
     @functools.cached_property
     def grading_sheet(self):
-        return self.course.grading_spreadsheet.ensure_grading_sheet(
-            lab_id = self.id,
-            groups = self.course.groups,
-            group_link = lambda group_id: self.student_group(group_id).project.get.web_url,
-        )
+        return self.course.grading_spreadsheet.ensure_grading_sheet(self.id)
 
     def normalize_group_ids(self, group_ids = None):
         '''TODO: move to course.Course?'''
@@ -939,8 +935,13 @@ class Lab:
         ]
 
         # Refresh grading sheet cache.
-        with contextlib.suppress(AttributeError):
-            del self.grading_sheet
+        self.grading_sheet.clear_cache()
+
+        # Ensure grading sheet has rows for all required groups.
+        self.grading_sheet.setup_groups(
+            groups = [group.id for group in groups],
+            group_link = lambda group_id: self.student_group(group_id).project.get.web_url,
+        )
 
         # Ensure grading sheet has sufficient query group columns.
         self.grading_sheet.ensure_num_queries(max(
