@@ -265,7 +265,7 @@ def run():
     with exit_stack:
         event_loop.run(
             courses = courses.values(),
-            run_time = datetime.timedelta(hours = args.run_time),
+            run_time = general.with_default(lambda x: datetime.timedelta(hours = x), args.run_time),
             webhook_config = webhook_config,
         )
 
