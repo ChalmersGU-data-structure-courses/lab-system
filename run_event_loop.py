@@ -250,7 +250,7 @@ def delete_webhooks():
 def run():
     event_loop.run(
         courses = courses.values(),
-        run_time = args.run_time,
+        run_time = datetime.timedelta(hours = args.run_time),
         webhook_config = webhook_config,
     )
 
