@@ -130,6 +130,15 @@ By default, there is no run-time limit.
 ''').completer = complete_nothing
 
 g = p.add_argument_group(title = 'help and debugging')
+g.add_argument('-e', '--error-spreadsheet', type = str, dest = 'error_spreadsheet', help = '''
+The ID of an optional Google spreadsheet to use for dumping error reports on run failure.
+The sheet ID (gid) is assumed 0 for now (by default, this refers to the first sheet).
+
+to be notified on run  failure, configure change notifications in this spreadsheet:
+* go to https://docs.google.com/spreadsheets/d/<ERROR_SPREADSHEET>,
+* click on "tools", then on "notification rules",
+* configure notifications (whenever changes are made, right away).
+''')
 g.add_argument('-l', '--log-file', type = Path, dest = 'log_file', help = '''
 An optional log file to append debug level logging to.
 This is in addition to the the logging printed to standard error by the --verbose option.
@@ -248,11 +257,17 @@ def delete_webhooks():
         c.hooks_delete_all()
 
 def run():
-    event_loop.run(
-        courses = courses.values(),
-        run_time = datetime.timedelta(hours = args.run_time),
-        webhook_config = webhook_config,
-    )
+    exit_stack = contextlib.ExitStack()
+    if args.error_spreadsheet:
+        c = next(iter(courses.values()))
+        exit_stack.enter_context(c.error_reporter(args.error_spreadsheet))
+
+    with exit_stack:
+        event_loop.run(
+            courses = courses.values(),
+            run_time = datetime.timedelta(hours = args.run_time),
+            webhook_config = webhook_config,
+        )
 
 # Perform selected action.
 {
