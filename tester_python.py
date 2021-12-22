@@ -84,6 +84,7 @@ class LabTester:
             env['NO_SANDBOX'] = '1'
 
             general.log_command(logger, cmd)
+            logger.debug(f'Environment: {env}')
             logger.debug(f'Timeout value is {test.timeout / self.machine_speed} seconds.')
 
             # proot does not use PTRACE_O_EXITKILL on traced processes.
