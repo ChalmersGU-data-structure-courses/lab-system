@@ -1073,19 +1073,16 @@ class Course:
                     callback()
 
     @contextlib.contextmanager
-    def error_reporter(self):
+    def error_reporter(self, spreadsheet_id, sheet_id = 0):
         '''
-        A context manager for reporting program errors via the temp directory on Canvas.
-        Hack, uses hard-coded configuration for now.
+        A context manager for reporting program errors via a Google sheet.
+        Use change notifications on Google sheets to get notifications on failure.
         '''
         import traceback
         import google_tools.sheets
 
         # Shortcut
         spreadsheets = grading_sheet.GradingSpreadsheet(self.config).google
-
-        spreadsheet_id = '1qnG1Lfp8Y-_0MpsncASBljDb_NTn1pFk6b0pgjQwka4'
-        sheet_id = '0'
 
         try:
             yield
