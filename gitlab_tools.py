@@ -28,8 +28,8 @@ list_all_args = {
     'per_page': 1000,
 }
 
-def list_all(manager):
-    return manager.list(**list_all_args)
+def list_all(manager, **kwargs):
+    return manager.list(**kwargs, **list_all_args)
 
 @contextlib.contextmanager
 def exist_ok():
