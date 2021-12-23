@@ -6,10 +6,10 @@ from this_dir import this_dir
 logging.basicConfig()
 logging.getLogger().setLevel(logging.DEBUG)
 
-import java.gitlab_config as config_java
+import java.config as config_java
 course_java = Course(config_java, dir = this_dir / 'java')
 
-import python.gitlab_config as config_python
+import python.config as config_python
 course_python = Course(config_python, dir = this_dir / 'python')
 
 
