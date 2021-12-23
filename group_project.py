@@ -1110,9 +1110,15 @@ class GroupProject:
         if self.lab.have_reviews:
             data_previous = self.reviews_data
 
-        def f():
+        def closed_issue_parser(issue):
+            return () if issue.state == 'closed' else None
+
+        def parser_data():
             for handler_data in self.handler_data.values():
                 yield from handler_data.response_issue_parser_data()
+
+            # Disregard unrecognized issues that are closed.
+            yield (closed_issue_parser, 'disregard closed issues', None)
 
         item_parser.parse_all_items(
             item_parser.Config(
@@ -1121,7 +1127,7 @@ class GroupProject:
                 item_formatter = gitlab_tools.format_issue_metadata,
                 logger = self.logger,
             ),
-            f(),
+            parser_data(),
             self.official_issues(),
         )
 
