@@ -1055,7 +1055,11 @@ class GroupProject:
         Only official issues can be response issues.
         '''
         self.logger.debug(f'Retrieving response issues in {self.name}.')
-        for issue in gitlab_tools.list_all(self.project.lazy.issues):
+        for issue in gitlab_tools.list_all(
+            self.project.lazy.issues,
+            order_by = 'created_at',
+            sort = 'desc',
+        ):
             if issue.author['id'] in self.course.graders:
                 yield issue
 
