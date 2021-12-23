@@ -435,9 +435,9 @@ class Lab:
         self.logger.debug('Configuring student project {project.path_with_namespace}')
 
         def patterns():
-            # TODO: collect protection patterns from handlers
-            for pattern in self.submission_handler.request_matcher.protection_patterns:
-                yield pattern
+            for request_handler in self.config.request_handlers.values():
+                for pattern in request_handler.request_matcher.protection_patterns:
+                    yield pattern
 
         self.logger.debug('Protecting tags')
         gitlab_tools.protect_tags(self.gl, project.id, patterns())
