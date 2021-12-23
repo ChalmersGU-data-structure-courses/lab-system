@@ -75,7 +75,7 @@ def parse_items(config, parser, parser_name, parse_results, items):
             yield item
             continue
 
-        if parse_result is None:
+        if parse_results is None:
             pass
         elif isinstance(parse_results, list):
             parse_results.append(parse_result)
