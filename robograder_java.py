@@ -370,7 +370,12 @@ class CompileException(java_tools.CompileError, HandlingException):
 
 def submission_compile(src, bin):
     try:
-        return java_tools.compile_unknown(src = src, bin = bin, check = True)
+        return java_tools.compile_unknown(
+            src = src,
+            bin = bin,
+            check = True,
+            options = ['-Xlint:all'],
+        )
     except java_tools.CompileError as e:
         raise CompileException(e.compile_errors) from None
 

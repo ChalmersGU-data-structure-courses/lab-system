@@ -179,7 +179,7 @@ def compile_unknown(
     * kwargs:
         Further keyword arguments to be passed to javac_cmd.
         These should exclude: files, destination.
-        javac_standard_options prepended to the iterable 'options'.
+        Note that javac_standard_options is prepended to options.
 
     If check is False, returns a pair (success, error_output) where:
     * success is a Boolean indicating whether compilation was successful,
@@ -252,7 +252,7 @@ def compile(
     * kwargs:
         Further keyword arguments to pass to cmd_javac.
         These should exclude: files, destination.
-        Note that javac_standard_options is added to options.
+        Note that javac_standard_options is prepended to options.
 
     Raises an instance of CompileError on compilation error.
     '''
