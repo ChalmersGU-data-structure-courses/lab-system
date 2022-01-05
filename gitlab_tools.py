@@ -363,3 +363,9 @@ def format_issue_metadata(issue, description = None):
         yield f'* author: {author}'
         yield f'* URL: {issue.web_url}'
     return general.join_lines(lines())
+
+def move_subgroups(gl, group_source, group_target):
+    for group in list_all(group_source.subgroups):
+        if not group.id == group_target.id:
+            group = gl.groups.get(group.id)
+            group.transfer_group(group_target.id)
