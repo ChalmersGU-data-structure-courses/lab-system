@@ -136,14 +136,6 @@ branch = SimpleNamespace(
     master = 'main',
 )
 
-# Value of type RequestMatcher.
-# Determines what tag name students can use to make a submission in their lab project on GitLab Chalmers.
-submission_request = course_basics.RegexRequestMatcher(
-    'submission',
-    ['submission*', 'Submission*'],
-    '(?:s|S)ubmission[^/: ]*',
-)
-
 # Parsing and printing of outcomes.
 outcome = SimpleNamespace(
     # Full name.
@@ -342,10 +334,8 @@ class _LabConfig:
     # Its value must be an instance of SubmissionHandler.
     submission_handler_key = 'submission'
 
-
 def _lab_item(k, *args):
     return (k, _LabConfig(k, *args))
-
 
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
