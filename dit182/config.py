@@ -321,15 +321,7 @@ _gu_id = print_parse.regex('{}@gu.se')
 # Return None if not possible.
 # Takes the course object and the Canvas user object as arguments.
 def gitlab_username_from_canvas_user_id(course, user_id):
-    login_id = course.canvas_login_id(user_id)
-    try:
-        cid = _cid.parse(login_id)
-    except ValueError:
-        return None
-    try:
-        return _cid_gitlab_exceptions.print(cid)
-    except KeyError:
-        return cid
+    return None
 
 # Configuration for webhooks on Chalmers GitLab.
 # These are used for programmatic push notifications.
