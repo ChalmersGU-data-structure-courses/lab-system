@@ -80,9 +80,14 @@ def protect_tags(gl, project_id, patterns, delete_existing = False, exist_ok = T
         with exist_ok_check(exist_ok):
             project.protectedtags.create({'name': pattern, 'create_access_level': gitlab.const.DEVELOPER_ACCESS})
 
-def protect_branch(gl, project_id, branch):
-    project = gl.projects.get(project_id, lazy = True)
-    project.branches.get(branch, lazy = True).protect(developers_can_push = True, developers_can_merge = True)
+def protect_branch(gl, project, branch, delete_prev = False):
+    if delete_prev:
+        project.protectedbranches.delete(branch)
+    project.protectedbranches.create({
+        'name': branch,
+        'merge_access_level': gitlab.const.DEVELOPER_ACCESS,
+        'push_access_level': gitlab.const.DEVELOPER_ACCESS,
+    })
 
 def members_from_access(entity, levels):
     return dict((user.id, user) for user in list_all(entity.members) if user.access_level in levels)

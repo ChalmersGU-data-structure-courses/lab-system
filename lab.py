@@ -443,7 +443,7 @@ class Lab:
         gitlab_tools.protect_tags(self.gl, project.id, patterns())
         project = gitlab_tools.wait_for_fork(self.gl, project)
         self.logger.debug(f'Protecting branch {self.course.config.branch.master}')
-        gitlab_tools.protect_branch(self.gl, project.id, self.course.config.branch.master)
+        gitlab_tools.protect_branch(self.gl, project, self.course.config.branch.master, delete_prev = True)
         return project
 
     # TODO:
@@ -460,8 +460,7 @@ class Lab:
             try:
                 for group_id in self.course.groups:
                     c = self.student_group(group_id).project
-                    if self.logger:
-                        self.logger.info(f'Forking project {c.path}')
+                    self.logger.info(f'Forking project {c.path}')
                     try:
                         projects[group_id] = staging_project.forks.create({
                             'namespace_path': str(c.path.parent),
@@ -476,6 +475,7 @@ class Lab:
                             raise
 
                 for (group_id, project) in tuple(projects.items()):
+                    self.logger.info(f'Configuring project {project.path_with_namespace}')
                     project = self.configure_student_project(project)
                     project.delete_fork_relation()
                     self.student_group(group_id).project.get = project
