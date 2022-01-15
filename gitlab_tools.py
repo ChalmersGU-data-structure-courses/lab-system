@@ -78,7 +78,7 @@ def protect_tags(gl, project_id, patterns, delete_existing = False, exist_ok = T
         patterns = set(patterns) - patterns_prev
     for pattern in patterns:
         with exist_ok_check(exist_ok):
-            project.protectedtags.create({'name': pattern, 'create_access_level': gitlab.DEVELOPER_ACCESS})
+            project.protectedtags.create({'name': pattern, 'create_access_level': gitlab.const.DEVELOPER_ACCESS})
 
 def protect_branch(gl, project_id, branch):
     project = gl.projects.get(project_id, lazy = True)

@@ -225,7 +225,7 @@ class Course:
     def graders(self):
         return gitlab_tools.members_from_access(
             self.graders_group.lazy,
-            [gitlab.OWNER_ACCESS]
+            [gitlab.const.OWNER_ACCESS]
         )
 
     @functools.cached_property
@@ -417,7 +417,7 @@ class Course:
                         with gitlab_tools.exist_ok():
                             self.graders_group.lazy.members.create({
                                 'user_id': gitlab_user.id,
-                                'access_level': gitlab.OWNER_ACCESS,
+                                'access_level': gitlab.const.OWNER_ACCESS,
                             })
                     else:
                         invitation = invitations.get(user.email)
@@ -430,7 +430,7 @@ class Course:
                                     self.gl,
                                     self.graders_group.lazy,
                                     user.email,
-                                    gitlab.OWNER_ACCESS,
+                                    gitlab.const.OWNER_ACCESS,
                                 )
 
         for email in invitations.keys() - invite():
@@ -502,7 +502,7 @@ class Course:
                         self.gl,
                         self.graders_group.lazy,
                         user.email,
-                        gitlab.OWNER_ACCESS,
+                        gitlab.const.OWNER_ACCESS,
                     )
                     invitations_by_email[user.email] = InvitationStatus.LIVE
 
@@ -533,7 +533,7 @@ class Course:
                         gitlab_tools.invitation_delete(self.gl, entity, email)
                     try:
                         with gitlab_tools.exist_ok():
-                            gitlab_tools.invitation_create(self.gl, entity, email, gitlab.DEVELOPER_ACCESS)
+                            gitlab_tools.invitation_create(self.gl, entity, email, gitlab.const.DEVELOPER_ACCESS)
                     except gitlab.exceptions.GitlabCreateError as e:
                         self.logger.error(str(e))
 
@@ -663,7 +663,7 @@ class Course:
                     self.logger.info(f'inviting {user_str_from_email(email)} to {entity_name}')
                     try:
                         with gitlab_tools.exist_ok():
-                            gitlab_tools.invitation_create(self.gl, entity, email, gitlab.DEVELOPER_ACCESS)
+                            gitlab_tools.invitation_create(self.gl, entity, email, gitlab.const.DEVELOPER_ACCESS)
                     except gitlab.exceptions.GitlabCreateError as e:
                         self.logger.error(str(e))
                 else:
@@ -676,7 +676,7 @@ class Course:
                     with gitlab_tools.exist_ok():
                         entity.members.create({
                             'user_id': gitlab_user.id,
-                            'access_level': gitlab.DEVELOPER_ACCESS,
+                            'access_level': gitlab.const.DEVELOPER_ACCESS,
                         })
                 else:
                     self.logger.warning(
@@ -769,7 +769,7 @@ class Course:
                                     self.gl,
                                     self.group(group_id).lazy,
                                     user.email,
-                                    gitlab.DEVELOPER_ACCESS,
+                                    gitlab.const.DEVELOPER_ACCESS,
                                 )
                             invitations_by_email[user.email] = InvitationStatus.LIVE
 
@@ -786,7 +786,7 @@ class Course:
         '''
         return gitlab_tools.members_from_access(
             cached_entity.lazy,
-            [gitlab.DEVELOPER_ACCESS, gitlab.MAINTAINER_ACCESS]
+            [gitlab.const.DEVELOPER_ACCESS, gitlab.const.MAINTAINER_ACCESS]
         )
 
     def student_projects(self):

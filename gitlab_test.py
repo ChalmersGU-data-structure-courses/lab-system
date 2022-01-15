@@ -98,10 +98,10 @@ def make_students_developers():
     lab_groups = get_lab_groups()
     for n, group in lab_groups.items():
         for user in group.members.list():
-            if user.access_level != gitlab.OWNER_ACCESS:
-                if user.access_level != gitlab.DEVELOPER_ACCESS:
+            if user.access_level != gitlab.const.OWNER_ACCESS:
+                if user.access_level != gitlab.const.DEVELOPER_ACCESS:
                     print(f'changing rights of {user.name} in {group.name} to developer...')
-                    user.access_level = gitlab.DEVELOPER_ACCESS
+                    user.access_level = gitlab.const.DEVELOPER_ACCESS
                     user.save()
 
 def check_submissions(lab):
