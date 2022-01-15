@@ -327,7 +327,7 @@ class Course:
         If the number of users on Chalmers GitLab grows significantly,
         it will be faster to switch to lookup calls for individual users.
         '''
-        return self._gitlab_users.get(gitlab_username)
+        return None if gitlab_username is None else self._gitlab_users.get(gitlab_username)
 
     @functools.cached_property
     def canvas_user_by_gitlab_username(self):
@@ -344,11 +344,15 @@ class Course:
         return general.sdict(f())
 
     def gitlab_user_by_canvas_id(self, canvas_id):
-        '''Returns the Chalmers GitLab user for a given Canvas user id.'''
-        return self.gitlab_user(self.config.gitlab_username_from_canvas_user_id(self, canvas_id))
+        '''Returns the Chalmers GitLab user for a given Canvas user id, or None if none is found.'''
+        gitlab_username = self.config.gitlab_username_from_canvas_user_id(self, canvas_id)
+        if gitlab_username is None:
+            None
+
+        return self.gitlab_user(gitlab_username)
 
     def gitlab_user_by_canvas_name(self, canvas_name):
-        '''returns the Chalmers GitLab user for a given full name on Canvas.'''
+        '''Returns the Chalmers GitLab user for a given full name on Canvas.'''
         canvas_id = self.canvas_course.user_name_to_id[canvas_name]
         return self.gitlab_user_by_canvas_id(canvas_id)
 
