@@ -460,8 +460,7 @@ class Lab:
             try:
                 for group_id in self.course.groups:
                     c = self.student_group(group_id).project
-                    if self.logger:
-                        self.logger.info(f'Forking project {c.path}')
+                    self.logger.info(f'Forking project {c.path}')
                     try:
                         projects[group_id] = staging_project.forks.create({
                             'namespace_path': str(c.path.parent),
@@ -476,6 +475,7 @@ class Lab:
                             raise
 
                 for (group_id, project) in tuple(projects.items()):
+                    self.logger.info(f'Configuring project {project.path_with_namespace}')
                     project = self.configure_student_project(project)
                     project.delete_fork_relation()
                     self.student_group(group_id).project.get = project
