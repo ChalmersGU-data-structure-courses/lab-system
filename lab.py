@@ -443,7 +443,7 @@ class Lab:
         gitlab_tools.protect_tags(self.gl, project.id, patterns())
         project = gitlab_tools.wait_for_fork(self.gl, project)
         self.logger.debug(f'Protecting branch {self.course.config.branch.master}')
-        gitlab_tools.protect_branch(self.gl, project.id, self.course.config.branch.master)
+        gitlab_tools.protect_branch(self.gl, project, self.course.config.branch.master, delete_prev = True)
         return project
 
     # TODO:
