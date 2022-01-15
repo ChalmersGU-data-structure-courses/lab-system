@@ -569,7 +569,7 @@ class Course:
         #
         # This skips user ids that cannot be resolved to Canvas users.
         # Such a case can happen if a student joins a group and then later leaves the course
-        # or has enrollment status reset to "pending" (that happened one, not sure how?).
+        # or has enrollment status reset to "pending" (that happened once, not sure how?).
         def resolve(user_ids, skip_email):
             gitlab_usernames = dict()
             emails = dict()
@@ -606,7 +606,7 @@ class Course:
         def user_str_from_gitlab_username(gitlab_username):
             return str_with_user_details(
                 gitlab_tools.format_username(gitlab_username),
-                student_gitlab_usernames.get(gitlab_username)
+                student_gitlab_usernames.get(gitlab_username),
             )
 
         for canvas_group in self.canvas_group_set.details.values():
