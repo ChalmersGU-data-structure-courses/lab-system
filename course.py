@@ -14,7 +14,6 @@ import random
 import shlex
 import threading
 import types
-import urllib.parse
 
 import more_itertools
 
@@ -345,7 +344,7 @@ class Course:
         return general.sdict(f())
 
     def gitlab_user_by_canvas_id(self, canvas_id):
-        '''Returns the Chalmers GitLab user for a given Canvas user id .'''
+        '''Returns the Chalmers GitLab user for a given Canvas user id.'''
         return self.gitlab_user(self.config.gitlab_username_from_canvas_user_id(self, canvas_id))
 
     def gitlab_user_by_canvas_name(self, canvas_name):
