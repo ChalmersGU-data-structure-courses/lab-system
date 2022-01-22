@@ -10,5 +10,3 @@ logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 
 c = course.Course(config, dir = this_dir / 'dit182')
-
-file_guid_to_cid = c.dir / 'guid_to_cid.json'

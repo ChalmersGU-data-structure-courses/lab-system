@@ -1,6 +1,7 @@
 # Variables starting with an underscore are only used locally.
 import datetime
-from pathlib import PurePosixPath
+import json
+from pathlib import PurePosixPath, Path
 import re
 from types import SimpleNamespace
 
@@ -320,8 +321,36 @@ _gu_id = print_parse.regex('{}@gu.se')
 # * add students as retrieved from Canvas to groups or projects on GitLab.
 # Return None if not possible.
 # Takes the course object and the Canvas user object as arguments.
+
+file_guid_to_cid = Path(__file__).parent / 'guid_to_cid.json'
+
+irregular_guid_to_cid = {
+    'REDACTED_GU_ID': 'REDACTED_CID',
+    'REDACTED_GU_ID': 'REDACTED_CID',
+    'REDACTED_GU_ID': 'REDACTED_CID',
+    'REDACTED_GU_ID': 'REDACTED_CID',
+    'REDACTED_GU_ID': 'REDACTED_CID',
+    'REDACTED_GU_ID': 'REDACTED_CID',
+    'REDACTED_GU_ID': 'REDACTED_CID',
+    'REDACTED_GU_ID': 'REDACTED_CID',
+    'REDACTED_GU_ID': 'REDACTED_CID',
+}
+
+def read_guid_to_cid():
+    with file_guid_to_cid.open() as file:
+        return json.load(file)
+
+def write_guid_to_cid(u):
+    with file_guid_to_cid.open('w') as file:
+        return json.dump(u, file)
+
+_guid_to_cid = None
+
 def gitlab_username_from_canvas_user_id(course, user_id):
-    return None
+    global _guid_to_cid
+    if _guid_to_cid is None:
+        _guid_to_cid = read_guid_to_cid()
+    return _guid_to_cid[course.canvas_course.user_details[user_id].login_id]
 
 # Configuration for webhooks on Chalmers GitLab.
 # These are used for programmatic push notifications.
