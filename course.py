@@ -608,7 +608,7 @@ class Course:
 
         def user_str_from_gitlab_username(gitlab_username):
             return str_with_user_details(
-                gitlab_tools.format_username(gitlab_username),
+                gitlab_tools.format_given_username(gitlab_username),
                 student_gitlab_usernames.get(gitlab_username),
             )
 

@@ -259,12 +259,19 @@ def get_tags_sorted_by_date(project):
     tags.sort(key = operator.attrgetter('date'))
     return tags
 
+def format_given_username(username):
+    '''
+    Format a username.
+    This prepends the character '@'.
+    '''
+    return '@' + username
+
 def format_username(user):
     '''
     Format username of a GitLab user.
     This prepends the character '@'.
     '''
-    return '@' + user.username
+    return format_given_username(user.username)
 
 def mentions(users):
     '''
