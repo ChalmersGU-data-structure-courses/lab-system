@@ -1,3 +1,4 @@
+import itertools
 import json
 import logging
 
@@ -30,7 +31,7 @@ def compute_guid_to_cid(strict = True):
     client = ldap.initialize('ldap://ldap.chalmers.se')
 
     def f():
-        for student in c.canvas_course.students:
+        for student in itertools.chain(c.canvas_course.students, c.canvas_course.teachers):
             cid = c.config.irregular_guid_to_cid.get(student.login_id)
             if cid is None:
                 results = ldap_tools.search_people_by_name(client, student.name)

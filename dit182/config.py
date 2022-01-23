@@ -288,9 +288,9 @@ def _lab_item(k, *args):
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
     _lab_item(1, 'sorting-complexity'  , datetime.timedelta(minutes = 15)),  # noqa: E203
-    _lab_item(2, 'autocomplete'        , datetime.timedelta(minutes = 15)),  # noqa: E203
-    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15)),  # noqa: E203
-    _lab_item(4, 'path-finder'         , datetime.timedelta(minutes = 15)),  # noqa: E203
+#    _lab_item(2, 'autocomplete'        , datetime.timedelta(minutes = 15)),  # noqa: E203
+#    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15)),  # noqa: E203
+#    _lab_item(4, 'path-finder'         , datetime.timedelta(minutes = 15)),  # noqa: E203
 ])
 
 # Students taking part in labs who are not registered on Canvas.
@@ -310,6 +310,7 @@ name_corrections = {}
 _cid = print_parse.regex('{}@chalmers.se')
 
 _cid_gitlab_exceptions = print_parse.from_dict([
+    ('REDACTED_CID', 'REDACTED_EMAIL_USERNAME')
 ])
 
 # Format GU ID as email address (GU-ID@gu.se).
@@ -325,6 +326,11 @@ _gu_id = print_parse.regex('{}@gu.se')
 file_guid_to_cid = Path(__file__).parent / 'guid_to_cid.json'
 
 irregular_guid_to_cid = {
+    # TAs.
+    'REDACTED_GU_ID': 'REDACTED_CID',
+    'REDACTED_CHALMERS_EMAIL': 'REDACTED_CID',
+
+    # Students.
     'REDACTED_GU_ID': 'REDACTED_CID',
     'REDACTED_GU_ID': 'REDACTED_CID',
     'REDACTED_GU_ID': 'REDACTED_CID',
@@ -350,7 +356,12 @@ def gitlab_username_from_canvas_user_id(course, user_id):
     global _guid_to_cid
     if _guid_to_cid is None:
         _guid_to_cid = read_guid_to_cid()
-    return _guid_to_cid[course.canvas_course.user_details[user_id].login_id]
+    cid = _guid_to_cid[course.canvas_course.user_details[user_id].login_id]
+    try:
+        gitlab_username = _cid_gitlab_exceptions.print(cid)
+    except KeyError:
+        gitlab_username = cid
+    return gitlab_username
 
 # Configuration for webhooks on Chalmers GitLab.
 # These are used for programmatic push notifications.
