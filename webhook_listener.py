@@ -19,7 +19,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if token != self.server.secret_token:
             self.server.logger.warning(
                 f'Given secret token {token} does not match '
-                f'stored secret token {self.secret_token}. '
+                f'stored secret token {self.server.secret_token}. '
                 'Ignoring request.'
             )
             return
