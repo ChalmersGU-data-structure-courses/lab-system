@@ -527,7 +527,7 @@ standard_columns = with_standard_columns()
 Config = collections.namedtuple(
     'Config',
     ['deadline', 'sort_order'],
-    defaults = [None, ['query-number', 'group', 'date']],
+    defaults = [None, ['query-number', 'date', 'group']],
 )
 Config.__doc__ = '''
     Configuration for a live submissions table.
