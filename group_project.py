@@ -771,20 +771,20 @@ class GroupProject:
         self.lab.delete_tag(GroupProject.repo_tag(self, request_name, segments).name)
         GroupProject.repo_tag_mark_repo_updated(self)
 
-    def hotfix_group(self, branch_hotfix, branch_group):
+    def hotfix(self, branch_hotfix, branch_group):
         '''
         Attempt to hotfix the branch 'branch_group' of the group project.
         The hotfix branch 'branch_hotfix' in the local grading repository is a descendant of the problem branch.
         The metadata of the applied commit is taken from the commit pointed to by 'branch_hotfix'.
         Will log a warning if the merge cannot be performed.
         '''
-        self.logger.info(f'Hotfixing {branch_group} in f{self.project.path}')
+        self.logger.info(f'Hotfixing {branch_group} in {self.project.path}')
 
         # Make sure our local mirror of the student branches is as up to date as possible.
         self.repo_fetch()
 
-        problem = self.lab.head_problem
-        hotfix = git_tools.normalize_branch(self.repo, branch_hotfix)
+        problem = self.lab.head_problem.commit
+        hotfix = git_tools.normalize_branch(self.repo, branch_hotfix).commit
         if problem == hotfix:
             self.logger.warn('Hotfixing: hotfix identical to problem.')
             return

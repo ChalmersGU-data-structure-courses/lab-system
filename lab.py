@@ -500,8 +500,8 @@ class Lab:
         This calls 'hotfix_group' with the master/main branch.
         If any groups have created separate branches and you wish to hotfix those, use the 'hotfix_group' method.
         '''
-        for group in self.course.groups:
-            self.hotfix_group(branch_hotfix, group, self.course.config.branch.master)
+        for group_id in self.course.groups:
+            self.student_group(group_id).hotfix(branch_hotfix, self.course.config.branch.master)
 
     def repo_fetch_all(self):
         '''
