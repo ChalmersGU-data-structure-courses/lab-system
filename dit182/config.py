@@ -290,7 +290,7 @@ labs = dict([
     _lab_item(1, 'sorting-complexity'  , datetime.timedelta(minutes = 15)),  # noqa: E203
     _lab_item(2, 'autocomplete'        , datetime.timedelta(minutes = 15)),  # noqa: E203
     _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15)),  # noqa: E203
-#    _lab_item(4, 'path-finder'         , datetime.timedelta(minutes = 15)),  # noqa: E203
+    _lab_item(4, 'path-finder'         , datetime.timedelta(minutes = 15)),  # noqa: E203
 ])
 
 # Students taking part in labs who are not registered on Canvas.
