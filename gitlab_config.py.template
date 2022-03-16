@@ -81,11 +81,11 @@ gitlab_ssh = SimpleNamespace(
 #     │                 # If a grader wants to work seriously with submission files, they should clone this repository.
 #     │                 # Example use cases:
 #     │                 # - cd lab2-grading
-#     │                 # - git checkout lab_group_13/submission1   to switch to a group's submission
-#     │                 # - git diff problem                        changes compared to problem
-#     │                 # - git diff solution                       changes compared to solution
-#     │                 # - git diff lab_group_13/submission0       changes compared to last submission
-#     │                 # - git diff problem answers.txt            changes in just one file
+#     │                 # - git checkout lab_group_13/submission1/tag   to switch to a group's submission
+#     │                 # - git diff problem                            changes compared to problem
+#     │                 # - git diff solution                           changes compared to solution
+#     │                 # - git diff lab_group_13/submission0/tag       changes compared to last submission
+#     │                 # - git diff problem answers.txt                changes in just one file
 #     ...
 #
 # * groups
