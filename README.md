@@ -399,7 +399,7 @@ course.add_teachers_to_gitlab()
 Every examiner, teacher, and teaching assistant on Canvas counts as a teacher in this context.
 You can run this method repeatedly to add teachers who arrive on Canvas later.
 
-### Mirroring group category on on GitLab
+### Mirroring group category on GitLab
 
 Suppose you have created a group set on Canvas.
 We assume you have configured this group set in your course configuration module.
