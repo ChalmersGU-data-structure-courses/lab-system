@@ -560,7 +560,7 @@ class Course:
         It does not use a ledger of past invitations.
         However, it only works properly if we can resolve Canvas students to Chalmers GitLab accounts.
 
-        Call sync_students_to_gitlab(all = False, remove = False, restrict_to_known = False)
+        Call sync_students_to_gitlab(add = False, remove = False, restrict_to_known = False)
         to obtain (via logged warnings) a report of group membership deviations.
         '''
         self.logger.info('synchronizing students from Canvas groups to GitLab group')
