@@ -254,7 +254,7 @@ grading_sheet = SimpleNamespace(
     # This is created by the user, but maintained by the lab script.
     # The key (a base64 string) can be found in the URL of the spreadsheet.
     # Individual grading sheets for each lab are worksheets in this spreadsheet.
-    spreadsheet = None,
+    spreadsheet = '16mmLdn3GXzcDPFAtJSH5y6iJWImAdsjBYEacE9L34GQ',
 
     # Template grading sheet on Google Sheets.
     # If the lab script has access to this, it can create initial grading worksheets.
