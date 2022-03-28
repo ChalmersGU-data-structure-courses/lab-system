@@ -1101,6 +1101,34 @@ class Lab:
             out.mkdir(parents = True)
             git_tools.checkout(self.repo, out, tag)
 
+    @functools.cached_property
+    def group_by_gitlab_username(self):
+        def f():
+            for group in self.student_groups:
+                for gitlab_user in group.members:
+                    yield (gitlab_user.username, group)
+        return general.sdict(f(), format_value = lambda group: group.name)
+
+    def group_by_gitlab_username_clear(self):
+        with contextlib.suppress(AttributeError):
+            del self.group_by_gitlab_username
+
+    def grading_report(self, scoring = None):
+        '''
+        Prepare a grading report for this lab.
+        This returns a map sending usernames on Chalmers GitLab to scores.
+        Scores are user-defined.
+
+        Arguments:
+        * scoring:
+            A function taking a list of submission outcomes and returning a score.
+            Defaults to None for no submissions and the maximum function otherwise.
+        '''
+        return {
+            gitlab_username: group.get_score(scoring = scoring)
+            for (gitlab_username, group) in self.group_by_gitlab_username.items()
+        }
+
     def parse_hook_event(self, hook_event, group_id, strict = False):
         '''
         Arguments:

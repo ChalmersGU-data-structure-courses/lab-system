@@ -1,4 +1,5 @@
 import atomicwrites
+import collections
 import contextlib
 import datetime
 import dateutil.parser
@@ -560,7 +561,7 @@ class Course:
         It does not use a ledger of past invitations.
         However, it only works properly if we can resolve Canvas students to Chalmers GitLab accounts.
 
-        Call sync_students_to_gitlab(all = False, remove = False, restrict_to_known = False)
+        Call sync_students_to_gitlab(add = False, remove = False, restrict_to_known = False)
         to obtain (via logged warnings) a report of group membership deviations.
         '''
         self.logger.info('synchronizing students from Canvas groups to GitLab group')
@@ -1074,6 +1075,88 @@ class Course:
 
                     self.logger.info(f'Handling event {event}')
                     callback()
+
+    def grading_report(self, scoring = None):
+        '''
+        Prepare a grading report for this course.
+        This returns a map sending a username on Chalmers GitLab to a map sending lab ids to scores.
+        The inner map is defined on lab ids for which the given username is (indirect) member of a group project.
+        Scores are user-defined.
+
+        Arguments:
+        * scoring:
+            A function taking a list of submission outcomes and returning a score.
+            Defaults to None for no submissions and the maximum function otherwise.
+        '''
+        r = collections.defaultdict(dict)
+        for lab in self.labs.values():
+            for (gitlab_username, score) in lab.grading_report(scoring = scoring).items():
+                r[gitlab_username][lab.id] = score
+        return r
+
+    def grading_report_with_summary(self, scoring = None, summary = None):
+        '''
+        Prepare a grading report for this course.
+        This returns a map sending a username on Chalmers GitLab to a pair of:
+        * a map sending each lab ids to a score (can be None),
+        * a summary score (can be None).
+        Scores are user-defined.
+
+        Arguments:
+        * scoring:
+            A function taking a list of submission outcomes and returning a score.
+            Defaults to None for no submissions and the maximum function otherwise.
+        * summary:
+            A function taking a map from lab ids to scores and returning a summary score.
+            Defaults to None for maps with only values None and the minimum otherwise, with None counting as 0.
+        '''
+        u = self.grading_report(scoring = scoring)
+
+        def summary_default(xs):
+            xs = xs.values()
+            if all(x is None for x in xs):
+                return None
+            return min(0 if x is None else x for x in xs)
+        if summary is None:
+            summary = summary_default
+
+        def f(scores):
+            scores_with_none = {lab.id: scores.get(lab.id) for lab in self.labs.values()}
+            return (scores_with_none, summary(scores_with_none))
+        return general.map_values(f, u)
+
+    def grading_report_format_value(self, value, format_score = None):
+        '''
+        Format a value in the grading report with summary as a dictionary of strings.
+        We make the simplifying assumption that all individual lab scores
+        and the summary score are of the same kind.
+
+        Arguments:
+        * value:
+            The value to format.
+            As in the map returned by grading_report_with_summary.
+        * format_score:
+            A function formatting a score.
+            By default, formats:
+            - None as the empty string,
+            - 0 as 'U',
+            - 1 as 'G'.
+        '''
+        def format_score_default(score):
+            return {
+                None: '',
+                0: 'U',
+                1: 'G',
+            }[score]
+        if format_score is None:
+            format_score = format_score_default
+
+        (scores, summary) = value
+        return general.map_keys_and_values(
+            lambda lab_id: self.labs[lab_id].name,
+            format_score,
+            scores,
+        ) | {'Grade': format_score(summary)}
 
     @contextlib.contextmanager
     def error_reporter(self, spreadsheet_id, sheet_id = 0):

@@ -161,11 +161,11 @@ labs
   │                 # If a grader wants to work seriously with submission files, they should clone this repository.
   │                 # Example use cases:
   │                 # - cd lab2-grading
-  │                 # - git checkout group-13/submission1   to switch to a group's submission
-  │                 # - git diff problem                    changes compared to problem
-  │                 # - git diff solution                   changes compared to solution
-  │                 # - git diff group-13/submission0       changes compared to last submission
-  │                 # - git diff problem answers.txt        changes in just one file
+  │                 # - git checkout group-13/submission1/tag   to switch to a group's submission
+  │                 # - git diff problem                        changes compared to problem
+  │                 # - git diff solution                       changes compared to solution
+  │                 # - git diff group-13/submission0/tag       changes compared to last submission
+  │                 # - git diff problem answers.txt            changes in just one file
   ├── 2
   ...
 
@@ -358,7 +358,7 @@ Use `logging.WARNING` if you only want to see messages for unexpected events.
 This is the recommended log level for commands invoked repeatedly over a long period.
 In a shell, you can run a script in a timed loop and collate its logging output as follows:
 ```
-while [[ 1 ]]; do; ./script.py 2>>scipt.log; sleep 600; done
+while [[ 1 ]]; do; ./script.py 2>>script.log; sleep 600; done
 ```
 
 ### Basic setup
@@ -399,7 +399,7 @@ course.add_teachers_to_gitlab()
 Every examiner, teacher, and teaching assistant on Canvas counts as a teacher in this context.
 You can run this method repeatedly to add teachers who arrive on Canvas later.
 
-### Mirroring group category on on GitLab
+### Mirroring group category on GitLab
 
 Suppose you have created a group set on Canvas.
 We assume you have configured this group set in your course configuration module.
@@ -431,7 +431,7 @@ course.recreate_student_invitations(
 Suppose we want to create on GitLab the lab with id 3.
 Let us select this lab as a variable:
 ```
-lab = course.lab[3]
+lab = course.labs[3]
 ```
 We start by running:
 ```
@@ -445,7 +445,7 @@ lab.official_project.create()
 lab.grading_project.create()`
 ```
 This creates the official project with problem and solution branches.
-It takes its initial content from the local directory specified in the lab configuration and add a suitable `.gitignore` file if configured.
+It takes its initial content from the local directory specified in the lab configuration and adds a suitable `.gitignore` file if configured.
 Similarly, this creates the (empty) grading repository that graders can later clone and pull from to get up-to-date submissions and derived information such as test output.
 If we wanted to delete a project to start over, we would call the `delete` method instead of `create`.
 
