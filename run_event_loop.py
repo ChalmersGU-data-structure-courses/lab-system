@@ -134,7 +134,7 @@ g.add_argument('-e', '--error-spreadsheet', type = str, dest = 'error_spreadshee
 The ID of an optional Google spreadsheet to use for dumping error reports on run failure.
 The sheet ID (gid) is assumed 0 for now (by default, this refers to the first sheet).
 
-to be notified on run  failure, configure change notifications in this spreadsheet:
+to be notified on run failure, configure change notifications in this spreadsheet:
 * go to https://docs.google.com/spreadsheets/d/<ERROR_SPREADSHEET>,
 * click on "tools", then on "notification rules",
 * configure notifications (whenever changes are made, right away).
