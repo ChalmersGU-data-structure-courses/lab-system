@@ -1274,6 +1274,25 @@ class GroupProject:
                 lambda: self.lab.refresh_group(self, refresh_responses = True),
             )
 
+    def get_score(self, scoring = None):
+        '''
+        Get the grading score for this group.
+        Scores are user-defined.
+
+        Arguments:
+        * scoring:
+            A function taking a list of submission outcomes and returning a score.
+            Defaults to None for no submissions and the maximum function otherwise.
+        '''
+        if self.submission_current() is not None:
+            raise ValueError(f'ungraded submission in {self.lab.name} for {self.name}')
+
+        def scoring_default(s):
+            return max(s) if s else None
+        if scoring is None:
+            scoring = scoring_default
+        return scoring([submission.outcome for submission in self.submissions_with_outcome()])
+
     def parse_hook_event(self, hook_event, strict = False):
         '''
         Arguments:

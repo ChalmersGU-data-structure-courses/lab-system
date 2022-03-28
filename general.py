@@ -140,12 +140,13 @@ def starfilter(f, xs):
         if f(*x):
             yield x
 
-def sdict(xs, strict = True):
+def sdict(xs, strict = True, format_value = None):
     r = dict()
     if strict:
         for k, v in xs:
             if k in r:
-                raise ValueError(f'duplicate entry for key {k}')
+                msg_value = '' if formal_value is None else f': values {format_value(r[k])} and {format_value(v)}'
+                raise ValueError(f'duplicate entry for key {k}{msg_value}')
             r[k] = v
     return r
 
@@ -445,8 +446,14 @@ def remove_prefix(xs, prefix, strict = True):
         raise ValueError('{xs} does not have prefix {[refix}')
     return xs
 
-def map_values(f, u):
-    return {key: f(value) for (key, value) in u.items()}
+def map_keys_and_values(f, g, u):
+    return {f(key): g(value) for (key, value) in u.items()}
+
+def map_keys(f, u):
+    return map_keys_and_values(f, identity, u)
+
+def map_values(g, u):
+    return map_keys_and_values(identity, g, u)
 
 def eq_on(x, y, f = identity):
     return f(x) == f(y)
