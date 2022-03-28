@@ -69,7 +69,7 @@ class RequestAndResponses:
 
     @functools.cached_property
     def repo_remote_tag(self):
-        return git.Reference(self.lab.repo, str(git_tools.remote_tag(self.request_name)))
+        return git.Reference(self.lab.repo, str(git_tools.remote_tag(self._group.remote, self.request_name)))
 
     @functools.cached_property
     def repo_remote_commit(self):
