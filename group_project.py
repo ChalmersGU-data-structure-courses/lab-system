@@ -990,7 +990,7 @@ class GroupProject:
     def tags_from_repo(self):
         self.logger.debug(f'Parsing request tags in {self.name} from local grading repository.')
         return sorted((
-            (str(key), (tag, git_tools.commit(tag)))
+            (str(key), (tag, git_tools.tag_commit(tag)))
             for (key, tag) in self.lab.remote_tags[self.id].items()
         ), key = lambda x: git_tools.commit_date(x[1][1]))
 
