@@ -73,7 +73,7 @@ class RequestAndResponses:
 
     @functools.cached_property
     def repo_remote_commit(self):
-        return self.repo_remote_tag.commit
+        return git_tools.commit(self.repo_remote_tag)
 
     @functools.cached_property
     def date(self):
@@ -684,7 +684,7 @@ class GroupProject:
         '''
         Construct a tag reference object for the current lab group.
         This only constructs an in-memory object and does not yet interact with the grading repository.
-        The tag's name with habe the group's remote prefixed.
+        The tag's name has the group's remote prefixed.
 
         HACK:
         This method and the following related ones may
@@ -990,7 +990,7 @@ class GroupProject:
     def tags_from_repo(self):
         self.logger.debug(f'Parsing request tags in {self.name} from local grading repository.')
         return sorted((
-            (str(key), (tag, tag.commit))
+            (str(key), (tag, git_tools.commit(tag)))
             for (key, tag) in self.lab.remote_tags[self.id].items()
         ), key = lambda x: git_tools.commit_date(x[1][1]))
 
