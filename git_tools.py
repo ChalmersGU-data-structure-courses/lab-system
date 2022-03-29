@@ -140,6 +140,17 @@ def tag_message(tag, default_to_commit_message = False):
         return x.message
     return None
 
+def tag_commit(tag):
+    '''
+    Gets the commit associated to a tag reference of type git.SymbolicReference.
+    Recursively resolves tag objects.
+    This works around an insufficiency in git.SymbolicReference.commit for tag references.
+
+    Arguments:
+    * tag: Instance of git.SymbolicReference
+    '''
+    return git.TagReference.commit.fget(tag)
+
 # References.
 
 def resolve(repo, ref):
