@@ -88,7 +88,7 @@ def run(
         # Configure webhooks.
         if webhook_config is not None:
             for c in courses:
-                c.hooks_ensure(netloc = webhook_config.netloc_listen)
+                c.hooks_ensure(netloc = webhook_config.netloc_specify)
 
             courses_by_groups_path = {c.config.path.groups: c for c in courses}
 
