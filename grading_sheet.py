@@ -742,10 +742,9 @@ class GradingSpreadsheet:
             self.update(google_tools.sheets.request_delete_sheet(id))
             raise
 
-    def grading_sheet_create(self, lab_id, groups = [], group_link = None, exist_ok = False):
+    def grading_sheet_create(self, lab_id, groups = [], group_link = None, exist_ok = False, use_prev = False):
         '''
         Create a new worksheet in the grading sheet for the lab specified by 'lab_id'.
-        If a previous lab already has a worksheet, that is taken as template instead of the configured template.
 
         Other arguments are as follows:
         * groups:
@@ -759,6 +758,9 @@ class GradingSpreadsheet:
         * request_buffer:
             An optional buffer for update requests to use.
             If given, it will end up in a flushed state if this method completes successfully.
+        * use_prev:
+            Use the previous lab's worksheet (if existing) as template instead of the configured template.
+            The ordering of previous labs is given by the index in the spreadsheet.
 
         Returns the created instance of GradingSheet.
         '''
@@ -772,7 +774,7 @@ class GradingSpreadsheet:
             raise ValueError(msg)
 
         name = self.config.lab.name.print(lab_id)
-        if self.grading_sheets:
+        if use_prev and self.grading_sheets:
             grading_sheet = max(self.grading_sheets.values(), key = lambda x: x.index())
             self.logger.debug('using grading sheet {grading_sheet.name} as template')
             worksheet = grading_sheet.gspread_worksheet.duplicate(
