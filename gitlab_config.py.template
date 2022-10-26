@@ -58,8 +58,7 @@ gitlab_ssh = SimpleNamespace(
 #
 # * graders             # Who should be allowed to grade?
 #                       # Members of this group will have access to all lab groups and grading repositories.
-#                       # TODO: write a script function that adds or, if not possible,
-#                       #       sends invitation emails to all teachers in the Canvas course.
+#                       # You can use Course.add_teachers_to_gitlab to populate this group.
 #
 # * labs
 #     ├── 1
@@ -90,8 +89,8 @@ gitlab_ssh = SimpleNamespace(
 #
 # * groups
 #     ├── 0             # A student lab group.
-#     │   │             # There is a script that will invite students to their group on Chalmers GitLab
-#     │   │             # based on which assignment group they signed up for in Canvas.
+#     │   │             # You can use Course.sync_students_to_gitlab or Course.invite_students_to_gitlab to create and populate these groups.
+#     │   │             # This will (un)invite based on which assignment group they signed up for in Canvas.
 #     │   │
 #     │   ├── lab1      # For mid-course group membership changes, membership can also
 #     │   │             # be managed at the project level (only for the needed students).
