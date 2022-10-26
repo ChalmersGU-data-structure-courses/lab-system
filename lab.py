@@ -905,13 +905,17 @@ class Lab:
 
     def include_group_in_grading_sheet(self, group, deadline = None):
         '''
-        We include a group in the grading sheet if it has a student member or a submission.
-        TOOD: make configurable in course configuration.
+        We include a group in the grading sheet if it has a submission.
+        Extra groups to include can be configured in the grading sheet config using:
+        * include_groups_with_no_submission
         '''
         if deadline is None:
             deadline = self.deadline
 
-        return group.non_empty() or list(group.submissions_relevant(deadline))
+        return any[
+            list(group.submissions_relevant(deadline)),
+            self.course.config.grading_sheet.include_groups_with_no_submission and group.non_empty(),
+        ]
 
     def update_grading_sheet(self, group_ids = None, deadline = None):
         '''
