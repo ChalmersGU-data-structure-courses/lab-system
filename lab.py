@@ -912,10 +912,10 @@ class Lab:
         if deadline is None:
             deadline = self.deadline
 
-        return any[
+        return any([
             list(group.submissions_relevant(deadline)),
             self.course.config.grading_sheet.include_groups_with_no_submission and group.non_empty(),
-        ]
+        ])
 
     def update_grading_sheet(self, group_ids = None, deadline = None):
         '''
