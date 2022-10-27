@@ -442,7 +442,7 @@ This is where the official project and grading project will reside.
 Next, we run:
 ```
 lab.official_project.create()
-lab.grading_project.create()`
+lab.grading_project.create()
 ```
 This creates the official project with problem and solution branches.
 It takes its initial content from the local directory specified in the lab configuration and adds a suitable `.gitignore` file if configured.
