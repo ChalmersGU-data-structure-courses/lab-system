@@ -227,13 +227,19 @@ lab = SimpleNamespace(
     # Used as relative path on Chalmers GitLab in each student group.
     # /courses/lp2-data-structures/groups/123/lab-2-python
     full_id = print_parse.compose(
-        print_parse.on(general.component_tuple(1), _print_parse_lab_language_id),
+        print_parse.combine((
+            print_parse.int_str(),
+            _print_parse_lab_language_id,
+        )),
         print_parse.regex_many('lab-{}-{}', ['\\d+', 'java|python']),
     ),
 
     # Actual name.
     name = print_parse.compose(
-        print_parse.on(general.component_tuple(1), _print_parse_lab_language_title),
+        print_parse.combine((
+            print_parse.int_str(),
+            _print_parse_lab_language_title,
+        )),
         print_parse.regex_many('Lab {} {}', ['\\d+', 'Java|Python']),
     ),
 
