@@ -1,10 +1,14 @@
 # Variables starting with an underscore are only used locally.
 import datetime
+from enum import Enum
 from pathlib import PurePosixPath
 import re
 from types import SimpleNamespace
+from typing import Tuple
 
+import general
 import lab_handlers_java
+import lab_handlers_python
 import print_parse
 import robograder_java
 from this_dir import this_dir
@@ -188,20 +192,50 @@ group = SimpleNamespace(
 # The below definition is the identity on integers.
 group.as_cell = print_parse.compose(group.id, print_parse.invert(group.id))
 
+class LabLanguage(Enum):
+    JAVA = 'java'
+    PYTHON = 'python'
+
+# Type of lab IDs.
+LabID = Tuple[int, LabLanguage]
+
+_print_parse_lab_language_id = print_parse.PrintParse(
+    print = (lambda x: x.value),
+    parse = (lambda x: LabLanguage(x.lower())),
+)
+
+_print_parse_lab_language_title = print_parse.PrintParse(
+    print = (lambda x: x.value.title()),
+    parse = (lambda x: LabLanguage(x.lower())),
+)
+
+_lab_id = print_parse.compose(
+    print_parse.on(general.component_tuple(1), _print_parse_lab_language_id),
+    print_parse.regex_many('{}-{}', ['\\d+', 'java|python']),
+)
+
 # Parsing and printing of references to a lab.
 lab = SimpleNamespace(
     # Human-readable id.
-    id = print_parse.int_str(),
+    id = _lab_id,
 
     # Used as relative path on Chalmers GitLab in the labs group.
     # Needs to have length at least 2.
-    id_gitlab = print_parse.int_str(format = '02'),
+    # /courses/lp2-data-structures/labs/2-python
+    id_gitlab = _lab_id,
 
     # Used as relative path on Chalmers GitLab in each student group.
-    full_id = print_parse.regex_int('lab-{}'),
+    # /courses/lp2-data-structures/groups/123/lab-2-python
+    full_id = print_parse.compose(
+        print_parse.on(general.component_tuple(1), _print_parse_lab_language_id),
+        print_parse.regex_many('lab-{}-{}', ['\\d+', 'java|python']),
+    ),
 
     # Actual name.
-    name = print_parse.regex_int('Lab {}', flags = re.IGNORECASE),
+    name = print_parse.compose(
+        print_parse.on(general.component_tuple(1), _print_parse_lab_language_title),
+        print_parse.regex_many('Lab {} {}', ['\\d+', 'Java|Python']),
+    ),
 
     # May be used for sorting in the future.
     sort_key = lambda id: id,
@@ -312,22 +346,29 @@ _lab_config = SimpleNamespace(
     refresh_period = datetime.timedelta(minutes = 15)
 )
 
-_language = 'java'
-
 class _LabConfig:
     def __init__(self, k, lab_folder, refresh_period):
-        self.path_source = _lab_repo / 'labs' / lab_folder / _language
-        self.path_gitignore = _lab_repo / 'gitignores' / f'{_language}.gitignore'
+        (_, language) = k
+        language_str = _print_parse_lab_language_id.print(language)
+
+        self.path_source = _lab_repo / 'labs' / lab_folder / language_str
+        self.path_gitignore = _lab_repo / 'gitignores' / f'{language_str}.gitignore'
         self.grading_sheet = lab.name.print(k)
         self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-to-be-graded.html'.format(lab.full_id.print(k))
 
         def f():
-            yield ('submission', lab_handlers_java.SubmissionHandler())
-            try:
-                robograder_java.LabRobograder(self.path_source)
-                yield ('robograding', lab_handlers_java.RobogradingHandler())
-            except robograder_java.RobograderMissingException:
-                pass
+            if language == LabLanguage.JAVA:
+                yield ('submission', lab_handlers_java.SubmissionHandler())
+                try:
+                    robograder_java.LabRobograder(self.path_source)
+                    yield ('robograding', lab_handlers_java.RobogradingHandler())
+                except robograder_java.RobograderMissingException:
+                    pass
+            elif language == LabLanguage.PYTHON:
+                yield ('submission', lab_handlers_python.SubmissionHandler())
+            else:
+                raise TypeError(language)
+                
         self.request_handlers = dict(f())
 
         self.refresh_period = refresh_period
@@ -341,10 +382,12 @@ def _lab_item(k, *args):
 
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
-    _lab_item(1, 'sorting-complexity'  , datetime.timedelta(minutes = 15)),
-    _lab_item(2, 'autocomplete'        , datetime.timedelta(minutes = 15)),
-    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15)),
-    _lab_item(4, 'path-finder'         , datetime.timedelta(minutes = 15)),
+    _lab_item((1, LabLanguage.JAVA  ), 'indexing'            , datetime.timedelta(minutes = 15)),
+    _lab_item((1, LabLanguage.PYTHON), 'indexing'            , datetime.timedelta(minutes = 15)),
+    _lab_item((2, LabLanguage.JAVA  ), 'plagiarism-detection', datetime.timedelta(minutes = 15)),
+    _lab_item((2, LabLanguage.PYTHON), 'plagiarism-detection', datetime.timedelta(minutes = 15)),
+    _lab_item((3, LabLanguage.JAVA  ), 'path-finder'         , datetime.timedelta(minutes = 15)),
+    _lab_item((3, LabLanguage.PYTHON), 'path-finder'         , datetime.timedelta(minutes = 15)),
 ])
 
 # Students taking part in labs who are not registered on Canvas.
