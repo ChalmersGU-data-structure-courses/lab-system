@@ -603,7 +603,7 @@ class Course:
 
                 # Only allow running with remove option if we can resolve GitLab student usernames.
                 if remove and gitlab_username is None:
-                    raise ValueError('called with remove option, but cannot resolve GitLab username of {user.name}')
+                    raise ValueError(f'called with remove option, but cannot resolve GitLab username of {user.name}')
 
                 gitlab_user = self.gitlab_user(gitlab_username)
                 if gitlab_user:
