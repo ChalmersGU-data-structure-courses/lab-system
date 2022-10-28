@@ -5,6 +5,8 @@
 #   while [[ 1 ]]; do ./invite_students.py 2>>invite_students_log; sleep 600; done
 # That way, the log file won't contain repeating redundant entries.
 
+from prelude import *
+
 import importlib
 import logging
 
@@ -12,16 +14,8 @@ from course import Course
 
 
 logging.basicConfig()
-logging.getLogger().setLevel(logging.INFO)
+logging.getLogger().setLevel(logging.WARNING)
 
-for prefix in ['java', 'python']:
-    logging.root.info(f'Handling {prefix} course')
-
-    config = importlib.import_module('.'.join([prefix, 'gitlab_config']))
-    course = Course(config)
-    # If you want to see debug messages only for the course module, use:
-    # course.logger.setLevel(logging.DEBUG)
-
-    course.canvas_course_refresh()
-    course.canvas_group_set_refresh()
-    course.sync_students_to_gitlab(add = True, remove = True, restrict_to_known = True)
+c.canvas_course_refresh()
+c.canvas_group_set_refresh()
+c.sync_students_to_gitlab(add = True, remove = True, restrict_to_known = True)
