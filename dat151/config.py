@@ -4,7 +4,7 @@ from pathlib import PurePosixPath
 import re
 from types import SimpleNamespace
 
-import lab_handlers_java
+import lab_handlers_dat151
 import print_parse
 import robograder_java
 from this_dir import this_dir
