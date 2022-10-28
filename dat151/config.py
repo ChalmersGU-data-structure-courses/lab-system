@@ -245,13 +245,13 @@ grading_sheet = SimpleNamespace(
     # This is created by the user, but maintained by the lab script.
     # The key (a base64 string) can be found in the URL of the spreadsheet.
     # Individual grading sheets for each lab are worksheets in this spreadsheet.
-    spreadsheet = None,
+    spreadsheet = '1tT5M-3gbTf35ri1rDSnUugnQH0Mqan5F99sLCQjr_6k'
 
     # Template grading sheet on Google Sheets.
     # If the lab script has access to this, it can create initial grading worksheets.
     # Pair of a spreadsheet key and worksheet identifier.
     # The format of the worksheet identifier is as for 'grading_sheet' in the lab configuration.
-    template = ('1phOUdj_IynVKPiEU6KtNqI3hOXwNgIycc-bLwgChmUs', 'Generic lab'),
+    template = ('1tT5M-3gbTf35ri1rDSnUugnQH0Mqan5F99sLCQjr_6k', 'Template'),
 
     # Have rows for non-empty groups that have not yet submitted?
     include_groups_with_no_submission = True,
