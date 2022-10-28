@@ -1,4 +1,5 @@
 import lab_handlers
+import live_submissions_table
 
 
 class SubmissionHandler(lab_handlers.SubmissionHandler):
