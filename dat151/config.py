@@ -364,8 +364,7 @@ name_corrections = {}
 _cid = print_parse.regex('{}@chalmers.se')
 
 _cid_gitlab_exceptions = print_parse.from_dict([
-    ('peb', 'Peter.Ljunglof'),
-    ('tcarlos', 'carlos.tome'),
+    ('abela', 'andreas.abel'),
 ])
 
 # Format GU ID as email address (GU-ID@gu.se).
@@ -377,7 +376,29 @@ _gu_id = print_parse.regex('{}@gu.se')
 # * add students as retrieved from Canvas to groups or projects on GitLab.
 # Return None if not possible.
 # Takes the course object and the Canvas user object as arguments.
+_gu_canvas_id_to_cid = {
+    122370000000156822: 'emmieb',
+    122370000000173596: 'bodinw',
+    122370000000175142: 'lukasgar',
+    122370000000175143: 'krig',
+    122370000000163936: 'gabhags',
+    122370000000160316: 'samham',
+    122370000000127582: 'dryan',
+    122370000000127590: 'kangasw',
+    122370000000170563: 'seblev',
+    122370000000057329: 'marak',
+    122370000000252729: 'almodvar',
+    122370000000152782: 'clarasal',
+    122370000000071340: 'carlsa',
+    122370000000171408: 'sebsel',
+    122370000000074142: 'skarehag',
+}
+
 def gitlab_username_from_canvas_user_id(course, user_id):
+    cid = _gu_canvas_id_to_cid.get(user_id)
+    if not cid is None:
+        return cid
+
     login_id = course.canvas_login_id(user_id)
     try:
         cid = _cid.parse(login_id)
