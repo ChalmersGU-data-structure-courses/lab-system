@@ -312,22 +312,15 @@ _lab_config = SimpleNamespace(
     refresh_period = datetime.timedelta(minutes = 15)
 )
 
-_language = 'java'
-
 class _LabConfig:
     def __init__(self, k, lab_folder, refresh_period):
-        self.path_source = _lab_repo / 'labs' / lab_folder / _language
-        self.path_gitignore = _lab_repo / 'gitignores' / f'{_language}.gitignore'
+        self.path_source = _lab_repo / 'labs' / str(k)
+        self.path_gitignore = _lab_repo / '.gitignore'
         self.grading_sheet = lab.name.print(k)
-        self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-to-be-graded.html'.format(lab.full_id.print(k))
+        self.canvas_path_awaiting_grading = PurePosixPath(canvas.grading_path) / '{}-to-be-graded.html'.format(lab.full_id.print(k))
 
         def f():
-            yield ('submission', lab_handlers_java.SubmissionHandler())
-            try:
-                robograder_java.LabRobograder(self.path_source)
-                yield ('robograding', lab_handlers_java.RobogradingHandler())
-            except robograder_java.RobograderMissingException:
-                pass
+            yield ('submission', lab_handlers_dat151.SubmissionHandler())
         self.request_handlers = dict(f())
 
         self.refresh_period = refresh_period
