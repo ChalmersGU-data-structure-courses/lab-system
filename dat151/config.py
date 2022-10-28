@@ -108,7 +108,7 @@ gitlab_ssh = SimpleNamespace(
 # This also applies to the content of the name file for each lab.
 # This is because it is currently used to form the full name of a lab on Chalmers Gitlab.
 
-_course_path = PurePosixPath('courses/DAT151')
+_course_path = PurePosixPath('courses/dat151')
 
 # Absolute paths on Chalmers GitLab to the groups described above.
 path = SimpleNamespace(

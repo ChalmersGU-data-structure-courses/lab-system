@@ -30,6 +30,8 @@
 * Check whether javac source is smart enough to update also source dependencies if their class file is out-of-date.
   Update robograder compilation accordingly.
 
+* Add use_cache flag to more commands.
+
 ## Grading sheet
 
 * Support the "Notes" field in the grading sheet.
