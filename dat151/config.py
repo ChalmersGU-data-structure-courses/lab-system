@@ -370,6 +370,7 @@ _gu_id = print_parse.regex('{}@gu.se')
 # Return None if not possible.
 # Takes the course object and the Canvas user object as arguments.
 _gu_canvas_id_to_cid = {
+    122370000000171577: 'REDACTED',
     122370000000156822: 'emmieb',
     122370000000173596: 'bodinw',
     122370000000175142: 'lukasgar',
