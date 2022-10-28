@@ -313,7 +313,7 @@ _lab_config = SimpleNamespace(
 )
 
 class _LabConfig:
-    def __init__(self, k, lab_folder, refresh_period):
+    def __init__(self, k, refresh_period):
         self.path_source = _lab_repo / 'labs' / str(k)
         self.path_gitignore = _lab_repo / '.gitignore'
         self.grading_sheet = lab.name.print(k)
@@ -334,10 +334,10 @@ def _lab_item(k, *args):
 
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
-    _lab_item(1, 'sorting-complexity'  , datetime.timedelta(minutes = 15)),
-    _lab_item(2, 'autocomplete'        , datetime.timedelta(minutes = 15)),
-    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15)),
-    _lab_item(4, 'path-finder'         , datetime.timedelta(minutes = 15)),
+    _lab_item(1, datetime.timedelta(minutes = 15)),
+#    _lab_item(2, datetime.timedelta(minutes = 15)),
+#    _lab_item(3, datetime.timedelta(minutes = 15)),
+#    _lab_item(4, datetime.timedelta(minutes = 15)),
 ])
 
 # Students taking part in labs who are not registered on Canvas.
