@@ -8,6 +8,7 @@ import functools
 import general
 import gitlab
 import json
+import ldap
 import logging
 import operator
 from pathlib import Path
@@ -24,6 +25,7 @@ import gitlab_tools
 import grading_sheet
 from instance_cache import instance_cache
 import ip_tools
+import ldap_tools
 import print_parse
 import subsuming_queue
 import threading_tools
@@ -172,6 +174,21 @@ class Course:
                     ]))
                     general.print_json(user._dict)
                     general.print_json(self.canvas.get(['users', user.id, 'profile'], use_cache = True)._dict)
+
+    def resolve_gu_students(self):
+        client = ldap.initialize('ldap://ldap.chalmers.se')
+        for (canvas_id, student_details) in self.canvas_course.student_details.items():
+            login_id = student_details.login_id
+            parts = login_id.split('@', 1)
+            if len(parts) == 1:
+                if not parts[0].startswith('gus'):
+                    raise ValueError(f'Not GU: {parts[0]}')
+                results = ldap_tools.search_people_by_name(client, student_details.name)
+                try:
+                    (result,) = results
+                    print(canvas_id, result[1]['uid'])
+                except ValueError:
+                    print(f'Ambiguous results for {student_details.name}')
 
     @property
     def gitlab_netloc(self):
@@ -586,7 +603,7 @@ class Course:
 
                 # Only allow running with remove option if we can resolve GitLab student usernames.
                 if remove and gitlab_username is None:
-                    raise ValueError('called with remove option, but cannot resolve GitLab username of {user.name}')
+                    raise ValueError(f'called with remove option, but cannot resolve GitLab username of {user.name}')
 
                 gitlab_user = self.gitlab_user(gitlab_username)
                 if gitlab_user:
