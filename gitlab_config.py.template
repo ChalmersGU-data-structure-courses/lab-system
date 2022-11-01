@@ -264,7 +264,9 @@ _lab_repo = this_dir.parent / 'labs'
 _lab_config = SimpleNamespace(
     # Filesystem path to the lab source.
     path_source = _lab_repo / 'labs' / 'goose-recognizer' / 'java',
-    path_gitignore = _lab_repo / 'gitignores' / 'java.gitignore',
+    path_gitignores = [ _lab_repo / 'gitignores' / 'java.gitignore'
+                      , _lab_repo / 'gitignores' / 'goose-recognizer.gitignore'
+                      ],
 
     # Worksheet identifier of the grading sheet for the lab.
     # This can be of the following types:
