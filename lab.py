@@ -219,7 +219,7 @@ class Lab:
                     def push_branch(name, message):
                         shutil.copytree(self.config.path_source / name, dir, dirs_exist_ok = True)
                         repo.git.add('--all', '--force')
-                        repo.git.commit(message = message)
+                        repo.git.commit('--allow-empty', message = message)
                         repo.git.push(project.ssh_url_to_repo, git_tools.refspec(
                             git_tools.head,
                             git_tools.local_branch(name),
