@@ -8,7 +8,7 @@ from typing import Tuple
 
 import general
 import lab_handlers_java
-#import lab_handlers_python
+import lab_handlers_python
 import print_parse
 import robograder_java
 from this_dir import this_dir
@@ -390,8 +390,8 @@ def _lab_item(k, *args):
 
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
-    #_lab_item((1, LabLanguage.JAVA  ), 'indexing'            , datetime.timedelta(minutes = 15)),
-    #_lab_item((1, LabLanguage.PYTHON), 'indexing'            , datetime.timedelta(minutes = 15)),
+    _lab_item((1, LabLanguage.JAVA  ), 'indexing'            , datetime.timedelta(minutes = 15), True),
+    _lab_item((1, LabLanguage.PYTHON), 'indexing'            , datetime.timedelta(minutes = 15), True),
     #_lab_item((2, LabLanguage.JAVA  ), 'plagiarism-detection', datetime.timedelta(minutes = 15)),
     #_lab_item((2, LabLanguage.PYTHON), 'plagiarism-detection', datetime.timedelta(minutes = 15)),
     #_lab_item((3, LabLanguage.JAVA  ), 'path-finder'         , datetime.timedelta(minutes = 15)),
