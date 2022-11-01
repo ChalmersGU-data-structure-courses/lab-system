@@ -226,8 +226,12 @@ class Lab:
                             force = True
                         ))
 
-                    if self.config.path_gitignore:
-                        shutil.copyfile(self.config.path_gitignore, Path(dir) / '.gitignore')
+                    if self.config.path_gitignores:
+                        with open(Path(dir) / '.gitignore', mode='a') as gitignore_file:
+                            for fp in self.config.path_gitignores:
+                                with open(fp, mode='r') as file:
+                                    gitignore_file.write('\n')
+                                    gitignore_file.write(file.read())
                     push_branch(self.course.config.branch.problem, 'Initial commit.')
                     push_branch(self.course.config.branch.solution, 'Official solution.')
             except:  # noqa: E722
