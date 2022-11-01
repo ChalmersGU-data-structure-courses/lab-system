@@ -315,7 +315,7 @@ _lab_config = SimpleNamespace(
 class _LabConfig:
     def __init__(self, k, refresh_period):
         self.path_source = _lab_repo / str(k)
-        self.path_gitignore = _lab_repo / '.gitignore'
+        self.path_gitignore = None
         self.grading_sheet = lab.name.print(k)
         self.canvas_path_awaiting_grading = PurePosixPath(canvas.grading_path) / '{}-to-be-graded.html'.format(lab.full_id.print(k))
 
