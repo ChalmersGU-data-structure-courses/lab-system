@@ -353,12 +353,14 @@ _lab_config = SimpleNamespace(
 )
 
 class _LabConfig:
-    def __init__(self, k, lab_folder, refresh_period):
+    def __init__(self, k, lab_folder, refresh_period, custom_gitignore=False):
         (_, language) = k
         language_str = _print_parse_lab_language_id.print(language)
 
         self.path_source = _lab_repo / 'labs' / lab_folder / language_str
-        self.path_gitignore = _lab_repo / 'gitignores' / f'{language_str}.gitignore'
+        self.path_gitignores = [ _lab_repo / 'gitignores' / f'{language_str}.gitignore' ]
+        if custom_gitignore:
+            self.path_gitignores.append(_lab_repo / 'gitignores' / f'{lab_folder}.gitignore')
         self.grading_sheet = lab.name.print(k)
         self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-to-be-graded.html'.format(lab.full_id.print(k))
 
@@ -374,7 +376,7 @@ class _LabConfig:
                 yield ('submission', lab_handlers_python.SubmissionHandler())
             else:
                 raise TypeError(language)
-                
+
         self.request_handlers = dict(f())
 
         self.refresh_period = refresh_period
