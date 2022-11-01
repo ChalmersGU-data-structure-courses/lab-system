@@ -175,19 +175,30 @@ class Course:
                     general.print_json(user._dict)
                     general.print_json(self.canvas.get(['users', user.id, 'profile'], use_cache = True)._dict)
 
+    @functools.cached_property
+    def ldap_client(self):
+        return ldap.initialize('ldap://ldap.chalmers.se')
+
+    @instance_cache
+    def cid_from_ldap_name(self, name):
+        results = ldap_tools.search_people_by_name(self.ldap_client, name)
+        try:
+            (result,) = results
+            return result[1]['uid'][0].decode()
+        except Exception:
+            raise LookupError(f'Could not resolve {name} via LDAP')
+
     def resolve_gu_students(self):
-        client = ldap.initialize('ldap://ldap.chalmers.se')
         for (canvas_id, student_details) in self.canvas_course.student_details.items():
             login_id = student_details.login_id
             parts = login_id.split('@', 1)
             if len(parts) == 1:
                 if not parts[0].startswith('gus'):
                     raise ValueError(f'Not GU: {parts[0]}')
-                results = ldap_tools.search_people_by_name(client, student_details.name)
-                try:
-                    (result,) = results
-                    print(canvas_id, result[1]['uid'])
-                except ValueError:
+                gitlab_username = self.cid_from_ldap_name(student_details.name)
+                if not gitlab_username is None:
+                    print(f'{canvas_id}: {gitlab_username}')
+                else:
                     print(f'Ambiguous results for {student_details.name}')
 
     @property
@@ -365,7 +376,7 @@ class Course:
         '''Returns the Chalmers GitLab user for a given Canvas user id, or None if none is found.'''
         gitlab_username = self.config.gitlab_username_from_canvas_user_id(self, canvas_id)
         if gitlab_username is None:
-            None
+            return None
 
         return self.gitlab_user(gitlab_username)
 
