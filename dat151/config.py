@@ -315,7 +315,7 @@ _lab_config = SimpleNamespace(
 class _LabConfig:
     def __init__(self, k, refresh_period):
         self.path_source = _lab_repo / str(k)
-        self.path_gitignore = None
+        self.path_gitignore = None ## _lab_repo / '.gitignore'
         self.grading_sheet = lab.name.print(k)
         self.canvas_path_awaiting_grading = PurePosixPath(canvas.grading_path) / '{}-to-be-graded.html'.format(lab.full_id.print(k))
 
@@ -339,6 +339,7 @@ labs = dict([
 #    _lab_item(3, datetime.timedelta(minutes = 15)),
 #    _lab_item(4, datetime.timedelta(minutes = 15)),
 ])
+# P.S.: minutes for eventloop script
 
 # Students taking part in labs who are not registered on Canvas.
 # List of objects with the following attributes:
