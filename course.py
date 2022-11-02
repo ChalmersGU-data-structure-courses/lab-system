@@ -617,6 +617,10 @@ class Course:
         However, a registered student can then contrive to obtain duplicate group memberships
         by changing their primary email address on Canvas prior to changing groups and accepting invitations.
 
+        Note in case remove is True and restrict_to_known is False:
+        An exception is raised if a Canvas student cannot be resolved to a GitLab username.
+        This is to prevent students from being unintentionally removed from their groups.
+
         This method is simpler than invite_students_to_gitlab.
         It does not use a ledger of past invitations.
         However, it only works properly if we can resolve Canvas students to Chalmers GitLab accounts.
@@ -644,8 +648,12 @@ class Course:
                     continue
                 gitlab_username = self.config.gitlab_username_from_canvas_user_id(self, user_id)
 
-                # Only allow running with remove option if we can resolve GitLab student usernames.
-                if remove and gitlab_username is None:
+                if not gitlab_username:
+                    self.logger.warn('Could not resolve GitLab username of {user.name}.')
+
+                # Only allow running with remove option and restrict_to_known set to False
+                # if we can resolve GitLab student usernames.
+                if remove and not restrict_to_known and gitlab_username is None:
                     raise ValueError(f'called with remove option, but cannot resolve GitLab username of {user.name}')
 
                 gitlab_user = self.gitlab_user(gitlab_username)
