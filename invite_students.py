@@ -14,7 +14,7 @@ from course import Course
 
 
 logging.basicConfig()
-logging.getLogger().setLevel(logging.WARNING)
+logging.getLogger().setLevel(25)
 
 c.canvas_course_refresh()
 c.canvas_group_set_refresh()

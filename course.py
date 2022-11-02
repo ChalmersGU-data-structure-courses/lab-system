@@ -732,7 +732,7 @@ class Course:
 
             for email in invitations_desired.keys() - invitations:
                 if add:
-                    self.logger.info(f'inviting {user_str_from_email(email)} to {entity_name}')
+                    self.logger.log(25, f'inviting {user_str_from_email(email)} to {entity_name}')
                     try:
                         with gitlab_tools.exist_ok():
                             gitlab_tools.invitation_create(self.gl, entity, email, gitlab.const.DEVELOPER_ACCESS)
@@ -744,7 +744,7 @@ class Course:
             for gitlab_username in members_desired.keys() - members.keys():
                 if add:
                     (_, gitlab_user, ) = members_desired[gitlab_username]
-                    self.logger.info(f'adding {user_str_from_gitlab_username(gitlab_username)} to {entity_name}')
+                    self.logger.log(25, f'adding {user_str_from_gitlab_username(gitlab_username)} to {entity_name}')
                     with gitlab_tools.exist_ok():
                         entity.members.create({
                             'user_id': gitlab_user.id,
