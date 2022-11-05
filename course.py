@@ -137,8 +137,10 @@ class Course:
     def canvas_login_id(self, canvas_user_id):
         '''
         Retrieve the login id for a user id on Canvas.
-        If this is a Chalmers user, this is CID@chalmers.
-        If this is a GU user, this is GU-ID@gu.se.
+        * If this is a Chalmers user, this is CID@chalmers.
+        * If this is a GU user, this is GU-ID@gu.se.
+        Sometimes, the login id is just the user part of the email.
+        TODO: find out when exactly this happens.
 
         On Chalmers Canvas, you need the Examiner role for the login_id field to appear in user queries.
         If this is not the case, we perform a workaround: querying the user profile.
@@ -175,20 +177,61 @@ class Course:
                     general.print_json(user._dict)
                     general.print_json(self.canvas.get(['users', user.id, 'profile'], use_cache = True)._dict)
 
+    @functools.cached_property
+    def ldap_client(self):
+        return ldap.initialize('ldap://ldap.chalmers.se')
+
+    @instance_cache
+    def cid_from_ldap_name(self, name):
+        '''Raises a LookupError if the given name cannot be uniquely resolved to a CID.'''
+        results = ldap_tools.search_people_by_name(self.ldap_client, name)
+        try:
+            (result,) = results
+            return result[1]['uid'][0].decode()
+        except Exception:
+            raise LookupError(f'Could not resolve {name} via LDAP')
+
     def resolve_gu_students(self):
-        client = ldap.initialize('ldap://ldap.chalmers.se')
         for (canvas_id, student_details) in self.canvas_course.student_details.items():
             login_id = student_details.login_id
             parts = login_id.split('@', 1)
             if len(parts) == 1:
                 if not parts[0].startswith('gus'):
                     raise ValueError(f'Not GU: {parts[0]}')
-                results = ldap_tools.search_people_by_name(client, student_details.name)
-                try:
-                    (result,) = results
-                    print(canvas_id, result[1]['uid'])
-                except ValueError:
+                gitlab_username = self.cid_from_ldap_name(student_details.name)
+                if not gitlab_username is None:
+                    print(f'{canvas_id}: {gitlab_username}')
+                else:
                     print(f'Ambiguous results for {student_details.name}')
+
+    @instance_cache
+    def cid_from_canvas_id_via_login_id_or_ldap_name(self, user_id):
+        '''
+        For login IDs that look like Chalmers login IDs, return the CID directly.
+        Otherwise, attempt an LDAP lookup.
+        Raises a LookupError if the student name (as on Canvas) cannot be uniquely resolved to a CID.
+        '''
+        user_details = self.canvas_course.user_details[user_id]
+        parts = user_details.login_id.split('@', 1)
+        looks_like_gu_id = parts[0].startswith('gus')
+
+        def is_cid():
+            if len(parts) == 1:
+                return not looks_like_gu_id
+
+            domain = parts[1]
+            if domain == 'chalmers.se':
+                return True
+
+            if domain == 'gu.se':
+                return False
+
+            raise ValueError(f'Unknown domain part in login_id {user_details.login_id}')
+
+        if is_cid():
+            return parts[0]
+
+        return self.cid_from_ldap_name(user_details.name)
 
     @property
     def gitlab_netloc(self):
@@ -365,7 +408,7 @@ class Course:
         '''Returns the Chalmers GitLab user for a given Canvas user id, or None if none is found.'''
         gitlab_username = self.config.gitlab_username_from_canvas_user_id(self, canvas_id)
         if gitlab_username is None:
-            None
+            return None
 
         return self.gitlab_user(gitlab_username)
 
@@ -574,6 +617,10 @@ class Course:
         However, a registered student can then contrive to obtain duplicate group memberships
         by changing their primary email address on Canvas prior to changing groups and accepting invitations.
 
+        Note in case remove is True and restrict_to_known is False:
+        An exception is raised if a Canvas student cannot be resolved to a GitLab username.
+        This is to prevent students from being unintentionally removed from their groups.
+
         This method is simpler than invite_students_to_gitlab.
         It does not use a ledger of past invitations.
         However, it only works properly if we can resolve Canvas students to Chalmers GitLab accounts.
@@ -601,8 +648,12 @@ class Course:
                     continue
                 gitlab_username = self.config.gitlab_username_from_canvas_user_id(self, user_id)
 
-                # Only allow running with remove option if we can resolve GitLab student usernames.
-                if remove and gitlab_username is None:
+                if not gitlab_username:
+                    self.logger.warn('Could not resolve GitLab username of {user.name}.')
+
+                # Only allow running with remove option and restrict_to_known set to False
+                # if we can resolve GitLab student usernames.
+                if remove and not restrict_to_known and gitlab_username is None:
                     raise ValueError(f'called with remove option, but cannot resolve GitLab username of {user.name}')
 
                 gitlab_user = self.gitlab_user(gitlab_username)
@@ -681,7 +732,7 @@ class Course:
 
             for email in invitations_desired.keys() - invitations:
                 if add:
-                    self.logger.info(f'inviting {user_str_from_email(email)} to {entity_name}')
+                    self.logger.log(25, f'inviting {user_str_from_email(email)} to {entity_name}')
                     try:
                         with gitlab_tools.exist_ok():
                             gitlab_tools.invitation_create(self.gl, entity, email, gitlab.const.DEVELOPER_ACCESS)
@@ -693,7 +744,7 @@ class Course:
             for gitlab_username in members_desired.keys() - members.keys():
                 if add:
                     (_, gitlab_user, ) = members_desired[gitlab_username]
-                    self.logger.info(f'adding {user_str_from_gitlab_username(gitlab_username)} to {entity_name}')
+                    self.logger.log(25, f'adding {user_str_from_gitlab_username(gitlab_username)} to {entity_name}')
                     with gitlab_tools.exist_ok():
                         entity.members.create({
                             'user_id': gitlab_user.id,
