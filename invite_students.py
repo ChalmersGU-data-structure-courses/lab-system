@@ -13,7 +13,10 @@ import logging
 from course import Course
 
 
-logging.basicConfig()
+logging.basicConfig(
+    format = '%(asctime)s %(levelname)s %(module)s: %(message)s',
+    datefmt = '%Y-%m-%d %H:%M:%S',
+)
 logging.getLogger().setLevel(25)
 
 c.canvas_course_refresh()
