@@ -498,14 +498,41 @@ class Lab:
         for group_id in self.course.groups:
             self.student_group(group_id).project.delete()
 
-    def hotfix_groups(self, branch_hotfix):
+    def hotfix_groups(
+        self,
+        branch_hotfix,
+        group_ids = None,
+        merge_files = False,
+        fail_on_problem = True,
+        notify_students: str = None,
+    ):
         '''
         Attempt to apply a hotfix to all student projects.
         This calls 'hotfix_group' with the master/main branch.
         If any groups have created separate branches and you wish to hotfix those, use the 'hotfix_group' method.
+
+        Flags:
+        * merge_files: if True, attempt a 3-way merge to resolve conflicting files.
+        * group_ids:
+            Iterable for group_ids to hotfix.
+            Defaults to all groups.
+        * fail_on_problem:
+            Fail with an exception if a merge cannot be performed.
+            If False, only an error is logged.
+        * notify_students:
+            Notify student members of the hotfix commit by creating a commit comment with this message.
+            The message is appended with mentions of the student members.
+
+        Will log a warning if the merge has already been applied.
         '''
-        for group_id in self.course.groups:
-            self.student_group(group_id).hotfix(branch_hotfix, self.course.config.branch.master)
+        for group_id in self.normalize_group_ids(group_ids):
+            self.student_group(group_id).hotfix(
+                branch_hotfix,
+                self.course.config.branch.master,
+                merge_files = merge_files,
+                fail_on_problem = fail_on_problem,
+                notify_students = notify_students,
+            )
 
     def repo_fetch_all(self):
         '''
