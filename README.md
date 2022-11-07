@@ -490,7 +490,7 @@ In some cases, the merge may not be possible automatic.
 For those student projects you will have to manually merge the hotfix branch into the main branch.
 You can use
 ```
-lab.student_group(<group_id>).hotfix_group(<hotfix branch>, <group branch>)
+lab.student_group(<group_id>).hotfix(<hotfix branch>, <group branch>)
 ```
 to hotfix branches other than the main branch for an individual group.
 
