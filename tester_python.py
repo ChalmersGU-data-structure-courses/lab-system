@@ -1,4 +1,4 @@
-import collections
+import dataclasses
 import functools
 import logging
 import os
@@ -6,6 +6,7 @@ from pathlib import Path
 import shutil
 import signal
 import subprocess
+from typing import List, Optional, Union
 
 # The following module is not needed here, but when tests are run.
 # We import it to make sure that all dependencies of the sandboxing script are satisfies.
@@ -19,35 +20,37 @@ import test_lib
 
 logger = logging.getLogger(__name__)
 
-# A Python test specification
-# A test is an invocation of a Python module.
-Test = collections.namedtuple(
-    'PythonTest',
-    ['script', 'args', 'input', 'timeout'],
-    defaults = [[], None, 5],
-)
-Test.__doc__ = '''
-A Python test specification.
-A test is an invocation of a Python module as main module.
-The result of the test consists of:
-* the output stream,
-* the error stream,
-* the return code.
+@dataclasses.dataclass(kw_only = True)
+class Test:
+    '''
+    A Python test specification.
+    A test is an invocation of a Python module as main module.
+    The result of the test consists of:
+    * the output stream,
+    * the error stream,
+    * the return code.
 
-The Python program is run with minimal permissions.
-It may read arbitrary files.
+    The Python program is run with minimal permissions.
+    It may read arbitrary files.
 
-The content of the test folder is overlaid on top of the submission folder.
+    The content of the test folder is overlaid on top of the submission folder.
 
-Fields:
-* script:
-  The script to be executed (required).
-  A path-like objects.
-  Should be relative to the overlaid test/submission folder.
-* args: List of command-line arguments (defaults to empty list).
-* input: Optional input to the program, as a string (defaults to None).
-* timeout: Timeout in seconds after which the test program is killed (defaults to 5).
-'''
+    Fields:
+    * script:
+      The script to be executed (required).
+      A path-like objects.
+      Should be relative to the overlaid test/submission folder.
+    * args: List of command-line arguments (defaults to empty list).
+    * input: Optional input to the program, as a string (defaults to None).
+    * timeout: Timeout in seconds after which the test program is killed (defaults to 5).
+    '''
+    script: Union[str, os.PathLike]
+    args: List[str] = None
+    input: Optional[str] = None
+    timeout: int = 5
+
+# For backward compatibility.
+Test.__name__ = 'PythonTest'
 
 parse_tests = functools.partial(test_lib.parse_tests, Test)
 
@@ -62,8 +65,8 @@ class LabTester:
 
     Such a tester is specified by a subdirectory 'test' of the lab directory.
     The contents of this directory are overlaid onto a submission to be tested.
-    The contained file 'tests.py' has a self-contained Python specifying
-    a dictionary 'tests' of tests with values in Test
+    The contained file 'tests.py' is a self-contained Python script
+    specifying a dictionary 'tests' of tests with values in Test
     (see there and test_lib.parse_tests).
     '''
 
