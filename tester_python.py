@@ -6,7 +6,7 @@ from pathlib import Path
 import shutil
 import signal
 import subprocess
-from typing import List, Optional, Union
+from typing import Optional, Tuple, Union
 
 # The following module is not needed here, but when tests are run.
 # We import it to make sure that all dependencies of the sandboxing script are satisfies.
@@ -21,7 +21,7 @@ import test_lib
 logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass(kw_only = True)
-class Test:
+class Test(test_lib.Test):
     '''
     A Python test specification.
     A test is an invocation of a Python module as main module.
@@ -35,29 +35,26 @@ class Test:
 
     The content of the test folder is overlaid on top of the submission folder.
 
-    Fields:
+    Fields ignored in test_lib: memory
+
+    Further fields:
     * script:
       The script to be executed (required).
       A path-like objects.
       Should be relative to the overlaid test/submission folder.
-    * args: List of command-line arguments (defaults to empty list).
+    * args: Tuple of command-line arguments (defaults to empty tuple).
     * input: Optional input to the program, as a string (defaults to None).
-    * timeout: Timeout in seconds after which the test program is killed (defaults to 5).
     '''
     script: Union[str, os.PathLike]
-    args: List[str] = None
+    args: Tuple[str] = ()
     input: Optional[str] = None
-    timeout: int = 5
 
 # For backward compatibility.
 Test.__name__ = 'PythonTest'
 
 parse_tests = functools.partial(test_lib.parse_tests, Test)
 
-class TesterMissingException(Exception):
-    pass
-
-class LabTester:
+class LabTester(test_lib.LabTester):
     '''
     A class for Python testers following the architecture
     that is currently implemented for the following Python labs:
@@ -69,38 +66,14 @@ class LabTester:
     specifying a dictionary 'tests' of tests with values in Test
     (see there and test_lib.parse_tests).
     '''
+    TestSpec = Test
 
-    def __init__(self, dir_lab: Path, machine_speed = 1):
+    def run_test(self, dir_out: Path, dir_src: Path, name: str, test: Test):
         '''
-        Arguments:
-        * dir_lab:
-            The lab directory (instance of pathlib.Path).
-            For example: <repo-root>/labs/autocomplete/java
-        * machine_speed:
-            Floating-point number.
-            The machine speed relative to a 2015 Desktop machine.
-
-        An instance of TesterMissingException is raised if the lab does
-        not have a tester, i.e. does not have test subdirectory.
+        See test_lib.LabTester.run_test.
+        We produce the files according to test_lib.LabTester.record.
         '''
-        self.dir_lab = dir_lab
-        self.machine_speed = machine_speed
-
-        self.dir_test = dir_lab / 'test'
-        if not self.dir_test.is_dir():
-            raise TesterMissingException(f'No tester found in {path_tools.format_path(self.dir_lab)}')
-        logger.debug(f'Detected tester in {path_tools.format_path(self.dir_lab)}.')
-
-        self.tests = parse_tests(self.dir_test / 'tests.py')
-
-    def run_test(self, dir_out, dir_src, name, test: Test):
         logger.debug(f'Running test {name}.')
-
-        dir_result = dir_out / name
-        dir_result.mkdir()
-
-        def store(kind, result):
-            (dir_result / kind).write_text(result)
 
         with path_tools.temp_dir() as dir:
             shutil.copytree(dir_src, dir, symlinks = True, dirs_exist_ok = True)
@@ -116,68 +89,17 @@ class LabTester:
                 env = env,
             )
 
-            general.log_command(logger, cmd)
             logger.debug(f'Environment: {env}')
-            logger.debug(f'Timeout value is {test.timeout / self.machine_speed} seconds.')
 
-            # proot does not use PTRACE_O_EXITKILL on traced processes.
-            # So killing proot does not kill the processes it has spawned.
-            # To compensate for this, we use the following hack (TODO: improve).
-            #
-            # HACK:
-            # We start proot in a new process group (actually, a new session).
-            # On timeout, we kill the process group.
-            #
-            # BUG:
-            # There is a race condition.
-            # When the proot (the tracer) is killed, its tracees are detached.
-            # From the documentation of the syscall proot:
-            # > If the tracer dies, all tracees are automatically detached and
-            # > restarted, unless they were in group-stop.
-            # So if SIGKILL is processed for tracer before it is processed for its tracee,
-            # then in between the tracee has escaped the ptrace jail.
-            process = subprocess.Popen(
-                cmd,
-                text = True,
-                stdin = subprocess.PIPE,
-                stdout = subprocess.PIPE,
-                stderr = subprocess.PIPE,
-                start_new_session = True,
+            self.record_process(
+                dir_out = dir_out,
+                args = cmd,
                 env = env,
+                input = test.input,
+                timeout = test.timeout,
             )
-            # TODO: Terminate if size of out or err exceeds to be configured threshold.
-            try:
-                (out, err) = process.communicate(
-                    input = test.input,
-                    timeout = None if test.timeout is None else test.timeout / self.machine_speed,
-                )
-                logger.debug(f'Test exit code: {process.returncode}')
-                result = process.returncode
-            except subprocess.TimeoutExpired:
-                logger.debug(f'Test timed out after {test.timeout / self.machine_speed} seconds.')
-                os.killpg(process.pid, signal.SIGKILL)
-                (out, err) = process.communicate()
-                # Be machine-agnostic in the reported timeout value.
-                result = f'timed out after {test.timeout} seconds'
-
-            # The ordering of files in a diff on GitLab seems to be alphabetical.
-            # We prefix the name fragments numerically to enforce the desired ordering.
-            store('_0_res', general.join_lines([str(result)]))
-            store('_1_out', out)
-            store('_2_err', err)
-
-    def run_tests(self, dir_out, dir_src):
-        logger.info(
-            f'Running tester for {path_tools.format_path(self.dir_lab)} '
-            f'on {path_tools.format_path(dir_src)}.'
-        )
-        for (name, test) in self.tests.items():
-            self.run_test(dir_out, dir_src, name, test)
 
 if __name__ == '__main__':
-    from pathlib import Path
-    import logging
-
     logging.basicConfig()
     logging.getLogger().setLevel(logging.DEBUG)
 
