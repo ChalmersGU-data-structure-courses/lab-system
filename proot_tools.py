@@ -99,6 +99,7 @@ def proot_python_args(
     *,
     host_dir_main,
     guest_dir_main = guest_dir_main_default,
+    python_executable_name = 'python3',
     python_args_extra = [],
     python_path_extra = [],
     bindings = [],
@@ -123,6 +124,8 @@ def proot_python_args(
         Used as working directory.
     * guest_dir_packages:
         Directory used to bind
+    * python_executable_name:
+        Executable name of the Python interpreter
     * python_args_extra:
         Iterable of extra flags to use in the invocation of python3.
         Activated by default:
@@ -145,7 +148,7 @@ def proot_python_args(
 
     return proot_args(
         args = [
-            '/usr/bin/env', 'python3',
+            '/usr/bin/env', python_executable_name,
             '-B',
             '-s',
             *python_args_extra,
