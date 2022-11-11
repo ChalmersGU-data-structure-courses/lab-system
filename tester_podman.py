@@ -7,17 +7,9 @@ import logging
 import os
 from pathlib import Path
 import shutil
-import signal
-import subprocess
 from typing import Optional, Tuple, Union
 
-# The following module is not needed here, but when tests are run.
-# We import it to make sure that all dependencies of the sandboxing script are satisfies.
-import seccomp  # noqa: F401
-
-import general
 import path_tools
-import proot_tools
 import test_lib
 
 
@@ -26,45 +18,39 @@ logger = logging.getLogger(__name__)
 @dataclasses.dataclass(kw_only = True)
 class Test(test_lib.Test):
     '''
-    A Python test specification.
-    A test is an invocation of a Python module as main module.
+    A podman test specification.
+    A test is a program execution inside a container image.
     The result of the test consists of:
     * the output stream,
     * the error stream,
     * the return code.
 
-    The Python program is run with minimal permissions.
-    It may read arbitrary files.
+    Inside the container:
+    * '/submission' has the lab submission together with the content of the test folder overlaid.
+      This is also the working directory for the program execution.
 
-    The content of the test folder is overlaid on top of the submission folder.
+    Fields ignored in test_lib: none
 
-    Fields ignored in test_lib: memory
-
-    Further fields:
-    * script:
-      The script to be executed (required).
-      A path-like objects.
-      Should be relative to the overlaid test/submission folder.
-    * args: Tuple of command-line arguments (defaults to empty tuple).
+    Fields:
+    * image: Container image to run.
+    * command_line: Command line to execute.
     * input: Optional input to the program, as a string (defaults to None).
     '''
-    script: Union[str, os.PathLike]
-    args: Tuple[str] = ()
+    image: str
+    command_line: Tuple[Union[str, os.PathLike]]
     input: Optional[str] = None
-
-# For backward compatibility.
-Test.__name__ = 'PythonTest'
 
 parse_tests = functools.partial(test_lib.parse_tests, Test)
 
+class TesterMissingException(Exception):
+    pass
+
 class LabTester(test_lib.LabTester):
     '''
-    A class for Python testers following the architecture
-    that is currently implemented for the following Python labs:
-    - autocomplete.
+    A class for containerized lab testers (using podman).
 
     Such a tester is specified by a subdirectory 'test' of the lab directory.
-    The contents of this directory are overlaid onto a submission to be tested.
+    The contents of this directory are typically overlaid onto a submission to be tested.
     The contained file 'tests.py' is a self-contained Python script
     specifying a dictionary 'tests' of tests with values in Test
     (see there and test_lib.parse_tests).
@@ -78,26 +64,24 @@ class LabTester(test_lib.LabTester):
         '''
         logger.debug(f'Running test {name}.')
 
+        # TODO: Investigate using overlays for this.
         with path_tools.temp_dir() as dir:
             shutil.copytree(dir_src, dir, symlinks = True, dirs_exist_ok = True)
             shutil.copytree(self.dir_test, dir, dirs_exist_ok = True)
 
-            env = {
-                'PYTHONHASHSEED': '0',
-            }
-            cmd = proot_tools.sandboxed_python_args(
-                test.script,
-                guest_args = test.args,
-                host_dir_main = dir,
-                env = env,
-            )
-
-            logger.debug(f'Environment: {env}')
+            def cmd():
+                yield from ['podman', 'run']
+                yield from ['--volume', ':'.join([str(dir), '/submission', 'O'])]
+                yield '--interactive'
+                yield from ['--workdir', '/submission']
+                if not test.memory is None:
+                    yield from ['--memory', str(1024 * 1024 * test.memory)]
+                yield test.image
+                yield from test.command_line
 
             self.record_process(
                 dir_out = dir_out,
-                args = cmd,
-                env = env,
+                args = cmd(),
                 input = test.input,
                 timeout = test.timeout,
             )
