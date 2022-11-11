@@ -326,7 +326,7 @@ class LabRobograder:
 # The following exceptions and checks just wrap functions from other modules
 # using the class HandlingException to designate submission errors.
 
-class SymlinkException(HandlingException):
+class SymlinkException(lab_interfaces.HandlingException):
     prefix = 'There is a problem with symbolic links:'
 
     def __init__(self, e):
@@ -350,7 +350,7 @@ def submission_check_symlinks(src, strict = False):
     except check_symlinks.SymlinkException as e:
         raise SymlinkException(e) from None
 
-class CompileException(java_tools.CompileError, HandlingException):
+class CompileException(java_tools.CompileError, lab_interfaces.HandlingException):
     prefix = 'There are compilation errors:'
 
     def __str__(self):
