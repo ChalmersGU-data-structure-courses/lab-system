@@ -18,7 +18,7 @@ import test_lib
 
 logger = logging.getLogger(__name__)
 
-@dataclasses.dataclass(kw_only = True)
+@dataclasses.dataclass  # (kw_only = True) only supported in Python 3.10
 class Test(test_lib.Test):
     '''
     A Python test specification.
@@ -43,7 +43,7 @@ class Test(test_lib.Test):
     * args: Tuple of command-line arguments (defaults to empty tuple).
     * input: Optional input to the program, as a string (defaults to None).
     '''
-    script: Union[str, os.PathLike]
+    script: Union[str, os.PathLike] = None  # Default argument for compatibility with Python <3.10
     args: Tuple[str] = ()
     input: Optional[str] = None
 

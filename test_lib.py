@@ -16,7 +16,7 @@ import path_tools
 
 logger = logging.getLogger(__name__)
 
-@dataclasses.dataclass(kw_only = True)
+@dataclasses.dataclass  # (kw_only = True) only supported in Python 3.10
 class Test:
     '''
     Base class for test specifications.
@@ -63,7 +63,7 @@ def parse_tests(test_type, file):
 
 
 # TODO: move elsewhere
-@dataclasses.dataclass(kw_only = True)
+@dataclasses.dataclass  # (kw_only = True) only supported in Python 3.10
 class JavaTest(Test):
     '''
     A Java test specification.
@@ -84,7 +84,7 @@ class JavaTest(Test):
     * perm_read: List of additional files the program may read (defaults to an empty list).
     * timeout: see base class Test.
     '''
-    class_name: str
+    class_name: str = None  # Default argument for compatibility with Python <3.10
     args: Tuple[str] = ()
     input: Optional[str] = None
     enable_assertions: bool = True
