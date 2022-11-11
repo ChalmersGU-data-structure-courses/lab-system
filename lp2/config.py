@@ -7,10 +7,13 @@ from types import SimpleNamespace
 from typing import Tuple
 
 import general
+import lab_handlers
 import lab_handlers_java
 import lab_handlers_python
 import print_parse
 import robograder_java
+import test_lib
+import tester_podman
 from this_dir import this_dir
 
 # Personal configuration.
@@ -353,12 +356,12 @@ _lab_config = SimpleNamespace(
 )
 
 class _LabConfig:
-    def __init__(self, k, lab_folder, refresh_period, custom_gitignore=False):
+    def __init__(self, k, lab_folder, refresh_period, custom_gitignore = False):
         (_, language) = k
         language_str = _print_parse_lab_language_id.print(language)
 
         self.path_source = _lab_repo / 'labs' / lab_folder / language_str
-        self.path_gitignores = [ _lab_repo / 'gitignores' / f'{language_str}.gitignore' ]
+        self.path_gitignores = [_lab_repo / 'gitignores' / f'{language_str}.gitignore']
         if custom_gitignore:
             self.path_gitignores.append(_lab_repo / 'gitignores' / f'{lab_folder}.gitignore')
         self.grading_sheet = lab.name.print(k)
@@ -369,11 +372,21 @@ class _LabConfig:
                 yield ('submission', lab_handlers_java.SubmissionHandler())
                 try:
                     robograder_java.LabRobograder(self.path_source)
-                    yield ('robograding', lab_handlers_java.RobogradingHandler())
                 except robograder_java.RobograderMissingException:
                     pass
+                else:
+                    yield ('robograding', lab_handlers_java.RobogradingHandler())
             elif language == LabLanguage.PYTHON:
                 yield ('submission', lab_handlers_python.SubmissionHandler())
+                try:
+                    tester_podman.LabTester(self.path_source)
+                except test_lib.TesterMissingException:
+                    pass
+                else:
+                    class TestingHandler(lab_handlers.GenericTestingHandler):
+                        tester_type = tester_podman.LabTester
+
+                    yield ('testing', TestingHandler())
             else:
                 raise TypeError(language)
 
@@ -390,12 +403,12 @@ def _lab_item(k, *args):
 
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
-    _lab_item((1, LabLanguage.JAVA  ), 'indexing'            , datetime.timedelta(minutes = 15), True),
-    _lab_item((1, LabLanguage.PYTHON), 'indexing'            , datetime.timedelta(minutes = 15), True),
-    #_lab_item((2, LabLanguage.JAVA  ), 'plagiarism-detection', datetime.timedelta(minutes = 15)),
-    #_lab_item((2, LabLanguage.PYTHON), 'plagiarism-detection', datetime.timedelta(minutes = 15)),
-    #_lab_item((3, LabLanguage.JAVA  ), 'path-finder'         , datetime.timedelta(minutes = 15)),
-    #_lab_item((3, LabLanguage.PYTHON), 'path-finder'         , datetime.timedelta(minutes = 15)),
+    _lab_item((1, LabLanguage.JAVA  ), 'indexing'            , datetime.timedelta(minutes = 15), True),  # noqa: E202, E203, E501
+    _lab_item((1, LabLanguage.PYTHON), 'indexing'            , datetime.timedelta(minutes = 15), True),  # noqa: E202, E203, E501
+    #_lab_item((2, LabLanguage.JAVA  ), 'plagiarism-detection', datetime.timedelta(minutes = 15)),  # noqa: E202, E203, E501
+    #_lab_item((2, LabLanguage.PYTHON), 'plagiarism-detection', datetime.timedelta(minutes = 15)),  # noqa: E202, E203, E501
+    #_lab_item((3, LabLanguage.JAVA  ), 'path-finder'         , datetime.timedelta(minutes = 15)),  # noqa: E202, E203, E501
+    #_lab_item((3, LabLanguage.PYTHON), 'path-finder'         , datetime.timedelta(minutes = 15)),  # noqa: E202, E203, E501
 ])
 
 # Students taking part in labs who are not registered on Canvas.
