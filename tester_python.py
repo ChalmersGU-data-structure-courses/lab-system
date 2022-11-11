@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# PYTHON_ARGCOMPLETE_OK
+
 import dataclasses
 import functools
 import logging
@@ -100,14 +103,4 @@ class LabTester(test_lib.LabTester):
             )
 
 if __name__ == '__main__':
-    logging.basicConfig()
-    logging.getLogger().setLevel(logging.DEBUG)
-
-    dir_lab = Path('../labs/labs/autocomplete/python')
-    dir_submission = dir_lab / 'build'  # Path('python_test/lab-2')
-    dir_out = Path('out')
-
-    path_tools.mkdir_fresh(dir_out)
-
-    tester = LabTester(dir_lab)
-    tester.run_tests(dir_out, dir_submission)
+    test_lib.cli(LabTester)

@@ -6,6 +6,7 @@ from pathlib import Path
 import shlex
 import signal
 import subprocess
+import sys
 from typing import Iterable, Optional, Tuple, Union
 
 import general
@@ -154,6 +155,8 @@ class LabTester:
 
         Returns the exit code (if no timeout occurred).
         '''
+        args = list(args)
+
         with (dir_out / file_out).open('w') as out, (dir_out / file_err).open('w') as err:
             # proot does not use PTRACE_O_EXITKILL on traced processes.
             # So killing proot does not kill the processes it has spawned.
@@ -238,3 +241,64 @@ class LabTester:
             dir_out_test = dir_out / name
             dir_out_test.mkdir()
             self.run_test(dir_out_test, dir_src, name, test)
+
+def cli(Tester) -> None:
+    '''
+    Run a tester in stand-alone mode.
+
+    Arguments:
+    * Tester: Construct an instance of LabTester given the (positional) arguments of its constructor.
+    '''
+    import argparse
+
+    p = argparse.ArgumentParser(
+        add_help = False,
+        description = 'Run tests on a lab submission.', epilog = '''
+This Python script supports bash completion.
+For this, python-argparse needs to be installed and configured.
+See https://github.com/kislyuk/argcomplete for more information.
+''')
+    p.add_argument('submission', type = Path, help = 'Path the submission (read-only).')
+    p.add_argument('output', type = Path, help = '''
+Test output directory (write).
+Created if missing.
+''')
+
+    dir_executable = Path(sys.argv[0]).parent
+    p.add_argument('-l', '--lab', type = Path, metavar = 'LAB', default = dir_executable, help = f'''
+Path the lab (read-only).
+Must have a file `test/tests.py` with test specifications.
+Defaults to {path_tools.format_path(dir_executable)} (inferred from execution path).
+''')
+    p.add_argument('-m', '--machine-speed', type = float, metavar = 'MACHINE_SPEED', default = float(1), help = '''
+The machine speed relative to a 2015 desktop machine.
+If not given, defaults to 1.
+Used to calculate appropriate timeout durations.
+''')
+    p.add_argument('-v', '--verbose', action = 'count', default = 0, help = '''
+Print INFO level (once specified) or DEBUG level (twice specified) logging.
+''')
+    p.add_argument('-h', '--help', action = 'help', help = 'Show this help message and exit.')
+    args = p.parse_args()
+
+    # Support for argcomplete.
+    try:
+        import argcomplete
+        argcomplete.autocomplete(p)
+    except ModuleNotFoundError:
+        pass
+
+    logging_level = {
+        0: logging.WARNING,
+        1: logging.INFO,
+        2: logging.DEBUG,
+    }[min(args.verbose, 2)]
+    logging.basicConfig(level = logging_level)
+
+    logger.debug(f'Lab directory: {path_tools.format_path(args.lab)}')
+    logger.debug(f'Machine speed: {args.machine_speed}')
+    logger.debug(f'Submission directory: {path_tools.format_path(args.submission)}')
+    logger.debug(f'Output directory: {path_tools.format_path(args.output)}')
+
+    args.output.mkdir(exist_ok = True)
+    Tester(args.lab, args.machine_speed).run_tests(args.output, args.submission)
