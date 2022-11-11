@@ -804,7 +804,7 @@ class GroupProject:
         problem = self.lab.head_problem.commit
         hotfix = git_tools.normalize_branch(self.repo, branch_hotfix).commit
         if problem == hotfix:
-            self.logger.warn('Hotfixing: hotfix identical to problem.')
+            self.logger.warning('Hotfixing: hotfix identical to problem.')
             return
 
         master = git_tools.remote_branch(self.remote, branch_group)
@@ -832,7 +832,7 @@ class GroupProject:
         merge = index.write_tree()
         diff = merge.diff(master)
         if not diff:
-            self.logger.warn('Hotfixing: hotfix already applied')
+            self.logger.warning('Hotfixing: hotfix already applied')
             return
         for x in diff:
             self.logger.info(x)
@@ -1055,7 +1055,7 @@ class GroupProject:
                 (_,) = tag_parts
             except ValueError:
                 # Take tag out of the parsing stream.
-                self.logger.warn(
+                self.logger.warning(
                     'Ignoring tag {} in student group {} not composed '
                     "of exactly one path part (with respect to separator '/').".format(
                         shlex.quote(tag_name), self.name
