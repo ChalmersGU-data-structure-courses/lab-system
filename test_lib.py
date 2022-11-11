@@ -34,6 +34,9 @@ class Test:
     timeout: Optional[int] = 5
     memory: Optional[int] = 1024
 
+def get_description(name: str, test: Test) -> str:
+    return name if test.description is None else test.description
+
 def parse_tests(test_type, file):
     '''
     Parse tests from a test specification file.
@@ -320,7 +323,7 @@ class LabTester:
         '''
         for (name, test) in self.tests.items():
             dir_out_test = dir_out / name
-            yield f'## {markdown.escape(test.description)}'
+            yield f'## {markdown.escape(get_description(name, test))}'
             yield from self.format_test_output_as_markdown(dir_out_test)
 
 def cli(Tester) -> None:

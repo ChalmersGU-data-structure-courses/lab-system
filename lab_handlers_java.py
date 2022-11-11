@@ -187,7 +187,7 @@ class SubmissionHandler(lab_handlers.SubmissionHandler):
 
 class RobogradingHandler(lab_handlers.RobogradingHandler):
     '''
-    A submission handler for Java labs.
+    A robograding handler for Java labs.
 
     You can configure certain aspects by overriding attributes.
     In addition to those of the base class:

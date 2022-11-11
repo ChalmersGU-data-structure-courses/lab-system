@@ -7,6 +7,7 @@ import subprocess
 import check_symlinks
 import general
 import java_tools
+import lab_interfaces
 import markdown
 import path_tools
 from this_dir import this_dir
@@ -14,16 +15,12 @@ from this_dir import this_dir
 
 logger = logging.getLogger(__name__)
 
-class HandlingException(Exception, markdown.Markdown):
-    '''Raised for errors caused by a problems with a submission.'''
-    pass
-
 # ## Exceptions and function for running a robograder.
 #
 # This is quite general and does not assume anything
 # about the robograder architecture and configuration.
 
-class RobograderException(HandlingException):
+class RobograderException(lab_interfaces.HandlingException):
     '''Raised for robograding errors caused by a problem with a submission.'''
     pass
 
