@@ -1,4 +1,5 @@
 import abc
+import contextlib
 import dataclasses
 import logging
 import os
@@ -8,6 +9,8 @@ import subprocess
 from typing import Iterable, Optional, Tuple, Union
 
 import general
+import markdown
+import overlay
 import path_tools
 
 
@@ -21,9 +24,13 @@ class Test:
     Not all tester may actually make use of them.
 
     Fields:
+    * description:
+        A human-readable name for the test.
+        Should be appropriate for a Markdown heading.
     * timeout: Timeout in seconds after which the test program is killed (defaults to 5).
     * memory: Memory (in MB) the container is allowed to use (defaults to 1024).
     '''
+    description: Optional[str] = None
     timeout: Optional[int] = 5
     memory: Optional[int] = 1024
 
@@ -88,17 +95,19 @@ class LabTester:
     '''
     Base class for lab testers.
 
-    Generally, a tester is specified by a subdirectory 'test' of the lab directory.
-    This directory contains a file 'tests.py'.
+    The lab directory contains a file 'tests.py'.
     This is a self-contained Python script specifying
-        tests : Dict[str, TestType]
-    where TestType is specified at constructor invocation
+        tests : Dict[str, Test]
+    where the type Test is specified by the class attribute TestSpec.
     (and made available to the environment of the execution of tests.py).
+
+    Additionally, the lab may contain a subdirectory 'test'.
+    Its content is overlaid on top of each submission to be tested.
 
     Subclasses should instantiate the class attribute TestSpec
     to a dataclass of test specifications deriving from Test.
     '''
-    TestSpec: Test
+    TestSpec = None
 
     def __init__(self, dir_lab: Path, machine_speed: float = 1):
         '''
@@ -116,12 +125,17 @@ class LabTester:
         self.dir_lab = dir_lab
         self.machine_speed = machine_speed
 
-        self.dir_test = dir_lab / 'test'
-        if not self.dir_test.is_dir():
-            raise TesterMissingException(f'No tester found in {path_tools.format_path(self.dir_lab)}')
-        logger.debug(f'Detected tester in {path_tools.format_path(self.dir_lab)}.')
+        file_tests = self.dir_lab / 'tests.py'
+        if not file_tests.exists():
+            raise TesterMissingException(
+                f'No test specifications file tests.py found in {path_tools.format_path(self.dir_lab)}'
+            )
 
-        self.tests = parse_tests(self.TestSpec, self.dir_test / 'tests.py')
+        logger.debug(f'Detected tester in {path_tools.format_path(self.dir_lab)}.')
+        self.tests = parse_tests(self.TestSpec, file_tests)
+
+        self.dir_test = dir_lab / 'test'
+        self.has_test_overlay = self.dir_test.exists()
 
     # TODO: Terminate if size of out or err exceeds a to be configured threshold.
     def record_process(
@@ -211,7 +225,9 @@ class LabTester:
         '''
         Arguments:
         * dir_out: Test output goes in this directory.
-        * dir_src: Directory containing the submission to test.
+        * dir_src:
+            Directory containing the submission to test and all test files.
+            Only read permissions are guaranteed.
         * name: name of the test.
         * test:
             Specification of the test.
@@ -235,10 +251,77 @@ class LabTester:
             f'Running tester for {path_tools.format_path(self.dir_lab)} '
             f'on {path_tools.format_path(dir_src)}.'
         )
+
+        with contextlib.ExitStack() as stack:
+            # Overlay optional test directory onto submission.
+            if self.has_test_overlay:
+                dir_test = stack.enter_context(overlay.overlay([self.dir_test, dir_src]))
+            else:
+                dir_test = dir_src
+
+            # Run each test.
+            for (name, test) in self.tests.items():
+                dir_out_test = dir_out / name
+                dir_out_test.mkdir()
+                self.run_test(dir_out_test, dir_test, name, test)
+
+    @abc.abstractmethod
+    def format_test_output_as_markdown(self, dir_out: Path) -> Iterable[str]:
+        '''
+        Format the output of a test as markdown.
+        This excludes the section heading, which is provided by format_tests_output_as_markdown.
+        For use with test issues in student projects.
+
+        Arguments:
+        * dir_out: Path of the output subdirectory of this test.
+
+        Returns an iterable of Markdown blocks.
+
+        The default implementation assumes the test records its output
+        using self.record_process and the default file names.
+        '''
+        import inspect
+        params = inspect.signature(self.record_process).parameters
+        def read_file(arg_name):  # noqa E308
+            return (dir_out / params[arg_name].default).read_text()
+
+        out = read_file('file_out')
+        if out:
+            yield markdown.escape_code_block(out)
+
+        err = read_file('file_err')
+        if err:
+            yield 'Errors:'
+            yield markdown.escape_code_block(out)
+
+        def result_msg():
+            result = read_file('file_result')
+            try:
+                exit_code = int(result)
+            except ValueError:
+                return result
+            else:
+                if exit_code != 0:
+                    return f'exited with an error (exit code {exit_code})'
+
+        msg = result_msg()
+        if not msg is None:
+            yield f'The program {msg}.'
+
+    @abc.abstractmethod
+    def format_tests_output_as_markdown(self, dir_out: Path) -> Iterable[str]:
+        '''
+        Format tests output as markdown.
+        For use as test issue content in student projects.
+
+        Returns an iterable of Markdown blocks.
+
+        The default implementation uses format_test_output_as_markdown.
+        '''
         for (name, test) in self.tests.items():
             dir_out_test = dir_out / name
-            dir_out_test.mkdir()
-            self.run_test(dir_out_test, dir_src, name, test)
+            yield f'## {markdown.escape(test.description)}'
+            yield from self.format_test_output_as_markdown(dir_out_test)
 
 def cli(Tester) -> None:
     '''
@@ -257,16 +340,20 @@ For this, python-argparse needs to be installed and configured.
 See https://github.com/kislyuk/argcomplete for more information.
 ''')
     p.add_argument('submission', type = Path, help = 'Path the submission (read-only).')
-    p.add_argument('output', type = Path, help = '''
-Test output directory (write).
+
+    p.add_argument('-o', '--output', type = Path, help = '''
+Optional test output directory (write).
 Created if missing.
+''')
+    p.add_argument('--markdown', action = 'store_true', help = '''
+Print Markdown encoded test output.
+Optionally supported by the tester.
 ''')
 
     p.add_argument('-l', '--lab', type = Path, metavar = 'LAB', default = Path(), help = '''
-Path the lab (read-only).
-Must have a directory `test` with files used for testing.
-The file `test/tests.py` specifies the tests.
-Defaults to working directory.
+Path the lab (read), defaults to working directory.
+Must have a self-contained Python file `tests.py` specifying the tests to be run.
+It must define a string-indexed dictionary of instances of the relevant test specification type.
 ''')
     p.add_argument('-m', '--machine-speed', type = float, metavar = 'MACHINE_SPEED', default = float(1), help = '''
 The machine speed relative to a 2015 desktop machine.
@@ -293,10 +380,19 @@ Print INFO level (once specified) or DEBUG level (twice specified) logging.
     }[min(args.verbose, 2)]
     logging.basicConfig(level = logging_level)
 
-    logger.debug(f'Lab directory: {path_tools.format_path(args.lab)}')
-    logger.debug(f'Machine speed: {args.machine_speed}')
-    logger.debug(f'Submission directory: {path_tools.format_path(args.submission)}')
-    logger.debug(f'Output directory: {path_tools.format_path(args.output)}')
+    with contextlib.ExitStack() as stack:
+        if args.output is None:
+            dir_out = stack.enter_context(path_tools.temp_dir())
+        else:
+            dir_out = args.output
+            args.output.mkdir(exist_ok = True)
 
-    args.output.mkdir(exist_ok = True)
-    Tester(args.lab, args.machine_speed).run_tests(args.output, args.submission)
+        logger.debug(f'Lab directory: {path_tools.format_path(args.lab)}')
+        logger.debug(f'Machine speed: {args.machine_speed}')
+        logger.debug(f'Submission directory: {path_tools.format_path(args.submission)}')
+        logger.debug(f'Output directory: {path_tools.format_path(dir_out)}')
+
+        tester = Tester(args.lab, args.machine_speed)
+        tester.run_tests(dir_out, args.submission)
+        if args.markdown:
+            print(markdown.join_blocks(tester.format_tests_output_as_markdown(dir_out)))
