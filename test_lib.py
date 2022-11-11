@@ -3,10 +3,8 @@ import dataclasses
 import logging
 import os
 from pathlib import Path
-import shlex
 import signal
 import subprocess
-import sys
 from typing import Iterable, Optional, Tuple, Union
 
 import general
@@ -264,11 +262,11 @@ Test output directory (write).
 Created if missing.
 ''')
 
-    dir_executable = Path(sys.argv[0]).parent
-    p.add_argument('-l', '--lab', type = Path, metavar = 'LAB', default = dir_executable, help = f'''
+    p.add_argument('-l', '--lab', type = Path, metavar = 'LAB', default = Path(), help = '''
 Path the lab (read-only).
-Must have a file `test/tests.py` with test specifications.
-Defaults to {path_tools.format_path(dir_executable)} (inferred from execution path).
+Must have a directory `test` with files used for testing.
+The file `test/tests.py` specifies the tests.
+Defaults to working directory.
 ''')
     p.add_argument('-m', '--machine-speed', type = float, metavar = 'MACHINE_SPEED', default = float(1), help = '''
 The machine speed relative to a 2015 desktop machine.
