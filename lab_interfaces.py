@@ -1,5 +1,7 @@
 import re
 
+import markdown
+
 
 class RequestMatcher:
     '''
@@ -145,5 +147,12 @@ class SubmissionHandler(RequestHandler):
         a dictionary with an 'outcome' entry as for a submission review issue.
         Existing review issues always override the submission outcome
         of the submission handler, even if 'review_needed' is not True.
+    '''
+    pass
+
+class HandlingException(Exception, markdown.Markdown):
+    '''
+    Raised for errors caused by a problems with a submission.
+    Should be reportable in issues in student repositories.
     '''
     pass
