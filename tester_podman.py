@@ -6,10 +6,8 @@ import functools
 import logging
 import os
 from pathlib import Path
-import shutil
 from typing import Optional, Tuple, Union
 
-import path_tools
 import test_lib
 
 
@@ -47,6 +45,18 @@ class TesterMissingException(Exception):
 
 class LabTester(test_lib.LabTester):
     '''
+    A class for Python testers following the architecture
+    that is currently implemented for the following Python labs:
+    - autocomplete.
+
+    The lab directory contains a file 'tests.py'.
+    This is a self-contained Python script specifying
+        tests : Dict[str, PythonTest].
+
+    Additionally, the lab may contain a subdirectory 'test'.
+    Its content is overlaid on top of each submission to be tested.
+
+
     A class for containerized lab testers (using podman).
 
     Such a tester is specified by a subdirectory 'test' of the lab directory.
@@ -64,27 +74,22 @@ class LabTester(test_lib.LabTester):
         '''
         logger.debug(f'Running test {name}.')
 
-        # TODO: Investigate using overlays for this.
-        with path_tools.temp_dir() as dir:
-            shutil.copytree(dir_src, dir, symlinks = True, dirs_exist_ok = True)
-            shutil.copytree(self.dir_test, dir, dirs_exist_ok = True)
+        def cmd():
+            yield from ['podman', 'run']
+            yield from ['--volume', ':'.join([str(dir_src), '/submission', 'O'])]
+            yield '--interactive'
+            yield from ['--workdir', '/submission']
+            if not test.memory is None:
+                yield from ['--memory', str(1024 * 1024 * test.memory)]
+            yield test.image
+            yield from test.command_line
 
-            def cmd():
-                yield from ['podman', 'run']
-                yield from ['--volume', ':'.join([str(dir), '/submission', 'O'])]
-                yield '--interactive'
-                yield from ['--workdir', '/submission']
-                if not test.memory is None:
-                    yield from ['--memory', str(1024 * 1024 * test.memory)]
-                yield test.image
-                yield from test.command_line
-
-            self.record_process(
-                dir_out = dir_out,
-                args = cmd(),
-                input = test.input,
-                timeout = test.timeout,
-            )
+        self.record_process(
+            dir_out = dir_out,
+            args = cmd(),
+            input = test.input,
+            timeout = test.timeout,
+        )
 
 if __name__ == '__main__':
     test_lib.cli(LabTester)

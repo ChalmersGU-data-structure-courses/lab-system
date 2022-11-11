@@ -1,4 +1,5 @@
 import abc
+import contextlib
 import dataclasses
 import logging
 import os
@@ -8,6 +9,7 @@ import subprocess
 from typing import Iterable, Optional, Tuple, Union
 
 import general
+import overlay
 import path_tools
 
 
@@ -88,17 +90,19 @@ class LabTester:
     '''
     Base class for lab testers.
 
-    Generally, a tester is specified by a subdirectory 'test' of the lab directory.
-    This directory contains a file 'tests.py'.
+    The lab directory contains a file 'tests.py'.
     This is a self-contained Python script specifying
-        tests : Dict[str, TestType]
-    where TestType is specified at constructor invocation
+        tests : Dict[str, Test]
+    where the type Test is specified by the class attribute TestSpec.
     (and made available to the environment of the execution of tests.py).
+
+    Additionally, the lab may contain a subdirectory 'test'.
+    Its content is overlaid on top of each submission to be tested.
 
     Subclasses should instantiate the class attribute TestSpec
     to a dataclass of test specifications deriving from Test.
     '''
-    TestSpec: Test
+    TestSpec = None
 
     def __init__(self, dir_lab: Path, machine_speed: float = 1):
         '''
@@ -116,12 +120,17 @@ class LabTester:
         self.dir_lab = dir_lab
         self.machine_speed = machine_speed
 
-        self.dir_test = dir_lab / 'test'
-        if not self.dir_test.is_dir():
-            raise TesterMissingException(f'No tester found in {path_tools.format_path(self.dir_lab)}')
-        logger.debug(f'Detected tester in {path_tools.format_path(self.dir_lab)}.')
+        file_tests = self.dir_lab / 'tests.py'
+        if not file_tests.exists():
+            raise TesterMissingException(
+                f'No test specifications file tests.py found in {path_tools.format_path(self.dir_lab)}'
+            )
 
-        self.tests = parse_tests(self.TestSpec, self.dir_test / 'tests.py')
+        logger.debug(f'Detected tester in {path_tools.format_path(self.dir_lab)}.')
+        self.tests = parse_tests(self.TestSpec, file_tests)
+
+        self.dir_test = dir_lab / 'test'
+        self.has_test_overlay = self.dir_test.exists()
 
     # TODO: Terminate if size of out or err exceeds a to be configured threshold.
     def record_process(
@@ -211,7 +220,9 @@ class LabTester:
         '''
         Arguments:
         * dir_out: Test output goes in this directory.
-        * dir_src: Directory containing the submission to test.
+        * dir_src:
+            Directory containing the submission to test and all test files.
+            Only read permissions are guaranteed.
         * name: name of the test.
         * test:
             Specification of the test.
@@ -235,10 +246,19 @@ class LabTester:
             f'Running tester for {path_tools.format_path(self.dir_lab)} '
             f'on {path_tools.format_path(dir_src)}.'
         )
-        for (name, test) in self.tests.items():
-            dir_out_test = dir_out / name
-            dir_out_test.mkdir()
-            self.run_test(dir_out_test, dir_src, name, test)
+
+        with contextlib.ExitStack() as stack:
+            # Overlay optional test directory onto submission.
+            if self.has_test_overlay:
+                dir_test = stack.enter_context(overlay.overlay([self.dir_test, dir_src]))
+            else:
+                dir_test = dir_src
+
+            # Run each test.
+            for (name, test) in self.tests.items():
+                dir_out_test = dir_out / name
+                dir_out_test.mkdir()
+                self.run_test(dir_out_test, dir_test, name, test)
 
 def cli(Tester) -> None:
     '''
@@ -263,10 +283,9 @@ Created if missing.
 ''')
 
     p.add_argument('-l', '--lab', type = Path, metavar = 'LAB', default = Path(), help = '''
-Path the lab (read-only).
-Must have a directory `test` with files used for testing.
-The file `test/tests.py` specifies the tests.
-Defaults to working directory.
+Path the lab (read), defaults to working directory.
+Must have a self-contained Python file `tests.py` specifying the tests to be run.
+It must define a string-indexed dictionary of instances of the relevant test specification type.
 ''')
     p.add_argument('-m', '--machine-speed', type = float, metavar = 'MACHINE_SPEED', default = float(1), help = '''
 The machine speed relative to a 2015 desktop machine.
