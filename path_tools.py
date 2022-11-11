@@ -137,19 +137,19 @@ def fix_encoding(path):
 # ## Temporary files and directories.
 
 @contextlib.contextmanager
-def temp_fifo():
+def temp_dir():
     with tempfile.TemporaryDirectory() as dir:
-        fifo = Path(dir) / 'fifo'
+        yield Path(dir).resolve()
+
+@contextlib.contextmanager
+def temp_fifo():
+    with temp_dir() as dir:
+        fifo = dir / 'fifo'
         os.mkfifo(fifo)
         try:
             yield fifo
         finally:
             fifo.unlink()
-
-@contextlib.contextmanager
-def temp_dir():
-    with tempfile.TemporaryDirectory() as dir:
-        yield Path(dir)
 
 @contextlib.contextmanager
 def temp_file(name = None):
