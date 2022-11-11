@@ -9,6 +9,7 @@ import subprocess
 from typing import Iterable, Optional, Tuple, Union
 
 import general
+import markdown
 import overlay
 import path_tools
 
@@ -23,9 +24,13 @@ class Test:
     Not all tester may actually make use of them.
 
     Fields:
+    * description:
+        A human-readable name for the test.
+        Should be appropriate for a Markdown heading.
     * timeout: Timeout in seconds after which the test program is killed (defaults to 5).
     * memory: Memory (in MB) the container is allowed to use (defaults to 1024).
     '''
+    description: Optional[str] = None
     timeout: Optional[int] = 5
     memory: Optional[int] = 1024
 
@@ -260,6 +265,64 @@ class LabTester:
                 dir_out_test.mkdir()
                 self.run_test(dir_out_test, dir_test, name, test)
 
+    @abc.abstractmethod
+    def format_test_output_as_markdown(self, dir_out: Path) -> Iterable[str]:
+        '''
+        Format the output of a test as markdown.
+        This excludes the section heading, which is provided by format_tests_output_as_markdown.
+        For use with test issues in student projects.
+
+        Arguments:
+        * dir_out: Path of the output subdirectory of this test.
+
+        Returns an iterable of Markdown blocks.
+
+        The default implementation assumes the test records its output
+        using self.record_process and the default file names.
+        '''
+        import inspect
+        params = inspect.signature(self.record_process).parameters
+        def read_file(arg_name):  # noqa E308
+            return (dir_out / params[arg_name].default).read_text()
+
+        out = read_file('file_out')
+        if out:
+            yield markdown.escape_code_block(out)
+
+        err = read_file('file_err')
+        if err:
+            yield 'Errors:'
+            yield markdown.escape_code_block(out)
+
+        def result_msg():
+            result = read_file('file_result')
+            try:
+                exit_code = int(result)
+            except ValueError:
+                return result
+            else:
+                if exit_code != 0:
+                    return f'exited with an error (exit code {exit_code})'
+
+        msg = result_msg()
+        if not msg is None:
+            yield f'The program {msg}.'
+
+    @abc.abstractmethod
+    def format_tests_output_as_markdown(self, dir_out: Path) -> Iterable[str]:
+        '''
+        Format tests output as markdown.
+        For use as test issue content in student projects.
+
+        Returns an iterable of Markdown blocks.
+
+        The default implementation uses format_test_output_as_markdown.
+        '''
+        for (name, test) in self.tests.items():
+            dir_out_test = dir_out / name
+            yield f'## {markdown.escape(test.description)}'
+            yield from self.format_test_output_as_markdown(dir_out_test)
+
 def cli(Tester) -> None:
     '''
     Run a tester in stand-alone mode.
@@ -277,9 +340,14 @@ For this, python-argparse needs to be installed and configured.
 See https://github.com/kislyuk/argcomplete for more information.
 ''')
     p.add_argument('submission', type = Path, help = 'Path the submission (read-only).')
-    p.add_argument('output', type = Path, help = '''
-Test output directory (write).
+
+    p.add_argument('-o', '--output', type = Path, help = '''
+Optional test output directory (write).
 Created if missing.
+''')
+    p.add_argument('--markdown', action = 'store_true', help = '''
+Print Markdown encoded test output.
+Optionally supported by the tester.
 ''')
 
     p.add_argument('-l', '--lab', type = Path, metavar = 'LAB', default = Path(), help = '''
@@ -312,10 +380,19 @@ Print INFO level (once specified) or DEBUG level (twice specified) logging.
     }[min(args.verbose, 2)]
     logging.basicConfig(level = logging_level)
 
-    logger.debug(f'Lab directory: {path_tools.format_path(args.lab)}')
-    logger.debug(f'Machine speed: {args.machine_speed}')
-    logger.debug(f'Submission directory: {path_tools.format_path(args.submission)}')
-    logger.debug(f'Output directory: {path_tools.format_path(args.output)}')
+    with contextlib.ExitStack() as stack:
+        if args.output is None:
+            dir_out = stack.enter_context(path_tools.temp_dir())
+        else:
+            dir_out = args.output
+            args.output.mkdir(exist_ok = True)
 
-    args.output.mkdir(exist_ok = True)
-    Tester(args.lab, args.machine_speed).run_tests(args.output, args.submission)
+        logger.debug(f'Lab directory: {path_tools.format_path(args.lab)}')
+        logger.debug(f'Machine speed: {args.machine_speed}')
+        logger.debug(f'Submission directory: {path_tools.format_path(args.submission)}')
+        logger.debug(f'Output directory: {path_tools.format_path(dir_out)}')
+
+        tester = Tester(args.lab, args.machine_speed)
+        tester.run_tests(dir_out, args.submission)
+        if args.markdown:
+            print(markdown.join_blocks(tester.format_tests_output_as_markdown(dir_out)))
