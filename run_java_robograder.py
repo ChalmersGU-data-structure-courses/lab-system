@@ -66,14 +66,15 @@ args = p.parse_args()
 # Configure Logging.
 import logging
 
-logging.basicConfig()
-
-logger = logging.getLogger()
-logger.setLevel({
+logging_level = {
     0: logging.WARNING,
     1: logging.INFO,
     2: logging.DEBUG,
-}[min(args.verbose, 2)])
+}[min(args.verbose, 2)]
+
+logging.basicConfig(level = logging_level)
+
+logger = logging.getLogger()
 
 logger.debug(f'Submission directory: {path_tools.format_path(args.submission)}')
 logger.debug(f'Lab directory: {path_tools.format_path(args.lab)}')
