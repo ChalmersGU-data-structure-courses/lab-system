@@ -156,7 +156,7 @@ class GenericTestingHandler(TestingHandler):
         with request_and_responses.checkout_manager() as src:
             with path_tools.temp_dir() as dir_out:
                 self.tester.run_tests(dir_out, src)
-                report = self.get_test_report(self, dir_out)
+                report = self.get_test_report(dir_out)
                 logger.debug(report)
                 request_and_responses.post_response_issue(
                     response_key = self.response_key,

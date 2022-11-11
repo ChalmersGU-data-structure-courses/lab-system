@@ -295,7 +295,7 @@ class LabTester:
         err = read_file('file_err')
         if err:
             yield 'Errors:'
-            yield markdown.escape_code_block(out)
+            yield markdown.escape_code_block(err)
 
         def result_msg():
             result = read_file('file_result')
