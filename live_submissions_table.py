@@ -258,7 +258,7 @@ class MembersColumn(Column):
                 if canvas_user.enrollments:
                     format_url(canvas_user.name, canvas_user.enrollments[0].html_url)
                 else:
-                    self.logger.warn(general.join_lines([
+                    self.logger.warning(general.join_lines([
                         f'Canvas course student {canvas_user.name} (id {canvas_user.id}) is missing an enrollment.',
                         'Please inform the script designer that this case is possible.',
                     ]))

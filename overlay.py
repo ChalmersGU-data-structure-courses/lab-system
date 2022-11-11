@@ -82,7 +82,7 @@ class OverlayTypeFuseFS(OverlayType):
 
         # If on Linux, warn if fuse-overlayfs not installed.
         if platform.system() == 'Linux':
-            logger.warn('fuse-overlayfs not installed, falling back to less efficient overlay types.')
+            logger.warning('fuse-overlayfs not installed, falling back to less efficient overlay types.')
 
         return False
 
