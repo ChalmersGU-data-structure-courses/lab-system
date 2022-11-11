@@ -6,17 +6,12 @@ import functools
 import logging
 import os
 from pathlib import Path
-import shutil
-import signal
-import subprocess
 from typing import Optional, Tuple, Union
 
 # The following module is not needed here, but when tests are run.
 # We import it to make sure that all dependencies of the sandboxing script are satisfies.
 import seccomp  # noqa: F401
 
-import general
-import path_tools
 import proot_tools
 import test_lib
 
@@ -52,9 +47,6 @@ class Test(test_lib.Test):
     args: Tuple[str] = ()
     input: Optional[str] = None
 
-# For backward compatibility.
-Test.__name__ = 'PythonTest'
-
 parse_tests = functools.partial(test_lib.parse_tests, Test)
 
 class LabTester(test_lib.LabTester):
@@ -63,11 +55,12 @@ class LabTester(test_lib.LabTester):
     that is currently implemented for the following Python labs:
     - autocomplete.
 
-    Such a tester is specified by a subdirectory 'test' of the lab directory.
-    The contents of this directory are overlaid onto a submission to be tested.
-    The contained file 'tests.py' is a self-contained Python script
-    specifying a dictionary 'tests' of tests with values in Test
-    (see there and test_lib.parse_tests).
+    The lab directory contains a file 'tests.py'.
+    This is a self-contained Python script specifying
+        tests : Dict[str, PythonTest].
+
+    Additionally, the lab may contain a subdirectory 'test'.
+    Its content is overlaid on top of each submission to be tested.
     '''
     TestSpec = Test
 
@@ -78,29 +71,25 @@ class LabTester(test_lib.LabTester):
         '''
         logger.debug(f'Running test {name}.')
 
-        with path_tools.temp_dir() as dir:
-            shutil.copytree(dir_src, dir, symlinks = True, dirs_exist_ok = True)
-            shutil.copytree(self.dir_test, dir, dirs_exist_ok = True)
+        env = {
+            'PYTHONHASHSEED': '0',
+        }
+        cmd = proot_tools.sandboxed_python_args(
+            test.script,
+            guest_args = test.args,
+            host_dir_main = dir_src,
+            env = env,
+        )
 
-            env = {
-                'PYTHONHASHSEED': '0',
-            }
-            cmd = proot_tools.sandboxed_python_args(
-                test.script,
-                guest_args = test.args,
-                host_dir_main = dir,
-                env = env,
-            )
+        logger.debug(f'Environment: {env}')
 
-            logger.debug(f'Environment: {env}')
-
-            self.record_process(
-                dir_out = dir_out,
-                args = cmd,
-                env = env,
-                input = test.input,
-                timeout = test.timeout,
-            )
+        self.record_process(
+            dir_out = dir_out,
+            args = cmd,
+            env = env,
+            input = test.input,
+            timeout = test.timeout,
+        )
 
 if __name__ == '__main__':
     test_lib.cli(LabTester)
