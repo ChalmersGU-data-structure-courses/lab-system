@@ -2,6 +2,8 @@ import re
 
 import general
 import lab_interfaces
+import markdown
+import path_tools
 import print_parse
 
 
@@ -88,3 +90,42 @@ class RobogradingHandler(lab_interfaces.RequestHandler):
     @property
     def response_titles(self):
         return {self.response_key: self.robograder_response_title}
+
+class RobogradingTestHandler(RobogradingHandler):
+    '''
+    A generic robograding handler using the test framework (see test_lib).
+    The tester is required to implement format_tests_output_as_markdown.
+
+    You can configure certain aspects by overriding attributes.
+    In addition to those of the base class:
+    * machine_speed:
+        The machine speed parameter of the robograder, if it exists.
+        Defaults to 1.
+    * tester_type:
+        The tester type to use.
+        For example, tester_podman.LabTester.
+    '''
+    machine_speed = 1
+    tester_type = None
+
+    def setup(self, lab):
+        super().setup(lab)
+
+        # Set up tester.
+        self.tester = self.tester_type(lab.config.path_source, self.machine_speed)
+
+    def get_test_report(self, dir_out):
+        return markdown.join_blocks(self.tester.format_tests_output_as_markdown(dir_out))
+
+    def handle_request(self, request_and_responses):
+        # If a response issue already exists, we are happy.
+        if self.response_key in request_and_responses.responses:
+            return
+
+        with request_and_responses.checkout_manager() as src:
+            with path_tools.temp_dir() as dir_out:
+                self.tester.run_tests(dir_out, src)
+                request_and_responses.post_response_issue(
+                    response_key = self.response_key,
+                    description = self.get_test_report(self, dir_out),
+                )
