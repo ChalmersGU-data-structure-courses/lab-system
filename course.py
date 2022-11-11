@@ -649,7 +649,7 @@ class Course:
                 gitlab_username = self.config.gitlab_username_from_canvas_user_id(self, user_id)
 
                 if not gitlab_username:
-                    self.logger.warn('Could not resolve GitLab username of {user.name}.')
+                    self.logger.warning('Could not resolve GitLab username of {user.name}.')
 
                 # Only allow running with remove option and restrict_to_known set to False
                 # if we can resolve GitLab student usernames.
