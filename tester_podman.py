@@ -14,7 +14,7 @@ import test_lib
 
 logger = logging.getLogger(__name__)
 
-@dataclasses.dataclass(kw_only = True)
+@dataclasses.dataclass  # (kw_only = True) only supported in Python 3.10
 class Test(test_lib.Test):
     '''
     A podman test specification.
@@ -35,8 +35,8 @@ class Test(test_lib.Test):
     * command_line: Command line to execute.
     * input: Optional input to the program, as a string (defaults to None).
     '''
-    image: str
-    command_line: Tuple[Union[str, os.PathLike]]
+    image: str = None  # Default argument for compatibility with Python <3.10
+    command_line: Tuple[Union[str, os.PathLike]] = None  # Default argument for compatibility with Python <3.10
     input: Optional[str] = None
 
 class TesterMissingException(Exception):
