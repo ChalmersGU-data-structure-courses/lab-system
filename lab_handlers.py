@@ -1,3 +1,4 @@
+import logging
 import re
 
 import general
@@ -6,6 +7,8 @@ import markdown
 import path_tools
 import print_parse
 
+
+logger = logging.getLogger(__name__)
 
 # ## Common default configurations for lab handlers.
 #
@@ -117,7 +120,7 @@ class TestingHandler(lab_interfaces.RequestHandler):
 
     @property
     def response_titles(self):
-        return {self.response_key: self.robograder_response_title}
+        return {self.response_key: self.tester_response_title}
 
 class GenericTestingHandler(TestingHandler):
     '''
@@ -153,7 +156,9 @@ class GenericTestingHandler(TestingHandler):
         with request_and_responses.checkout_manager() as src:
             with path_tools.temp_dir() as dir_out:
                 self.tester.run_tests(dir_out, src)
+                report = self.get_test_report(self, dir_out)
+                logger.debug(report)
                 request_and_responses.post_response_issue(
                     response_key = self.response_key,
-                    description = self.get_test_report(self, dir_out),
+                    description = report,
                 )
