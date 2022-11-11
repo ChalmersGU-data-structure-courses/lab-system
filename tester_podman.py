@@ -2,12 +2,13 @@
 # PYTHON_ARGCOMPLETE_OK
 
 import dataclasses
-import functools
 import logging
 import os
 from pathlib import Path
+import subprocess
 from typing import Optional, Tuple, Union
 
+import general
 import test_lib
 
 
@@ -43,27 +44,29 @@ class TesterMissingException(Exception):
 
 class LabTester(test_lib.LabTester):
     '''
-    A class for Python testers following the architecture
-    that is currently implemented for the following Python labs:
-    - autocomplete.
+    A class for containerized lab testers (using podman).
 
     The lab directory contains a file 'tests.py'.
     This is a self-contained Python script specifying
-        tests : Dict[str, PythonTest].
+        tests : Dict[str, Test].
 
     Additionally, the lab may contain a subdirectory 'test'.
     Its content is overlaid on top of each submission to be tested.
-
-
-    A class for containerized lab testers (using podman).
-
-    Such a tester is specified by a subdirectory 'test' of the lab directory.
-    The contents of this directory are typically overlaid onto a submission to be tested.
-    The contained file 'tests.py' is a self-contained Python script
-    specifying a dictionary 'tests' of tests with values in Test
-    (see there and test_lib.parse_tests).
     '''
     TestSpec = Test
+
+    def __init__(self, dir_lab: Path, machine_speed: float = 1):
+        super().__init__(dir_lab, machine_speed)
+
+        # Make sure the images are available before we run any tests.
+        for test in self.tests.values():
+            def cmd():
+                yield from ['podman', 'pull']
+                yield test.image
+
+            cmd = list(cmd())
+            #general.log_command(logger, cmd)
+            #subprocess.run(cmd, text = True)
 
     def run_test(self, dir_out: Path, dir_src: Path, name: str, test: Test):
         '''
@@ -72,22 +75,41 @@ class LabTester(test_lib.LabTester):
         '''
         logger.debug(f'Running test {name}.')
 
-        def cmd():
-            yield from ['podman', 'run']
+        def cmd_create():
+            yield from ['podman', 'create']
             yield from ['--volume', ':'.join([str(dir_src), '/submission', 'O'])]
-            yield '--interactive'
-            yield from ['--workdir', '/submission']
             if not test.memory is None:
                 yield from ['--memory', str(1024 * 1024 * test.memory)]
+            yield from ['--workdir', '/submission']
             yield test.image
             yield from test.command_line
 
+        cmd = list(cmd_create())
+        general.log_command(logger, cmd)
+        container_id = subprocess.run(cmd, text = True, stdout = subprocess.PIPE).stdout.strip()
+        logger.debug(f'Container id: {container_id}')
+
+        def cmd_start():
+            yield from ['podman', 'start']
+            yield '--interactive'
+            yield '--attach'
+            yield container_id
+
         self.record_process(
             dir_out = dir_out,
-            args = cmd(),
+            args = cmd_start(),
             input = test.input,
             timeout = test.timeout,
         )
+
+        def cmd_remove():
+            yield from ['podman', 'rm']
+            yield '--force'
+            yield container_id
+
+        cmd = list(cmd_remove())
+        general.log_command(logger, cmd)
+        subprocess.run(cmd, text = True, stdout = subprocess.PIPE)
 
 if __name__ == '__main__':
     test_lib.cli(LabTester)
