@@ -38,8 +38,6 @@ class Test(test_lib.Test):
     command_line: Tuple[Union[str, os.PathLike]]
     input: Optional[str] = None
 
-parse_tests = functools.partial(test_lib.parse_tests, Test)
-
 class TesterMissingException(Exception):
     pass
 

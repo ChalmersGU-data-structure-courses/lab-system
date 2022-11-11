@@ -4,7 +4,8 @@ import gitlab_tools
 import lab_handlers
 import live_submissions_table
 import path_tools
-import tester_python
+import test_lib
+import tester_podman
 
 
 segments_test = ['test']
@@ -56,12 +57,12 @@ class SubmissionHandler(lab_handlers.SubmissionHandler):
 
         def f():
             try:
-                self.tester = tester_python.LabTester(lab.config.path_source)
+                self.tester = tester_podman.LabTester(lab.config.path_source)
                 #if not self.lab.submission_solution.repo_tag_exist(segments_test_tag):
                 #    with self.lab.submission_solution.checkout_manager() as src:
                 #        self.test_submission(self.lab.submission_solution, src)
                 yield ('testing', TestingColumn)
-            except tester_python.TesterMissingException:
+            except test_lib.TesterMissingException:
                 pass
         self.grading_columns = live_submissions_table.with_standard_columns(dict(f()))
 
