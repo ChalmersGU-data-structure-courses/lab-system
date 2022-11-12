@@ -297,7 +297,7 @@ grading_sheet = SimpleNamespace(
     template = ('1OCe5wP3UiAWi_Yiykvby52FFW5N0xmXiI35oKR7aib0', 'Template'),
 
     # Have rows for non-empty groups that have not yet submitted?
-    include_groups_with_no_submission = True,
+    include_groups_with_no_submission = False,
 )
 
 # Root of the lab repository.
