@@ -6,6 +6,7 @@ import lab_interfaces
 import markdown
 import path_tools
 import print_parse
+import test_lib
 
 
 logger = logging.getLogger(__name__)
@@ -138,6 +139,14 @@ class GenericTestingHandler(TestingHandler):
     '''
     machine_speed = 1
     tester_type = None
+
+    @classmethod
+    def exists(cls, lab_path):
+        try:
+            cls.tester_type(lab_path)
+            return True
+        except test_lib.TesterMissingException:
+            return False
 
     def setup(self, lab):
         super().setup(lab)
