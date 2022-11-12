@@ -5,6 +5,7 @@ import json
 import logging
 from pathlib import PurePosixPath
 import shlex
+import tempfile
 
 import git
 import gitlab
@@ -771,12 +772,29 @@ class GroupProject:
         self.lab.delete_tag(GroupProject.repo_tag(self, request_name, segments).name)
         GroupProject.repo_tag_mark_repo_updated(self)
 
-    def hotfix(self, branch_hotfix, branch_group):
+    def hotfix(
+        self,
+        branch_hotfix,
+        branch_group,
+        merge_files = False,
+        fail_on_problem = True,
+        notify_students: str = None,
+    ):
         '''
         Attempt to hotfix the branch 'branch_group' of the group project.
         The hotfix branch 'branch_hotfix' in the local grading repository is a descendant of the problem branch.
         The metadata of the applied commit is taken from the commit pointed to by 'branch_hotfix'.
-        Will log a warning if the merge cannot be performed.
+
+        Arguments:
+        * merge_files: if True, attempt a 3-way merge to resolve conflicting files.
+        * fail_on_problem:
+            Fail with an exception if a merge cannot be performed.
+            If False, only an error is logged.
+        * notify_students:
+            Notify student members of the hotfix commit by creating a commit comment with this message.
+            The message is appended with mentions of the student members.
+
+        Will log a warning if the merge has already been applied.
         '''
         self.logger.info(f'Hotfixing {branch_group} in {self.project.path}')
 
@@ -786,15 +804,35 @@ class GroupProject:
         problem = self.lab.head_problem.commit
         hotfix = git_tools.normalize_branch(self.repo, branch_hotfix).commit
         if problem == hotfix:
-            self.logger.warn('Hotfixing: hotfix identical to problem.')
+            self.logger.warning('Hotfixing: hotfix identical to problem.')
             return
 
         master = git_tools.remote_branch(self.remote, branch_group)
         index = git.IndexFile.from_tree(self.repo, problem, master, hotfix, i = '-i')
+
+        if index.unmerged_blobs():
+            if not merge_files:
+                self.logger.error(f'Hotfixing: merge conflict for {self.name}, refusing to resolve.')
+                if not fail_on_problem:
+                    return
+                raise Exception('could not perform merge')
+
+            try:
+                git_tools.resolve_unmerged_blobs(self.repo, index)
+            except git.exc.GitCommandError as e:
+                exit_code = e.args[1]
+                if exit_code == 255:
+                    raise
+                if exit_code != 0:
+                    self.logger.error(f'Hotfixing: could not resolve merge conflict for {self.name}.')
+                    if not fail_on_problem:
+                        return
+                    raise Exception('could not perform merge')
+
         merge = index.write_tree()
         diff = merge.diff(master)
         if not diff:
-            self.logger.warn('Hotfixing: hotfix already applied')
+            self.logger.warning('Hotfixing: hotfix already applied')
             return
         for x in diff:
             self.logger.info(x)
@@ -810,11 +848,15 @@ class GroupProject:
             commit_date = hotfix.committed_datetime,
         )
 
-        return self.repo.remote(self.remote).push(git_tools.refspec(
+        self.repo.remote(self.remote).push(git_tools.refspec(
             commit.hexsha,
             self.course.config.branch.master,
             force = False,
         ))
+        if not notify_students is None:
+            self.project.lazy.commits.get(commit.hexsha, lazy = True).comments.create({
+                'note': self.append_mentions(notify_students)
+            })
 
     def _hook_url(self, netloc = None):
         '''
@@ -1013,7 +1055,7 @@ class GroupProject:
                 (_,) = tag_parts
             except ValueError:
                 # Take tag out of the parsing stream.
-                self.logger.warn(
+                self.logger.warning(
                     'Ignoring tag {} in student group {} not composed '
                     "of exactly one path part (with respect to separator '/').".format(
                         shlex.quote(tag_name), self.name

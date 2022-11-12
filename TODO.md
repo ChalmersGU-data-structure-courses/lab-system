@@ -32,6 +32,18 @@
 
 * Add use_cache flag to more commands.
 
+* Improve check if hotfix has already been applied in group_project.hotfix.
+  We can just look in the ancestor commits for a commit with the same metadata what would be created by applying the hotfix.
+  (Currently, we try to compare files.)
+
+* Add option to hotfix method that notifies the students in the lab group.
+  For example, we could mention their usernames in a comment to the hotfix commit.
+  Even better: could associate this comment with specific files in the hotfix commit.
+  Could take an dictionary of messages as argument indexed by files changed in the hotfix.
+  Think more about this.
+  Could suppress message (or add alternative message) if file-based merge was not needed.
+>>>>>>> main
+
 ## Grading sheet
 
 * Support the "Notes" field in the grading sheet.

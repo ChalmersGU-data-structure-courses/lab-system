@@ -7,6 +7,7 @@ import subprocess
 import check_symlinks
 import general
 import java_tools
+import lab_interfaces
 import markdown
 import path_tools
 from this_dir import this_dir
@@ -14,16 +15,12 @@ from this_dir import this_dir
 
 logger = logging.getLogger(__name__)
 
-class HandlingException(Exception, markdown.Markdown):
-    '''Raised for errors caused by a problems with a submission.'''
-    pass
-
 # ## Exceptions and function for running a robograder.
 #
 # This is quite general and does not assume anything
 # about the robograder architecture and configuration.
 
-class RobograderException(HandlingException):
+class RobograderException(lab_interfaces.HandlingException):
     '''Raised for robograding errors caused by a problem with a submission.'''
     pass
 
@@ -329,7 +326,7 @@ class LabRobograder:
 # The following exceptions and checks just wrap functions from other modules
 # using the class HandlingException to designate submission errors.
 
-class SymlinkException(HandlingException):
+class SymlinkException(lab_interfaces.HandlingException):
     prefix = 'There is a problem with symbolic links:'
 
     def __init__(self, e):
@@ -353,7 +350,7 @@ def submission_check_symlinks(src, strict = False):
     except check_symlinks.SymlinkException as e:
         raise SymlinkException(e) from None
 
-class CompileException(java_tools.CompileError, HandlingException):
+class CompileException(java_tools.CompileError, lab_interfaces.HandlingException):
     prefix = 'There are compilation errors:'
 
     def __str__(self):

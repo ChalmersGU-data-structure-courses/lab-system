@@ -391,3 +391,31 @@ def create_tree_from_dir(repo, dir):
 def read_text_file_from_tree(tree, path):
     path = str(PurePosixPath(path))
     return tree[path].data_stream.read().decode()
+
+def merge_blobs(
+    repo: git.Repo,
+    base: git.objects.Blob,
+    current: git.objects.Blob,
+    other: git.objects.Blob,
+    *merge_file_options,
+) -> git.objects.Blob:
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_dir = Path(tmp_dir)
+        file_current = tmp_dir / 'current'
+        file_base = tmp_dir / 'base'
+        file_other = tmp_dir / 'other'
+
+        file_current.write_bytes(current.data_stream.read())
+        file_base.write_bytes(base.data_stream.read())
+        file_other.write_bytes(other.data_stream.read())
+
+        repo.git.merge_file(*merge_file_options, '--', file_current, file_base, file_other)
+        result = create_blob_from_file(repo, file_current)
+        result.path = current.path
+        return result
+
+def resolve_unmerged_blobs(repo, index, *merge_file_options):
+    index.resolve_blobs(
+        merge_blobs(repo, base, current, other, *merge_file_options)
+        for (filename, ((_, base), (_, current), (_, other))) in index.unmerged_blobs().items()
+    )

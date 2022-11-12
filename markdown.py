@@ -1,4 +1,7 @@
 import re
+from typing import Iterable
+
+import more_itertools
 
 import general
 
@@ -28,3 +31,11 @@ def find_delimiter(s, char, least = 0):
 def escape_code_block(s, char = '`'):
     delimiter = find_delimiter(s, char, least = 3)
     return general.join_lines([delimiter, s.rstrip(), delimiter])
+
+def join_blocks(blocks: Iterable[str]):
+    '''All lines in each block must be terminated by a newline character.'''
+    return ''.join(more_itertools.intersperse('\n', blocks))
+
+# TODO
+def escape(s: str) -> str:
+    return s

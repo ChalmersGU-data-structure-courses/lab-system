@@ -1,9 +1,14 @@
+import logging
 import re
 
 import general
 import lab_interfaces
+import markdown
+import path_tools
 import print_parse
 
+
+logger = logging.getLogger(__name__)
 
 # ## Common default configurations for lab handlers.
 #
@@ -44,6 +49,13 @@ robograder_response_title = print_parse.regex_keyed(
     flags = re.IGNORECASE,
 )
 '''The standard robograding response printer-parser.'''
+
+tester_response_title = print_parse.regex_keyed(
+    'Tester: reporting for {tag}',
+    {'tag': '[^: ]*'},
+    flags = re.IGNORECASE,
+)
+'''The standard testing response printer-parser.'''
 
 class SubmissionHandler(lab_interfaces.SubmissionHandler):
     '''
@@ -88,3 +100,65 @@ class RobogradingHandler(lab_interfaces.RequestHandler):
     @property
     def response_titles(self):
         return {self.response_key: self.robograder_response_title}
+
+class TestingHandler(lab_interfaces.RequestHandler):
+    '''
+    A base class for testing handlers.
+
+    You can configure certain aspects by overriding attributes.
+    In addition to those of the base class:
+    * response_key: The robograding response key (only used internally).
+    * tester_response_title: The testing response printer-parser.
+    The last two attributes override response_titles of the base class.
+
+    By default, these attribute and the remaining ones of
+    the base class take their values from this module.
+    '''
+    request_matcher = testing_request
+    response_key = generic_response_key
+    tester_response_title = tester_response_title
+
+    @property
+    def response_titles(self):
+        return {self.response_key: self.tester_response_title}
+
+class GenericTestingHandler(TestingHandler):
+    '''
+    A generic testing handler using the test framework (see test_lib).
+    The tester is required to implement format_tests_output_as_markdown.
+
+    You can configure certain aspects by overriding attributes.
+    In addition to those of the base class:
+    * machine_speed:
+        The machine speed parameter of the robograder, if it exists.
+        Defaults to 1.
+    * tester_type:
+        The tester type to use.
+        For example, tester_podman.LabTester.
+    '''
+    machine_speed = 1
+    tester_type = None
+
+    def setup(self, lab):
+        super().setup(lab)
+
+        # Set up tester.
+        self.tester = self.tester_type(lab.config.path_source, self.machine_speed)
+
+    def get_test_report(self, dir_out):
+        return markdown.join_blocks(self.tester.format_tests_output_as_markdown(dir_out))
+
+    def handle_request(self, request_and_responses):
+        # If a response issue already exists, we are happy.
+        if self.response_key in request_and_responses.responses:
+            return
+
+        with request_and_responses.checkout_manager() as src:
+            with path_tools.temp_dir() as dir_out:
+                self.tester.run_tests(dir_out, src)
+                report = self.get_test_report(dir_out)
+                logger.debug(report)
+                request_and_responses.post_response_issue(
+                    response_key = self.response_key,
+                    description = report,
+                )

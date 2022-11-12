@@ -1,154 +1,94 @@
+#!/usr/bin/env python3
+# PYTHON_ARGCOMPLETE_OK
+import dataclasses
+import functools
 import logging
 import os
 from pathlib import Path
-import shutil
-import signal
-import subprocess
+from typing import Optional, Tuple, Union
 
 # The following module is not needed here, but when tests are run.
 # We import it to make sure that all dependencies of the sandboxing script are satisfies.
 import seccomp  # noqa: F401
 
-import general
-import path_tools
 import proot_tools
 import test_lib
 
 
 logger = logging.getLogger(__name__)
 
-class TesterMissingException(Exception):
-    pass
+@dataclasses.dataclass  # (kw_only = True) only supported in Python 3.10
+class Test(test_lib.Test):
+    '''
+    A Python test specification.
+    A test is an invocation of a Python module as main module.
+    The result of the test consists of:
+    * the output stream,
+    * the error stream,
+    * the return code.
 
-class LabTester:
+    The Python program is run with minimal permissions.
+    It may read arbitrary files.
+
+    The content of the test folder is overlaid on top of the submission folder.
+
+    Fields ignored in test_lib.Test: memory
+
+    Further fields:
+    * script:
+      The script to be executed (required).
+      A path-like objects.
+      Should be relative to the overlaid test/submission folder.
+    * args: Tuple of command-line arguments (defaults to empty tuple).
+    * input: Optional input to the program, as a string (defaults to None).
+    '''
+    script: Union[str, os.PathLike] = None  # Default argument for compatibility with Python <3.10
+    args: Tuple[str] = ()
+    input: Optional[str] = None
+
+parse_tests = functools.partial(test_lib.parse_tests, Test)
+
+class LabTester(test_lib.LabTester):
     '''
     A class for Python testers following the architecture
     that is currently implemented for the following Python labs:
     - autocomplete.
 
-    Such a tester is specified by a subdirectory 'test' of the lab directory.
-    The contents of this directory are overlaid onto a submission to be tested.
-    The contained file 'tests.py' has a self-contained Python specifying
-    a dictionary 'tests' of tests with values in test_lib.PythonTest
-    (see there and test_lib.parse_tests).
+    The lab directory contains a file 'tests.py'.
+    This is a self-contained Python script specifying
+        tests : Dict[str, PythonTest].
+
+    Additionally, the lab may contain a subdirectory 'test'.
+    Its content is overlaid on top of each submission to be tested.
     '''
+    TestSpec = Test
 
-    def __init__(self, dir_lab: Path, machine_speed = 1):
+    def run_test(self, dir_out: Path, dir_src: Path, name: str, test: Test):
         '''
-        Arguments:
-        * dir_lab:
-            The lab directory (instance of pathlib.Path).
-            For example: <repo-root>/labs/autocomplete/java
-        * machine_speed:
-            Floating-point number.
-            The machine speed relative to a 2015 Desktop machine.
-
-        An instance of TesterMissingException is raised if the lab does
-        not have a tester, i.e. does not have test subdirectory.
+        See test_lib.LabTester.run_test.
+        We produce the files according to test_lib.LabTester.record.
         '''
-        self.dir_lab = dir_lab
-        self.machine_speed = machine_speed
-
-        self.dir_test = dir_lab / 'test'
-        if not self.dir_test.is_dir():
-            raise TesterMissingException(f'No tester found in {path_tools.format_path(self.dir_lab)}')
-        logger.debug(f'Detected tester in {path_tools.format_path(self.dir_lab)}.')
-
-        self.tests = test_lib.parse_python_tests(self.dir_test / 'tests.py')
-
-    def run_test(self, dir_out, dir_src, name, test: test_lib.PythonTest):
         logger.debug(f'Running test {name}.')
 
-        dir_result = dir_out / name
-        dir_result.mkdir()
-
-        def store(kind, result):
-            (dir_result / kind).write_text(result)
-
-        with path_tools.temp_dir() as dir:
-            shutil.copytree(dir_src, dir, symlinks = True, dirs_exist_ok = True)
-            shutil.copytree(self.dir_test, dir, dirs_exist_ok = True)
-
-            env = {
-                'PYTHONHASHSEED': '0',
-            }
-            cmd = proot_tools.sandboxed_python_args(
-                test.script,
-                guest_args = test.args,
-                host_dir_main = dir,
-                env = env,
-            )
-
-            general.log_command(logger, cmd)
-            logger.debug(f'Environment: {env}')
-            logger.debug(f'Timeout value is {test.timeout / self.machine_speed} seconds.')
-
-            # proot does not use PTRACE_O_EXITKILL on traced processes.
-            # So killing proot does not kill the processes it has spawned.
-            # To compensate for this, we use the following hack (TODO: improve).
-            #
-            # HACK:
-            # We start proot in a new process group (actually, a new session).
-            # On timeout, we kill the process group.
-            #
-            # BUG:
-            # There is a race condition.
-            # When the proot (the tracer) is killed, its tracees are detached.
-            # From the documentation of the syscall proot:
-            # > If the tracer dies, all tracees are automatically detached and
-            # > restarted, unless they were in group-stop.
-            # So if SIGKILL is processed for tracer before it is processed for its tracee,
-            # then in between the tracee has escaped the ptrace jail.
-            process = subprocess.Popen(
-                cmd,
-                text = True,
-                stdin = subprocess.PIPE,
-                stdout = subprocess.PIPE,
-                stderr = subprocess.PIPE,
-                start_new_session = True,
-                env = env,
-            )
-            # TODO: Terminate if size of out or err exceeds to be configured threshold.
-            try:
-                (out, err) = process.communicate(
-                    input = test.input,
-                    timeout = None if test.timeout is None else test.timeout / self.machine_speed,
-                )
-                logger.debug(f'Test exit code: {process.returncode}')
-                result = process.returncode
-            except subprocess.TimeoutExpired:
-                logger.debug(f'Test timed out after {test.timeout / self.machine_speed} seconds.')
-                os.killpg(process.pid, signal.SIGKILL)
-                (out, err) = process.communicate()
-                # Be machine-agnostic in the reported timeout value.
-                result = f'timed out after {test.timeout} seconds'
-
-            # The ordering of files in a diff on GitLab seems to be alphabetical.
-            # We prefix the name fragments numerically to enforce the desired ordering.
-            store('_0_res', general.join_lines([str(result)]))
-            store('_1_out', out)
-            store('_2_err', err)
-
-    def run_tests(self, dir_out, dir_src):
-        logger.info(
-            f'Running tester for {path_tools.format_path(self.dir_lab)} '
-            f'on {path_tools.format_path(dir_src)}.'
+        env = {
+            'PYTHONHASHSEED': '0',
+        }
+        cmd = proot_tools.sandboxed_python_args(
+            test.script,
+            guest_args = test.args,
+            host_dir_main = dir_src,
+            env = env,
         )
-        for (name, test) in self.tests.items():
-            self.run_test(dir_out, dir_src, name, test)
+
+        logger.debug(f'Environment: {env}')
+
+        self.record_process(
+            dir_out = dir_out,
+            args = cmd,
+            env = env,
+            input = test.input,
+            timeout = test.timeout,
+        )
 
 if __name__ == '__main__':
-    from pathlib import Path
-    import logging
-
-    logging.basicConfig()
-    logging.getLogger().setLevel(logging.DEBUG)
-
-    dir_lab = Path('../labs/labs/autocomplete/python')
-    dir_submission = dir_lab / 'build'  # Path('python_test/lab-2')
-    dir_out = Path('out')
-
-    path_tools.mkdir_fresh(dir_out)
-
-    tester = LabTester(dir_lab)
-    tester.run_tests(dir_out, dir_submission)
+    test_lib.cli(LabTester)

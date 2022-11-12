@@ -563,7 +563,7 @@ class GradingSheet:
             if google_tools.sheets.is_cell_non_empty(value_prev):
                 group_name = self.grading_spreadsheet.config.group.id.print(group_id)
                 query_name = self.grading_spreadsheet.config.grading_sheet.header.query.print(query)
-                self.logger.warn(general.join_lines([
+                self.logger.warning(general.join_lines([
                     f'overwriting existing value for {group_name}, query {query_name}, field {field}:',
                     f'* previous: {value_prev}',
                     f'* current: {value}',

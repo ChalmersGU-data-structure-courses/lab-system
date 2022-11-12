@@ -370,7 +370,7 @@ def shutdown_control_master(control_path, check = True, force = False):
     if result.returncode:
         if check:
             result.check_returncode()
-        logger.warn(general.join_lines([
+        logger.warning(general.join_lines([
             'SSH control master commmand failed:',
             *result.stderr.splitlines(),
         ]))
@@ -438,7 +438,7 @@ class ConnectionMaster:
                     try:
                         result.check_returncode()
                     except Exception as e:
-                        logger.warn(general.join_lines([
+                        logger.warning(general.join_lines([
                             'SSH control master failed in monitoring thread:',
                             str(e),
                             *result.stderr.splitlines(),
