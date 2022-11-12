@@ -34,7 +34,7 @@ def escape_code_block(s, char = '`'):
 
 def join_blocks(blocks: Iterable[str]):
     '''All lines in each block must be terminated by a newline character.'''
-    return general.join_lines(more_itertools.intersperse('', blocks))
+    return ''.join(more_itertools.intersperse('\n', blocks))
 
 # TODO
 def escape(s: str) -> str:
