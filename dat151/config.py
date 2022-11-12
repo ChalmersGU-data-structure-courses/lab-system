@@ -4,9 +4,10 @@ from pathlib import PurePosixPath
 import re
 from types import SimpleNamespace
 
+import lab_handlers
 import lab_handlers_dat151
 import print_parse
-import robograder_java
+import tester_podman
 from this_dir import this_dir
 
 # Personal configuration.
@@ -312,15 +313,19 @@ _lab_config = SimpleNamespace(
     refresh_period = datetime.timedelta(minutes = 15)
 )
 
+class _TestingHandler(lab_handlers.GenericTestingHandler):
+    tester_type = tester_podman.LabTester
+
 class _LabConfig:
     def __init__(self, k, refresh_period):
         self.path_source = _lab_repo / str(k)
-        self.path_gitignore = None ## _lab_repo / '.gitignore'
+        self.path_gitignore = None
         self.grading_sheet = lab.name.print(k)
         self.canvas_path_awaiting_grading = PurePosixPath(canvas.grading_path) / '{}-to-be-graded.html'.format(lab.full_id.print(k))
 
         def f():
             yield ('submission', lab_handlers_dat151.SubmissionHandler())
+            yield ('test', _TestingHandler())
         self.request_handlers = dict(f())
 
         self.refresh_period = refresh_period
