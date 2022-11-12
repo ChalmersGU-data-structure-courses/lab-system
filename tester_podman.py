@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # PYTHON_ARGCOMPLETE_OK
-
 import dataclasses
 import logging
 import os
@@ -28,7 +27,7 @@ class Test(test_lib.Test):
     * '/submission' has the lab submission together with the content of the test folder overlaid.
       This is also the working directory for the program execution.
 
-    Fields ignored in test_lib: none
+    Fields ignored in test_lib.Test: none
 
     Fields:
     * image: Container image to run.
@@ -38,9 +37,6 @@ class Test(test_lib.Test):
     image: str = None  # Default argument for compatibility with Python <3.10
     command_line: Tuple[Union[str, os.PathLike]] = None  # Default argument for compatibility with Python <3.10
     input: Optional[str] = None
-
-class TesterMissingException(Exception):
-    pass
 
 class LabTester(test_lib.LabTester):
     '''
