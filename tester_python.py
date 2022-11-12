@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # PYTHON_ARGCOMPLETE_OK
-
 import dataclasses
 import functools
 import logging
@@ -33,7 +32,7 @@ class Test(test_lib.Test):
 
     The content of the test folder is overlaid on top of the submission folder.
 
-    Fields ignored in test_lib: memory
+    Fields ignored in test_lib.Test: memory
 
     Further fields:
     * script:
