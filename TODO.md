@@ -30,6 +30,8 @@
 * Check whether javac source is smart enough to update also source dependencies if their class file is out-of-date.
   Update robograder compilation accordingly.
 
+* Add use_cache flag to more commands.
+
 * Improve check if hotfix has already been applied in group_project.hotfix.
   We can just look in the ancestor commits for a commit with the same metadata what would be created by applying the hotfix.
   (Currently, we try to compare files.)
