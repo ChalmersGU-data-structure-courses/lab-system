@@ -85,6 +85,7 @@ class LabTester(test_lib.LabTester):
         def cmd_create():
             yield from ['podman', 'create']
             yield from ['--volume', ':'.join([str(dir_src), '/submission', 'O'])]
+            yield from ['--network', 'none']
             if not test.memory is None:
                 yield from ['--memory', str(1024 * 1024 * test.memory)]
             yield from ['--workdir', '/submission']
