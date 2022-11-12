@@ -13,6 +13,15 @@ import test_lib
 
 logger = logging.getLogger(__name__)
 
+def volume_source_path(dir: Path):
+    '''Format a volume source path as desired by podman.'''
+    if dir.is_absolute():
+        return str(dir)
+    dir = str(dir)
+    if not dir.startswith('.'):
+        dir = f'./{dir}'
+    return dir
+
 @dataclasses.dataclass  # (kw_only = True) only supported in Python 3.10
 class Test(test_lib.Test):
     '''
@@ -84,7 +93,7 @@ class LabTester(test_lib.LabTester):
 
         def cmd_create():
             yield from ['podman', 'create']
-            yield from ['--volume', ':'.join([str(dir_src), '/submission', 'O'])]
+            yield from ['--volume', ':'.join([volume_source_path(dir_src), '/submission', 'O'])]
             yield from ['--network', 'none']
             if not test.memory is None:
                 yield from ['--memory', str(1024 * 1024 * test.memory)]
