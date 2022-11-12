@@ -9,9 +9,6 @@ import tester_podman
 
 logger = logging.getLogger(__name__)
 
-# We stay compatible with tester_podman
-Test = tester_podman.Test
-
 class LabTester(test_lib.LabTester):
     '''
     A class for unsafe tests, designed to be compatible with tester_podman.LabTester.
@@ -23,9 +20,9 @@ class LabTester(test_lib.LabTester):
     Additionally, the lab may contain a subdirectory 'test'.
     Its content is overlaid on top of each submission to be tested.
     '''
-    TestSpec = Test
+    TestSpec = tester_podman.Test
 
-    def run_test(self, dir_out: Path, dir_src: Path, name: str, test: Test):
+    def run_test(self, dir_out: Path, dir_src: Path, name: str, test: tester_podman.Test):
         '''
         See test_lib.LabTester.run_test.
         We produce the files according to test_lib.LabTester.record.
