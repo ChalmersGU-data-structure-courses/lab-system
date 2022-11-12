@@ -23,36 +23,16 @@ class OverlayType:
 
     @classmethod
     @abc.abstractmethod
-    def mount(cls, target: Path, dirs: Iterable[Path]) -> bool:
-        '''
-        Mount the given directories as an overlay on the given target path.
-        The target path is expected to be an empty directory.
-        The precedence of the given directories is in descreasing order.
-        The target directory is only guaranteed to be readable afterwards.
-        '''
-        pass
-
-    @classmethod
-    @abc.abstractmethod
-    def unmount(cls, target: Path) -> bool:
-        '''Unmount the given overlay, identified by its target path.'''
-        pass
-
-    @classmethod
-    @contextlib.contextmanager
-    def overlay(cls, dirs: Iterable[Path]):
+    def overlay(cls, dirs: Iterable[Path], writable = False):
         '''
         Context manager for an overlay.
         Mounts the given directories in decreasing precedence.
         Returns a temporary directory with the overlay.
-        This directory is only guaranteed to be readable.
+
+        If writable is True, the target directory allows temporary writes.
+        Otherwise, it is only guaranteed to be readable.
         '''
-        with path_tools.temp_dir() as target:
-            try:
-                cls.mount(target, dirs)
-                yield target
-            finally:
-                cls.unmount(target)
+        pass
 
 class OverlayTypeFallback(OverlayType):
     @classmethod
@@ -60,13 +40,12 @@ class OverlayTypeFallback(OverlayType):
         return True
 
     @classmethod
-    def mount(cls, target: Path, dirs: Iterable[Path]) -> bool:
-        for dir in reversed(dirs):
-            shutil.copytree(dir, target, symlinks = True, dirs_exist_ok = True)
-
-    @classmethod
-    def unmount(cls, target: Path) -> bool:
-        pass
+    @contextlib.contextmanager
+    def overlay(cls, dirs: Iterable[Path], writable = False):
+        with path_tools.temp_dir() as target:
+            for dir in reversed(dirs):
+                shutil.copytree(dir, target, symlinks = True, dirs_exist_ok = True)
+            yield target
 
 def run_and_log(cmd: Iterable[Union[str, Path]]):
     cmd = list(cmd)
@@ -87,21 +66,32 @@ class OverlayTypeFuseFS(OverlayType):
         return False
 
     @classmethod
-    def mount(cls, target: Path, dirs: Iterable[Path]) -> bool:
-        def cmd():
-            yield 'fuse-overlayfs'
-            yield from ['-o', '='.join(['lowerdir', ':'.join(map(str, dirs))])]
-            yield str(target)
+    @contextlib.contextmanager
+    def overlay(cls, dirs: Iterable[Path], writable = False):
+        with contextlib.ExitStack() as stack:
+            target = stack.enter_context(path_tools.temp_dir())
+            if writable:
+                # OverlayFS bugs out if upper_dir and target are the same path.
+                upper_dir = stack.enter_context(path_tools.temp_dir())
+                working_dir = stack.enter_context(path_tools.temp_dir())
 
-        run_and_log(cmd())
+            try:
+                def cmd():
+                    yield 'fuse-overlayfs'
+                    yield from ['-o', '='.join(['lowerdir', ':'.join(map(str, dirs))])]
+                    if writable:
+                        yield from ['-o', '='.join(['upperdir', str(upper_dir)])]
+                        yield from ['-o', '='.join(['workdir', str(working_dir)])]
+                    yield str(target)
 
-    @classmethod
-    def unmount(cls, target: Path) -> bool:
-        def cmd():
-            yield 'fusermount'
-            yield from ['-u', str(target)]
+                run_and_log(cmd())
+                yield target
+            finally:
+                def cmd():
+                    yield 'fusermount'
+                    yield from ['-u', str(target)]
 
-        run_and_log(cmd())
+                run_and_log(cmd())
 
 @functools.cache
 def select_overlay_type():
@@ -111,15 +101,17 @@ def select_overlay_type():
 
     raise ValueError('no supported overlay type')
 
-def overlay(dirs: Iterable[Path]) -> Iterable[Path]:
+def overlay(dirs: Iterable[Path], writable = False) -> Iterable[Path]:
     '''
     Context manager for an overlay.
     Mounts the given directories in decreasing precedence.
     Returns a temporary directory with the overlay.
-    This directory is only guaranteed to be readable.
+
+    If writable is True, the target directory allows temporary writes.
+    Otherwise, it is only guaranteed to be readable.
 
     Dynamically determines the best overlay type to use.
     On Linux, this attempts to use OverlayFS using FUSE.
     '''
     overlay_type = select_overlay_type()
-    return overlay_type.overlay(dirs)
+    return overlay_type.overlay(dirs, writable = writable)

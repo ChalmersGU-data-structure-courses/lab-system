@@ -21,6 +21,7 @@ class LabTester(test_lib.LabTester):
     Its content is overlaid on top of each submission to be tested.
     '''
     TestSpec = tester_podman.Test
+    needs_writable_sub_dir = True
 
     def run_test(self, dir_out: Path, dir_src: Path, name: str, test: tester_podman.Test):
         '''
