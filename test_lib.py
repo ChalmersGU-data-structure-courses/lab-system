@@ -111,6 +111,7 @@ class LabTester:
     to a dataclass of test specifications deriving from Test.
     '''
     TestSpec = None
+    needs_writable_sub_dir = False
 
     def __init__(self, dir_lab: Path, machine_speed: float = 1):
         '''
@@ -249,6 +250,9 @@ class LabTester:
             Path of the output directory.
             Every test stores in output in a subfolder.
         * dir_src: Directory containing the submission to test.
+
+        Subclasses should set the class attribute needs_writable_sub_dir to True
+        if they need the submission directory to be writable for tests.
         '''
         logger.info(
             f'Running tester for {path_tools.format_path(self.dir_lab)} '
@@ -257,8 +261,13 @@ class LabTester:
 
         with contextlib.ExitStack() as stack:
             # Overlay optional test directory onto submission.
-            if self.has_test_overlay:
-                dir_test = stack.enter_context(overlay.overlay([self.dir_test, dir_src]))
+            if self.has_test_overlay or self.needs_writable_sub_dir:
+                def dirs():
+                    if self.has_test_overlay:
+                        yield self.dir_test
+                    yield dir_src
+
+                dir_test = stack.enter_context(overlay.overlay(dirs(), writable = self.needs_writable_sub_dir))
             else:
                 dir_test = dir_src
 
