@@ -257,7 +257,7 @@ grading_sheet = SimpleNamespace(
 )
 
 # Root of the lab repository.
-_lab_repo = this_dir.parent.parent / 'lab-sources'
+_lab_repo = this_dir.parent / 'labs'
 
 # Example lab configuration (for purpose of documentation).
 _lab_config = SimpleNamespace(
