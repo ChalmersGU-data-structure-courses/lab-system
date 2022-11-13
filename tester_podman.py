@@ -73,7 +73,7 @@ class LabTester(test_lib.LabTester):
 
             cmd = list(cmd_create())
             general.log_command(logger, cmd)
-            container_id = subprocess.run(cmd, text = True, stdout = subprocess.PIPE).stdout.strip()
+            container_id = subprocess.run(cmd, check = True, text = True, stdout = subprocess.PIPE).stdout.strip()
 
             def cmd_remove():
                 yield from ['podman', 'rm']
@@ -82,7 +82,7 @@ class LabTester(test_lib.LabTester):
 
             cmd = list(cmd_remove())
             general.log_command(logger, cmd)
-            subprocess.run(cmd, text = True, stdout = subprocess.PIPE)
+            subprocess.run(cmd, check = True, text = True, stdout = subprocess.PIPE)
 
     def run_test(self, dir_out: Path, dir_src: Path, name: str, test: Test):
         '''
@@ -103,7 +103,7 @@ class LabTester(test_lib.LabTester):
 
         cmd = list(cmd_create())
         general.log_command(logger, cmd)
-        container_id = subprocess.run(cmd, text = True, stdout = subprocess.PIPE).stdout.strip()
+        container_id = subprocess.run(cmd, check = True, text = True, stdout = subprocess.PIPE).stdout.strip()
         logger.debug(f'Container id: {container_id}')
 
         def cmd_start():
@@ -126,7 +126,7 @@ class LabTester(test_lib.LabTester):
 
         cmd = list(cmd_remove())
         general.log_command(logger, cmd)
-        subprocess.run(cmd, text = True, stdout = subprocess.PIPE)
+        subprocess.run(cmd, check = True, text = True, stdout = subprocess.PIPE)
 
 if __name__ == '__main__':
     test_lib.cli(LabTester)
