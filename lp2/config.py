@@ -403,8 +403,8 @@ def _lab_item(k, *args):
 
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
-    _lab_item((1, LabLanguage.JAVA  ), 'indexing'            , datetime.timedelta(minutes = 15), True),  # noqa: E202, E203, E501
-    _lab_item((1, LabLanguage.PYTHON), 'indexing'            , datetime.timedelta(minutes = 15), True),  # noqa: E202, E203, E501
+    _lab_item((1, LabLanguage.JAVA  ), 'indexing'            , datetime.timedelta(minutes = 60), True),  # noqa: E202, E203, E501
+    _lab_item((1, LabLanguage.PYTHON), 'indexing'            , datetime.timedelta(minutes = 60), True),  # noqa: E202, E203, E501
     #_lab_item((2, LabLanguage.JAVA  ), 'plagiarism-detection', datetime.timedelta(minutes = 15)),  # noqa: E202, E203, E501
     #_lab_item((2, LabLanguage.PYTHON), 'plagiarism-detection', datetime.timedelta(minutes = 15)),  # noqa: E202, E203, E501
     #_lab_item((3, LabLanguage.JAVA  ), 'path-finder'         , datetime.timedelta(minutes = 15)),  # noqa: E202, E203, E501
