@@ -22,24 +22,21 @@ class TestingColumn(live_submissions_table.Column):
     def get_value(self, group):
         submission_current = group.submission_current(deadline = self.config.deadline)
         solution_test_tag = self.lab.submission_solution.repo_tag(segments_test_tag)
+        current_test_tag = submission_current.repo_tag(segments_test_tag)
 
         def format_cell(cell):
             with cell:
                 with dominate.tags.p():
                     live_submissions_table.format_url('report', gitlab_tools.url_blob(
                         self.lab.grading_project.get,
-                        submission_current.repo_tag(segments_test_tag),
+                        current_test_tag,
                         PurePosixPath() / 'testsuite' / '_1_out',
                     ))
                 with dominate.tags.p():
                     live_submissions_table.format_url('vs. solution', gitlab_tools.url_compare(
                         self.lab.grading_project.get,
                         solution_test_tag,
-                        submission_current.repo_tag_after_create(
-                            'solution',
-                            solution_test_tag,
-                            segments_test,
-                        ),
+                        current_test_tag
                     ))
 
         return live_submissions_table.CallbackColumnValue(callback = format_cell)
