@@ -426,15 +426,11 @@ class SubmissionDiffPreviousColumn(Column):
 
         submission_current = group.submission_current(deadline = self.config.deadline)
         submission_previous = submissions_with_outcome[-1]
-        tag_after = submission_current.repo_tag_after_create(
-            submission_previous.request_name,
-            submission_previous.repo_remote_commit
-        )
         return SubmissionDiffColumnValue(
             (submission_previous.request_name + '..', gitlab_tools.url_compare(
                 self.lab.grading_project.get,
                 submission_previous.repo_tag(),
-                tag_after.name,
+                submission_current.repo_tag(),
             )),
             (submission_previous.informal_grader_name, submission_previous.outcome_issue.web_url),
             is_same = False,  # TODO: implement
@@ -452,15 +448,11 @@ class SubmissionDiffOfficialColumn(Column):
 
     def get_value(self, group):
         submission_current = group.submission_current(deadline = self.config.deadline)
-        tag_after = submission_current.repo_tag_after_create(
-            self.branch.name,
-            self.branch,
-        )
         return SubmissionDiffColumnValue(
             (self.branch.name + '..', gitlab_tools.url_compare(
                 self.lab.grading_project.get,
                 self.branch.name,
-                tag_after.name,
+                submission_current.repo_tag(),
             )),
             is_same = False,  # TODO: implement
         )
