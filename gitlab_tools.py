@@ -331,7 +331,7 @@ def url_blob(project, ref, path):
 def url_compare(project, source, target):
     return project_url(
         project,
-        ['-', 'compare', str(source) + '...' + str(target)], {'w': '1'}
+        ['-', 'compare', str(source) + '...' + str(target)], {'straight': 'true', 'w': '1'}
     )
 
 def url_tag_name(project, tag_name):

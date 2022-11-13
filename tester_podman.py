@@ -13,6 +13,15 @@ import test_lib
 
 logger = logging.getLogger(__name__)
 
+def volume_source_path(dir: Path):
+    '''Format a volume source path as desired by podman.'''
+    if dir.is_absolute():
+        return str(dir)
+    dir = str(dir)
+    if not dir.startswith('.'):
+        dir = f'./{dir}'
+    return dir
+
 @dataclasses.dataclass  # (kw_only = True) only supported in Python 3.10
 class Test(test_lib.Test):
     '''
@@ -55,14 +64,25 @@ class LabTester(test_lib.LabTester):
         super().__init__(dir_lab, machine_speed)
 
         # Make sure the images are available before we run any tests.
+        # Unforunately, podman pull does too much work if we already have the image.
+        # TODO: implement properly.
         for test in self.tests.values():
-            def cmd():
-                yield from ['podman', 'pull']
+            def cmd_create():
+                yield from ['podman', 'create']
                 yield test.image
 
-            cmd = list(cmd())
-            #general.log_command(logger, cmd)
-            #subprocess.run(cmd, text = True)
+            cmd = list(cmd_create())
+            general.log_command(logger, cmd)
+            container_id = subprocess.run(cmd, text = True, stdout = subprocess.PIPE).stdout.strip()
+
+            def cmd_remove():
+                yield from ['podman', 'rm']
+                yield '--force'
+                yield container_id
+
+            cmd = list(cmd_remove())
+            general.log_command(logger, cmd)
+            subprocess.run(cmd, text = True, stdout = subprocess.PIPE)
 
     def run_test(self, dir_out: Path, dir_src: Path, name: str, test: Test):
         '''
@@ -73,7 +93,8 @@ class LabTester(test_lib.LabTester):
 
         def cmd_create():
             yield from ['podman', 'create']
-            yield from ['--volume', ':'.join([str(dir_src), '/submission', 'O'])]
+            yield from ['--volume', ':'.join([volume_source_path(dir_src), '/submission', 'O'])]
+            yield from ['--network', 'none']
             if not test.memory is None:
                 yield from ['--memory', str(1024 * 1024 * test.memory)]
             yield from ['--workdir', '/submission']
