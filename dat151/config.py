@@ -4,10 +4,8 @@ from pathlib import PurePosixPath
 import re
 from types import SimpleNamespace
 
-import lab_handlers
 import lab_handlers_dat151
 import print_parse
-import tester_podman
 from this_dir import this_dir
 
 # Personal configuration.
@@ -259,7 +257,7 @@ grading_sheet = SimpleNamespace(
 )
 
 # Root of the lab repository.
-_lab_repo = this_dir.parent / 'labs'
+_lab_repo = this_dir.parent.parent / 'lab-sources'
 
 # Example lab configuration (for purpose of documentation).
 _lab_config = SimpleNamespace(
@@ -313,9 +311,6 @@ _lab_config = SimpleNamespace(
     refresh_period = datetime.timedelta(minutes = 15)
 )
 
-class _TestingHandler(lab_handlers.GenericTestingHandler):
-    tester_type = tester_podman.LabTester
-
 class _LabConfig:
     def __init__(self, k, refresh_period):
         self.path_source = _lab_repo / str(k)
@@ -325,7 +320,8 @@ class _LabConfig:
 
         def f():
             yield ('submission', lab_handlers_dat151.SubmissionHandler())
-            yield ('test', _TestingHandler())
+            if lab_handlers_dat151.TestingHandler.exists(self.path_source):
+                yield ('test', lab_handlers_dat151.TestingHandler())
         self.request_handlers = dict(f())
 
         self.refresh_period = refresh_period
