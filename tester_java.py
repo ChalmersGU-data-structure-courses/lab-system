@@ -51,6 +51,9 @@ class Test(test_lib.Test):
 class LabTester(test_lib.LabTester):
     '''
     A class for lab testers using the Java Virtual Machine.
+    Requires Java version at most 17.
+    Newer versions remove the security manager used to securily run submissions.
+
     The result of each test consists of:
     * the output stream,
     * the error stream,
