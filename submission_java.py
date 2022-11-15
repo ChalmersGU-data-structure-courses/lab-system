@@ -133,7 +133,7 @@ def run_context(
     * arguments: Arguments to pass to the invocation.
     * permissions:
         Specifies additional permission statements to apply in the security policy to the submission code.
-        See java_tools.permission_file for an example such permission statement.
+        See java_tools.permission_file for an example of such a permission statement.
         By default, the only permission granted is to read within the submission source directory.
     * check_conflict: Raise FileConflict if a submission class is shadowed by a class in the given classpath.
 

@@ -32,8 +32,12 @@ class Test(test_lib.Test):
     * args: Tuple of command-line arguments (defaults to empty list).
     * input: Optional input to the program, as a string (defaults to None).
     * enable_assertions: Enable assertions when testing (defaults to True).
-    * perm_read: List of additional files the program may read (defaults to an empty list).
-    * perm_read: List of files the program may write (defaults to an empty list).
+    * perm_read:
+        List of additional files the program may read (defaults to an empty list).
+        Interpreted relative to the submission directory.
+    * perm_read:
+        List of files the program may write (defaults to an empty list).
+        Interpreted relative to the submission directory.
     '''
     class_name: str = None  # Default argument for compatibility with Python <3.10
     args: Tuple[str] = ()
@@ -70,6 +74,7 @@ class LabTester(test_lib.LabTester):
     TODO: explicitly list classes for which conflicts are allowed.
     '''
     TestSpec = Test
+    needs_writable_sub_dir = True
 
     def __init__(self, dir_lab: Path, machine_speed: float = 1):
         super().__init__(dir_lab, machine_speed)
@@ -92,12 +97,22 @@ class LabTester(test_lib.LabTester):
         '''
         logger.debug(f'Running test {name}.')
 
+        def permissions():
+            for filepath in test.perm_read:
+                yield java_tools.permission_file(filepath, file_permissions = [java_tools.FilePermission.read])
+            for filepath in test.perm_write:
+                yield java_tools.permission_file(filepath, file_permissions = [
+                    java_tools.FilePermission.write,
+                    java_tools.FilePermission.delete,
+                ])
+
         with submission_java.run_context(
                 submission_src = dir_src,
                 submission_bin = dir_bin,
                 classpath = [self.dir_lab],
                 entrypoint = test.class_name,
                 arguments = test.args,
+                permissions = permissions(),
                 check_conflict = False,
         ) as cmd:
             self.record_process(
