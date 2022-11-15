@@ -115,7 +115,7 @@ class LabTester(test_lib.LabTester):
         with submission_java.run_context(
                 submission_src = dir_src,
                 submission_bin = dir_bin,
-                classpath = [self.dir_lab],
+                classpath = [self.dir_lab / 'test'],
                 entrypoint = test.class_name,
                 arguments = test.args,
                 permissions = permissions(),
