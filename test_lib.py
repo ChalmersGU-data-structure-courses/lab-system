@@ -61,36 +61,6 @@ def parse_tests(test_type, file):
     exec(file.read_text(), environment)
     return environment['tests']
 
-
-# TODO: move elsewhere
-@dataclasses.dataclass  # (kw_only = True) only supported in Python 3.10
-class JavaTest(Test):
-    '''
-    A Java test specification.
-    A test is an invocation of a Java class with a main method.
-    The result of the test consists of:
-    * the output stream,
-    * the error stream,
-    * the return code.
-
-    The Java program is run with restrictive permissions.
-    By default, it may not write files and only read files that are descendants of the directory of the program.
-
-    Relevant fields:
-    * class_name: Name of the main class to be executed (required).
-    * args: Tuple of command-line arguments (defaults to empty list).
-    * input: Optional input to the program, as a string (defaults to None).
-    * enable_assertions: Enable assertions when testing (defaults to True).
-    * perm_read: List of additional files the program may read (defaults to an empty list).
-    * timeout: see base class Test.
-    '''
-    class_name: str = None  # Default argument for compatibility with Python <3.10
-    args: Tuple[str] = ()
-    input: Optional[str] = None
-    enable_assertions: bool = True
-    perm_read: Tuple[Union[str, os.PathLike]] = ()
-
-
 class TesterMissingException(Exception):
     pass
 
@@ -241,7 +211,7 @@ class LabTester:
         '''
         pass
 
-    def run_tests(self, dir_out: Path, dir_src: Path) -> None:
+    def run_tests(self, dir_out: Path, dir_src: Path, **kwargs) -> None:
         '''
         Run the configured tests on a given submission.
 
@@ -250,6 +220,7 @@ class LabTester:
             Path of the output directory.
             Every test stores in output in a subfolder.
         * dir_src: Directory containing the submission to test.
+        * kwargs: Passed to run_test
 
         Subclasses should set the class attribute needs_writable_sub_dir to True
         if they need the submission directory to be writable for tests.
@@ -275,7 +246,7 @@ class LabTester:
             for (name, test) in self.tests.items():
                 dir_out_test = dir_out / name
                 dir_out_test.mkdir()
-                self.run_test(dir_out_test, dir_test, name, test)
+                self.run_test(dir_out_test, dir_test, name, test, **kwargs)
 
     @abc.abstractmethod
     def format_test_output_as_markdown(self, dir_out: Path) -> Iterable[str]:
