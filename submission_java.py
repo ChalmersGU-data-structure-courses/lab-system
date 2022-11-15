@@ -86,6 +86,9 @@ def submission_checked_and_compiled(src):
 
 
 # ## Tools for securely running submissions and test classes using the submission.
+#
+# Requires Java version at most 17.
+# Newer versions remove the security manager.
 
 class FileConflict(lab_interfaces.HandlingException):
     prefix = 'The submission could not be tested because the compiled file'
