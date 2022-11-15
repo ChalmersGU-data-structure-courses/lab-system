@@ -96,9 +96,10 @@ def run(
     ) as cmd:
         logger.debug('Running robograder.')
         cmd = list(cmd)
-        general.log_command(logger, cmd, working_dir = True)
+        general.log_command(logger, cmd)
         process = subprocess.run(
             cmd,
+            cwd = submission_src,
             text = True,
             stdout = subprocess.PIPE,
             stderr = subprocess.PIPE,
