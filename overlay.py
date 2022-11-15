@@ -43,7 +43,7 @@ class OverlayTypeFallback(OverlayType):
     @contextlib.contextmanager
     def overlay(cls, dirs: Iterable[Path], writable = False):
         with path_tools.temp_dir() as target:
-            for dir in reversed(dirs):
+            for dir in reversed(list(dirs)):
                 shutil.copytree(dir, target, symlinks = True, dirs_exist_ok = True)
             yield target
 
