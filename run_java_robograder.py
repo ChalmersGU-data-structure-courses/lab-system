@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 
 import robograder_java
+import submission_java
 import path_tools
 
 
@@ -88,5 +89,5 @@ if args.compile:
     robograder.compile()
 
 logger.info('Checking and compiling submission.')
-with robograder_java.submission_checked_and_compiled(args.submission) as submission_bin:
+with submission_java.submission_checked_and_compiled(args.submission) as (submission_bin, _):
     print(robograder.run(args.submission, submission_bin))
