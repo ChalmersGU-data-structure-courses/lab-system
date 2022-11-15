@@ -4,11 +4,12 @@ import dataclasses
 import logging
 import os
 from pathlib import Path
-from typing import Optional, Tuple, Union
+from typing import Iterable, Optional, Tuple, Union
 
 import general
 import java_tools
 import lab_interfaces
+import markdown
 import submission_java
 import test_lib
 
@@ -55,8 +56,9 @@ class LabTester(test_lib.LabTester):
     * the error stream,
     * the return code.
 
-    If processing the submission (e.g. compilation-stage checks) prior to testing fails, this is recorded in 'error.md'.
-    Otherwise, the compilation error stream is recorded as '__compile_err'.
+    If processing the submission (e.g. compilation-stage checks) prior to testing fails,
+    this is recorded in (by default) 'error.md'.
+    Otherwise, the compilation error stream is recorded in (by default) '__compile_err'.
 
     The lab directory contains a file 'tests.py'.
     This is a self-contained Python script specifying
@@ -124,20 +126,49 @@ class LabTester(test_lib.LabTester):
                 encoding = 'utf-8',
             )
 
-    def run_tests(self, dir_out: Path, dir_src: Path) -> None:
+    def run_tests(
+        self,
+        dir_out: Path,
+        dir_src: Path,
+        file_compile_err = '__compile_err',
+        file_error = 'error.md',
+    ) -> None:
+        '''
+        See test_lib.run_tests.
+
+        Additionally, stores
+        '''
         try:
             logger.debug('Checking and compiling submission.')
             with submission_java.submission_checked_and_compiled(dir_src) as (dir_bin, compiler_report):
-                (dir_out / '__compile_err').write_text(compiler_report)
+                (dir_out / file_compile_err).write_text(compiler_report)
                 super().run_tests(dir_out, dir_src, dir_bin = dir_bin)
         except lab_interfaces.HandlingException as e:
-            (dir_out / 'error.md').write_text(e.markdown())
+            (dir_out / file_error).write_text(e.markdown())
 
     def filter_errors(self, err: str) -> str:
         return err.removeprefix(general.join_lines([
             'WARNING: A command line option has enabled the Security Manager',
             'WARNING: The Security Manager is deprecated and will be removed in a future release',
         ]))
+
+    def format_tests_output_as_markdown(self, dir_out: Path) -> Iterable[str]:
+        import inspect
+        params = inspect.signature(self.run_tests).parameters
+        def file(arg_name):  # noqa E308
+            return dir_out / params[arg_name].default
+
+        file_error = file('file_error')
+        if file_error.exists():
+            yield file_error.read_text()  # Not actually a block.
+        else:
+            compile_err = file('file_compile_err').read_text()
+            if compile_err:
+                yield general.join_lines(['There were some compilation warnings:'])
+                yield markdown.escape_code_block(compile_err)
+
+            yield from super().format_tests_output_as_markdown(dir_out)
+
 
 if __name__ == '__main__':
     test_lib.cli(LabTester)
