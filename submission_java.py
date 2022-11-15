@@ -125,7 +125,7 @@ def run_context(
     * submission_src:
         The source directory of the submission.
         Needed because the invocation may access data files from here.
-        This is also taken as the working directory.
+        Also to be used as the working directory for the eventual invocation.
     * submission_bin:
         The directory of the compiled class files of the submission.
         This may be src_submission if the submission was compiled in-place.
@@ -141,7 +141,7 @@ def run_context(
     * check_conflict: Raise FileConflict if a submission class is shadowed by a class in the given classpath.
 
     Yields a generator for a command-line that can be used for process creation.
-    Warning: inside the context, the working directory is the submission source directory.
+    Note: the process must be executed in the submission source directory.
     '''
     if check_conflict:
         logger.debug('Checking for file conflicts.')
@@ -164,11 +164,10 @@ def run_context(
 
     # Run the robograder.
     logger.debug('Running robograder.')
-    with path_tools.working_dir(submission_src):
-        with java_tools.run_context(
-            main = entrypoint,
-            policy_entries = policy_entries,
-            args = arguments,
-            classpath = [*classpath, submission_bin],
-        ) as cmd:
-            yield cmd
+    with java_tools.run_context(
+        main = entrypoint,
+        policy_entries = policy_entries,
+        args = arguments,
+        classpath = [*classpath, submission_bin],
+    ) as cmd:
+        yield cmd

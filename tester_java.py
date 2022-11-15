@@ -123,6 +123,7 @@ class LabTester(test_lib.LabTester):
         ) as cmd:
             self.record_process(
                 dir_out = dir_out,
+                cwd = dir_src,
                 args = cmd,
                 input = test.input,
                 timeout = test.timeout,
