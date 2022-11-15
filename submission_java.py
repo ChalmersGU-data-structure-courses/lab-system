@@ -64,7 +64,7 @@ def submission_compile(src, bin):
             src = src,
             bin = bin,
             check = True,
-            options = ['-Xlint:all,-divzero-serial'],
+            options = ['-Xlint:all,-divzero,-serial'],
         )
     except java_tools.CompileError as e:
         raise CompileException(e.compile_errors) from None
