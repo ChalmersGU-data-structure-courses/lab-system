@@ -1,15 +1,14 @@
 # Java submission compilation and robograding.
-import contextlib
 import logging
 from pathlib import Path
 import subprocess
 
-import check_symlinks
 import general
 import java_tools
 import lab_interfaces
 import markdown
 import path_tools
+import submission_java
 from this_dir import this_dir
 
 
@@ -24,22 +23,8 @@ class RobograderException(lab_interfaces.HandlingException):
     '''Raised for robograding errors caused by a problem with a submission.'''
     pass
 
-class FileConflict(RobograderException):
-    prefix = 'I could not robograde this submission because the compiled file'
-    suffix = 'conflicts with files I use for testing.'
-
-    def __init__(self, file):
-        self.file = file
-
-    def __str__(self):
-        return f'{self.prefix} {path_tools.format_path(self.file)} {self.suffix}'
-
-    def markdown(self):
-        return general.join_lines([
-            self.prefix,
-            *markdown.escape_code_block(self.file).splitlines(),
-            self.suffix,
-        ])
+class FileConflict(RobograderException, submission_java.FileConflict):
+    pass
 
 class ExecutionError(RobograderException):
     prolog = '''\
@@ -100,34 +85,21 @@ def run(
         See java_tools.permission_file for an example such permission statement.
         By default, the only permission granted is to read within the submission source directory.
     '''
-    # Check for class name conflicts.
-    logger.debug('Checking for file conflicts.')
-
-    for dir in classpath:
-        with path_tools.working_dir(dir):
-            files = list(Path().rglob('*.class'))
-        for file in files:
-            if (submission_bin / file).exists():
-                raise FileConflict(file)
-
-    # Set up security policy to allow submission code to only read submission directory.
-    def policy_entries():
-        for dir in classpath:
-            yield (dir, [java_tools.permission_all])
-        yield (submission_bin, [java_tools.permission_file(submission_src.resolve(), True), *permissions])
-
-    # Necessary we call java_tools.run in a different working directory
-    # and the generator resolves paths.
-    policy_entries = list(policy_entries())
-
-    # Run the robograder.
-    logger.debug('Running robograder.')
-    with path_tools.working_dir(submission_src):
-        process = java_tools.run(
-            entrypoint,
-            policy_entries = policy_entries,
-            args = arguments,
-            classpath = [submission_bin, *classpath],
+    with submission_java.run_context(
+        submission_src = submission_src,
+        submission_bin = submission_bin,
+        classpath = classpath,
+        entrypoint = entrypoint,
+        arguments = arguments,
+        permissions = permissions,
+        check_conflict = True,
+    ) as cmd:
+        logger.debug('Running robograder.')
+        cmd = list(cmd)
+        general.log_command(logger, cmd, working_dir = True)
+        process = subprocess.run(
+            cmd,
+            text = True,
             stdout = subprocess.PIPE,
             stderr = subprocess.PIPE,
             encoding = 'utf-8',
@@ -137,6 +109,7 @@ def run(
 
         logger.debug('Robograder output:\n' + process.stdout)
         return process.stdout
+
 
 # ## How to compile a robograder?
 #
@@ -320,76 +293,3 @@ class LabRobograder:
             entrypoint = entrypoint,
             arguments = [str(self.machine_speed)],
         )
-
-# ## Checking and compiling submissions.
-#
-# The following exceptions and checks just wrap functions from other modules
-# using the class HandlingException to designate submission errors.
-
-class SymlinkException(lab_interfaces.HandlingException):
-    prefix = 'There is a problem with symbolic links:'
-
-    def __init__(self, e):
-        self.e = e
-
-    def __str__(self):
-        return general.join_lines([
-            self.prefix,
-            str(self.e),
-        ])
-
-    def markdown(self):
-        return general.join_lines([
-            self.prefix,
-            *self.e.markdown().splitlines(),
-        ])
-
-def submission_check_symlinks(src, strict = False):
-    try:
-        return check_symlinks.check(src, strict = strict)
-    except check_symlinks.SymlinkException as e:
-        raise SymlinkException(e) from None
-
-class CompileException(java_tools.CompileError, lab_interfaces.HandlingException):
-    prefix = 'There are compilation errors:'
-
-    def __str__(self):
-        return general.join_lines([
-            self.prefix,
-            *self.compile_errors.splitlines(),
-        ])
-
-    def markdown(self):
-        return general.join_lines([
-            self.prefix,
-            *markdown.escape_code_block(self.compile_errors).splitlines(),
-        ])
-
-def submission_compile(src, bin):
-    try:
-        return java_tools.compile_unknown(
-            src = src,
-            bin = bin,
-            check = True,
-            options = ['-Xlint:all'],
-        )
-    except java_tools.CompileError as e:
-        raise CompileException(e.compile_errors) from None
-
-def submission_check_and_compile(src, bin):
-    submission_check_symlinks(src)
-    return submission_compile(src, bin)
-
-@contextlib.contextmanager
-def submission_checked_and_compiled(src):
-    '''
-    Context manager for checking and compiling a submission.
-    Yields the managed output directory of compiled class files.
-
-    Does not expose the compiler report.
-    If you desire that, use submission_check_and_compile or submission_compile.
-    '''
-    submission_check_symlinks(src)
-    with path_tools.temp_dir() as bin:
-        submission_compile(src, bin)
-        yield bin

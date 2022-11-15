@@ -435,7 +435,7 @@ def cmd_java(
     classpath = None,
     security_policy = None,
     enable_assertions = False,
-    options = None
+    options = None,
 ):
     '''
     Produce a command line for a call to java.
@@ -475,6 +475,34 @@ def java_standard_options():
 def java_prepend_standard_options(params):
     prepend_iterable(params, 'options', java_standard_options())
 
+@contextlib.contextmanager
+def run_context(main, policy_entries = None, **kwargs):
+    '''
+    Context manager for a Java program invocation.
+
+    Arguments:
+    * main: Main class to execute.
+    * policy_entries:
+        Iterable of entries to use for a security policy file.
+        Same format as the argument to 'policy'.
+        If None, then no security policy is used.
+    * kwargs:
+        Further keyword arguments to pass to cmd_java.
+        These should exclude security_policy.
+        Note that java_standard_options is added to options.
+
+    Yields a generator for a command-line that can be used for process creation.
+    '''
+    java_prepend_standard_options(kwargs)
+
+    with contextlib.ExitStack() as stack:
+        if policy_entries is not None:
+            security_policy = stack.enter_context(policy_manager(policy_entries))
+            kwargs['security_policy'] = security_policy
+            logger.debug('Content of security policy file:\n' + security_policy.read_text())
+
+        yield cmd_java(main, **kwargs)
+
 def run(
     main,
     policy_entries = None,
@@ -499,24 +527,19 @@ def run(
     '''
     java_prepend_standard_options(kwargs)
 
-    with contextlib.ExitStack() as stack:
-        if policy_entries is not None:
-            security_policy = stack.enter_context(policy_manager(policy_entries))
-            kwargs['security_policy'] = security_policy
-            logger.debug('Content of security policy file:\n' + security_policy.read_text())
+    # Split kwargs.
+    def keys_cmd_java():
+        for (key, parameter) in inspect.signature(cmd_java).parameters.items():
+            if parameter.kind in [
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                inspect.Parameter.KEYWORD_ONLY,
+            ]:
+                yield key
+    (kwargs_cmd_java, kwargs_run) = general.split_dict(kwargs, set(keys_cmd_java()).__contains__)
+    logger.debug(f'Keyword arguments for cmd_java: {kwargs_cmd_java}')
+    logger.debug(f'Keyword arguments for subprocess.run: {kwargs_run}')
 
-        # Split kwargs.
-        def keys_cmd_java():
-            for (key, parameter) in inspect.signature(cmd_java).parameters.items():
-                if parameter.kind in [
-                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                    inspect.Parameter.KEYWORD_ONLY,
-                ]:
-                    yield key
-        (kwargs_cmd_java, kwargs_run) = general.split_dict(kwargs, set(keys_cmd_java()).__contains__)
-        logger.debug(f'Keyword arguments for cmd_java: {kwargs_cmd_java}')
-        logger.debug(f'Keyword arguments for subprocess.run: {kwargs_run}')
-
-        cmd = list(cmd_java(main, **kwargs_cmd_java))
+    with run_context(main, policy_entries = policy_entries, **kwargs_cmd_java) as cmd:
+        cmd = list(cmd)
         general.log_command(logger, cmd, working_dir = True)
         return subprocess.run(cmd, **kwargs_run)
