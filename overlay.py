@@ -50,7 +50,7 @@ class OverlayTypeFallback(OverlayType):
 def run_and_log(cmd: Iterable[Union[str, Path]]):
     cmd = list(cmd)
     general.log_command(logger, cmd)
-    subprocess.call(cmd, check = True, text = True)
+    subprocess.run(cmd, check = True, text = True)
 
 class OverlayTypeFuseFS(OverlayType):
     @classmethod
