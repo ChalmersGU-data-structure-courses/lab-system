@@ -13,6 +13,7 @@ import lab_handlers_python
 import print_parse
 import robograder_java
 import test_lib
+import tester_java
 import tester_podman
 from this_dir import this_dir
 
@@ -370,14 +371,27 @@ class _LabConfig:
         def f():
             if language == LabLanguage.JAVA:
                 yield ('submission', lab_handlers_java.SubmissionHandler())
+
                 try:
                     robograder_java.LabRobograder(self.path_source)
                 except robograder_java.RobograderMissingException:
                     pass
                 else:
                     yield ('robograding', lab_handlers_java.RobogradingHandler())
+
+                try:
+                    tester_java.LabTester(self.path_source)
+                except test_lib.TesterMissingException:
+                    pass
+                else:
+                    class TestingHandler(lab_handlers.GenericTestingHandler):
+                        tester_type = tester_java.LabTester
+
+                    yield ('testing', TestingHandler())
+
             elif language == LabLanguage.PYTHON:
                 yield ('submission', lab_handlers_python.SubmissionHandler())
+
                 try:
                     tester_podman.LabTester(self.path_source)
                 except test_lib.TesterMissingException:
