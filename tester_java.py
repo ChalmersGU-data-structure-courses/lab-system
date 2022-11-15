@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from typing import Optional, Tuple, Union
 
+import general
 import java_tools
 import lab_interfaces
 import submission_java
@@ -132,6 +133,11 @@ class LabTester(test_lib.LabTester):
         except lab_interfaces.HandlingException as e:
             (dir_out / 'error.md').write_text(e.markdown())
 
+    def filter_errors(self, err: str) -> str:
+        return err.removeprefix(general.join_lines([
+            'WARNING: A command line option has enabled the Security Manager',
+            'WARNING: The Security Manager is deprecated and will be removed in a future release',
+        ]))
 
 if __name__ == '__main__':
     test_lib.cli(LabTester)

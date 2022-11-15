@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import signal
 import subprocess
-from typing import Iterable, Optional, Tuple, Union
+from typing import Callable, Iterable, Optional
 
 import general
 import markdown
@@ -248,7 +248,14 @@ class LabTester:
                 dir_out_test.mkdir()
                 self.run_test(dir_out_test, dir_test, name, test, **kwargs)
 
-    @abc.abstractmethod
+    def filter_errors(self, err: str) -> str:
+        '''
+        Used by the default implementation of format_test_output_as_markdown.
+        Takes the content of an error stream and extracts the relevant parts.
+        The default implementation returns the argument unchanged.
+        '''
+        return err
+
     def format_test_output_as_markdown(self, dir_out: Path) -> Iterable[str]:
         '''
         Format the output of a test as markdown.
@@ -272,7 +279,7 @@ class LabTester:
         if out:
             yield markdown.escape_code_block(out)
 
-        err = read_file('file_err')
+        err = self.filter_errors(read_file('file_err'))
         if err:
             yield 'Errors:'
             yield markdown.escape_code_block(err)
@@ -291,7 +298,6 @@ class LabTester:
         if not msg is None:
             yield f'The program {msg}.'
 
-    @abc.abstractmethod
     def format_tests_output_as_markdown(self, dir_out: Path) -> Iterable[str]:
         '''
         Format tests output as markdown.
