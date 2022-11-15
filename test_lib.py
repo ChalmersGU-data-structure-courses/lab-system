@@ -281,7 +281,7 @@ class LabTester:
 
         err = self.filter_errors(read_file('file_err'))
         if err:
-            yield 'Errors:'
+            yield general.join_lines(['Errors:'])
             yield markdown.escape_code_block(err)
 
         def result_msg():
@@ -309,7 +309,7 @@ class LabTester:
         '''
         for (name, test) in self.tests.items():
             dir_out_test = dir_out / name
-            yield f'## {markdown.escape(get_description(name, test))}'
+            yield general.join_lines([f'## {markdown.escape(get_description(name, test))}'])
             yield from self.format_test_output_as_markdown(dir_out_test)
 
 def cli(Tester) -> None:
