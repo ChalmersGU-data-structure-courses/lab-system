@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import signal
 import subprocess
-from typing import Callable, Iterable, Optional
+from typing import Iterable, Optional
 
 import general
 import markdown
@@ -111,7 +111,7 @@ class LabTester:
         self.dir_test = dir_lab / 'test'
         self.has_test_overlay = self.dir_test.exists()
 
-    # TODO: Terminate if size of out or err exceeds a to be configured threshold.
+    # TODO: monitor program output and kill as soon as max_output is reached.
     def record_process(
         self,
         dir_out: Path,
@@ -121,6 +121,7 @@ class LabTester:
         file_out = '_1_out',
         file_err = '_2_err',
         timeout: Optional[int] = None,
+        max_output = 128 * 1024,
         **kwargs,
     ) -> Optional[int]:
         '''
@@ -136,6 +137,8 @@ class LabTester:
 
         The ordering of files in a diff on GitLab seems to be alphabetical.
         This explains the prefixes of the default filenames.
+
+        If max_output is not set to None, output and error output are truncated after the given number of bytes.
 
         Unrecognized keyword-arguments are passed on to subprocess.Popen.
 
@@ -190,6 +193,16 @@ class LabTester:
                 process.communicate()
                 # Be machine-agnostic in the reported timeout value.
                 result = f'timed out (after {timeout} seconds)'
+
+        # Truncate output files.
+        if not max_output is None:
+            for filename in [file_out, file_err]:
+                with (dir_out / filename).open('a') as f:
+                    if f.tell() > max_output:
+                        f.seek(max_output)
+                        f.truncate()
+                        f.write('\n')
+                        f.write('[truncated]\n')
 
         (dir_out / file_result).write_text(general.join_lines([result]))
         return process.returncode
