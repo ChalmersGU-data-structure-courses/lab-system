@@ -8,6 +8,7 @@ import lab_handlers
 import live_submissions_table
 import path_tools
 import robograder_java
+import submission_java
 
 
 report_segments = ['report']
@@ -153,9 +154,9 @@ class SubmissionHandler(lab_handlers.SubmissionHandler):
 
     def _handle_request(self, request_and_responses, src, bin, report):
         try:
-            compilation_report = robograder_java.submission_check_and_compile(src, bin)
+            compilation_report = submission_java.submission_check_and_compile(src, bin)
             compilation_success = True
-        except (robograder_java.SymlinkException, robograder_java.CompileException) as e:
+        except (submission_java.SymlinkException, submission_java.CompileException) as e:
             compilation_report = str(e)
             compilation_success = False
         (report / report_compilation).write_text(compilation_report)
@@ -212,7 +213,7 @@ class RobogradingHandler(lab_handlers.RobogradingHandler):
         try:
             robograder_java.submission_check_and_compile(src, bin)
             robograding_report = self.robograder.run(src, bin)
-        except (robograder_java.HandlingException) as e:
+        except (submission_java.HandlingException) as e:
             robograding_report = e.markdown()
 
         # Post response issue.
