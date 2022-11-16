@@ -43,14 +43,14 @@ class OverlayTypeFallback(OverlayType):
     @contextlib.contextmanager
     def overlay(cls, dirs: Iterable[Path], writable = False):
         with path_tools.temp_dir() as target:
-            for dir in reversed(dirs):
+            for dir in reversed(list(dirs)):
                 shutil.copytree(dir, target, symlinks = True, dirs_exist_ok = True)
             yield target
 
 def run_and_log(cmd: Iterable[Union[str, Path]]):
     cmd = list(cmd)
     general.log_command(logger, cmd)
-    subprocess.call(cmd, check = True, text = True)
+    subprocess.run(cmd, check = True, text = True)
 
 class OverlayTypeFuseFS(OverlayType):
     @classmethod
