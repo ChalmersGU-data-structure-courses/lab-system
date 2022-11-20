@@ -4,8 +4,10 @@ from pathlib import PurePosixPath
 import re
 from types import SimpleNamespace
 
+import lab_handlers
 import lab_handlers_dat151
 import print_parse
+import tester_podman
 from this_dir import this_dir
 
 # Personal configuration.
@@ -312,16 +314,16 @@ _lab_config = SimpleNamespace(
 )
 
 class _LabConfig:
-    def __init__(self, k, refresh_period):
+    def __init__(self, k, refresh_period, has_tester):
         self.path_source = _lab_repo / str(k)
         self.path_gitignore = None
         self.grading_sheet = lab.name.print(k)
         self.canvas_path_awaiting_grading = PurePosixPath(canvas.grading_path) / '{}-to-be-graded.html'.format(lab.full_id.print(k))
 
         def f():
-            yield ('submission', lab_handlers_dat151.SubmissionHandler())
-            if lab_handlers_dat151.TestingHandler.exists(self.path_source):
-                yield ('test', lab_handlers_dat151.TestingHandler())
+            yield ('submission', lab_handlers_dat151.SubmissionHandler(tester_podman.LabTester.factory))
+            if has_tester:
+                yield ('test', lab_handlers.GenericTestingHandler(tester_podman.LabTester.factory))
         self.request_handlers = dict(f())
 
         self.refresh_period = refresh_period
@@ -335,8 +337,8 @@ def _lab_item(k, *args):
 
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
-    _lab_item(1, datetime.timedelta(minutes = 15)),
-#    _lab_item(2, datetime.timedelta(minutes = 15)),
+    _lab_item(1, datetime.timedelta(minutes = 15), True),
+#    _lab_item(2, datetime.timedelta(minutes = 15), True),
 #    _lab_item(3, datetime.timedelta(minutes = 15)),
 #    _lab_item(4, datetime.timedelta(minutes = 15)),
 ])
