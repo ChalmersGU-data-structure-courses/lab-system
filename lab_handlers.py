@@ -1,12 +1,16 @@
 import logging
+from pathlib import PurePosixPath
 import re
 
+import dominate
+
 import general
+import gitlab_tools
 import lab_interfaces
+import live_submissions_table
 import markdown
 import path_tools
 import print_parse
-import test_lib
 
 
 logger = logging.getLogger(__name__)
@@ -127,32 +131,13 @@ class GenericTestingHandler(TestingHandler):
     '''
     A generic testing handler using the test framework (see test_lib).
     The tester is required to implement format_tests_output_as_markdown.
-
-    You can configure certain aspects by overriding attributes.
-    In addition to those of the base class:
-    * machine_speed:
-        The machine speed parameter of the robograder, if it exists.
-        Defaults to 1.
-    * tester_type:
-        The tester type to use.
-        For example, tester_podman.LabTester.
     '''
-    machine_speed = 1
-    tester_type = None
-
-    @classmethod
-    def exists(cls, lab_path):
-        try:
-            cls.tester_type(lab_path)
-            return True
-        except test_lib.TesterMissingException:
-            return False
+    def __init__(self, tester_factory):
+        self.tester_factory = tester_factory
 
     def setup(self, lab):
         super().setup(lab)
-
-        # Set up tester.
-        self.tester = self.tester_type(lab.config.path_source, self.machine_speed)
+        self.tester = self.tester_factory(lab.config.path_source)
 
     def get_test_report(self, dir_out):
         return markdown.join_blocks(self.tester.format_tests_output_as_markdown(dir_out))
@@ -171,3 +156,95 @@ class GenericTestingHandler(TestingHandler):
                     response_key = self.response_key,
                     description = report,
                 )
+
+class SubmissionTesting:
+    segments_test = ['test']
+    segments_test_report = ['test_report']
+
+    has_markdown_report = True
+    report_path = PurePosixPath('test_report.md')
+
+    def __init__(self, tester_factory):
+        self.tester_factory = tester_factory
+
+    def setup(self, lab):
+        self.tester = self.tester_factory(lab.config.path_source)
+        #if not self.lab.submission_solution.repo_tag_exist(segments_test_tag):
+        #    with self.lab.submission_solution.checkout_manager() as src:
+        #        self.test_submission(self.lab.submission_solution, src)
+
+    def grading_columns(self):
+        self_outer = self
+
+        class TestingColumn(live_submissions_table.Column):
+            def format_header_cell(self, cell):
+                with cell:
+                    dominate.util.text('Testing')
+
+            def get_value(self, group):
+                submission_current = group.submission_current(deadline = self.config.deadline)
+
+                # Skip test column if no test was produced.
+                with submission_current.checkout_manager(self_outer.segments_test) as dir:
+                    if not list(dir.iterdir()):
+                        return live_submissions_table.CallbackColumnValue(has_content = False)
+
+                def format_cell(cell):
+                    with cell:
+                        with dominate.tags.p():
+                            if self_outer.report_path is None:
+                                live_submissions_table.format_url('test', gitlab_tools.url_tree(
+                                    self.lab.grading_project.get,
+                                    submission_current.repo_tag(self_outer.segments_test),
+                                ))
+                            else:
+                                segments = {
+                                    True: self_outer.segments_test_report,
+                                    False: self_outer.segments_test,
+                                }[self_outer.has_markdown_report]
+                                live_submissions_table.format_url('report', gitlab_tools.url_blob(
+                                    self.lab.grading_project.get,
+                                    submission_current.repo_tag(segments),
+                                    self_outer.report_path,
+                                ))
+                        with dominate.tags.p():
+                            live_submissions_table.format_url('vs. solution', gitlab_tools.url_compare(
+                                self.lab.grading_project.get,
+                                self.lab.submission_solution.repo_tag(self_outer.segments_test),
+                                submission_current.repo_tag(self_outer.segments_test),
+                            ))
+
+                return live_submissions_table.CallbackColumnValue(callback = format_cell)
+
+        if self.tester:
+            yield ('testing', TestingColumn)
+
+    def test_report(self, test):
+        return markdown.join_blocks(self.tester.format_tests_output_as_markdown(test))
+
+    # The suppress option is useful if the submission did not compile.
+    # In that case, we want to skip testing.
+    def test_submission(self, request_and_responses, src, bin = None, suppress = False):
+        if not self.tester:
+            return
+
+        with path_tools.temp_dir() as test:
+            if not suppress:
+                self.tester.run_tests(test, src, bin)
+            request_and_responses.repo_report_create(
+                self.segments_test,
+                test,
+                commit_message = 'test results',
+                force = True,
+            )
+            if self.has_markdown_report:
+                with path_tools.temp_dir() as test_report:
+                    (test_report / self.report_path).write_text(markdown.join_blocks(
+                        self.tester.format_tests_output_as_markdown(test)
+                    ))
+                    request_and_responses.repo_report_create(
+                        self.segments_test_report,
+                        test_report,
+                        commit_message = 'test report',
+                        force = True,
+                    )
