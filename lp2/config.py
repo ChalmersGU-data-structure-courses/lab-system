@@ -357,7 +357,15 @@ _lab_config = SimpleNamespace(
 )
 
 class _LabConfig:
-    def __init__(self, k, lab_folder, refresh_period, custom_gitignore = False):
+    def __init__(
+        self,
+        k,
+        lab_folder,
+        refresh_period,
+        custom_gitignore = False,
+        has_tester = True,
+        has_robograder = False,
+    ):
         (_, language) = k
         language_str = _print_parse_lab_language_id.print(language)
 
@@ -370,42 +378,23 @@ class _LabConfig:
 
         def f():
             if language == LabLanguage.JAVA:
-                yield ('submission', lab_handlers_java.SubmissionHandler())
-
-                try:
-                    robograder_java.LabRobograder(self.path_source)
-                except robograder_java.RobograderMissingException:
-                    pass
-                else:
+                # Could enable both.
+                # But then need to configure different test tags.
+                if has_robograder:
                     yield ('robograding', lab_handlers_java.RobogradingHandler())
+                elif has_tester:
+                    yield ('testing', lab_handlers.GenericTestingHandler(tester_java.LabTester.factory))
 
-                try:
-                    tester_java.LabTester(self.path_source)
-                except test_lib.TesterMissingException:
-                    pass
-                else:
-                    class TestingHandler(lab_handlers.GenericTestingHandler):
-                        tester_type = tester_java.LabTester
-
-                    yield ('testing', TestingHandler())
-
+                yield ('submission', lab_handlers_java.SubmissionHandler(tester_java.LabTester.factory))
             elif language == LabLanguage.PYTHON:
-                yield ('submission', lab_handlers_python.SubmissionHandler())
+                if has_tester:
+                    yield ('testing', lab_handlers.GenericTestingHandler(tester_podman.LabTester.factory))
 
-                try:
-                    tester_podman.LabTester(self.path_source)
-                except test_lib.TesterMissingException:
-                    pass
-                else:
-                    class TestingHandler(lab_handlers.GenericTestingHandler):
-                        tester_type = tester_podman.LabTester
-
-                    yield ('testing', TestingHandler())
+                yield ('submission', lab_handlers_python.SubmissionHandler(tester_podman.LabTester.factory))
             else:
                 raise TypeError(language)
 
         self.request_handlers = dict(f())
-
         self.refresh_period = refresh_period
 
     # Key of submission handler in the dictionary of request handlers.
@@ -417,12 +406,12 @@ def _lab_item(k, *args):
 
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
-    _lab_item((1, LabLanguage.JAVA  ), 'indexing'            , datetime.timedelta(minutes = 60), True),  # noqa: E202, E203, E501
-    _lab_item((1, LabLanguage.PYTHON), 'indexing'            , datetime.timedelta(minutes = 60), True),  # noqa: E202, E203, E501
-    _lab_item((2, LabLanguage.JAVA  ), 'plagiarism-detection', datetime.timedelta(minutes = 60)),  # noqa: E202, E203, E501
-    _lab_item((2, LabLanguage.PYTHON), 'plagiarism-detection', datetime.timedelta(minutes = 60)),  # noqa: E202, E203, E501
-    #_lab_item((3, LabLanguage.JAVA  ), 'path-finder'         , datetime.timedelta(minutes = 15)),  # noqa: E202, E203, E501
-    #_lab_item((3, LabLanguage.PYTHON), 'path-finder'         , datetime.timedelta(minutes = 15)),  # noqa: E202, E203, E501
+    _lab_item((1, LabLanguage.JAVA  ), 'indexing'            , datetime.timedelta(minutes = 60), True , True , False),  # noqa: E202, E203, E501
+    _lab_item((1, LabLanguage.PYTHON), 'indexing'            , datetime.timedelta(minutes = 60), True , True , False),  # noqa: E202, E203, E501
+    _lab_item((2, LabLanguage.JAVA  ), 'plagiarism-detection', datetime.timedelta(minutes = 60), False, False, False),  # noqa: E202, E203, E501
+    _lab_item((2, LabLanguage.PYTHON), 'plagiarism-detection', datetime.timedelta(minutes = 60), False, False, False),  # noqa: E202, E203, E501
+    #_lab_item((3, LabLanguage.JAVA  ), 'path-finder'         , datetime.timedelta(minutes = 60)),  # noqa: E202, E203, E501
+    #_lab_item((3, LabLanguage.PYTHON), 'path-finder'         , datetime.timedelta(minutes = 60)),  # noqa: E202, E203, E501
 ])
 
 # Students taking part in labs who are not registered on Canvas.
