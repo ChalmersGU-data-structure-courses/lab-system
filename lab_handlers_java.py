@@ -5,6 +5,7 @@ import dominate
 import git_tools
 import gitlab_tools
 import lab_handlers
+import lab_interfaces
 import live_submissions_table
 import path_tools
 import robograder_java
@@ -128,46 +129,45 @@ class CompilationAndRobogradingColumn(live_submissions_table.Column):
         )
 
 class SubmissionHandler(lab_handlers.SubmissionHandler):
-    '''
-    A submission handler for Java labs.
+    '''A submission handler for Java labs.'''
 
-    You can configure certain aspects by overriding attributes.
-    In addition to those of the base class:
-    * machine_speed:
-        The machine speed parameter of the robograder, if it exists.
-        Defaults to 1.
-    '''
-    machine_speed = 1
+    def __init__(self, tester_factory, robograder_factory = robograder_java.factory, machine_speed = 1):
+        self.testing = lab_handlers.SubmissionTesting(tester_factory)
+        self.robograder_factory = robograder_factory
+        self.machine_speed = machine_speed
 
     def setup(self, lab):
         super().setup(lab)
+        self.testing.setup(lab)
+        self.robograder = self.robograder_factory(lab.config.path_source, self.machine_speed)
 
         def f():
-            # Set up robograder.
-            try:
-                self.robograder = robograder_java.LabRobograder(lab.config.path_source, self.machine_speed)
-                self.robograder.compile()
+            if self.robograder:
                 yield ('robograding', CompilationAndRobogradingColumn)
-            except robograder_java.RobograderMissingException:
+            else:
                 yield ('compilation', CompilationColumn)
+            yield from self.testing.grading_columns()
+
         self.grading_columns = live_submissions_table.with_standard_columns(dict(f()))
 
-    def _handle_request(self, request_and_responses, src, bin, report):
+    def _handle_request(self, request_and_responses, src, report):
         try:
-            compilation_report = submission_java.submission_check_and_compile(src, bin)
-            compilation_success = True
-        except (submission_java.SymlinkException, submission_java.CompileException) as e:
-            compilation_report = str(e)
+            with submission_java.submission_checked_and_compiled(src) as (dir_bin, compilation_report):
+                compilation_success = True
+                if self.testing:
+                    self.testing.test_submission(request_and_responses, src, dir_bin)
+
+                if self.robograder:
+                    try:
+                        robograding_report = self.robograder.run(src, bin)
+                    except robograder_java.RobograderException as e:
+                        robograding_report = e.markdown()
+                    (report / report_robograding).write_text(robograding_report)
+        except lab_interfaces.HandlingException as e:
             compilation_success = False
+            compilation_report = str(e)
+
         (report / report_compilation).write_text(compilation_report)
-
-        if compilation_success and hasattr(self, 'robograder'):
-            try:
-                robograding_report = self.robograder.run(src, bin)
-            except robograder_java.RobograderException as e:
-                robograding_report = e.markdown()
-            (report / report_robograding).write_text(robograding_report)
-
         request_and_responses.repo_report_create(
             report_segments,
             report,
@@ -182,38 +182,30 @@ class SubmissionHandler(lab_handlers.SubmissionHandler):
 
     def handle_request(self, request_and_responses):
         with request_and_responses.checkout_manager() as src:
-            with path_tools.temp_dir() as bin:
-                with path_tools.temp_dir() as report:
-                    return self._handle_request(request_and_responses, src, bin, report)
+            with path_tools.temp_dir() as report:
+                return self._handle_request(request_and_responses, src, report)
 
 class RobogradingHandler(lab_handlers.RobogradingHandler):
-    '''
-    A robograding handler for Java labs.
+    '''A robograding handler for Java labs.'''
 
-    You can configure certain aspects by overriding attributes.
-    In addition to those of the base class:
-    * machine_speed:
-        The machine speed parameter of the robograder, if it exists.
-        Defaults to 1.
-    '''
-    machine_speed = 1
+    def __init__(self, robograder_factory = robograder_java.factory, machine_speed = 1):
+        self.robograder_factory = robograder_factory
+        self.machine_speed = machine_speed
 
     def setup(self, lab):
         super().setup(lab)
-
-        # Set up robograder.
-        self.robograder = robograder_java.LabRobograder(lab.config.path_source, self.machine_speed)
-        self.robograder.compile()
+        self.robograder = self.robograder_factory(lab.config.path_source, self.machine_speed)
 
     def _handle_request(self, request_and_responses, src, bin):
         # If a response issue already exists, we are happy.
         if self.response_key in request_and_responses.responses:
             return
 
+        # Compile and robograde.
         try:
-            robograder_java.submission_check_and_compile(src, bin)
-            robograding_report = self.robograder.run(src, bin)
-        except (submission_java.HandlingException) as e:
+            with submission_java.submission_checked_and_compiled(src) as (dir_bin, compiler_report):
+                robograding_report = self.robograder.run(src, bin)
+        except lab_interfaces.HandlingException as e:
             robograding_report = e.markdown()
 
         # Post response issue.
@@ -224,5 +216,4 @@ class RobogradingHandler(lab_handlers.RobogradingHandler):
 
     def handle_request(self, request_and_responses):
         with request_and_responses.checkout_manager() as src:
-            with path_tools.temp_dir() as bin:
-                return self._handle_request(request_and_responses, src, bin)
+            return self._handle_request(request_and_responses, src, bin)
