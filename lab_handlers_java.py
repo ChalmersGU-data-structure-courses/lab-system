@@ -159,7 +159,7 @@ class SubmissionHandler(lab_handlers.SubmissionHandler):
 
                 if self.robograder:
                     try:
-                        robograding_report = self.robograder.run(src, bin)
+                        robograding_report = self.robograder.run(src, dir_bin)
                     except robograder_java.RobograderException as e:
                         robograding_report = e.markdown()
                     (report / report_robograding).write_text(robograding_report)
@@ -196,7 +196,7 @@ class RobogradingHandler(lab_handlers.RobogradingHandler):
         super().setup(lab)
         self.robograder = self.robograder_factory(lab.config.path_source, self.machine_speed)
 
-    def _handle_request(self, request_and_responses, src, bin):
+    def _handle_request(self, request_and_responses, src):
         # If a response issue already exists, we are happy.
         if self.response_key in request_and_responses.responses:
             return
@@ -216,4 +216,4 @@ class RobogradingHandler(lab_handlers.RobogradingHandler):
 
     def handle_request(self, request_and_responses):
         with request_and_responses.checkout_manager() as src:
-            return self._handle_request(request_and_responses, src, bin)
+            return self._handle_request(request_and_responses, src)
