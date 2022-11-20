@@ -13,3 +13,6 @@ c = course.Course(config, dir = this_dir / 'lp2')
 
 lab_1_j = c.labs[(1, config.LabLanguage.JAVA)]
 lab_1_p = c.labs[(1, config.LabLanguage.PYTHON)]
+
+lab_2_j = c.labs[(2, config.LabLanguage.JAVA)]
+lab_2_p = c.labs[(2, config.LabLanguage.PYTHON)]
