@@ -1,4 +1,5 @@
 # Java submission compilation and robograding.
+import functools
 import logging
 from pathlib import Path
 import subprocess
@@ -294,3 +295,12 @@ class LabRobograder:
             entrypoint = entrypoint,
             arguments = [str(self.machine_speed)],
         )
+
+@functools.cache
+def factory(dir_lab, machine_speed = 1):
+    try:
+        robograder = LabRobograder(dir_lab, machine_speed)
+        robograder.compile()
+    except RobograderMissingException:
+        return None
+    return robograder

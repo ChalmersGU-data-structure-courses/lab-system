@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # PYTHON_ARGCOMPLETE_OK
+import contextlib
 import dataclasses
 import logging
 import os
@@ -134,19 +135,20 @@ class LabTester(test_lib.LabTester):
         self,
         dir_out: Path,
         dir_src: Path,
+        dir_bin: Path = None,
         file_compile_err = '__compile_err',
         file_error = 'error.md',
     ) -> None:
-        '''
-        See test_lib.run_tests.
-
-        Additionally, stores
-        '''
+        '''See test_lib.run_tests.'''
         try:
-            logger.debug('Checking and compiling submission.')
-            with submission_java.submission_checked_and_compiled(dir_src) as (dir_bin, compiler_report):
+            stack = contextlib.ExitStack()
+            if dir_bin is None:
+                logger.debug('Checking and compiling submission.')
+                (dir_bin, compiler_report) = stack.enter_context(
+                    submission_java.submission_checked_and_compiled(dir_src)
+                )
                 (dir_out / file_compile_err).write_text(compiler_report)
-                super().run_tests(dir_out, dir_src, dir_bin = dir_bin)
+            super().run_tests(dir_out, dir_src, dir_bin = dir_bin)
         except lab_interfaces.HandlingException as e:
             (dir_out / file_error).write_text(e.markdown())
 
@@ -166,10 +168,12 @@ class LabTester(test_lib.LabTester):
         if file_error.exists():
             yield file_error.read_text()  # Not actually a block.
         else:
-            compile_err = file('file_compile_err').read_text()
-            if compile_err:
-                yield general.join_lines(['There were some compilation warnings:'])
-                yield markdown.escape_code_block(compile_err)
+            # Compilation report does not exist if compilation was not part of the test.
+            if file('file_compile_err').exists():
+                compile_err = file('file_compile_err').read_text()
+                if compile_err:
+                    yield general.join_lines(['There were some compilation warnings:'])
+                    yield markdown.escape_code_block(compile_err)
 
             yield from super().format_tests_output_as_markdown(dir_out)
 

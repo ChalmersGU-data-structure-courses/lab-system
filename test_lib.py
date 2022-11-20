@@ -1,6 +1,7 @@
 import abc
 import contextlib
 import dataclasses
+import functools
 import logging
 import os
 from pathlib import Path
@@ -82,6 +83,22 @@ class LabTester:
     '''
     TestSpec = None
     needs_writable_sub_dir = False
+
+    @classmethod
+    def exists(cls, dir_lab):
+        try:
+            cls.tester_type(dir_lab)
+            return True
+        except TesterMissingException:
+            return False
+
+    @classmethod
+    @functools.cache
+    def factory(cls, dir_lab):
+        try:
+            return cls(dir_lab)
+        except TesterMissingException:
+            return None
 
     def __init__(self, dir_lab: Path, machine_speed: float = 1):
         '''
@@ -208,13 +225,14 @@ class LabTester:
         return process.returncode
 
     @abc.abstractmethod
-    def run_test(self, dir_out: Path, dir_src: Path, name: str, test) -> None:
+    def run_test(self, dir_out: Path, dir_src: Path, name: str, test, dir_bin: Path = None) -> None:
         '''
         Arguments:
         * dir_out: Test output goes in this directory.
         * dir_src:
             Directory containing the submission to test and all test files.
             Only read permissions are guaranteed.
+        * dir_bin: Optional directory containing the compiled submission.
         * name: name of the test.
         * test:
             Specification of the test.
@@ -224,7 +242,7 @@ class LabTester:
         '''
         pass
 
-    def run_tests(self, dir_out: Path, dir_src: Path, **kwargs) -> None:
+    def run_tests(self, dir_out: Path, dir_src: Path, dir_bin: Path = None, **kwargs) -> None:
         '''
         Run the configured tests on a given submission.
 
@@ -233,6 +251,7 @@ class LabTester:
             Path of the output directory.
             Every test stores in output in a subfolder.
         * dir_src: Directory containing the submission to test.
+        * dir_bin: Optional directory containing the compiled submission.
         * kwargs: Passed to run_test
 
         Subclasses should set the class attribute needs_writable_sub_dir to True
@@ -259,7 +278,7 @@ class LabTester:
             for (name, test) in self.tests.items():
                 dir_out_test = dir_out / name
                 dir_out_test.mkdir()
-                self.run_test(dir_out_test, dir_test, name, test, **kwargs)
+                self.run_test(dir_out_test, dir_test, name, test, dir_bin = dir_bin, **kwargs)
 
     def filter_errors(self, err: str) -> str:
         '''
