@@ -30,10 +30,12 @@ class Test:
         Should be appropriate for a Markdown heading.
     * timeout: Timeout in seconds after which the test program is killed (defaults to 5).
     * memory: Memory (in MB) the container is allowed to use (defaults to 1024).
+    * markdown_output: True if this test's output is in Markdown format.
     '''
     description: Optional[str] = None
     timeout: Optional[int] = 5
     memory: Optional[int] = 1024
+    markdown_output: bool = False
 
 def get_description(name: str, test: Test) -> str:
     return name if test.description is None else test.description
@@ -288,13 +290,14 @@ class LabTester:
         '''
         return err
 
-    def format_test_output_as_markdown(self, dir_out: Path) -> Iterable[str]:
+    def format_test_output_as_markdown(self, test: Test, dir_out: Path) -> Iterable[str]:
         '''
         Format the output of a test as markdown.
         This excludes the section heading, which is provided by format_tests_output_as_markdown.
         For use with test issues in student projects.
 
         Arguments:
+        * test: The test which was run.
         * dir_out: Path of the output subdirectory of this test.
 
         Returns an iterable of Markdown blocks.
@@ -309,7 +312,11 @@ class LabTester:
 
         out = read_file('file_out')
         if out:
-            yield markdown.escape_code_block(out)
+            if test.markdown_output:
+                # Make sure that the output ends with exactly one blank line
+                yield out.strip('\n') + '\n'
+            else:
+                yield markdown.escape_code_block(out)
 
         err = self.filter_errors(read_file('file_err'))
         if err:
@@ -328,7 +335,7 @@ class LabTester:
 
         msg = result_msg()
         if not msg is None:
-            yield f'The program {msg}.'
+            yield general.join_lines([f'The program {msg}.'])
 
     def format_tests_output_as_markdown(self, dir_out: Path) -> Iterable[str]:
         '''
@@ -342,7 +349,7 @@ class LabTester:
         for (name, test) in self.tests.items():
             dir_out_test = dir_out / name
             yield general.join_lines([f'## {markdown.escape(get_description(name, test))}'])
-            yield from self.format_test_output_as_markdown(dir_out_test)
+            yield from self.format_test_output_as_markdown(test, dir_out_test)
 
 def cli(Tester) -> None:
     '''

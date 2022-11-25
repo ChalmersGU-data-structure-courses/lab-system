@@ -23,10 +23,10 @@ def find_delimiter(s, char, least = 0):
     This can then be used as a fencing delimiter.
     The optional argument 'least' specifies the least number of repetitions to use.
     '''
-    return char * max(
-        (len(match.group(0)) for match in re.finditer('{}+'.format(re.escape(char)), s)),
-        default = least
-    )
+    return char * max([
+        least,
+        *(len(match.group(0)) + 1 for match in re.finditer('{}+'.format(re.escape(char)), s))
+    ])
 
 def escape_code_block(s, char = '`'):
     delimiter = find_delimiter(s, char, least = 3)
