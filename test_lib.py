@@ -335,7 +335,7 @@ class LabTester:
 
         msg = result_msg()
         if not msg is None:
-            yield f'The program {msg}.'
+            yield general.join_lines([f'The program {msg}.'])
 
     def format_tests_output_as_markdown(self, dir_out: Path) -> Iterable[str]:
         '''
