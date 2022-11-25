@@ -29,7 +29,7 @@ def java_version():
     v = shlex.split(str(p.stderr).splitlines()[0])
     if v[1] != 'version':
         raise RuntimeError(f'Unexpected java version string: {v}')
-    return [int(x) for x in v[2].split('.')]
+    return [int(x) for x in v[2].split('-')[0].split('.')]
 
 ################################################################################
 # Java Compiler
