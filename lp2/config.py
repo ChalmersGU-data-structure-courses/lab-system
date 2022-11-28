@@ -408,8 +408,8 @@ def _lab_item(k, *args):
 labs = dict([
     _lab_item((1, LabLanguage.JAVA  ), 'indexing'            , datetime.timedelta(minutes = 60), True , True , False),  # noqa: E202, E203, E501
     _lab_item((1, LabLanguage.PYTHON), 'indexing'            , datetime.timedelta(minutes = 60), True , True , False),  # noqa: E202, E203, E501
-    _lab_item((2, LabLanguage.JAVA  ), 'plagiarism-detection', datetime.timedelta(minutes = 60), False, False, False),  # noqa: E202, E203, E501
-    _lab_item((2, LabLanguage.PYTHON), 'plagiarism-detection', datetime.timedelta(minutes = 60), False, False, False),  # noqa: E202, E203, E501
+    _lab_item((2, LabLanguage.JAVA  ), 'plagiarism-detection', datetime.timedelta(minutes = 60), False, False, True),  # noqa: E202, E203, E501
+    _lab_item((2, LabLanguage.PYTHON), 'plagiarism-detection', datetime.timedelta(minutes = 60), False, True , False),  # noqa: E202, E203, E501
     #_lab_item((3, LabLanguage.JAVA  ), 'path-finder'         , datetime.timedelta(minutes = 60)),  # noqa: E202, E203, E501
     #_lab_item((3, LabLanguage.PYTHON), 'path-finder'         , datetime.timedelta(minutes = 60)),  # noqa: E202, E203, E501
 ])
