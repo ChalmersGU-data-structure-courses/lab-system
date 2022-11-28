@@ -178,24 +178,38 @@ def get_group_range(worksheet_parsed):
     rows = worksheet_parsed.group_rows.values()
     return (min(rows), max(rows) + 1) if rows else None
 
-def is_row_non_empty(sheet_data, row):
-    '''Does this row only contain empty values?'''
+def relevant_columns(sheet_parsed):
+    '''
+    Returns an iterable of the relevant column indices.
+    Relevant means it has meaning to this script.
+    '''
+    yield sheet_parsed.group_column
+    for query_column_group in sheet_parsed.query_column_groups:
+        yield query_column_group.submission
+        yield query_column_group.grader
+        yield query_column_group.score
+
+def is_row_non_empty(sheet_data, relevant_columns, row):
+    '''
+    Does this row only contain empty values?
+    Only looks at the relevant columns.
+    '''
     return any(
         google_tools.sheets.is_cell_non_empty(sheet_data.value(row, column))
-        for column in range(sheet_data.num_columns)
+        for column in relevant_columns
     )
 
-def guess_group_row_range(sheet_data):
+def guess_group_row_range(sheet_data, relevant_columns):
     '''
     Guess the group row range in a worksheet that does not have any group rows.
-    Returns the first contiguous range of empty rows, skipping the first row.
+    Returns the first contiguous range of empty rows (with respect to the relevant columns), skipping the first row.
     The argument 'rows' is the rows as returned by the Google Sheets API.
     This will not include empty rows at the end of the worksheet, hence the additional 'row_count' argument.
     '''
     start = None
     end = None
     for row in range(1, sheet_data.num_rows):
-        if is_row_non_empty(sheet_data, row):
+        if is_row_non_empty(sheet_data, relevant_columns, row):
             if start is not None:
                 end = row
                 break
@@ -290,7 +304,7 @@ class GradingSheet:
         '''
         r = get_group_range(self.sheet_parsed)
         if not r:
-            r = guess_group_row_range(self.sheet_data)
+            r = guess_group_row_range(self.sheet_data, list(relevant_columns(self.sheet_parsed)))
         return r
 
     def row_range_param(self, range):
