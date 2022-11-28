@@ -204,7 +204,7 @@ class RobogradingHandler(lab_handlers.RobogradingHandler):
         # Compile and robograde.
         try:
             with submission_java.submission_checked_and_compiled(src) as (dir_bin, compiler_report):
-                robograding_report = self.robograder.run(src, bin)
+                robograding_report = self.robograder.run(src, dir_bin)
         except lab_interfaces.HandlingException as e:
             robograding_report = e.markdown()
 
