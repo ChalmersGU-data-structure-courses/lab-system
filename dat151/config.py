@@ -365,6 +365,7 @@ _gu_id = print_parse.regex('{}@gu.se')
 
 _cid_to_gitlab_username = print_parse.from_dict([
     ('abela', 'andreas.abel'),
+    ('meseyed', 'mohammad.ahmadpanah'),
 ])
 
 # Retrieve the Chalmers GitLab username for a user id on Chalmers/GU Canvas.
