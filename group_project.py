@@ -418,7 +418,7 @@ class RequestAndResponses:
         if result is not None:
             self.logger.debug(general.join_lines(['Handler result:', str(result)]))
 
-        if self.lab.config.grading_via_merge_request:
+        if self.group and self.lab.config.grading_via_merge_request:
             self.group.grading_via_merge_request.project.create_ensured()
             self.group.grading_via_merge_request.update_submission(self)
 
