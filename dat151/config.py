@@ -52,6 +52,8 @@ gitlab_ssh = SimpleNamespace(
     max_sessions = 5,
 )
 
+gitlab_lab_system_users = ['lab-system', 'andreas.abel']
+
 # Here is the group structure.
 # The top-level groups need to be created (with paths configured below).
 # The rest is managed by script.
