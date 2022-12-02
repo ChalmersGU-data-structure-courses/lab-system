@@ -136,18 +136,21 @@ branch = SimpleNamespace(
     master = 'main',
 )
 
+_outcomes = {
+    0: 'incomplete',
+    1: 'pass',
+}
+
 # Parsing and printing of outcomes.
 outcome = SimpleNamespace(
     # Full name.
     # Used in interactions with students
     name = print_parse.compose(
-        print_parse.from_dict([
-            (0, 'incomplete'),
-            (1, 'pass'),
-        ]),
+        print_parse.from_dict(_outcomes.items()),
         print_parse.lower,
     ),
 )
+outcomes = _outcomes.keys()
 
 # Format the outcome for use in a spreadsheet cell.
 # An integer or a string.
@@ -200,6 +203,9 @@ lab = SimpleNamespace(
 
     # Used as relative path on Chalmers GitLab in each student group.
     full_id = print_parse.regex_int('lab-{}'),
+
+    # Used as relative path on Chalmers GitLab for grading project in each student group.
+    full_id_grading = print_parse.regex_int('lab-{}-grading'),
 
     # Actual name.
     name = print_parse.regex_int('Lab {}', flags = re.IGNORECASE),
@@ -259,7 +265,7 @@ grading_sheet = SimpleNamespace(
 )
 
 # Root of the lab repository.
-_lab_repo = this_dir.parent / 'labs'
+_lab_repo = this_dir.parent.parent / 'dat151' / 'lab-sources'
 
 # Example lab configuration (for purpose of documentation).
 _lab_config = SimpleNamespace(
@@ -314,11 +320,12 @@ _lab_config = SimpleNamespace(
 )
 
 class _LabConfig:
-    def __init__(self, k, refresh_period, has_tester):
+    def __init__(self, k, refresh_period, has_tester, grading_via_merge_request):
         self.path_source = _lab_repo / str(k)
         self.path_gitignore = None
         self.grading_sheet = lab.name.print(k)
         self.canvas_path_awaiting_grading = PurePosixPath(canvas.grading_path) / '{}-to-be-graded.html'.format(lab.full_id.print(k))
+        self.grading_via_merge_request = grading_via_merge_request
 
         def f():
             yield ('submission', lab_handlers_dat151.SubmissionHandler(tester_podman.LabTester.factory))
@@ -337,10 +344,10 @@ def _lab_item(k, *args):
 
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
-    _lab_item(1, datetime.timedelta(minutes = 15), True),
-    _lab_item(2, datetime.timedelta(minutes = 15), True),
-    _lab_item(3, datetime.timedelta(minutes = 15), True),
-#    _lab_item(4, datetime.timedelta(minutes = 15)),
+    _lab_item(1, datetime.timedelta(minutes = 15), True, False),
+    _lab_item(2, datetime.timedelta(minutes = 15), True, True),
+    _lab_item(3, datetime.timedelta(minutes = 15), True, True),
+#    _lab_item(4, datetime.timedelta(minutes = 15), True, True),
 ])
 # P.S.: minutes for eventloop script
 
