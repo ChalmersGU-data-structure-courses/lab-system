@@ -142,7 +142,7 @@ class GradingViaMergeRequest:
         (merge_request,) = gitlab_tools.list_all(self.project.lazy.mergerequests)
         return merge_request
 
-    def get_synced_submissions(self):
+    def synced_submissions_generator(self):
         for note in gitlab_tools.list_all(self.merge_request.notes):
             if note.author['id'] in self.course.lab_system_users:
                 try:
@@ -159,7 +159,7 @@ class GradingViaMergeRequest:
 
     def update_submission(self, submission):
         # Do not update if submission is not newer than last synced submission.
-        synced_subs = self.get_synced_submissions()
+        synced_subs = list(self.synced_submissions_generator())
         try:
             last_synced = synced_subs[-1]
             submissions = self.group.submissions()
