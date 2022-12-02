@@ -162,7 +162,7 @@ class GradingViaMergeRequest:
         synced_subs = list(self.synced_submissions_generator())
         try:
             last_synced = synced_subs[-1]
-            submissions = self.group.submissions()
+            submissions = list(self.group.submissions())
             if submissions.index(last_synced) > submissions.index(submission):
                 self.logger('Submission {submission} is not newer than {last_synced}, not syncing.')
                 return
