@@ -166,6 +166,30 @@ class CachedProject:
         p.web_url = urllib.parse.urljoin(self.gl.url, str(self.path))
         return p
 
+    def exists(self):
+        try:
+            return self.get
+        except gitlab.exceptions.GitlabGetError as e:
+            if e.error_message == '404 Project Not Found':
+                return None
+            raise
+
+    def create_ensured(self):
+        try:
+            return self.get
+        except gitlab.exceptions.GitlabGetError as e:
+            if e.error_message == '404 Project Not Found':
+                return self.create()
+            raise
+
+    def delete_ensured(self):
+        try:
+            self.delete()
+        except gitlab.exceptions.GitlabDeleteError as e:
+            if e.error_message == '404 Project Not Found':
+                return
+            raise
+
     def create(self, group = None, **kwargs):
         if self.logger:
             self.logger.info(f'Creating project {self.path}')

@@ -36,6 +36,13 @@ def join_blocks(blocks: Iterable[str]):
     '''All lines in each block must be terminated by a newline character.'''
     return ''.join(more_itertools.intersperse('\n', blocks))
 
+def quote(block: str):
+    return general.join_lines('> ' + line for line in block.splitlines())
+
+def quote_blocks(blocks: Iterable[str]):
+    '''All lines in each block must be terminated by a newline character.'''
+    return quote(join_blocks(blocks))
+
 # TODO
 def escape(s: str) -> str:
     return s
