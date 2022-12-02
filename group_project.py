@@ -15,6 +15,7 @@ import instance_cache
 import item_parser
 import git_tools
 import gitlab_tools
+import grading_via_merge_request
 import print_parse
 import webhook_listener
 
@@ -417,6 +418,10 @@ class RequestAndResponses:
         if result is not None:
             self.logger.debug(general.join_lines(['Handler result:', str(result)]))
 
+        if self.lab.config.grading_via_merge_request:
+            self.group.grading_via_merge_request.project.create_ensured()
+            self.group.grading_via_merge_request.update_submission(self)
+
         # Create tag <full-group-id>/<request_name>/handled
         # and store handler's result JSON-encoded as its message.
         self.set_handled(result)
@@ -602,7 +607,7 @@ class GroupProject:
                         git_tools.local_branch(self.course.config.branch.problem),
                         self.course.config.branch.master,
                         force = True,
-                    )
+                    ),
                 )
                 self.lab.configure_student_project(project)
                 self.repo_add_remote()
@@ -647,6 +652,18 @@ class GroupProject:
             self.course.group(self.id),
             self.project,
         ])).values()
+
+    def make_members_direct(self):
+        '''
+        Make student members direct developers in the group project.
+        Useful in preparation for removing members from the student group.
+        '''
+        for gitlab_user in self.members:
+            with gitlab_tools.exist_ok():
+                self.project.lazy.members.create({
+                    'user_id': gitlab_user.id,
+                    'access_level': gitlab.const.DEVELOPER_ACCESS,
+                })
 
     def non_empty(self):
         return bool(self.members)
@@ -1023,6 +1040,10 @@ class GroupProject:
             yield hook
         finally:
             self.hook_delete(hook)
+
+    @functools.cached_property
+    def grading_via_merge_request(self):
+        return grading_via_merge_request.GradingViaMergeRequest(self)
 
     def tags_from_gitlab(self):
         self.logger.debug(f'Parsing request tags in {self.name} from Chalmers GitLab.')
