@@ -378,7 +378,7 @@ class SubmissionFilesColumn(Column):
             if self.lab.config.grading_via_merge_request:
                 linked_grading_response = (
                     'review merge request',
-                    self.group.grading_via_merge_request.merge_request.web_url,
+                    group.grading_via_merge_request.merge_request.web_url,
                 )
             else:
                 linked_grading_response = ('open issue', gitlab_tools.url_issues_new(

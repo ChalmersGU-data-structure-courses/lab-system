@@ -4,13 +4,13 @@ import logging
 import time
 
 import git
-import gitlab.exceptions
 
 import general
 import git_tools
 import gitlab_tools
 import markdown
 import path_tools
+import print_parse
 
 
 class GradingViaMergeRequest:
@@ -30,6 +30,11 @@ class GradingViaMergeRequest:
         self.course = group.course
         self.lab = group.lab
         self.gl = self.course.gl
+
+    sync_message = print_parse.regex_many(
+        'Synchronized submission branch with [{}]({}).',
+        [r'[^\]]*', r'[^\)]*'],
+    )
 
     @functools.cached_property
     def project(self):
@@ -137,18 +142,45 @@ class GradingViaMergeRequest:
         (merge_request,) = gitlab_tools.list_all(self.project.lazy.mergerequests)
         return merge_request
 
+    def get_synced_submissions(self):
+        for note in gitlab_tools.list_all(self.merge_request.notes):
+            if note.author['id'] in self.course.lab_system_users:
+                try:
+                    line = note.body.splitlines()[0]
+                    (request_name, _) = self.sync_message.parse(line)
+                    yield request_name
+                except ValueError:
+                    pass
+        pass
+
+    @functools.cached_property
+    def synced_submissions(self):
+        return list(self.get_synced_submissions())
+
     def update_submission(self, submission):
-        #submission.request_name
+        # Do not update if submission is not newer than last synced submission.
+        synced_subs = self.get_synced_submissions()
+        try:
+            last_synced = synced_subs[-1]
+            submissions = self.group.submissions()
+            if submissions.index(last_synced) > submissions.index(submission):
+                self.logger('Submission {submission} is not newer than {last_synced}, not syncing.')
+                return
+        except ValueError:
+            pass
+
+        self.logger('Syncing submission {submission}.')
         self.lab.repo.git.push(
             self.project.get.ssh_url_to_repo,
             git_tools.refspec(submission.repo_tag().commit, 'submission', force = True),
         )
 
+        # Hack
+        time.sleep(0.1)
+
         def body():
             link = gitlab_tools.url_tree(self.group.project.get, submission.request_name)
-            yield general.join_lines([
-                f'Synchronized submission branch with [{submission.request_name}]({link}).'
-            ])
+            yield general.join_lines([self.sync_message.print((submission.request_name, link))])
             submission_message = git_tools.tag_message(
                 submission.repo_remote_tag,
                 default_to_commit_message = False,
