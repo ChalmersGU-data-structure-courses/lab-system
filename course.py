@@ -251,6 +251,14 @@ class Course:
         return r
 
     @functools.cached_property
+    def lab_system_users(self):
+        return {
+            user.id: user
+            for name in self.config.gitlab_lab_system_users
+            for user in [self.gitlab_user(name)]
+        }
+
+    @functools.cached_property
     def entity_cached_params(self):
         return types.SimpleNamespace(
             gl = self.gl,
