@@ -375,7 +375,7 @@ class SubmissionFilesColumn(Column):
                 except AttributeError:
                     return ''
 
-            if self.lab.grading_via_merge_request:
+            if self.lab.config.grading_via_merge_request:
                 linked_grading_response = (
                     'review merge request',
                     self.group.grading_via_merge_request.merge_request.web_url,
