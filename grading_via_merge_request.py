@@ -1,6 +1,7 @@
 import contextlib
 import functools
 import logging
+import time
 
 import git
 import gitlab.exceptions
@@ -59,6 +60,9 @@ class GradingViaMergeRequest:
                         ),
                     )
 
+                # Hack
+                time.sleep(0.1)
+
                 merge_request = project.mergerequests.create({
                     'source_branch': 'submission',
                     'target_branch': 'problem',
@@ -78,6 +82,9 @@ class GradingViaMergeRequest:
                     )
 
                 project.protectedbranches.delete(self.course.config.branch.problem)
+
+                # Hack
+                time.sleep(0.1)
 
                 project.default_branch = self.course.config.branch.master
                 project.description = f'Grading for [{self.lab.name_full}]({self.group.project.lazy.web_url})'
