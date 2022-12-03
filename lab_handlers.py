@@ -185,9 +185,12 @@ class SubmissionTesting:
                 submission_current = group.submission_current(deadline = self.config.deadline)
 
                 # Skip test column if no test was produced.
-                with submission_current.checkout_manager(self_outer.segments_test) as dir:
-                    if not list(dir.iterdir()):
-                        return live_submissions_table.CallbackColumnValue(has_content = False)
+                def check():
+                    if submission_current.repo_tag_exist(self_outer.segments_test):
+                        with submission_current.checkout_manager(self_outer.segments_test) as dir:
+                            return list(dir.iterdir())
+                if not check():
+                    return live_submissions_table.CallbackColumnValue(has_content = False)
 
                 def format_cell(cell):
                     with cell:
