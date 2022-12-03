@@ -11,8 +11,6 @@ import lab_handlers
 import lab_handlers_java
 import lab_handlers_python
 import print_parse
-import robograder_java
-import test_lib
 import tester_java
 import tester_podman
 from this_dir import this_dir
@@ -58,6 +56,9 @@ gitlab_ssh = SimpleNamespace(
     # Currently (2021-12), 5 seems to be the value of MaxSessions configured for sshd at Chalmers GitLab.
     max_sessions = 5,
 )
+
+# Usernames on GitLab that are recognized as acting as the lab system.
+gitlab_lab_system_users = ['lab-system', 'sattler', 'carlos.tome']
 
 # Here is the group structure.
 # The top-level groups need to be created (with paths configured below).
@@ -331,6 +332,12 @@ _lab_config = SimpleNamespace(
     # Its value must be an instance of SubmissionHandler.
     submission_handler_key = None,
 
+    # Whether new-style grading via merge requests should be used.
+    # Currently requires students to not be members of their lab group on GitLab,
+    # but of the individual projects in the their group.
+    # This is because they should only have the guest role in the created grading projects that sit in the same group.
+    grading_via_merge_request = False,
+
     # Lab refresh period if the script is run in an event loop.
     # The webhooks on GitLab may fail to trigger in some cases:
     # * too many tags pushed at the same time,
@@ -375,6 +382,7 @@ class _LabConfig:
             self.path_gitignores.append(_lab_repo / 'gitignores' / f'{lab_folder}.gitignore')
         self.grading_sheet = lab.name.print(k)
         self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-to-be-graded.html'.format(lab.full_id.print(k))
+	self.grading_via_merge_request = False
 
         def f():
             if language == LabLanguage.JAVA:
