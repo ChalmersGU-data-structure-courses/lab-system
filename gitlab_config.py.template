@@ -331,7 +331,7 @@ class _LabConfig:
         self.path_gitignore = _lab_repo / 'gitignores' / f'{_language}.gitignore'
         self.grading_sheet = lab.name.print(k)
         self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-to-be-graded.html'.format(lab.full_id.print(k))
-				self.grading_via_merge_request = False
+        self.grading_via_merge_request = False
 
         def f():
             yield ('submission', lab_handlers_java.SubmissionHandler())
