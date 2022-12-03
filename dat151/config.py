@@ -52,6 +52,7 @@ gitlab_ssh = SimpleNamespace(
     max_sessions = 5,
 )
 
+# Usernames on GitLab that are recognized as acting as the lab system.
 gitlab_lab_system_users = ['lab-system', 'andreas.abel']
 
 # Here is the group structure.
@@ -295,6 +296,12 @@ _lab_config = SimpleNamespace(
     # Key of submission handler in the dictionary of request handlers.
     # Its value must be an instance of SubmissionHandler.
     submission_handler_key = None,
+
+    # Whether new-style grading via merge requests should be used.
+    # Currently requires students to not be members of their lab group on GitLab,
+    # but of the individual projects in the their group.
+    # This is because they should only have the guest role in the created grading projects that sit in the same group.
+    grading_via_merge_request = False,
 
     # Lab refresh period if the script is run in an event loop.
     # The webhooks on GitLab may fail to trigger in some cases:
