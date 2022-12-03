@@ -251,6 +251,14 @@ class Course:
         return r
 
     @functools.cached_property
+    def lab_system_users(self):
+        return {
+            user.id: user
+            for name in self.config.gitlab_lab_system_users
+            for user in [self.gitlab_user(name)]
+        }
+
+    @functools.cached_property
     def entity_cached_params(self):
         return types.SimpleNamespace(
             gl = self.gl,
@@ -601,7 +609,7 @@ class Course:
                     except gitlab.exceptions.GitlabCreateError as e:
                         self.logger.error(str(e))
 
-    def sync_students_to_gitlab(self, *, add = True, remove = True, restrict_to_known = True):
+    def sync_students_to_gitlab(self, *, add = True, remove = True, restrict_to_known = True, lab_id = None):
         '''
         Synchronize Chalmers GitLab student group membership according to the group membership on Canvas.
 
@@ -627,6 +635,8 @@ class Course:
 
         Call sync_students_to_gitlab(add = False, remove = False, restrict_to_known = False)
         to obtain (via logged warnings) a report of group membership deviations.
+
+        If lab_id is set: directly manage membership of the lab projects instead of at the lab group level.
         '''
         self.logger.info('synchronizing students from Canvas groups to GitLab group')
 
@@ -681,12 +691,18 @@ class Course:
                 student_gitlab_usernames.get(gitlab_username),
             )
 
+        if not lab_id is None:
+            lab = self.labs[lab_id]
+
         for canvas_group in self.canvas_group_set.details.values():
             group_id = self.config.group.name.parse(canvas_group.name)
             users = self.canvas_group_set.group_users[canvas_group.id]
 
-            entity = self.group(group_id).lazy
             entity_name = f'{self.config.group.name.print(group_id)} on GitLab'
+            if lab_id is None:
+                entity = self.group(group_id).lazy
+            else:
+                entity = lab.student_group(group_id).project.lazy
 
             # Current members and invitations.
             # If restrict_to_known holds, restricts to gitlab users and email addresses
@@ -860,6 +876,13 @@ class Course:
             cached_entity.lazy,
             [gitlab.const.DEVELOPER_ACCESS, gitlab.const.MAINTAINER_ACCESS]
         )
+
+    def empty_groups(self):
+        for canvas_group in self.canvas_group_set.details.values():
+            group_id = self.config.group.name.parse(canvas_group.name)
+            cached_entity = self.group(group_id)
+            for gitlab_user in self.student_members(cached_entity).values():
+                cached_entity.lazy.members.delete(gitlab_user.id)
 
     def student_projects(self):
         '''A generator for all contained student group projects.'''

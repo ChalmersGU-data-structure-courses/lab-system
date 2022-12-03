@@ -8,6 +8,7 @@ import dominate
 import general
 import git_tools
 import gitlab_tools
+import grading_via_merge_request
 
 
 logger = logging.getLogger(__name__)
@@ -350,15 +351,15 @@ class SubmissionFilesColumn(Column):
         float_left_and_right(cell, 'Submission', ' vs:')
 
     class Value(ColumnValue):
-        def __init__(self, linked_name, linked_open_grading_issue):
+        def __init__(self, linked_name, linked_grading_response):
             self.linked_name = linked_name
-            self.linked_open_grading_issue = linked_open_grading_issue
+            self.linked_grading_response = linked_grading_response
 
         def format_cell(self, cell):
             with cell:
                 a = format_url(*self.linked_name)
                 add_class(a, 'block')
-                a = format_url(*self.linked_open_grading_issue)
+                a = format_url(*self.linked_grading_response)
                 add_class(a, 'block')
 
     def get_value(self, group):
@@ -366,7 +367,7 @@ class SubmissionFilesColumn(Column):
 
         response_key = self.lab.submission_handler.review_response_key
         if response_key is None:
-            linked_open_grading_issue = None
+            linked_grading_response = None
         else:
             def f():
                 try:
@@ -374,18 +375,24 @@ class SubmissionFilesColumn(Column):
                 except AttributeError:
                     return ''
 
-            linked_open_grading_issue = ('open issue', gitlab_tools.url_issues_new(
-                group.project.get,
-                title = self.lab.submission_handler.response_titles[response_key].print({
-                    'tag': submission.request_name,
-                    'outcome': self.course.config.grading_response_default_outcome,
-                }),
-                description = group.append_mentions(f()),
-            ))
+            if self.lab.config.grading_via_merge_request:
+                linked_grading_response = (
+                    'review merge request',
+                    group.grading_via_merge_request.merge_request.web_url,
+                )
+            else:
+                linked_grading_response = ('open issue', gitlab_tools.url_issues_new(
+                    group.project.get,
+                    title = self.lab.submission_handler.response_titles[response_key].print({
+                        'tag': submission.request_name,
+                        'outcome': self.course.config.grading_response_default_outcome,
+                    }),
+                    description = group.append_mentions(f()),
+                ))
 
         return SubmissionFilesColumn.Value(
             (submission.request_name, gitlab_tools.url_tree(group.project.get, submission.request_name)),
-            linked_open_grading_issue,
+            linked_grading_response,
         )
 
 class SubmissionDiffColumnValue(ColumnValue):
