@@ -164,12 +164,12 @@ class GradingViaMergeRequest:
             last_synced = synced_subs[-1]
             submissions = list(self.group.submissions())
             if submissions.index(last_synced) > submissions.index(submission):
-                self.logger('Submission {submission} is not newer than {last_synced}, not syncing.')
+                self.logger.debug('Submission {submission} is not newer than {last_synced}, not syncing.')
                 return
         except ValueError:
             pass
 
-        self.logger('Syncing submission {submission}.')
+        self.logger.info('Syncing submission {submission}.')
         self.lab.repo.git.push(
             self.project.get.ssh_url_to_repo,
             git_tools.refspec(submission.repo_tag().commit, 'submission', force = True),
