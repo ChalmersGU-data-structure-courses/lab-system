@@ -23,7 +23,7 @@ class LabTester(test_lib.LabTester):
     TestSpec = tester_podman.Test
     needs_writable_sub_dir = True
 
-    def run_test(self, dir_out: Path, dir_src: Path, name: str, test: tester_podman.Test):
+    def run_test(self, dir_out: Path, dir_src: Path, name: str, test: tester_podman.Test, dir_bin: Path = None):
         '''
         See test_lib.LabTester.run_test.
         We produce the files according to test_lib.LabTester.record.
