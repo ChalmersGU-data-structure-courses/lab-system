@@ -233,7 +233,7 @@ class SubmissionTesting:
 
         with path_tools.temp_dir() as test:
             if not suppress:
-                self.tester.run_tests(test, src, bin)
+                self.tester.run_tests(test, src, dir_bin = bin)
             request_and_responses.repo_report_create(
                 self.segments_test,
                 test,
