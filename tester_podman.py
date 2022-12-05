@@ -86,7 +86,7 @@ class LabTester(test_lib.LabTester):
             general.log_command(logger, cmd)
             subprocess.run(cmd, check = True, text = True, stdout = subprocess.PIPE)
 
-    def run_test(self, dir_out: Path, dir_src: Path, name: str, test: Test):
+    def run_test(self, dir_out: Path, dir_src: Path, name: str, test: Test, **kwargs):
         '''
         See test_lib.LabTester.run_test.
         We produce the files according to test_lib.LabTester.record.
