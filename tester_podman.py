@@ -42,10 +42,12 @@ class Test(test_lib.Test):
     * image: Container image to run.
     * command_line: Command line to execute.
     * input: Optional input to the program, as a string (defaults to None).
+    * allow_network: Give network access to container.
     '''
     image: str = None  # Default argument for compatibility with Python <3.10
     command_line: Tuple[Union[str, os.PathLike]] = None  # Default argument for compatibility with Python <3.10
     input: Optional[str] = None
+    allow_network: bool = False
 
 class LabTester(test_lib.LabTester):
     '''
@@ -94,7 +96,8 @@ class LabTester(test_lib.LabTester):
         def cmd_create():
             yield from ['podman', 'create']
             yield from ['--volume', ':'.join([volume_source_path(dir_src), '/submission', 'O'])]
-            yield from ['--network', 'none']
+            if not test.allow_network:
+                yield from ['--network', 'none']
             if not test.memory is None:
                 yield from ['--memory', str(1024 * 1024 * test.memory)]
             yield from ['--workdir', '/submission']
