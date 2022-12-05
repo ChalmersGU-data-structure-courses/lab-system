@@ -244,7 +244,7 @@ class LabTester:
         '''
         pass
 
-    def run_tests(self, dir_out: Path, dir_src: Path, dir_bin: Path = None, **kwargs) -> None:
+    def run_tests(self, dir_out: Path, dir_src: Path, **kwargs) -> None:
         '''
         Run the configured tests on a given submission.
 
@@ -253,7 +253,6 @@ class LabTester:
             Path of the output directory.
             Every test stores in output in a subfolder.
         * dir_src: Directory containing the submission to test.
-        * dir_bin: Optional directory containing the compiled submission.
         * kwargs: Passed to run_test
 
         Subclasses should set the class attribute needs_writable_sub_dir to True
@@ -280,7 +279,7 @@ class LabTester:
             for (name, test) in self.tests.items():
                 dir_out_test = dir_out / name
                 dir_out_test.mkdir()
-                self.run_test(dir_out_test, dir_test, name, test, dir_bin = dir_bin, **kwargs)
+                self.run_test(dir_out_test, dir_test, name, test, **kwargs)
 
     def filter_errors(self, err: str) -> str:
         '''
