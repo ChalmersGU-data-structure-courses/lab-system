@@ -356,7 +356,7 @@ labs = dict([
     _lab_item(1, datetime.timedelta(minutes = 15), True, False),
     _lab_item(2, datetime.timedelta(minutes = 15), True, True),
     _lab_item(3, datetime.timedelta(minutes = 15), True, True),
-#    _lab_item(4, datetime.timedelta(minutes = 15), True, True),
+    _lab_item(4, datetime.timedelta(minutes = 15), True, True),
 ])
 # P.S.: minutes for eventloop script
 
