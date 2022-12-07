@@ -166,7 +166,7 @@ class GradingViaMergeRequest:
             if not submissions.index(submission) > submissions.index(last_synced):
                 self.logger.debug(f'Submission {submission} is not newer than {last_synced}, not syncing.')
                 return
-        except ValueError:
+        except (ValueError, IndexError):
             pass
 
         self.logger.info(f'Syncing submission {submission}.')
