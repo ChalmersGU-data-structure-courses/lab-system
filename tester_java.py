@@ -86,13 +86,18 @@ class LabTester(test_lib.LabTester):
     def __init__(self, dir_lab: Path, machine_speed: float = 1):
         super().__init__(dir_lab, machine_speed)
 
-        logger.debug('Compiling test code.')
-        java_tools.compile(
-            src = self.dir_lab / 'test',
-            bin = self.dir_lab / 'test',
-            sourcepath = [self.dir_lab / 'problem'],
-            implicit = False,
-        )
+        self.test_dir = self.dir_lab / 'test'
+        if not self.test_dir.exists():
+            logger.debug('No test code directory detected.')
+            self.test_dir = None
+        else:
+            logger.debug('Compiling test code.')
+            java_tools.compile(
+                src = self.test_dir,
+                bin = self.test_dir,
+                sourcepath = [self.dir_lab / 'problem'],
+                implicit = False,
+            )
 
     def run_test(self, dir_out: Path, dir_src: Path, name: str, test: Test, dir_bin: Path):
         '''
@@ -113,10 +118,14 @@ class LabTester(test_lib.LabTester):
                     java_tools.FilePermission.delete,
                 ])
 
+        def test_classpath():
+            if self.test_dir:
+                yield self.test_dir
+
         with submission_java.run_context(
                 submission_src = dir_src,
                 submission_bin = dir_bin,
-                classpath = [self.dir_lab / 'test'],
+                classpath = test_classpath(),
                 entrypoint = test.class_name,
                 arguments = test.args,
                 permissions = permissions(),
