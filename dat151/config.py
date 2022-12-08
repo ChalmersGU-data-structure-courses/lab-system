@@ -227,8 +227,8 @@ lab = SimpleNamespace(
 # * there are two graders with the same first name.
 names_informal = print_parse.from_dict([
     ('Christian Sattler', 'Christian'),
-    ('Seyed Mohammad Mehdi', 'REDACTED_FIRST_NAME'),
-    ('Prabhat Kumar', 'REDACTED_FIRST_NAME'),
+    ('REDACTED_NAME', 'REDACTED_FIRST_NAME'),
+    ('REDACTED_NAME', 'REDACTED_FIRST_NAME'),
 ])
 
 # Configuration exclusively related to grading sheets.
