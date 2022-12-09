@@ -143,6 +143,8 @@ def run_context(
     Yields a generator for a command-line that can be used for process creation.
     Note: the process must be executed in the submission source directory.
     '''
+    classpath = list(classpath)
+
     if check_conflict:
         logger.debug('Checking for file conflicts.')
         for dir in classpath:
