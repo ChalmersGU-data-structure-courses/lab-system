@@ -83,18 +83,6 @@ def server_manager(netloc, secret_token, callback, logger = logger):
 
             yield server
 
-def event_type(event):
-    '''
-    For some reason, GitLab is inconsistent in the field
-    name of the event type attribute of a webhook event.
-    This function attempts to guess it, returning its value.
-    '''
-    for key in ['event_type', 'event_name']:
-        r = event.get(key)
-        if r is not None:
-            return r
-    raise ValueError(f'no event type found in event {event}')
-
 class ParsingError(Exception):
     def __init__(self, msg, event):
         self.msg = msg
