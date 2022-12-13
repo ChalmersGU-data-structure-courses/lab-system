@@ -5,6 +5,7 @@ from pathlib import Path
 import shutil
 import tempfile
 import types
+from typing import Iterable
 
 import git
 import gitlab
@@ -17,6 +18,7 @@ import git_tools
 import gitlab_tools
 import google_tools.sheets
 import grading_sheet
+import grading_via_merge_request
 import group_project
 import instance_cache
 import live_submissions_table
@@ -92,8 +94,11 @@ class Lab:
         self.logger = logger
         self.course = course
         self.id = id
-        self.dir = None if dir is None else Path(dir)
         self.deadline = deadline
+
+        self.dir = None if dir is None else Path(dir)
+        if self.dir:
+            self.dir.mkdir(exist_ok = True)
 
         self.config = self.course.config.labs[id] if config is None else config
 
@@ -107,7 +112,7 @@ class Lab:
         self.path = self.course.config.path.labs / self.course.config.lab.id_gitlab.print(self.id)
 
         # Local grading repository config.
-        self.dir_repo = self.dir / 'repo'
+        self.dir_repo = None if self.dir is None else self.dir / 'repo'
         # Whether we have updated the repository and it needs to be pushed.
         self.repo_updated = False
 
@@ -117,6 +122,12 @@ class Lab:
             self.file_live_submissions_table,
             '.staging',
         )
+
+        if self.config.grading_via_merge_request:
+            self.grading_via_merge_request_setup_data = grading_via_merge_request.SetupData(self)
+            self.dir_status_repos = None if self.dir is None else self.dir / 'status-repos'
+            if self.dir_status_repos:
+                self.dir_status_repos.mkdir(exist_ok = True)
 
     @functools.cached_property
     def gl(self):
@@ -331,12 +342,16 @@ class Lab:
         for group_id in self.course.groups:
             self.student_group(group_id).repo_add_remote(ignore_missing = True)
 
-    def repo_delete(self):
+    def repo_delete(self, force = False):
         '''
         Delete the repository directory.
         Warning: Make sure that self.dir is correctly configured before calling.
         '''
-        shutil.rmtree(self.dir)
+        try:
+            shutil.rmtree(self.dir_repo)
+        except FileNotFoundError:
+            if not force:
+                raise
 
     def repo_init(self, bare = False):
         '''
@@ -347,8 +362,8 @@ class Lab:
         Pushing remotes are just the grading repository.
         '''
         self.logger.info('Initializing local grading repository.')
-        repo = git.Repo.init(self.dir_repo, bare = bare)
         try:
+            repo = git.Repo.init(str(self.dir_repo), bare = bare)
             with repo.config_writer() as c:
                 c.add_value('advice', 'detachedHead', 'false')
 
@@ -371,8 +386,9 @@ class Lab:
             )
             self.repo_add_groups_remotes(ignore_missing = True)
         except:  # noqa: E722
-            shutil.rmtree(self.dir)
+            shutil.rmtree(self.dir_repo, force = True)
             raise
+
         self.repo = repo
 
     def repo_remote_command(self, command):
@@ -571,62 +587,9 @@ class Lab:
         refs = git_tools.references_hierarchy(self.repo)
         return refs[git_tools.refs.name][git_tools.tags.name]
 
-    def hooks_create(self, netloc = None):
-        '''
-        Create webhooks in all group project in this lab on GitLab with the given net location.
-        See group_project.GroupProject.hook_create.
-        Returns a dictionary mapping group ids to hooks.
-
-        Use this method only if you intend to create and
-        delete webhooks over separate program invocations.
-        Otherwise, the context manager hooks_manager is more appropriate.
-        '''
-        self.logger.info('Creating project hooks in all student projects')
-        hooks = dict()
-        try:
-            for group in self.student_groups:
-                hooks[group.id] = group.hook_create(netloc = netloc)
-            return hooks
-        except:  # noqa: E722
-            for (group_id, hook) in hooks.items():
-                self.student_group(group_id).hook_delete(hook)
-            raise
-
-    def hooks_delete(self, hooks):
-        '''
-        Delete webhooks in student projects in this lab on on GitLab.
-        Takes a dictionary mapping each group id to its hook.
-        See group_project.GroupProject.hook_delete.
-        '''
-        self.logger.info('Deleting project hooks in all student projects')
+    def hook_specs(self, netloc = None) -> Iterable[gitlab_tools.HookSpec]:
         for group in self.student_groups:
-            group.hook_delete(hooks[group.id])
-
-    def hooks_delete_all(self, except_for = ()):
-        '''
-        Delete all webhooks in all group project in this lab set up with the given netloc on GitLab.
-        See group_project.GroupProject.hook_delete_all.
-        '''
-        for group in self.student_groups:
-            group.hooks_delete_all(except_for = except_for)
-
-    @contextlib.contextmanager
-    def hooks_manager(self, netloc = None):
-        '''
-        A context manager for installing GitLab web hooks for all student projects in this lab.
-        This is an expensive operation, setting up and cleaning up costs one HTTP call per project.
-        Yields a dictionary mapping each group id to the hook installed in the project of that group.
-        '''
-        with contextlib.ExitStack() as stack:
-            try:
-                self.logger.info('Creating project hooks in all student projects')
-
-                def f():
-                    for group in self.student_groups:
-                        yield (group.id, stack.enter_context(group.hook_manager(netloc = netloc)))
-                yield dict(f())
-            finally:
-                self.logger.info('Deleting project hooks in all student projects (do not interrupt)')
+            yield from group.hook_specs(netloc)
 
     # Alternative implementation
     # @contextlib.contextmanager
@@ -717,10 +680,48 @@ class Lab:
                     yield group.id
         return frozenset(f())
 
+    @contextlib.contextmanager
+    def parse_grading_merge_request_responses(self):
+        '''
+        This method assumes self.config.grading_via_merge_request is true.
+        Parse grading merge request responses for group projects on in this lab.
+        This calls parse_grading_merge_request_responses in each contained group project.
+        Cost: two HTTP calls per group.
+
+        This method needs to be called before requests_and_responses
+        in each contained handler data instance can be accessed.
+
+        Returns the frozen set of group ids with changes in review issues (if configured).
+
+        This method is a context manager.
+        Inside the context, grading merge requests have notes cache clear suppressed.
+        process_requests benefits from being executed inside its scope.
+        This is because processing requests may run GradingViaMergeRequest.sync_submissions.
+        '''
+        self.logger.info('Parsing response issues.')
+
+        with contextlib.ExitStack() as stack:
+            def f():
+                for group in self.student_groups:
+                    if group.parse_grading_merge_request_responses():
+                        yield group.id
+                    stack.enter_context(group.grading_via_merge_request.notes_suppress_cache_clear())
+            yield frozenset(f())
+
     def parse_requests_and_responses(self, from_gitlab = True):
-        '''Calls parse_request_tags and parse_response_issues.'''
-        self.parse_request_tags(from_gitlab = from_gitlab)
+        '''
+        Calls:
+        * parse_response_issues
+        * parse_grading_merge_request_responses (if configured)
+        * parse_request_tags
+
+        Does more HTTP requests for Chalmers GitLab than needed.
+        '''
         self.parse_response_issues()
+        if self.config.grading_via_merge_request:
+            with self.parse_grading_merge_request_responses():
+                pass
+        self.parse_request_tags(from_gitlab = from_gitlab)
 
     def process_group_request(self, group):
         '''
@@ -742,6 +743,10 @@ class Lab:
           Update responses before updating requests to avoid responses with no matching request.
 
         Returns the frozen set of group ids with newly processed submissions.
+
+        If grading via merge request has been configured,
+        benefits from being executed within the scope of parse_grading_merge_request_responses.
+        This is because processing requests may run GradingViaMergeRequest.sync_submissions.
         '''
         self.logger.info('Processing requests.')
         self.submission_solution.process_request()
@@ -987,10 +992,10 @@ class Lab:
                     grader = None
                     outcome = None
                 else:
-                    grader = google_tools.sheets.cell_value(submission.informal_grader_name)
+                    grader = google_tools.sheets.cell_value(submission.grader_informal_name)
                     outcome = google_tools.sheets.cell_link_with_fields(
                         self.course.config.outcome.as_cell.print(submission.outcome),
-                        submission.outcome_issue.web_url,
+                        submission.link,
                     )
 
                 self.grading_sheet.write_query(
@@ -1051,32 +1056,37 @@ class Lab:
             Passed to update_grading_sheet.
             If set, overrides self.deadline.
         '''
-        self.parse_response_issues()
-        self.repo_fetch_all()
-        self.parse_request_tags(False)
-        self.process_requests()
+        with contextlib.ExitStack() as stack:
+            self.parse_response_issues()
+            if self.config.grading_via_merge_request:
+                stack.enter_context(self.parse_grading_merge_request_responses())
+            self.repo_fetch_all()
+            self.parse_request_tags(False)
+            self.process_requests()
         self.update_submission_systems(deadline = deadline)
 
     def refresh_lab(self):
         '''
         Refresh group project requests and responses.
         Should be called regularly even if webhooks are in place.
-        This is because webhooks can fail to trigger
-        or the network connection may be done.
+        This is because webhooks can fail to trigger or the network connection may be down.
         '''
         self.logger.info('Refreshing lab.')
-        review_updates = frozenset(self.parse_response_issues())
+        with contextlib.ExitStack() as stack:
+            review_updates = self.parse_response_issues()
+            if self.config.grading_via_merge_request:
+                review_updates = review_updates | stack.enter_context(self.parse_grading_merge_request_responses())
 
-        self.repo_fetch_all()
-        self.parse_request_tags(from_gitlab = False)
-        new_submissions = frozenset(self.process_requests())
+            self.repo_fetch_all()
+            self.parse_request_tags(from_gitlab = False)
+            new_submissions = frozenset(self.process_requests())
 
         # Update submission system.
         self.logger.info(f'Groups with new submissions: {new_submissions}')
         self.logger.info(f'Groups with review updates: {review_updates}')
         self.update_submission_systems(group_ids = review_updates | new_submissions)
 
-    def refresh_group(self, group, refresh_responses = True):
+    def refresh_group(self, group, refresh_issue_responses = False, refresh_grading_merge_request = False):
         '''
         Refresh requests and responses in a single group in this lab.
         Typically called after notification by a webhook.
@@ -1085,23 +1095,31 @@ class Lab:
         * group_id: The id of the group to refresh.
         * refresh_responses: If set to False, responses will not be updated.
         '''
-        suffix = '' if refresh_responses else ' (requests only)'
+        refresh_some_responses = refresh_issue_responses or refresh_grading_merge_request
+        suffix = '' if refresh_some_responses else ' (requests only)'
         self.logger.info(f'Refreshing {group.name}{suffix}.')
 
-        review_updates = refresh_responses and group.parse_response_issues()
-        group.repo_fetch()
-        # Setting from_gitlab = True results in a single HTTP call.
-        # It might be faster if we have a large number of remote tags.
-        group.parse_request_tags(from_gitlab = False)
-        new_submissions = self.process_group_request(group)
+        with contextlib.ExitStack() as stack:
+            def f():
+                yield refresh_issue_responses and group.parse_response_issues()
+                if self.config.grading_via_merge_request:
+                    yield refresh_grading_merge_request and group.parse_grading_merge_request()
+                    stack.enter_context(group.grading_via_merge_request.notes_suppress_cache_clear())
+
+            grading_updates = any(f())
+            group.repo_fetch()
+            # Setting from_gitlab = True results in a single HTTP call.
+            # It might be faster if we have a large number of remote tags.
+            group.parse_request_tags(from_gitlab = False)
+            new_submissions = self.process_group_request(group)
 
         # Update submission system.
         if new_submissions:
             self.logger.info('New submissions received.')
-        if review_updates:
-            self.logger.info('New review updates received.')
+        if grading_updates:
+            self.logger.info('Grading updates received.')
         self.update_submission_systems(group_ids = filter(
-            lambda _: review_updates or new_submissions, [group.id]
+            lambda _: grading_updates or new_submissions, [group.id]
         ))
 
     def update_grading_sheet_and_live_submissions_table(self, deadline = None):

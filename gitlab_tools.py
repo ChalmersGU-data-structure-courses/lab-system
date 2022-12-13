@@ -1,15 +1,18 @@
 import contextlib
-import dateutil
+import dataclasses
 import functools
 import logging
 import operator
 from pathlib import Path, PurePosixPath
 import time
+from typing import Any, Tuple
 import urllib.parse
 
+import dateutil.parser
 import gitlab
 
 import general
+import print_parse
 
 
 logger = logging.getLogger(__name__)
@@ -215,6 +218,24 @@ class CachedProject:
         with contextlib.suppress(AttributeError):
             del self.get
 
+        '''
+        Note: Due to a GitLab bug, the hook is not called when an issue is deleted.
+              Thus, before deleting a response issue, you should first rename it
+              (triggering the hook) so that it is no longer recognized as a response issue.
+        '''
+
+    @contextlib.contextmanager
+    def hook_manager(self, netloc, events):
+        '''
+        A context manager for a webhook.
+        Encapsulates hook_create and hool_delete.
+        '''
+        hook = self.hook_create(netloc = netloc)
+        try:
+            yield hook
+        finally:
+            self.hook_delete(hook)
+
 def users_dict(manager):
     return dict((user.username, user) for user in list_all(manager))
 
@@ -276,10 +297,12 @@ def invitation_delete(gitlab_client, entity, email):
         str(PurePosixPath('/') / entity_path_segment(entity) / 'invitations' / email),
     )
 
+parse_date = dateutil.parser.parse
+
 def get_tags_sorted_by_date(project):
     tags = list_all(project.tags)
     for tag in tags:
-        tag.date = dateutil.parser.parse(tag.commit['committed_date'])
+        tag.date = parse_date(tag.commit['committed_date'])
     tags.sort(key = operator.attrgetter('date'))
     return tags
 
@@ -358,11 +381,27 @@ def url_compare(project, source, target):
         ['-', 'compare', str(source) + '...' + str(target)], {'straight': 'true', 'w': '1'}
     )
 
-def url_tag_name(project, tag_name):
-    return project_url(project, ['-', 'tags', tag_name])
+def url_tag_name(project, tag_name = None):
+    def f():
+        yield '-'
+        yield 'tags'
+        if not tag_name is None:
+            yield tag_name
+
+    return project_url(project, f())
 
 def url_tag(project, tag):
     return url_tag_name(project, tag.name)
+
+def url_merge_request_note(merge_request, note = None):
+    anchor = 'notes' if note is None else f'note_{note.id}'
+    return merge_request.web_url + '#' + anchor
+
+def url_username(gl, username):
+    return f'{gl.url}/{username}'
+
+def url_user(gl, user):
+    return url_username(gl, user.username)
 
 def url_issues_new(project, **kwargs):
     '''
@@ -405,3 +444,234 @@ def move_subgroups(gl, group_source, group_target):
         if not group.id == group_target.id:
             group = gl.groups.get(group.id)
             group.transfer_group(group_target.id)
+
+@dataclasses.dataclass
+class LabelSpec:
+    name: str
+    color: str
+
+username_regex = r'[a-zA-Z0-9\.\-_]+'
+
+pp_username = print_parse.regex('{}', username_regex)
+
+class _T:
+    @functools.cached_property
+    def pp_add(self):
+        return print_parse.regex('requested review from @{}', username_regex)
+
+    @functools.cached_property
+    def pp_remove(self):
+        return print_parse.regex('removed review request for @{}', username_regex)
+
+    @functools.cached_property
+    def pp_change(self):
+        return print_parse.regex_many(
+            'requested review from @{} and removed review request for @{}',
+            [username_regex, username_regex],
+        )
+
+    def __call__(self, note):
+        if note.system:
+            body = note.body
+            with contextlib.suppress(ValueError):
+                added = self.pp_add.parse(body)
+                return (added, None)
+
+            with contextlib.suppress(ValueError):
+                removed = self.pp_remove.parse(body)
+                return (None, removed)
+
+            with contextlib.suppress(ValueError):
+                return self.pp_change.parse(body)
+
+parse_reviewer_change = _T()
+
+def parse_reviewer_intervals(notes):
+    reviewer = None
+    start = None
+
+    for note in notes:
+        r = parse_reviewer_change(note)
+        if r:
+            change = (note.id, parse_date(note.created_at))
+            (added, removed) = r
+
+            if not removed == reviewer:
+                raise ValueError(f'Previous reviewer {added} does not match removed reviewer {removed}')
+
+            # Can this happen?
+            if added == removed:
+                continue
+
+            if not reviewer is None:
+                yield (reviewer, (start, change))
+
+            reviewer = added
+            start = change
+
+    if not reviewer is None:
+        yield (reviewer, (start, None))
+
+def parse_label_event_action(action):
+    return {
+        'add': True,
+        'remove': False,
+    }[action]
+
+@dataclasses.dataclass
+class HookSpec:
+    project: Any
+    netloc: print_parse.NetLoc
+    events: Tuple[str]
+    secret_token: str
+
+def hooks_get(project):
+    '''
+    Get the currently installed webhooks in this projects.
+    Returns a dictionary from net locations to lists of hooks.
+    '''
+    def f():
+        for hook in list_all(project.hooks):
+            url = print_parse.url.parse(hook.url)
+            yield (url.netloc, hook)
+    return general.multidict(f())
+
+def hook_create(spec: HookSpec):
+    '''
+    Create webhook in the given project with the specified net location, events, and secret token.
+    Hook callbacks are made via SSL, with certificate verification disabled.
+    The argument netloc is an instance of print_parse.NetLoc.
+
+    Arguments:
+    * project: Project in which to create the webhook.
+    * netloc: Net location to use.
+    * events: Iterable of events (str) to watch for, e.g. 'tag_push', 'issues', 'merge_requests'.
+    * secret_token: Secret token to send with each webhook callback.
+
+    Note: Due to a GitLab bug, the webhook is not called when an issue is deleted.
+    '''
+    url = print_parse.url.print(print_parse.URL_HTTPS(spec.netloc))
+    logger.debug(f'Creating project webhook with url {url} in {spec.project.web_url}.')
+
+    try:
+        def f():
+            yield ('url', url)
+            yield ('enable_ssl_verification', False)
+            yield ('token', spec.secret_token)
+            for event in spec.events:
+                yield (f'{event}_events', True)
+        return spec.project.hooks.create(dict(f()))
+    except gitlab.exceptions.GitlabCreateError as e:
+        if e.response_code == 422 and e.error_message == 'Invalid url given':
+            raise ValueError(
+                f'Invalid net location {print_parse.netloc.print(spec.netloc)} '
+                f'for a webhook in {spec.project.web_url}.'
+            ) from e
+        else:
+            raise
+
+def hook_delete(project, hook):
+    '''Delete a webhook in the given project.'''
+    logger.debug(f'Deleting project webhook {hook.id} with url {hook.url} in {project.web_url}.')
+    hook.delete()
+
+def hooks_delete_all(project, hooks = None, except_for = None):
+    '''
+    Delete webhooks in the given project.
+    The argument netloc is an instance of print_parse.NetLoc.
+    You should use this:
+    * when manually creating and deleting hooks in separate program invocations,
+    * when using hook_manager:
+        if previous program runs where killed or stopped in a non-standard fashion
+        that prevented cleanup and have left lingering webhooks.
+
+    Arguments:
+    * hooks: Optional hook dictionary to use (as returned by hooks_get)
+    * except_for: When set to a netloc, skip deleting hooks that match.
+    '''
+    if except_for is None:
+        logger.debug('Deleting all project hooks')
+    else:
+        netloc_keep = print_parse.netloc_normalize(except_for)
+        logger.debug('Deleting all project hooks but those with net location {print_parse.netloc.print(netloc_keep)}')
+
+    if hooks is None:
+        hooks = hooks_get(project)
+
+    for (netloc, hook_list) in hooks.items():
+        for hook in hook_list:
+            if not (except_for is not None and netloc_keep == netloc):
+                hook_delete(project, hook)
+
+def hook_check(spec: HookSpec, hooks):
+    '''
+    Check that the given hooks dictionary (as returned by hooks_get) corresponds to a correct configuration.
+    Here, correct means: as created by a single call to hook_create.
+    Returns that hook on success.
+    Otherwise raises ValueError.
+    '''
+    for (netloc_key, hook_list) in hooks.items():
+        if not netloc_key == spec.netloc:
+            raise ValueError(f'hook for incorrect netloc {print_parse.netloc.print(netloc_key)}')
+
+    hook_list = hooks.get(spec.netloc)
+    if not hook_list:
+        raise ValueError(f'hook missing for given netloc {print_parse.netloc.print(spec.netloc)}')
+
+    try:
+        [hook] = hook_list
+    except ValueError:
+        raise ValueError(
+            f'more than one hook given netloc {print_parse.netloc.print(spec.netloc)}'
+        ) from None
+
+    for event in spec.events:
+        if not getattr(hook, f'{event}_events'):
+            raise ValueError(f'{event} events not configured')
+    if hook.enable_ssl_verification:
+        raise ValueError('hook does not have SSL certificate verification disabled')
+
+    return hook
+
+def hook_ensure(spec: HookSpec, hooks = None):
+    '''
+    Ensure that the webhook in this project is correctly configured.
+    Also makes sure there are no other hooks.
+    (This is to deal with cases of changing IP addresses.)
+    Cannot check whether the secret token matches.
+    Returns the ensured hook.
+
+    If 'hooks' is None, get the hooks from the project.
+    '''
+    logger.debug('Ensuring webhook configuration in {project.web_url}.')
+    if hooks is None:
+        hooks = hooks_get(spec.project)
+    try:
+        return hook_check(spec, hooks)
+    except ValueError:
+        hooks_delete_all(spec.project, hooks)
+        return hook_create(spec)
+
+@contextlib.contextmanager
+def hook_manager(spec: HookSpec):
+    '''
+    A context manager for a webhook.
+    Encapsulates hook_create and hool_delete.
+    '''
+    hook = hook_create(spec)
+    try:
+        yield hook
+    finally:
+        hook_delete(spec.project, hook)
+
+def event_type(event):
+    '''
+    For some reason, GitLab is inconsistent in the field
+    name of the event type attribute of a webhook event.
+    This function attempts to guess it, returning its value.
+    '''
+    for key in ['event_type', 'event_name']:
+        r = event.get(key)
+        if r is not None:
+            return r
+    raise ValueError(f'no event type found in event {event}')
