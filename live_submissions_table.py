@@ -439,7 +439,7 @@ class SubmissionDiffPreviousColumn(Column):
                 submission_previous.repo_tag(),
                 submission_current.repo_tag(),
             )),
-            (submission_previous.informal_grader_name, submission_previous.outcome_issue.web_url),
+            (submission_previous.grader_informal_name, submission_previous.link),
             is_same = False,  # TODO: implement
         )
 

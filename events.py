@@ -36,6 +36,10 @@ class LabEvent:
 class GroupProjectEvent:
     pass
 
+@_decorator
+class GroupProjectResponseEvent:
+    pass
+
 
 # ## Instances of ProgramEvent.
 
@@ -93,13 +97,28 @@ class GroupProjectWebhookEvent(GroupProjectEvent):
 
 @_dataclass_incomparable
 class GroupProjectTagEvent(GroupProjectWebhookEvent):
-    _key = 0
+    _key = (0,)
 
 @_dataclass_incomparable
-class GroupProjectIssueEvent(GroupProjectWebhookEvent):
-    _key = 1
+class GroupProjectWebhookResponseEvent(GroupProjectWebhookEvent):
     '''
-    GroupProjectIssueEvent has priority over GroupProjectTagEvent.
+    GroupProjectResponseEvent has priority over GroupProjectTagEvent.
     This is because we need to reload requests anyway
     after reloading responses before merging them.
     '''
+    group_project_response_event: GroupProjectResponseEvent
+
+    @property
+    def _key(self):
+        return (1, self.group_project_response_event)
+
+
+# ## Instances of GroupProjectResponseEvent
+
+@_dataclass_incomparable
+class GroupProjectIssueEvent(GroupProjectResponseEvent):
+    _key = ()
+
+@_dataclass_incomparable
+class GroupProjectGradingMergeRequestEvent(GroupProjectResponseEvent):
+    _key = ()

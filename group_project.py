@@ -5,6 +5,7 @@ import json
 import logging
 from pathlib import PurePosixPath
 import shlex
+from typing import Iterable
 
 import git
 import gitlab
@@ -16,8 +17,6 @@ import item_parser
 import git_tools
 import gitlab_tools
 import grading_via_merge_request
-import print_parse
-import webhook_listener
 
 
 class RequestAndResponses:
@@ -27,7 +26,7 @@ class RequestAndResponses:
     in response to this request tag (as identified by their title).
 
     To process the request, an instance of this class is passed
-    as argument to handle_request method of the corresponding request handler.
+    as argument to the handle_request method of the corresponding request handler.
     That method may take a variety of actions such as creating tags (and tagged commits)
     in the local grading repository (which will afterwards be pushed to the grading repository
     on GitLab Chalmers) or posting issues in the student project on GitLab Chalmers.
@@ -233,8 +232,8 @@ class RequestAndResponses:
     @functools.cached_property
     def outcome_with_issue(self):
         '''
-        Get the outcome and the associated response issue, or None if there is no outcome.
-        In the former case, returns a pair (outcome, outcome_issue) where:
+        Get the outcome and the associated response issue, or None if there is no such outcome.
+        In the former case, returns a pair (outcome, issue) where:
         - outcome is the submission outcome,
         - issue is an instance of gitlab.v4.objects.ProjectIssue.
         Only valid for accepted submission requests.
@@ -245,17 +244,6 @@ class RequestAndResponses:
         (issue, title_data) = self.responses[self.outcome_response_key]
         return (title_data['outcome'], issue)
 
-    @functools.cached_property
-    def outcome(self):
-        '''
-        The outcome part of 'outcome_with_issue'.
-        None if the latter is None.
-        '''
-        if self.outcome_with_issue is None:
-            return None
-
-        (outcome, outcome_issue) = self.outcome_with_issue
-        return outcome
 
     @functools.cached_property
     def outcome_issue(self):
@@ -266,21 +254,69 @@ class RequestAndResponses:
         if self.outcome_with_issue is None:
             return None
 
-        (outcome, outcome_issue) = self.outcome_with_issue
-        return outcome_issue
+        (_, issue) = self.outcome_with_issue
+        return issue
 
     @functools.cached_property
-    def informal_grader_name(self):
+    def outcome_link_grader_from_grading_merge_request(self):
+        '''None unless grading via merge requests has been configured'''
+        if not self.lab.config.grading_via_merge_request:
+            return None
+
+        return self.group.grading_via_merge_request.outcome_with_link_and_grader(self.request_name)
+
+    @functools.cached_property
+    def outcome(self):
+        if self.outcome_with_issue:
+            (outcome, _) = self.outcome_with_issue
+            return outcome
+
+        if self.outcome_link_grader_from_grading_merge_request:
+            (outcome, _, _) = self.outcome_link_grader_from_grading_merge_request
+            return outcome
+
+    @functools.cached_property
+    def link(self):
         '''
-        Get the informal name the reviewer, or 'Lab system' if there is none.
+        Link to the outcome evidence.
+        Should be viewable by students and graders.
+        '''
+        if self.outcome_with_issue:
+            (_, issue) = self.outcome_with_issue
+            return issue.web_url
+
+        if self.outcome_link_grader_from_grading_merge_request:
+            (_, link, _) = self.outcome_link_grader_from_grading_merge_request
+            return link
+
+    @functools.cached_property
+    def grader_username(self):
+        '''Usename of grader on Chalmers GitLab.'''
+        if self.outcome_with_issue:
+            (_, issue) = self.outcome_with_issue
+            return issue.author['username']
+
+        if self.outcome_link_grader_from_grading_merge_request:
+            (_, _, grader) = self.outcome_link_grader_from_grading_merge_request
+            return grader
+
+    @functools.cached_property
+    def grader_informal_name(self):
+        '''
+        Get the informal name of the reviewer, or 'Lab system' for an outcome with no reviewer.
         Only valid for submission requests with an outcome.
         '''
-        if self.review is None:
+        if self.outcome_with_issue and self.review is None:
             return 'Lab system'
 
-        gitlab_username = self.outcome_issue.author['username']
-        canvas_user = self.course.canvas_user_by_gitlab_username[gitlab_username]
-        return self.course.canvas_user_informal_name(canvas_user)
+        if self.grader_username:
+            try:
+                canvas_user = self.course.canvas_user_by_gitlab_username[self.grader_username]
+            except KeyError:
+                if self.grader_username in self.course.config.gitlab_lab_system_users:
+                    return 'Lab system'
+                raise
+            return self.course.canvas_user_informal_name(canvas_user)
 
     # TODO:
     # Shelved for now.
@@ -419,8 +455,7 @@ class RequestAndResponses:
             self.logger.debug(general.join_lines(['Handler result:', str(result)]))
 
         if self.group and self.lab.config.grading_via_merge_request:
-            self.group.grading_via_merge_request.project.create_ensured()
-            self.group.grading_via_merge_request.update_submission(self)
+            self.group.grading_via_merge_request.sync_submission(self)
 
         # Create tag <full-group-id>/<request_name>/handled
         # and store handler's result JSON-encoded as its message.
@@ -466,7 +501,7 @@ class HandlerData:
             for response_key in self.handler.response_titles.keys()
         }
 
-        # Is this the submission handler?
+        # Ist his the submission handler?
         self.is_submission_handler = handler_key == self.lab.config.submission_handler_key
 
     @property
@@ -523,8 +558,8 @@ class HandlerData:
         A dictionary pairing request tags with response issues.
         The keys are request names.
         Each value is an instance of RequestAndResponses.
-        Before this cached property can be constructed, calls
-        to parse_request_tags and parse_response_issues need to complete.
+        Before this cached property can be constructed,
+        calls parse_request_tags and parse_response_issues need to complete.
         '''
         result = dict()
         for (request_name, tag_data) in self.requests.items():
@@ -874,176 +909,25 @@ class GroupProject:
                 'note': self.append_mentions(notify_students)
             })
 
-    def _hook_url(self, netloc = None):
-        '''
-        The URL to register for the given net location.
-        If 'netloc' is None, uses the configured default (see Course.hook_normalize_netloc).
-        '''
-        netloc = self.course.hook_normalize_netloc(netloc = netloc)
-        return print_parse.url.print(print_parse.URL_HTTPS(netloc))
-
-    def hooks_get(self):
-        '''
-        Get the currently installed webhooks in this group projects.
-        Returns a dictionary from net locations to lists of hooks.
-        '''
+    def hook_specs(self, netloc = None) -> Iterable[gitlab_tools.HookSpec]:
         def f():
-            for hook in gitlab_tools.list_all(self.project.lazy.hooks):
-                url = print_parse.url.parse(hook.url)
-                yield (url.netloc, hook)
-        return general.multidict(f())
+            yield (self.project.lazy, ['issues', 'tag_push'])
+            if self.lab.config.grading_via_merge_request:
+                self.grading_via_merge_request.project.create_ensured()
+                yield (self.grading_via_merge_request.project.lazy, ['merge_requests'])
 
-    @staticmethod
-    def check_hook_configuration(hook):
-        '''
-        Check that the given hook is set up like expected.
-        That means:
-        * It should have notifications for the needed events enabled.
-        * It should have SSL certificate verification disabled.
-
-        Problems are raised as instances of ValueError.
-        '''
-        if not hook.tag_push_events:
-            raise ValueError('tag push events are not configured')
-        if not hook.issues_events:
-            raise ValueError('issue events are not configured')
-        if hook.enable_ssl_verification:
-            raise ValueError('hook does not have SSL certificate verification disabled')
-
-    def check_hooks(self, hooks = None, netloc = None):
-        '''
-        Check that the given hooks dictionary (as returned
-        by hooks_get) corresponds to a correct configuration.
-        Here, correct means: as created by a single call to hook_create.
-
-        If 'hooks' is None, get the hooks from the project.
-        If 'netloc' is None, uses the configured default (see Course.hook_normalize_netloc).
-
-        Raises ValueError if the hooks are not correct.
-        '''
-        if hooks is None:
-            hooks = self.hooks_get()
         netloc = self.course.hook_normalize_netloc(netloc = netloc)
-
-        for (netloc_key, hook_list) in hooks.items():
-            if not netloc_key == netloc:
-                raise ValueError(f'hook for incorrect netloc {print_parse.netloc.print(netloc_key)}')
-
-        hook_list = hooks.get(netloc)
-        if not hook_list:
-            raise ValueError(f'hook missing for given netloc {print_parse.netloc.print(netloc)}')
-
-        try:
-            [hook] = hook_list
-        except ValueError:
-            raise ValueError(
-                f'more than one hook given netloc {print_parse.netloc.print(netloc)}'
-            ) from None
-
-        self.check_hook_configuration(hook)
-
-    def hook_create(self, netloc = None):
-        '''
-        Create webhook in the student project on GitLab with the given net location.
-        The hook is triggered via HTTPS if tags are updated or issues are changed.
-        The argument netloc is an instance of print_parse.NetLoc.
-
-        If 'netloc' is None, uses the configured default (see Course.hook_normalize_netloc).
-
-        Note: Due to a GitLab bug, the hook is not called when an issue is deleted.
-              Thus, before deleting a response issue, you should first rename it
-              (triggering the hook)  so that it is no longer recognized as a response issue.
-        '''
-        url = self._hook_url(netloc = netloc)
-        self.logger.debug(f'Creating project hook with url {url}')
-        try:
-            return self.project.lazy.hooks.create({
-                'url': url,
-                'enable_ssl_verification': 'false',
-                'token': self.course.config.webhook.secret_token,
-                'issues_events': 'true',
-                'tag_push_events': 'true',
-                'push_events': 'false',
-            })
-        except gitlab.exceptions.GitlabCreateError as e:
-            if e.response_code == 422 and e.error_message == 'Invalid url given':
-                raise ValueError(
-                    f'Invalid net location {print_parse.netloc.print(netloc)} '
-                    f'for a GitLab webhook at {self.course.gitlab_netloc.host}.'
-                ) from e
-            else:
-                raise
-
-    def hook_delete(self, hook):
-        ''' Delete a webhook in the student project on GitLab. '''
-        self.logger.debug(f'Deleting project hook {hook.id} with url {hook.url}')
-        hook.delete()
-
-    def hooks_delete_all(self, hooks = None, except_for = ()):
-        '''
-        Delete all webhook in the student project with the given netloc on GitLab.
-        The argument netloc is an instance of print_parse.NetLoc.
-        You should use this:
-        * when manually creating and deleting hooks in separate program invocations,
-        * when using hook_manager:
-            if previous program runs where killed or stopped in a non-standard fashion
-            that prevented cleanup and have left lingering webhooks.
-
-        If 'hooks' is None, get the hooks from the project.
-
-        If except_for is set, skips hooks that match the specified net location.
-        If that is None, uses the configured default (see Course.hook_normalize_netloc).
-        '''
-        if except_for == ():
-            self.logger.debug('Deleting all project hooks')
-        else:
-            netloc = self.course.hook_normalize_netloc(except_for)
-            self.logger.debug(
-                'Deleting all project hooks except those with '
-                f'net location {print_parse.netloc.print(netloc)}'
+        for (project, events) in f():  # noqa: F402
+            yield gitlab_tools.HookSpec(
+                project = project,
+                netloc = netloc,
+                events = events,
+                secret_token = self.course.config.webhook.secret_token,
             )
-
-        if hooks is None:
-            hooks = self.hooks_get()
-
-        for (netloc_key, hook_list) in hooks.items():
-            for hook in hook_list:
-                if not (except_for != () and netloc_key == netloc):
-                    self.hook_delete(hook)
-
-    def hook_ensure(self, hooks = None, netloc = None):
-        '''
-        Ensure that the hook in this student project is correctly configured.
-        Also makes sure there are no other hooks.
-        (This is to deal with cases of changing IP addresses.)
-
-        If 'hooks' is None, get the hooks from the project.
-        If 'netloc' is None, uses the configured default (see Course.hook_normalize_netloc).
-        '''
-        self.logger.info('Ensuring webhook configuration.')
-        if hooks is None:
-            hooks = self.hooks_get()
-        try:
-            self.check_hooks(netloc = netloc)
-        except ValueError:
-            self.hook_delete_all()
-            self.hook_create(netloc = netloc)
-
-    @contextlib.contextmanager
-    def hook_manager(self, netloc = None):
-        '''
-        A context manager for a webhook.
-        Encapsulates hook_create and hool_delete.
-        '''
-        hook = self.hook_create(netloc = netloc)
-        try:
-            yield hook
-        finally:
-            self.hook_delete(hook)
 
     @functools.cached_property
     def grading_via_merge_request(self):
-        return grading_via_merge_request.GradingViaMergeRequest(self)
+        return grading_via_merge_request.GradingViaMergeRequest(self.lab.grading_via_merge_request_setup_data, self)
 
     def tags_from_gitlab(self):
         self.logger.debug(f'Parsing request tags in {self.name} from Chalmers GitLab.')
@@ -1208,6 +1092,9 @@ class GroupProject:
             return data_current != data_previous
         return False
 
+    def parse_grading_merge_request_responses(self):
+        return self.grading_via_merge_request.update_outcomes()
+
     def process_requests(self):
         '''
         Process requests.
@@ -1281,7 +1168,7 @@ class GroupProject:
 
     def parse_hook_event_issue(self, hook_event, strict):
         '''
-        We only generate a group projectevent if both:
+        We only generate a group project event if both:
         - the (current or previous) author is a grader,
         - the title has changed.
 
@@ -1291,7 +1178,6 @@ class GroupProject:
         object_attributes = hook_event.get('object_attributes')
         title = None if object_attributes is None else object_attributes['title']
         self.logger.debug(f'Issue title: {title}.')
-
         changes = hook_event.get('changes')
 
         def author_id():
@@ -1324,7 +1210,7 @@ class GroupProject:
         self.logger.debug(f'Detected title change: {title_change}')
 
         # TODO.
-        # We could go further and only queue and event
+        # We could go further and only queue an event
         # if the old or new title parses as a review issue.
         # Then GroupProjectIssueEvent should be renamed GroupProjectReviewEvent.
         # We don't do much work in handling GroupProjectIssueEvent for non-review issues anyway.
@@ -1332,9 +1218,61 @@ class GroupProject:
         # So keeping this as is for now.
         if author_is_grader and title_change:
             yield (
-                events.GroupProjectIssueEvent(),
-                lambda: self.lab.refresh_group(self, refresh_responses = True),
+                events.GroupProjectWebhookResponseEvent(events.GroupProjectIssueEvent()),
+                lambda: self.lab.refresh_group(self, refresh_issue_responses = True),
             )
+
+    def parse_hook_event_grading_merge_request(self, hook_event, strict):
+        self.logger.debug('Received a grading project merge request event.')
+        changes = hook_event.get('changes')
+        if changes and 'labels' in changes:
+            self.logger.debug('Detected label change from {} to {}')
+            yield (
+                events.GroupProjectWebhookResponseEvent(events.GroupProjectGradingMergeRequestEvent()),
+                lambda: self.lab.refresh_group(self, refresh_grading_merge_request = True),
+            )
+
+    def parse_hook_event(self, hook_event, strict = False):
+        '''
+        Arguments:
+        * hook_event:
+            Dictionary (decoded JSON).
+            Event received from a webhook in this group project.
+        * strict:
+            Whether to fail on unknown events.
+
+        Returns an iterator of pairs of:
+        - an instance of events.GroupProjectEvent,
+        - a callback function to handle the event.
+        These are the group project events triggered by the webhook event.
+        '''
+        project_name = hook_event['project']['name']
+        event_type = gitlab_tools.event_type(hook_event)
+        handler = {
+            (self.project.name, 'tag_push'): self.parse_hook_event_tag,
+            (self.project.name, 'issue'): self.parse_hook_event_issue,
+            (self.grading_via_merge_request.project.name, 'merge_requests'):
+                self.parse_hook_event_grading_merge_request,
+        }.get((project_name, event_type))
+
+        if not handler is None:
+            yield from handler(hook_event, strict)
+        else:
+            if strict:
+                raise ValueError(f'Unknown event {event_type}')
+
+            self.logger.warning(
+                f'Received unknown webhook event of type {event_type} '
+                'for project {self.project.path_with_namespace}.'
+            )
+            self.logger.debug(f'Webhook event:\n{hook_event}')
+
+    @property
+    def lab_event(self):
+        return lambda group_project_event: events.LabEventInGroupProject(
+            group_id = self.id,
+            group_project_event = group_project_event,
+        )
 
     def get_score(self, scoring = None):
         '''
@@ -1354,36 +1292,3 @@ class GroupProject:
         if scoring is None:
             scoring = scoring_default
         return scoring([submission.outcome for submission in self.submissions_with_outcome()])
-
-    def parse_hook_event(self, hook_event, strict = False):
-        '''
-        Arguments:
-        * hook_event:
-            Dictionary (decoded JSON).
-            Event received from a webhook in this group project.
-        * strict:
-            Whether to fail on unknown events.
-
-        Returns an iterator of pairs of:
-        - an instance of events.GroupProjectEvent,
-        - a callback function to handle the event.
-        These are the group project events triggered by the webhook event.
-        '''
-        event_type = webhook_listener.event_type(hook_event)
-        if event_type == 'tag_push':
-            yield from self.parse_hook_event_tag(hook_event, strict)
-        elif event_type == 'issue':
-            yield from self.parse_hook_event_issue(hook_event, strict)
-        else:
-            if strict:
-                raise ValueError(f'Unknown event {event_type}')
-
-            self.logger.warning(f'Received unknown webhook event of type {event_type}.')
-            self.logger.debug(f'Webhook event:\n{hook_event}')
-
-    @property
-    def lab_event(self):
-        return lambda group_project_event: events.LabEventInGroupProject(
-            group_id = self.id,
-            group_project_event = group_project_event,
-        )
