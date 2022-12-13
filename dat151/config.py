@@ -4,6 +4,9 @@ from pathlib import PurePosixPath
 import re
 from types import SimpleNamespace
 
+import dateutil
+
+import gitlab_tools
 import lab_handlers
 import lab_handlers_dat151
 import print_parse
@@ -16,7 +19,16 @@ from this_dir import this_dir
 from gitlab_config_personal import *  # noqa: F401, F403
 
 
-# Canvas config
+# Time printing configuration.
+time = SimpleNamespace(
+    # Timezone to use.
+    zone = dateutil.tz.gettz('Europe/Stockholm'),
+
+    # Format string to use.
+    format = '%b %d %H:%M %Z',
+)
+
+# Canvas config.
 canvas = SimpleNamespace(
     # Standard values:
     # * 'canvas.gu.se' for GU courses
@@ -269,6 +281,14 @@ grading_sheet = SimpleNamespace(
     include_groups_with_no_submission = True,
 )
 
+# Only needed if some lab sets grading_via_merge_request.
+grading_via_merge_request = SimpleNamespace(
+    # For how long does assigning a reviewer block synchronization of new submissions?
+    # If set to None, no limit applies.
+    # Warnings will be generated if a submission synchronization is blocked.
+    maximum_reserve_time = datetime.timedelta(hours = 4),
+)
+
 # Root of the lab repository.
 _lab_repo = this_dir.parent / 'lab-sources'
 
@@ -299,12 +319,6 @@ _lab_config = SimpleNamespace(
     # Its value must be an instance of SubmissionHandler.
     submission_handler_key = None,
 
-    # Whether new-style grading via merge requests should be used.
-    # Currently requires students to not be members of their lab group on GitLab,
-    # but of the individual projects in the their group.
-    # This is because they should only have the guest role in the created grading projects that sit in the same group.
-    grading_via_merge_request = False,
-
     # Lab refresh period if the script is run in an event loop.
     # The webhooks on GitLab may fail to trigger in some cases:
     # * too many tags pushed at the same time,
@@ -327,7 +341,21 @@ _lab_config = SimpleNamespace(
     #   for webhook-triggered updates.
     # * Values of several hours are acceptable
     #   if the webhook notifications work reliably.
-    refresh_period = datetime.timedelta(minutes = 15)
+    refresh_period = datetime.timedelta(minutes = 15),
+
+    # Whether new-style grading via merge requests should be used.
+    # Currently requires students to not be members of their lab group on GitLab,
+    # but of the individual projects in the their group.
+    # This is because they should only have the guest role in the created grading projects that sit in the same group.
+    grading_via_merge_request = False,
+
+    # Only used in new-style grading via merge requests.
+    # The label spec for key None corresponds to the waiting-for-grading state.
+    outcome_labels = {
+        None: gitlab_tools.LabelSpec(name = 'waiting-for-grading', color = 'yellow'),
+        0: gitlab_tools.LabelSpec(name = 'incomplete', color = 'red'),
+        1: gitlab_tools.LabelSpec(name = 'pass', color = 'green'),
+    },
 )
 
 class _LabConfig:
@@ -336,7 +364,6 @@ class _LabConfig:
         self.path_gitignore = None
         self.grading_sheet = lab.name.print(k)
         self.canvas_path_awaiting_grading = PurePosixPath(canvas.grading_path) / '{}-to-be-graded.html'.format(lab.full_id.print(k))
-        self.grading_via_merge_request = grading_via_merge_request
 
         def f():
             yield ('submission', lab_handlers_dat151.SubmissionHandler(tester_podman.LabTester.factory))
@@ -345,6 +372,13 @@ class _LabConfig:
         self.request_handlers = dict(f())
 
         self.refresh_period = refresh_period
+
+        self.grading_via_merge_request = grading_via_merge_request
+        self.outcome_labels = {
+            None: gitlab_tools.LabelSpec(name = 'waiting-for-grading', color = 'yellow'),
+            0: gitlab_tools.LabelSpec(name = 'incomplete', color = 'red'),
+            1: gitlab_tools.LabelSpec(name = 'pass', color = 'green'),
+        }
 
     # Key of submission handler in the dictionary of request handlers.
     # Its value must be an instance of SubmissionHandler.
