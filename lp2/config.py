@@ -1,5 +1,6 @@
 # Variables starting with an underscore are only used locally.
 import datetime
+import dateutil
 from enum import Enum
 from pathlib import PurePosixPath
 import re
@@ -20,6 +21,15 @@ from this_dir import this_dir
 # or contain private information such as authentication tokens.
 from gitlab_config_personal import *  # noqa: F401, F403
 
+
+# Time printing configuration.
+time = SimpleNamespace(
+    # Timezone to use.
+    zone = dateutil.tz.gettz('Europe/Stockholm'),
+
+    # Format string to use.
+    format = '%b %d %H:%M %Z',
+)
 
 # Canvas config
 canvas = SimpleNamespace(
@@ -144,18 +154,21 @@ branch = SimpleNamespace(
     master = 'main',
 )
 
+_outcomes = {
+    0: 'incomplete',
+    1: 'pass',
+}
+
 # Parsing and printing of outcomes.
 outcome = SimpleNamespace(
     # Full name.
     # Used in interactions with students
     name = print_parse.compose(
-        print_parse.from_dict([
-            (0, 'incomplete'),
-            (1, 'pass'),
-        ]),
+        print_parse.from_dict(_outcomes.items()),
         print_parse.lower,
     ),
 )
+outcomes = _outcomes.keys()
 
 # Format the outcome for use in a spreadsheet cell.
 # An integer or a string.
@@ -302,6 +315,14 @@ grading_sheet = SimpleNamespace(
     include_groups_with_no_submission = False,
 )
 
+# Only needed if some lab sets grading_via_merge_request.
+grading_via_merge_request = SimpleNamespace(
+    # For how long does assigning a reviewer block synchronization of new submissions?
+    # If set to None, no limit applies.
+    # Warnings will be generated if a submission synchronization is blocked.
+    maximum_reserve_time = datetime.timedelta(hours = 4),
+)
+
 # Root of the lab repository.
 _lab_repo = this_dir.parent / 'labs'
 
@@ -332,12 +353,6 @@ _lab_config = SimpleNamespace(
     # Its value must be an instance of SubmissionHandler.
     submission_handler_key = None,
 
-    # Whether new-style grading via merge requests should be used.
-    # Currently requires students to not be members of their lab group on GitLab,
-    # but of the individual projects in the their group.
-    # This is because they should only have the guest role in the created grading projects that sit in the same group.
-    grading_via_merge_request = False,
-
     # Lab refresh period if the script is run in an event loop.
     # The webhooks on GitLab may fail to trigger in some cases:
     # * too many tags pushed at the same time,
@@ -360,7 +375,13 @@ _lab_config = SimpleNamespace(
     #   for webhook-triggered updates.
     # * Values of several hours are acceptable
     #   if the webhook notifications work reliably.
-    refresh_period = datetime.timedelta(minutes = 15)
+    refresh_period = datetime.timedelta(minutes = 15),
+
+    # Whether new-style grading via merge requests should be used.
+    # Currently requires students to not be members of their lab group on GitLab,
+    # but of the individual projects in the their group.
+    # This is because they should only have the guest role in the created grading projects that sit in the same group.
+    grading_via_merge_request = False,
 )
 
 class _LabConfig:
