@@ -260,6 +260,14 @@ grading_sheet = SimpleNamespace(
     include_groups_with_no_submission = True,
 )
 
+# Only needed if some lab sets grading_via_merge_request.
+grading_via_merge_request = SimpleNamespace(
+    # For how long does assigning a reviewer block synchronization of new submissions?
+    # If set to None, no limit applies.
+    # Warnings will be generated if a submission synchronization is blocked.
+    maximum_reserve_time = datetime.timedelta(hours = 4),
+)
+
 # Root of the lab repository.
 _lab_repo = this_dir.parent / 'labs'
 
@@ -321,6 +329,20 @@ _lab_config = SimpleNamespace(
     # * Values of several hours are acceptable
     #   if the webhook notifications work reliably.
     refresh_period = datetime.timedelta(minutes = 15)
+
+    # Whether new-style grading via merge requests should be used.
+    # Currently requires students to not be members of their lab group on GitLab,
+    # but of the individual projects in the their group.
+    # This is because they should only have the guest role in the created grading projects that sit in the same group.
+    grading_via_merge_request = False,
+
+    # Only used in new-style grading via merge requests.
+    # The label spec for key None corresponds to the waiting-for-grading state.
+    outcome_labels = {
+        None: gitlab_tools.LabelSpec(name = 'waiting-for-grading', color = 'yellow'),
+        0: gitlab_tools.LabelSpec(name = 'incomplete', color = 'red'),
+        1: gitlab_tools.LabelSpec(name = 'pass', color = 'green'),
+    },
 )
 
 _language = 'java'

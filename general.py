@@ -8,6 +8,7 @@ import functools
 import itertools
 import json
 import logging
+import more_itertools
 import re
 import time
 from types import SimpleNamespace
@@ -73,7 +74,7 @@ def last(xs, default = None, strict = False):
     if good:
         return x
 
-    assert(not strict)
+    assert not strict
     return default
 
 def with_special_case(f, key, value):
@@ -145,7 +146,7 @@ def sdict(xs, strict = True, format_value = None):
     if strict:
         for k, v in xs:
             if k in r:
-                msg_value = '' if formal_value is None else f': values {format_value(r[k])} and {format_value(v)}'
+                msg_value = '' if format_value is None else f': values {format_value(r[k])} and {format_value(v)}'
                 raise ValueError(f'duplicate entry for key {k}{msg_value}')
             r[k] = v
     return r
@@ -333,7 +334,7 @@ def Popen(cmd, **kwargs):
 
 def check_process(p):
     p.wait()
-    assert(p.returncode == 0)
+    assert p.returncode == 0
 
 # Only implemented for linux.
 def pipe(min_size):
@@ -607,3 +608,60 @@ def escape_percent(s):
 
 def has_whitespace(s):
     return any(c in s for c in string.whitespace)
+
+def is_sorted(xs, key = None):
+    if key is None:
+        key = identity
+
+    return all(key(a) <= key(b) for (a, b) in pairwise(xs))
+
+# No longer used?
+def next_after(xs, select):
+    it = itertools.dropwhile(lambda x: not select(x), xs)
+    try:
+        next(it)
+    except StopIteration:
+        raise KeyError()
+    try:
+        return next(it)
+    except StopIteration:
+        return None
+
+_OMIT = object()
+
+def intercalate(it, middle, start = _OMIT, end = _OMIT):
+    if not start is _OMIT:
+        yield start
+    yield from more_itertools.intersperse(middle, it)
+    if not end is _OMIT:
+        yield end
+
+@contextlib.contextmanager
+def traverse_managers_iterable(xs):
+    with contextlib.ExitStack() as stack:
+        def f():
+            for x in xs:
+                yield stack.enter_context(x)
+
+        yield f
+
+# In itertools from 3.10.
+def pairwise(iterable):
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return zip(a, b)
+
+# In more_itertools from 3.10
+def before_and_after(predicate, it):
+    it = iter(it)
+    transition = []
+
+    def true_iterator():
+        for elem in it:
+            if predicate(elem):
+                yield elem
+            else:
+                transition.append(elem)
+                return
+
+    return (true_iterator(), itertools.chain(transition, it))

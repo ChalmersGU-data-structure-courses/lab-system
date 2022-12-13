@@ -1,5 +1,7 @@
+import dataclasses
+import enum
 import re
-from typing import Iterable
+from typing import Iterable, Sequence
 
 import more_itertools
 
@@ -28,6 +30,9 @@ def find_delimiter(s, char, least = 0):
         *(len(match.group(0)) + 1 for match in re.finditer('{}+'.format(re.escape(char)), s))
     ])
 
+def heading(s, level = 1):
+    return general.join_lines(['#' * level + ' ' + s])
+
 def escape_code_block(s, char = '`'):
     delimiter = find_delimiter(s, char, least = 3)
     return general.join_lines([delimiter, s.rstrip(), delimiter])
@@ -46,3 +51,57 @@ def quote_blocks(blocks: Iterable[str]):
 # TODO
 def escape(s: str) -> str:
     return s
+
+def link(title, url):
+    return f'[{title}]({url})'
+
+class Alignment(enum.Enum):
+    LEFT = enum.auto()
+    RIGHT = enum.auto()
+    CENTER = enum.auto()
+
+@dataclasses.dataclass
+class ColumnSpec:
+    title: str
+    align: Alignment = None
+
+def table(column_specs: Iterable[ColumnSpec], rows: Iterable[Sequence[str]]):
+    '''Doesn't do any escaping.'''
+    column_specs = list(column_specs)
+    rows = list(rows)
+
+    lengths = [
+        max(len(str(x)) for x in [column_spec.title, *(row[i] for row in rows)])
+        for (i, column_spec) in enumerate(column_specs)
+    ]
+
+    def wrap_with_space(s):
+        return ' ' + s + ' '
+
+    def wrap_with_alignment(s, alignment):
+        if alignment is Alignment.RIGHT:
+            return '-' + s + ':'
+        if alignment is Alignment.CENTER:
+            return ':' + s + ':'
+        return '-' + s + '-'
+
+    def join_with_pipe(entries):
+        return ''.join(general.intercalate(entries, middle = '|', start = '|', end = '|'))
+
+    def format_row(entries):
+        def f():
+            for (i, entry) in enumerate(entries):
+                column_spec = column_specs[i]
+                just = str.rjust if column_spec.align is Alignment.RIGHT else str.ljust
+                yield wrap_with_space(just('' if entry is None else str(entry), lengths[i]))
+        return join_with_pipe(f())
+
+    def lines():
+        yield format_row(column_spec.title for column_spec in column_specs)
+        yield join_with_pipe(
+            wrap_with_alignment('-' * lengths[i], column_spec.align)
+            for (i, column_spec) in enumerate(column_specs)
+        )
+        for row in rows:
+            yield format_row(row)
+    return general.join_lines(lines())
