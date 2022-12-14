@@ -246,6 +246,14 @@ class GradingViaMergeRequest:
                 project.security_and_compliance_access_level = 'disabled'
                 project.emails_disabled = False
                 project.permissions = {'project_access': None, 'group_access': None}
+                # TODO
+                # Enable the below when https://gitlab.com/gitlab-org/gitlab/-/merge_requests/106755 has been released.
+                # The milestone is 15.7.
+                # Currently we can only change these settings via the user interface.
+                # project.environments_access_level = 'disabled'
+                # project.feature_flags_access_level = 'disabled'
+                # project.infrastructure_access_level = 'disabled'
+                # project.monitor_access_level = 'disabled'
                 project.save()
 
                 for label_spec in self.lab.config.outcome_labels.values():
