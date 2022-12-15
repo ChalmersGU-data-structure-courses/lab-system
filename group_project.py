@@ -1163,7 +1163,7 @@ class GroupProject:
         self.logger.debug(f'Reference: {ref}.')
         yield (
             events.GroupProjectTagEvent(),
-            lambda: self.lab.refresh_group(self, refresh_responses = False),
+            lambda: self.lab.refresh_group(self),
         )
 
     def parse_hook_event_issue(self, hook_event, strict):
