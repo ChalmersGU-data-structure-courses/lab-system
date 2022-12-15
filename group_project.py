@@ -1248,12 +1248,16 @@ class GroupProject:
         '''
         project_name = hook_event['project']['name']
         event_type = gitlab_tools.event_type(hook_event)
-        handler = {
-            (self.project.name, 'tag_push'): self.parse_hook_event_tag,
-            (self.project.name, 'issue'): self.parse_hook_event_issue,
-            (self.grading_via_merge_request.project.name, 'merge_requests'):
-                self.parse_hook_event_grading_merge_request,
-        }.get((project_name, event_type))
+
+        def handlers():
+            yield ((self.project.name, 'tag_push'), self.parse_hook_event_tag)
+            yield ((self.project.name, 'issue'), self.parse_hook_event_issue)
+            if self.lab.config.grading_via_merge_request:
+                yield (
+                    (self.grading_via_merge_request.project.name, 'merge_requests'),
+                    self.parse_hook_event_grading_merge_request,
+                )
+        handler = dict(handlers()).get((project_name, event_type))
 
         if not handler is None:
             yield from handler(hook_event, strict)
