@@ -43,6 +43,34 @@
   Think more about this.
   Could suppress message (or add alternative message) if file-based merge was not needed.
 
+* Add layered caching for retrieving all users from Chalmers GitLab.
+  On refresh, only need to retrieve new users.
+  Can use pagination?
+
+* Allow for more flexible hierarchies on Chalmers GitLab.
+  It should be possible for some labs to use personal projects and for other labs to use group-based projects.
+  Move from group membership to per-lab membership to simplify things?
+
+* Allow for test output/report to be saved either in the global grading repository or in the student project grade repository.
+  In the latter case, reference test reports in submission synchronization comments.
+
+* Add event for synchronizing group membership from Canvas.
+  Then no separate invitation script is necessary.
+  By default, this affects exactly the current lab.
+  Can make this layered events where the deeper layer refreshes course data on Canvas (people info).
+  Or course data refresh could be triggered by encountering unknown students in a group.
+
+* Make use of context managers for validity of cache entries more often.
+  See GradingViaMergeRequest.notes_suppress_cache_clear.
+
+* Represent student grading repositories locally using the grading repository?
+  May be wasteful to use a different local repository for each group.
+  Also harder to parallelize.
+
+* Figure out how to do random sampling of webhooks for student grading projects.
+  Currently, we first get all student grading projects, which is too expensive.
+  In the long term, we could investigate a context manager that catches GitLab errors for missing projects and creates them on-demand.
+
 ## Grading sheet
 
 * Support the "Notes" field in the grading sheet.
