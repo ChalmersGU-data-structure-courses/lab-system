@@ -998,7 +998,12 @@ class Course:
         call this method in a time-sensitive environment.
         '''
         # Parse the lab and group id.
-        lab_id = self.config.lab.full_id.parse(lab_full_id)
+        # This logic shows that it would be simpler to organize student projects by labs first.
+        # But that would be less usable for the students.
+        try:
+            lab_id = self.config.lab.full_id.parse(lab_full_id)
+        except ValueError:
+            lab_id = self.config.lab.full_id_grading.parse(lab_full_id)
         group_id = self.config.group.id_gitlab.parse(group_id_gitlab)
 
         # Delegate event to lab.
