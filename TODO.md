@@ -71,6 +71,8 @@
   Currently, we first get all student grading projects, which is too expensive.
   In the long term, we could investigate a context manager that catches GitLab errors for missing projects and creates them on-demand.
 
+* Investigate if we can benefit from object pooling when forking: https://docs.gitlab.com/ee/development/git_object_deduplication.html
+
 ## Grading sheet
 
 * Support the "Notes" field in the grading sheet.
