@@ -71,7 +71,16 @@
   Currently, we first get all student grading projects, which is too expensive.
   In the long term, we could investigate a context manager that catches GitLab errors for missing projects and creates them on-demand.
 
-* Investigate if we can benefit from object pooling when forking: https://docs.gitlab.com/ee/development/git_object_deduplication.html
+* Investigate if we can benefit from [object pooling when forking](https://docs.gitlab.com/ee/development/git_object_deduplication.html)
+  - When forking from a non-private repository, a pool is created even when the forked repository is private.
+  - Commits made to the source repository are availale (after housekeeping to update the pool repository) also in the forked repository -/commit/<hash>.
+  - Pushing such a commit to the forked repository still results in the redundant objects being sent (which are then deleted after housekeeping).
+  - Switching the source repository to private prevents the pool from being updated (triggered by housekeeping).
+  - Switching the source repository back to non-private allows housekeeping to update the pool once again.
+  - Forks created while the source repository was private do not partake in the pool.
+  - Merge requests can be made between sibling forks.
+  - It is unclear how the project storage statistics works in the presence of pooling.
+  - The resource information seen when pushing (e.g. remote: MAX: 1000000, CURRENT: 124) seems to count only the local repository, excluding the pool.
 
 ## Grading sheet
 
