@@ -9,14 +9,12 @@ sys.path.append(str(Path('__file__').parent / '..'))
 import canvas  # noqa: E402
 import general  # noqa: E402
 
-
-logger = logging.getLogger(__name__)
-
 logging.basicConfig(
     format = '%(asctime)s %(levelname)s %(module)s: %(message)s',
     datefmt = '%Y-%m-%d %H:%M:%S',
     level = logging.WARN,
 )
+logger = logging.getLogger(__name__)
 
 from gitlab_config_personal import canvas_auth_token  # noqa: E402
 c = canvas.Canvas('chalmers.instructure.com', auth_token = canvas_auth_token)
