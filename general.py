@@ -441,13 +441,17 @@ def combine_generic(fs):
         r = combine_namedtuple
     return r(fs)
 
-def remove_prefix(xs, prefix, strict = True):
+def remove_prefix(xs, prefix):
     if xs[:len(prefix)] == prefix:
         return xs[len(prefix):]
 
-    if strict:
-        raise ValueError('{xs} does not have prefix {[refix}')
-    return xs
+    raise ValueError(f'{xs} does not have prefix {prefix}')
+
+def remove_suffix(xs, suffix):
+    if xs[-len(suffix):] == suffix:
+        return xs[:-len(suffix)]
+
+    raise ValueError(f'{xs} does not have prefix {suffix}')
 
 def map_keys_and_values(f, g, u):
     return {f(key): g(value) for (key, value) in u.items()}

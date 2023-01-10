@@ -236,6 +236,29 @@ def regex_int(holed_string, format = '', regex = '\\d+', **kwargs):
 
 qualify_with_slash = regex_many('{}/{}', ['[^/]*', '.*'])
 
+parens = regex_non_canonical('({})', r'\((.*)\)')
+parens_bytes = regex_non_canonical(b'({})', br'\((.*)\)')
+
+bracks = regex_non_canonical('[{}]', r'\[(.*)\]')
+bracks_bytes = regex_non_canonical(b'[{}]', br'\[(.*)\]')
+
+braces = regex_non_canonical('{{{}}}', r'\{(.*)\}')
+braces_bytes = regex_non_canonical(b'{{{}}}', br'\{(.*)\}')
+
+def join(sep = None, maxsplit = -1):
+    _sep = ' ' if sep is None else sep
+    return PrintParse(
+        print = lambda x: _sep.join(x),
+        parse = lambda s: s.split(sep, maxsplit),
+    )
+
+def join_bytes(sep = None, maxsplit = -1):
+    _sep = b' ' if sep is None else sep
+    return PrintParse(
+        print = lambda x: _sep.join(x),
+        parse = lambda s: s.split(sep, maxsplit),
+    )
+
 # Takes an iterable of (value, printed) pairs.
 # The default semantics is strict, assuming that values and printings are unique.
 # If duplicates are allowed, use strict = False.
