@@ -10,7 +10,7 @@ import canvas  # noqa: E402
 logging.basicConfig(
     format = '%(asctime)s %(levelname)s %(module)s: %(message)s',
     datefmt = '%Y-%m-%d %H:%M:%S',
-    level = logging.WARN,
+    level = logging.WARNING,
 )
 logger = logging.getLogger(__name__)
 
@@ -41,5 +41,5 @@ for student in source_course.students:
     if chalmers_id in target_course.user_details:
         logger.debug(f'{student.name} is already in course.')
     else:
-        logging.warn(f'Adding {student.name} to course')
+        logging.warning(f'Adding {student.name} to course')
         add_user(target_course, s.id, chalmers_id)
