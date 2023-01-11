@@ -23,7 +23,7 @@ desired_name = 'LP3 Data structures and algorithms'
 desired_course_code = 'DIT182 and DAT495'
 
 while True:
-    details = c.get(['courses', course_id])
+    details = c.get(['courses', course_id], use_cache = False)
     if not (details.name == desired_name and details.course_code == desired_course_code):
         logger.warning(general.join_lines([
             'Course details changed:',
