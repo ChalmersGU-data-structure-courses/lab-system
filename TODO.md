@@ -71,6 +71,22 @@
   Currently, we first get all student grading projects, which is too expensive.
   In the long term, we could investigate a context manager that catches GitLab errors for missing projects and creates them on-demand.
 
+* Make use of project activity history to find out when a submission tag was created.
+
+* Use GraphQL for faster information retrievel
+  - Canvas
+  - Chalmers GitLab
+  Caveats (GitLab):
+  - nested pagination
+  - some features not available (e.g. resource label events)
+
+* Find out how the web interface of project settings on GitLab manages to change settings we cannot change using the API.
+
+* Keep a record of group membership changes.
+  That way, we can detect if a student uses the membership mirror to glance at another group's solution.
+
+* Find out how to use GU LDAP.
+
 ## Grading sheet
 
 * Support the "Notes" field in the grading sheet.

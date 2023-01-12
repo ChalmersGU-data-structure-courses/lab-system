@@ -1,12 +1,18 @@
+import abc
 import contextlib
+import datetime
 import errno
+import functools
 import itertools
+import json
 import os
 from pathlib import Path, PurePath, PurePosixPath
 import shlex
 import shutil
 import tempfile
 import typing
+
+import general
 
 
 # ## Type annotations.
@@ -72,6 +78,9 @@ def get_content_modification_time(dir_base, path):
 
 def get_modification_time(path):
     return os.path.getmtime(path)
+
+def modified_at(path):
+    return datetime.datetime.fromtimestamp(os.path.getmtime(path), tz = datetime.timezone.utc)
 
 def set_modification_time(path, date):
     t = date.timestamp()
@@ -219,6 +228,9 @@ def iterdir_recursive(path, include_top_level = True, pre_order = True):
 
 # ## File and directory creation and deletion.
 
+def make_parents(path):
+    path.parent.mkdirs(exists_ok = True)
+
 def mkdir_fresh(path):
     if path.exists():
         shutil.rmtree(path)
@@ -271,6 +283,24 @@ def rmdir_safe(path):
         if e.errno == 39:
             return False
         raise
+
+@contextlib.contextmanager
+def overwrite_atomic(path, suffix = '.tmp', time = None, text = True):
+    path_tmp = add_suffix(path, suffix)
+    with path_tmp.open('w' if text else 'wb') as file:
+        yield file
+    if time:
+        set_modification_time(path_tmp, time)
+    path_tmp.replace(path)
+
+def overwrite_atomic_text(path, content, **kwargs):
+    with overwrite_atomic(path, text = True, **kwargs) as file:
+        file.write(content)
+
+def overwrite_atomic_bytes(path, content, suffix = '.tmp'):
+    with overwrite_atomic(path, text = False, **kwargs) as file:
+        file.write(content)
+
 
 # ## Comparison of files and directories.
 
@@ -419,3 +449,208 @@ def system_path_add(*paths):
     They are resolved before being added.
     '''
     return search_path_add_env(os.environ, system_path, map(Path.resolve(paths)))
+
+
+# ## File-based caching
+
+class Cache(abc.ABC):
+    '''
+    Use case for file-based caches:
+    * Persistence of program state over invocations ("quick start").
+    * User can edit state manually (while program is down?).
+      - Use pretty JSON.
+
+    Potential meanings of timestamps:
+    (A) The information was up to date wrt. upstream services at this point in time.
+    (B) This is the last time the data was modified.
+
+    Files come with three timestamps:
+    * access time
+    * modification time
+    * (metadata) change time
+    We cannot set change time.
+    Access and modification time we control.
+    But a user may modify access time by viewing the cache.
+    And if we allow the user to edit cache entries (use case: GUID to CID), then they also change the modification time.
+
+    So we should use modification time only for (B).
+    What can we do for (A)?
+    We could store the timestamp as an additional field in the data.
+    But often, we update (A) without changing the rest of the data.
+    If the data is big, this could result in unnecessary disk writes.
+    Possible solutions:
+    * It may be worthwhile to use a second file just for (A).
+      But how do we keep the two in sync?
+      Maybe the second file gets updated later.
+    * We could write the cache if the actually data changes or the synchronization time changes significantly.
+
+    (1)
+    Another design consideration.
+    On data update, we may not want to sync immediately.
+    We could provide a context manager for syncing.
+    But how can the context manager make use of update information?
+
+    (2)
+    Another design consideration.
+    Suppose we encounter an exception during data update.
+    Should we treat the remaining state as valid?
+    Some of the data may have already changed.
+
+    (3)
+    Another design consideration.
+    Sometimes we wait for changes in upstream data.
+    Examples:
+    * new users on Chalmers GitLab
+    * membership changes on Canvas
+    If we sync the cache before handling all changes, we cannot persist waiting for changes over program invocations.
+    Provide a context manager that syncs afterwards?
+
+    (4)
+    Another design consideration.
+    We may want to provide delayed initialization.
+    Options:
+    * The user caches the cache instance (e.g. using functools.cached_property)
+    * Do this here.
+    * Provide a flag.
+    But what would the trigger be in the latter options?
+
+    (5)
+    Another design consideration.
+    Do we want to support the use case that the cache is modified externally while the program is running?
+    In that case, we should offer detection if the cache has been modified.
+    But this has lots of potential race conditions.
+
+    (6)
+    We could decide to save only on program exit.
+    In that case, the cache should have a close method or behave like a context manager.
+
+    There is a conflict between (3) and (6).
+    If we encounter an excepting during handling of upstream changes raising all the way to the top,
+    we do not want to sync the cache with the updates.
+
+    Another consideration.
+    (A) should be a lower bound.
+    (B) Should be an upper bound.
+    So for (B) we do not need to manually mess with the modification time stamp.
+
+    Examples for (A):
+    * list of users on Chalmers GitLab
+      - special because we can update it incrementally
+      - actually needs the last modified time in the update step
+    * Canvas users in a course
+    * lab group membership on Canvas
+    * issues in a student project on Chalmers GitLab
+    * merge request activity in a student grading project on Chalmers GitLab
+      - special because we can update it incrementally (except for the outcome of the last submission)
+
+    Examples for (B):
+    * translating GUIDs to CIDs
+    * list of users on Chalmers GitLab
+      - special because we can update it incrementally
+    * Canvas users in a course
+    * lab group membership on Canvas
+    * issues in a student project on Chalmers GitLab
+    * merge request activity in a student grading project on Chalmers GitLab
+      - special because we can update it incrementally (except for the outcome of the last submission)
+    But in all those cases, we are not actually using the modification time for anything.
+
+    To make
+    * translating GUIDs to CIDs
+    an example for (A), we would have to annotate each map entry with a timestamp.
+
+    In some simple cases, we only do full refreshes of upstream data and may count each of those as a modification.
+    But still, the lower/upper bound mismatch prevents us from cleanly identifying (A) and (B).
+    In some cases, we may be interested looking at changes after upstream fetches:
+    * lab group membership on Canvas
+    * issues in a student project on Chalmers GitLab
+    '''
+
+    # Internal
+    _initialized: bool
+
+    _path: Path
+    _needs_save: bool
+
+    def _initialize(self):
+        if not self._initialized:
+            self._initialized = True
+            if self.load():
+                self.needs_save = False
+            else:
+                self.initialize()
+                self.needs_save = True
+
+    def __init__(self, path, delay_init = True):
+        self._path = path
+        if not delay_init:
+            self._initialize()
+
+    @abc.abstractmethod
+    def load_internal(self, file):
+        ...
+
+    @abc.abstractmethod
+    def save_internal(self, file):
+        ...
+
+    @abc.abstractmethod
+    def initialize(self):
+        ...
+
+    @functools.cached_property
+    def last_modified(self):
+        try:
+            return modified_at(self.path)
+        except FileNotFoundError:
+            return None
+
+    def load(self):
+        try:
+            time = modified_at(self.path)
+            with self.path.open() as file:
+                self.load_internal(file)
+        except FileNotFoundError:
+            return False
+        else:
+            self.time = time
+            return True
+
+    def save(self):
+        if self.needs_save:
+            make_parents(self.path)
+            with overwrite_atomic(self.path, time = self.time) as file:
+                self.save_internal(file)
+            self.needs_save = False
+
+    @property
+    @contextlib.contextmanager
+    def updating(self):
+        yield
+        self.time = time
+        self.needs_save = True
+
+class JSONCache(Cache):
+    def __init__(self, path, setter = None, getter = None, nice = True):
+        super().__init__(path)
+        self.getter = getter
+        self.setter = setter
+        self.nice = nice
+
+    def load_internal(self, file):
+        self.setter(json.load(file))
+
+    def save_internal(self, file):
+        def kwargs():
+            if self.nice:
+                yield ('indent', 4)
+                yield ('sort_keys', True)
+
+        json.dump(self.getter(), file, **kwargs)
+
+class JSONAttributeCache(JSONCache):
+    def __init__(self, path, attribute, nice = True):
+        super().__init__(
+            path,
+            functools.partial(getattr, self, attribute),
+            functools.partial(setattr, self, attribute),
+        )

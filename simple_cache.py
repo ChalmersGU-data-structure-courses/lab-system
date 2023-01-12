@@ -1,8 +1,9 @@
-import os.path
-from datetime import datetime, timezone
+import datetime
 from pathlib import Path, PurePath
 import json
 import logging
+
+import path_tools
 
 
 logger = logging.getLogger(__name__)
@@ -11,14 +12,14 @@ class SimpleCache:
     __filename = "_value"
 
     def __init__(self, cache_dir):
-        self.cache_dir = cache_dir
+        self.cache_dir = Path(cache_dir)
         logger.log(logging.INFO, "initializing cache: " + str(cache_dir))
         Path(cache_dir).mkdir(exist_ok = True)
 
     def __get_path(self, path):
-        assert(not path.is_absolute())
-        assert(not list(filter(lambda x: x == '' or x == '.' or x == '..', path.parts)))
-        return Path(self.cache_dir, path, self.__filename)
+        assert not path.is_absolute()
+        assert all(not x in ['', '.', '..'] for x in path.parts)
+        return self.cache_dir / path / self.__filename
 
 #    def __with_file(self, path, mode, callback):
 #        with open(self.__get_path(path), mode) as file:
@@ -26,10 +27,6 @@ class SimpleCache:
 
 #    def exists(self, path):
 #        return self.__get_path(path).exists();
-
-    @staticmethod
-    def timestamp(path):
-        return datetime.fromtimestamp(os.path.getmtime(path), tz = timezone.utc)
 
 #    def read(self, path, reader):
 #        with open(self.__get_path(path), 'r') as file:
@@ -41,16 +38,18 @@ class SimpleCache:
 #        with open(self.__get_path(path), 'w') as file:
 #            writer(file, x)
 
-    # High-level interface.
-    # use_cache determines whether the current cache entry is read; it can be:
-    # * a Boolean
-    # * a timestamp: only entries at most this old are considered valid
     def with_cache_bare(self, path, reader, writer, constructor, use_cache = True):
+        '''
+        High-level interface.
+        use_cache determines whether the current cache entry is read; it can be:
+        * a Boolean
+        * a timestamp: only entries at most this old are considered valid
+        '''
         logger.log(logging.DEBUG, "constructing cached path: " + str(path))
         real_path = self.__get_path(path)
 
-        if isinstance(use_cache, datetime):
-            really_use_cache = real_path.exists() and SimpleCache.timestamp(real_path) >= use_cache
+        if isinstance(use_cache, datetime.datetime):
+            really_use_cache = real_path.exists() and path_tools.modified_at(real_path) >= use_cache
         else:
             really_use_cache = bool(use_cache) and real_path.exists()
 
@@ -82,11 +81,11 @@ class SimpleCache:
 
     def with_cache_open(self, path, reader, writer, constructor, use_cache = True):
         def bare_reader(real_path):
-            with open(real_path, 'r') as file:
+            with real_path.open() as file:
                 return reader(file)
 
         def bare_writer(real_path, x):
-            with open(real_path, 'w') as file:
+            with real_path.open('w') as file:
                 writer(file, x)
             return x
 
@@ -99,3 +98,22 @@ class SimpleCache:
             return json.dump(x, file, indent = 4, sort_keys = True)
 
         return self.with_cache_open(path, json_reader, json_writer, constructor, use_cache)
+
+class JSONCache:
+    def __init__(self, cache_dir):
+        self.cache_dir = Path(cache_dir)
+        logger.log(logging.INFO, "initializing cache: " + str(cache_dir))
+        Path(cache_dir).mkdir(exist_ok = True)
+
+# Components:
+# - procedure for producing value
+# - key used for caching
+# - cached value
+# - caching time: when was the cached value produced?
+# - derivates of value
+#
+# Before using derivatives of a value, we specify how recent we want them to be.
+
+
+
+#class CourseUsers:

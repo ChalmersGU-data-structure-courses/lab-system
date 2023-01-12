@@ -29,6 +29,14 @@ from _2020_lp2.submission_fix_lib import HandlerException
 logger = logging.getLogger(__name__)
 
 
+class BearerAuth(requests.auth.AuthBase):
+    def __init__(self, token):
+        self.token = token
+
+    def __call__(self, r):
+        r.headers['Authorization'] = f'Bearer {self.token}'
+        return r
+
 # This class manages requests to Canvas and their caching.
 # Caching is important to maintain quick execution time of higher level scripts on repeat invocation.
 # Cache behaviour is controlled by the parameter 'use_cache' of the request methods.
@@ -54,7 +62,8 @@ class Canvas:
         self.base_url_api = self.base_url + '/api/v1'
 
         self.session = requests.Session()
-        self.session.headers.update({'Authorization': 'Bearer {}'.format(self.auth_token)})
+        self.session.auth = BearerAuth(self.auth_token)
+        #self.session.headers.update({'Authorization': 'Bearer {}'.format(self.auth_token)})
 
         self.session_file = requests.Session()
 
@@ -97,7 +106,7 @@ class Canvas:
     def get_json(self, endpoint, params = dict()):
         r = self.session.get(self.get_url(Canvas.with_api(endpoint)), params = params)
         result = Canvas.get_response_json(r)
-        assert(not isinstance(r, list))
+        assert not isinstance(r, list)
         return result
 
     # internal
@@ -106,7 +115,7 @@ class Canvas:
         p['per_page'] = '100'
         r = self.session.get(self.get_url(Canvas.with_api(endpoint)), params = p)
         x = Canvas.get_response_json(r)
-        assert(isinstance(x, list))
+        assert isinstance(x, list)
         while 'next' in r.links:
             r = self.session.get(
                 r.links['next']['url'],
@@ -231,7 +240,7 @@ class Canvas:
         if use_curl:
             cmd = ['curl', r.upload_url]
             for upload_param, value in upload_params.items():
-                assert(re.fullmatch('\\w+', upload_param))
+                assert re.fullmatch('\\w+', upload_param)
                 cmd += ['-F', upload_param + '=' + doublequote(value if isinstance(value, str) else json.dumps(value))]
             cmd += ['-F', 'file=@' + doublequote(str(file))]
             process = subprocess.run(cmd, check = True, stdout = subprocess.PIPE, encoding = 'utf-8')
@@ -249,6 +258,9 @@ class Canvas:
 
     def file_set_locked(self, file_id, locked):
         self.put(['files', file_id], params = {'locked': Canvas.param_boolean(locked)})
+
+    #def get_inst_access_token(self):
+    #    return self.post(['inst_access_tokens']).token
 
 
 # On GU Canvas, the user id fields seem to mean the following:
@@ -389,7 +401,7 @@ class Course:
             print_error('Multiple assignments found fitting \'{}\':'.format(assignment_name))
             for assignment in xs:
                 print_error('  ' + assignment.name)
-        assert(False)
+        assert False
 
     def assignment_str(self, id):
         return '{} (id {})'.format(self.assignment_details[id].name, id)
@@ -424,7 +436,7 @@ class Course:
             params = {'include': ['students']},
             use_cache = use_cache,
         ).students
-        return[] if x is None else x
+        return [] if x is None else x
 
     def get_folder_by_path(self, canvas_dir, use_cache = True):
         canvas_dir = PurePosixPath(canvas_dir)
@@ -559,7 +571,6 @@ class GroupSet:
             #'description': None,
             'join_level': 'parent_context_auto_join',
         })
-
 
 class Assignment:
     def __init__(self, course, assignment_id, use_cache = True):
@@ -936,7 +947,7 @@ class Assignment:
     #             self.prepare_submission(deadline, group, dir / self.group_set.details[group].name, s)
 
     def grade(self, user, comment = None, grade = None):
-        assert(grade in [None, 'complete', 'incomplete', 'fail'])
+        assert grade in [None, 'complete', 'incomplete', 'fail']
 
         endpoint = ['courses', self.course.course_id, 'assignments', self.assignment_id, 'submissions', user]
         params = {'comment[group_comment]': 'false'}
