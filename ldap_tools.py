@@ -46,18 +46,53 @@
 #   - sn: b'Ko\xc3\xa7ak
 #   - givenName: Bora
 
+# Typical response for a GU student:
+# ('uid=niklaxe,ou=people,dc=chalmers,dc=se', {'objectClass': [b'top', b'person', b'organizationalPerson', b'inetOrgPerson', b'eduPerson', b'norEduPerson'], 'cn': [b'Niklas Axelsson'], 'sn': [b'Axelsson'], 'givenName': [b'Niklas'], 'uid': [b'niklaxe'], 'mail': [b'niklaxe@student.chalmers.se'], 'eduPersonPrimaryAffiliation': [b'student'], 'eduPersonAffiliation': [b'student', b'member']})
+
+
 import logging
 import re
 
 import ldap
 import ldap.filter
 
+import general
+
+
+def list_all(client, base, scope, filterstr = None, attrlist = None, page_size = 100):
+    # Chalmers LDAP has size limit 300.
+    page_control = ldap.controls.SimplePagedResultsControl(
+        True,
+        size = page_size,
+        cookie = str(),
+    )
+
+    while True:
+        response = client.search_ext(
+            base,
+            scope,
+            filterstr = filterstr,
+            attrlist = attrlist,
+            serverctrls = [page_control],
+        )
+
+        (rtype, rdata, rmsgid, serverctrls_response) = client.result3(response)
+        yield from rdata
+
+        (page_control_response,) = filter(
+            lambda control: control.controlType == ldap.control.SimplePagedResultsControl.controlType,
+            serverctrls_response,
+        )
+        page_control.cookie = page_control_response.cookie
+        if not page_control.cookie:
+            break
+
 
 
 # logging.basicConfig()
 # logging.getLogger().setLevel(logging.INFO)
 
-#client = ldap.initialize('ldap://ldap.chalmers.se')
+client = ldap.initialize('ldap://ldap.chalmers.se')
 
 # #ldapsearch -x -H ldap://ldap.chalmers.se '(cn=Bardha Ahmeti)'
 
@@ -72,11 +107,15 @@ def is_bot_user(user):
         user.username in ['alert-bot', 'support-bot'],
     ])
 
+# Chalmers LDAP has size limit 300.
+page_control = ldap.controls.SimplePagedResultsControl(True, size = 300, cookie = '')
+
 def search_people(client, filter):
-    return client.search_st(
+    return client.search_ext(
         'ou=people,dc=chalmers,dc=se',
         ldap.SCOPE_ONELEVEL,
         filter,
+        serverctrls = [page_control],
     )
 
 def search_people_by_cid(client, uid):
@@ -95,6 +134,19 @@ def print_record(record):
         print(key + ': ' + str(value))
     print()
 
+with general.timing('test'):
+    #r = search_people(client, ldap.filter.filter_format('(&(department=Data- och informationsteknik))', []))
+    r = search_people(client, ldap.filter.filter_format('(&(uid=niklaxe))', []))
+    rtype, rdata, rmsgid, serverctrls = client.result3(r)
+    print(rtype)
+    print('XXX')
+    print(rdata[0])
+    print(rmsgid)
+    print(serverctrls)
+    print(len(rdata))
+
+# CID to email addresses
+# Names to CID
 
 #ldap_details = dict()
 

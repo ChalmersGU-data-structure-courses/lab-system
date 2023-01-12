@@ -144,7 +144,7 @@ def starfilter(f, xs):
 def sdict(xs, strict = True, format_value = None):
     r = dict()
     if strict:
-        for k, v in xs:
+        for (k, v) in xs:
             if k in r:
                 msg_value = '' if format_value is None else f': values {format_value(r[k])} and {format_value(v)}'
                 raise ValueError(f'duplicate entry for key {k}{msg_value}')
@@ -236,15 +236,6 @@ def doublequote(s):
 def parens(s):
     return f'({s})'
 
-class Timer:
-    def __enter__(self):
-        self.start = time.monotonic()
-        return self
-
-    def __exit__(self, type, value, traceback):
-        self.end = time.monotonic()
-        self.time = self.end - self.start
-
 class JSONObject(SimpleNamespace):
     DATE_PATTERN = re.compile("[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z")
 
@@ -259,6 +250,7 @@ class JSONObject(SimpleNamespace):
                 t = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo = timezone.utc)
                 new_key = key + "_date"
                 self.__setattr__(new_key, t)
+
 
 class JSONEncoderForJSONObject(json.JSONEncoder):
     def default(self, obj):
@@ -303,17 +295,27 @@ def format_timespan_using(delta, time_unit, precision = 2):
 def format_timespan(delta, precision = 2):
     return format_timespan_using(delta, appropriate_time_unit(delta), precision)
 
+class Timer:
+    def __enter__(self):
+        self.start = time.monotonic()
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.stop = time.perf_counter()
+        self.time = self.stop - self.start
+        self.timedelta = timedelta(seconds = self.time)
+
 @contextlib.contextmanager
 def timing(name = None, logger = None, level = logging.DEBUG):
     # Perform measurement.
-    start = time.perf_counter()
-    yield
-    stop = time.perf_counter()
+    timer = Timer()
+    with timer:
+        yield
 
     # Format message.
     if name is None:
         name = 'timing'
-    duration = format_timespan(timedelta(seconds = stop - start))
+    duration = format_timespan(timer.timedelta)
     msg = f'{name}: {duration}'
 
     # Log message.
@@ -424,7 +426,7 @@ def combine_tuple(fs):
 combine = combine_tuple
 
 def combine_dict(fs):
-    return lambda xs: dict((key, f(xs[key])) for (key, f) in fs.items())
+    return lambda xs: {key: f(xs[key]) for (key, f) in fs.items()}
 
 def combine_namedtuple(fs):
     return lambda xs: fs.__class__._make(f(x) for (f, x) in zip(fs, xs))
@@ -665,3 +667,16 @@ def before_and_after(predicate, it):
                 return
 
     return (true_iterator(), itertools.chain(transition, it))
+
+def caching(f):
+    @functools.wraps(f)
+    def g(*args, **kwargs):
+        try:
+            return g._cached_value
+        except AttributeError:
+            g._cached_value = f(*args, **kwargs)
+            return g._cached_value
+    return g
+
+def now():
+    return datetime.now(tz = timezone.utc)

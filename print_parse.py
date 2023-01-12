@@ -1,8 +1,12 @@
 # Should only be imported qualified.
 import ast
+import base64
 import builtins
 import collections
+import dataclasses
+import datetime
 import functools
+import json
 import pathlib
 import re
 import shlex
@@ -118,8 +122,8 @@ def tuple(x):
 
 def dict(x):
     return PrintParse(
-        print = lambda vs: builtins.dict((key, x.print(v)) for (key, v) in vs.items()),
-        parse = lambda vs: builtins.dict((key, x.parse(v)) for (key, v) in vs.items()),
+        print = lambda vs: {key: x.print(v) for (key, v) in vs.items()},
+        parse = lambda vs: {key: x.parse(v) for (key, v) in vs.items()},
     )
 
 def maybe(x):
@@ -397,3 +401,73 @@ command_line = PrintParse(
     print = shlex.join,
     parse = shlex.split,
 )
+
+ascii = PrintParse(
+    print = lambda s: s.encode('ascii'),
+    parse = lambda x: x.decode('ascii'),
+)
+
+def base64_pad(x):
+    k = -len(x) % 4
+    if k != 0:
+        x += b'=' * k
+    return x
+
+base64_standard = PrintParse(
+    print = base64.standard_b64encode,
+    parse = general.compose(base64_pad, base64.standard_b64decode),
+)
+
+base64_standard_str = compose(ascii, base64_standard, invert(ascii))
+
+module_datetime = datetime
+
+def datetime(format):
+    return PrintParse(
+        print = lambda x: module_datetime.datetime.strftime(x, format),
+        parse = lambda x: module_datetime.datetime.strptime(x, format),
+    )
+
+module_json = json
+
+json = PrintParse(
+    print = module_json.dumps,
+    parse = module_json.loads,
+)
+
+json_nice = PrintParse(
+    print = functools.partial(module_json.dumps, indent = 4, sort_keys = True),
+    parse = module_json.loads,
+)
+
+def dataclass_dict(cls):
+    fields = cls.__dataclass_fields__
+
+    def pp_field(field):
+        # Don't use exceptions because this may lie on the critical path.
+        if field.metadata is None:
+            return identity
+        return field.metadata.get('pp', identity)
+
+    def print(x):
+        return {
+            name: pp_field(field).print(getattr(x, name))
+            for (name, field) in fields.items()
+        }
+
+    def parse(u):
+        return cls(**{
+            name: pp_field(field).parse(u[name])
+            for (name, field) in fields.items()
+        })
+
+    cls.pp = PrintParse(print = print, parse = parse)
+    return cls
+
+def dataclass_json(cls, nice = False):
+    dataclass_dict(cls)
+    cls.pp = compose(cls.pp, json_nice if nice else json)
+    return cls
+
+def field(pp):
+    return dataclasses.field(metadata = {'pp': pp})
