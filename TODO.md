@@ -82,6 +82,22 @@
   - It is unclear how the project storage statistics works in the presence of pooling.
   - The resource information seen when pushing (e.g. remote: MAX: 1000000, CURRENT: 124) seems to count only the local repository, excluding the pool.
 
+* Make use of project activity history to find out when a submission tag was created.
+
+* Use GraphQL for faster information retrievel
+  - Canvas
+  - Chalmers GitLab
+  Caveats (GitLab):
+  - nested pagination
+  - some features not available (e.g. resource label events)
+
+* Find out how the web interface of project settings on GitLab manages to change settings we cannot change using the API.
+
+* Keep a record of group membership changes.
+  That way, we can detect if a student uses the membership mirror to glance at another group's solution.
+
+* Find out how to use GU LDAP.
+
 ## Grading sheet
 
 * Support the "Notes" field in the grading sheet.
