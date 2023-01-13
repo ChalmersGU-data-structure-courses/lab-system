@@ -4,6 +4,7 @@ from pathlib import PurePosixPath
 import re
 from types import SimpleNamespace
 
+import gitlab_tools
 import lab_handlers_java
 import print_parse
 import robograder_java
@@ -63,45 +64,33 @@ gitlab_lab_system_users = ['lab-system', 'sattler']
 #                       # Members of this group will have access to all lab groups and grading repositories.
 #                       # You can use Course.add_teachers_to_gitlab to populate this group.
 #
-# * labs
-#     ├── 1
-#     │   ├── official  # Official problem and solution repository.
-#     │   │             # Contains a branch 'problem' with the initial lab problem.
-#     │   │             # All lab group repositories are initially clones of the 'problem' branch.
-#     │   │             # Also contains a branch 'solution' with the official lab solution.
-#     │   │             # Can be created by the lab script from a given lab directory in the code repository.
-#     │   │             # Used by the lab script to fork the individual lab group projects.
-#     │   │
-#     │   ├── staging   # Used as a temporary project from which fork the student lab projects.
-#     │   │             # It is derived by the lab script from the official project.
-#     │   │
-#     │   └── grading   # Grading repository, maintained by the lab script.
-#     │                 # Fetches the official problem and solution branches and submissions from individual lab groups.
-#     │                 # Contains merge commits needed to represent three-way diffs on the GitLab UI.
-#     │                 # The individual submissions are available as tags of the form lab-group-XX/submissionYYY.
-#     │                 #
-#     │                 # If a grader wants to work seriously with submission files, they should clone this repository.
-#     │                 # Example use cases:
-#     │                 # - cd lab2-grading
-#     │                 # - git checkout lab_group_13/submission1/tag   to switch to a group's submission
-#     │                 # - git diff problem                            changes compared to problem
-#     │                 # - git diff solution                           changes compared to solution
-#     │                 # - git diff lab_group_13/submission0/tag       changes compared to last submission
-#     │                 # - git diff problem answers.txt                changes in just one file
-#     ...
-#
-# * groups
-#     ├── 0             # A student lab group.
-#     │   │             # You can use Course.sync_students_to_gitlab or Course.invite_students_to_gitlab to create and populate these groups.
-#     │   │             # This will (un)invite based on which assignment group they signed up for in Canvas.
-#     │   │
-#     │   ├── lab1      # For mid-course group membership changes, membership can also
-#     │   │             # be managed at the project level (only for the needed students).
-#     │   │             # Remove them from their group and manually add them to the projects they should have access to.
-#     │   │             # Example: A student may be part of lab1 and lab2 in group 13, but lab3 and lab4 in group 37.
-#     │   │             #          In that case, they should neither be part of group 13 nor of group 37.
-#     │   ...
-#     ├── 1
+# * lab-1
+#     ├── official  # Official problem and solution repository.
+#     │             # Contains a branch 'problem' with the initial lab problem.
+#     │             # All lab group repositories are initially clones of the 'problem' branch.
+#     │             # Also contains a branch 'solution' with the official lab solution.
+#     │             # Can be created by the lab script from a given lab directory in the code repository.
+#     │             # Used by the lab script to fork the individual lab group projects.
+#     │
+#     ├── grading   # Grading repository, maintained by the lab script.
+#     │             # Fetches the official problem and solution branches and submissions from individual lab groups.
+#     │             # Contains merge commits needed to represent three-way diffs on the GitLab UI.
+#     │             # The individual submissions are available as tags of the form lab-group-XX/submissionYYY.
+#     │             #
+#     │             # If a grader wants to work seriously with submission files, they should clone this repository.
+#     │             # Example use cases:
+#     │             # - cd lab2-grading
+#     │             # - git checkout lab_group_13/submission1/tag   to switch to a group's submission
+#     │             # - git diff problem                            changes compared to problem
+#     │             # - git diff solution                           changes compared to solution
+#     │             # - git diff lab_group_13/submission0/tag       changes compared to last submission
+#     │             # - git diff problem answers.txt                changes in just one file
+#     │
+#     ├── group-0          # Lab project for Lab group 0.
+#     │                    # Students are developers.
+#     │
+#     ├── group-0-grading  # Grading project for Lab group 0.
+#     │                    # Students are guests.
 #     ...
 
 # Regarding group and project names on GitLab, we are constrained by the following.
@@ -111,31 +100,23 @@ gitlab_lab_system_users = ['lab-system', 'sattler']
 # This also applies to the content of the name file for each lab.
 # This is because it is currently used to form the full name of a lab on Chalmers Gitlab.
 
-_course_path = PurePosixPath('courses/XXX')
-
-# Absolute paths on Chalmers GitLab to the groups described above.
-path = SimpleNamespace(
-    graders = _course_path / 'graders',
-    labs    = _course_path / 'labs',    # noqa: E221
-    groups  = _course_path / 'groups',  # noqa: E221
-)
+path_course = PurePosixPath('courses/XXX')
+path_graders = path_course / 'graders'
 
 # Relative paths to the repositories in each lab as described above.
 path_lab = SimpleNamespace(
     official = 'official',
     grading = 'grading',
-    staging = 'staging',
 )
 
 # Branch names
 branch = SimpleNamespace(
-    # Branches in official lab repository.
-    # Must correspond to subfolders of lab in code repository.
-    problem = 'problem',
-    solution = 'solution',
-
     # Default branch name to use.
+    # Also used for problem.
     master = 'main',
+
+    solution = 'solution',
+    submission = 'submission',
 )
 
 # Parsing and printing of outcomes.
@@ -171,12 +152,12 @@ group = SimpleNamespace(
     # Used in the grading sheet and the Canvas submission table.
     id = print_parse.int_str(),
 
-    # Version of the group id used on Chalmers GitLab.
-    # Needs to have length at least 2.
-    id_gitlab = print_parse.int_str(format = '02'),
-
+    # Used for the lab project path.
     # Used as part of tag names in grading repository.
     full_id = print_parse.regex_int('group-{}'),
+
+    # Used for the grading project path.
+    full_id_grading = print_parse.regex_int('group-{}'),
 
     # Full human-readable name.
     # Used in Canvas group set.
@@ -196,11 +177,7 @@ lab = SimpleNamespace(
     # Human-readable id.
     id = print_parse.int_str(),
 
-    # Used as relative path on Chalmers GitLab in the labs group.
-    # Needs to have length at least 2.
-    id_gitlab = print_parse.int_str(format = '02'),
-
-    # Used as relative path on Chalmers GitLab in each student group.
+    # Used as relative path on Chalmers GitLab.
     full_id = print_parse.regex_int('lab-{}'),
 
     # Actual name.
@@ -326,13 +303,13 @@ _lab_config = SimpleNamespace(
     #   for webhook-triggered updates.
     # * Values of several hours are acceptable
     #   if the webhook notifications work reliably.
-    refresh_period = datetime.timedelta(minutes = 15)
+    refresh_period = datetime.timedelta(minutes = 15),
 
     # Whether new-style grading via merge requests should be used.
     # Currently requires students to not be members of their lab group on GitLab,
     # but of the individual projects in the their group.
     # This is because they should only have the guest role in the created grading projects that sit in the same group.
-    grading_via_merge_request = False,
+    grading_via_merge_request = True,
 
     # Only used in new-style grading via merge requests.
     # The label spec for key None corresponds to the waiting-for-grading state.
@@ -398,6 +375,7 @@ _cid = print_parse.regex('{}@chalmers.se')
 _cid_gitlab_exceptions = print_parse.from_dict([
     ('peb', 'Peter.Ljunglof'),
     ('tcarlos', 'carlos.tome'),
+    ('REDACTED_CID', 'REDACTED_EMAIL_USERNAME'),
 ])
 
 # Format GU ID as email address (GU-ID@gu.se).

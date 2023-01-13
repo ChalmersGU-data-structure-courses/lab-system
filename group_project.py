@@ -594,7 +594,7 @@ class HandlerData:
 
 class GroupProject:
     '''
-    This class abstracts over a lab project of a lab group on Chalmers GitLab.
+    This class abstracts over a lab project of a student or lab group on Chalmers GitLab.
     It collects instances of HandlerData.
     Each instances of this class is managed by an instance of lab.Lab.
     '''
@@ -623,34 +623,30 @@ class GroupProject:
     def project(self):
         '''
         A lab project for a student group.
-        On creation, the repository is initialized with the problem branch of the local grading repository.
-        That one needs to be initialized and have the problem branch.
+        On creation, the repository is forked from the official repository.
+        That one needs to be initialized.
         '''
         r = gitlab_tools.CachedProject(
             gl = self.gl,
-            path = self.course.group(self.id).path / self.course.config.lab.full_id.print(self.lab.id),
+            path = self.lab.path / self.course.config.lab.full_id.print(self.lab.id),
             name = self.lab.name_full,
             logger = self.logger,
         )
 
         def create():
-            project = gitlab_tools.CachedProject.create(r, self.course.group(self.id).get)
+            project = self.lab.offical_project.forks.create({
+                'namespace_path': str(self.lab.path),
+                'path': r.path,
+                'name': r.name,
+            })
             try:
-                self.repo.git.push(
-                    project.ssh_url_to_repo,
-                    git_tools.refspec(
-                        git_tools.local_branch(self.course.config.branch.problem),
-                        self.course.config.branch.master,
-                        force = True,
-                    ),
-                )
-                self.lab.configure_student_project(project)
-                self.repo_add_remote()
+                project = gitlab_tools.wait_for_fork(project)
             except:  # noqa: E722
-                r.delete()
+                project.delete()
                 raise
-        r.create = create
+            r.get = project
 
+        r.create = create
         return r
 
     def repo_add_remote(self, ignore_missing = False):
