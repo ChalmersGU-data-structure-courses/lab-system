@@ -109,7 +109,7 @@ class Lab:
         self.name_full = '{} — {}'.format(self.name, self.name_semantic)
 
         # Gitlab config
-        self.path = self.course.config.path.labs / self.course.config.lab.id_gitlab.print(self.id)
+        self.path = self.course.path_course / self.course.config.lab.full_id.print(self.id)
 
         # Local grading repository config.
         self.dir_repo = None if self.dir is None else self.dir / 'repo'
@@ -148,11 +148,15 @@ class Lab:
         r = gitlab_tools.CachedGroup(
             **self.entity_cached_params,
             path = self.path,
-            name = self.name_full,
+            name = self.name,
         )
 
         def create():
-            gitlab_tools.CachedGroup.create(r, self.course.labs_group.get)
+            gitlab_tools.CachedGroup.create(
+                r,
+                self.course.group.get,
+                description = self.name_semantic,
+            )
         r.create = create
 
         return r
@@ -218,7 +222,7 @@ class Lab:
         r = gitlab_tools.CachedProject(
             **self.entity_cached_params,
             path = self.path / self.course.config.path_lab.official,
-            name = '{} — official repository'.format(self.name),
+            name = 'Primary repository',
         )
 
         def create():
@@ -239,59 +243,49 @@ class Lab:
 
                     if self.config.path_gitignore:
                         shutil.copyfile(self.config.path_gitignore, Path(dir) / '.gitignore')
-                    push_branch(self.course.config.branch.problem, 'Initial commit.')
-                    push_branch(self.course.config.branch.solution, 'Official solution.')
+                    push_branch(self.course.config.branch.master, 'Initial commit.')
+
+                project.name = self.name_full
+                #project.description = f'Grading for [{self.lab.name_full}]({self.group.project.lazy.web_url})'
+
+                #project.default_branch = self.course.config.branch.master
+                project.lfs_enabled = False
+                project.wiki_enabled = False
+                project.packages_enabled = False
+                project.jobs_enabled = False
+                project.snippets_enabled = False
+                project.container_registry_enabled = False
+                project.service_desk_enabled = False
+                project.shared_runners_enabled = False
+                project.ci_forward_deployment_enabled = False
+                project.ci_job_token_scope_enabled = False
+                project.public_jobs = False
+                project.remove_source_branch_after_merge = False
+                project.auto_devops_enabled = False
+                project.keep_latest_artifact = False
+                project.requirements_enabled = False
+                project.security_and_compliance_enabled = False
+                project.request_access_enabled = False
+                project.forking_access_level = 'disabled'
+                project.analytics_access_level = 'disabled'
+                project.operations_access_level = 'disabled'
+                project.releases_access_level = 'disabled'
+                project.pages_access_level = 'disabled'
+                project.security_and_compliance_access_level = 'disabled'
+                project.environments_access_level = 'disabled'
+                project.feature_flags_access_level = 'disabled'
+                project.infrastructure_access_level = 'disabled'
+                project.monitor_access_level = 'disabled'
+                project.emails_disabled = False
+                project.permissions = {'project_access': None, 'group_access': None}
+                project.save()
+
             except:  # noqa: E722
                 r.delete()
                 raise
         r.create = create
 
         return r
-
-    @functools.cached_property
-    def staging_project(self):
-        '''
-        The staging project on Chalmers GitLab.
-        When created, forked from the official project and modified to prepare for forking of student projects.
-        '''
-        r = gitlab_tools.CachedProject(
-            **self.entity_cached_params,
-            path = self.path / self.course.config.path_lab.staging,
-            name = '{} — staging repository'.format(self.name),
-        )
-
-        def create():
-            if self.logger:
-                self.logger.info(f'Forking project {r.path}')
-            r.get = self.official_project.get.forks.create({
-                'namespace_path': str(r.path.parent),
-                'path': r.path.name,
-                'name': r.name,
-            })
-            try:
-                r.get = gitlab_tools.wait_for_fork(self.gl, r.get, check_immediately = False)
-                r.get.branches.create({
-                    'branch': self.course.config.branch.master,
-                    'ref': self.course.config.branch.problem,
-                })
-                r.get.default_branch = self.course.config.branch.master
-                r.get.save()
-                r.get.branches.get(self.course.config.branch.problem, lazy = True).delete()
-                r.get.branches.get(self.course.config.branch.solution, lazy = True).delete()
-            except:  # noqa: E722
-                r.delete()
-                raise
-        r.create = create
-
-        return r
-
-    @contextlib.contextmanager
-    def with_staging_project(self):
-        self.staging_project.create()
-        try:
-            yield self.staging_project.get
-        finally:
-            self.staging_project.delete()
 
     @functools.cached_property
     def grading_project(self):
@@ -302,7 +296,7 @@ class Lab:
         r = gitlab_tools.CachedProject(
             **self.entity_cached_params,
             path = self.path / self.course.config.path_lab.grading,
-            name = '{} — grading repository'.format(self.name),
+            name = 'Request collection repository'.format(self.name),
         )
 
         def create():
@@ -767,39 +761,6 @@ class Lab:
     def have_reviews(self):
         '''Whether review response issues are configured.'''
         return self.submission_handler.review_response_key is not None
-
-    @functools.cached_property
-    def review_template_issue(self):
-        '''
-        The submission review template issue specified by the lab configuration.
-        Parsing this on first access takes an HTTP call.
-        None if no submission review is configured.
-        '''
-        if self.submission_handler.review_response_key is None:
-            return None
-
-        self.logger.debug('Retrieving template issue.')
-
-        def parser(issue):
-            try:
-                self.course.config.grading_response_template.parse(issue.title)
-            except Exception:
-                return None
-            return ((), issue)
-
-        u = dict()
-
-        item_parser.parse_all_items(
-            item_parser.Config(
-                location_name = 'official lab project',
-                item_name = 'official response issue',
-                item_formatter = gitlab_tools.format_issue_metadata,
-                logger = self.logger,
-            ),
-            [(parser, f'{self.submission_handler.review_response_key} template issue', u)],
-            gitlab_tools.list_all(self.official_project.lazy.issues),
-        )
-        return u.get(())
 
     def handle_requests(self):
         self.logger.info('Handling request tags.')
