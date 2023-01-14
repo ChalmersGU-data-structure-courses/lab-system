@@ -936,7 +936,7 @@ class Assignment:
     #             self.prepare_submission(deadline, group, dir / self.group_set.details[group].name, s)
 
     def grade(self, user, comment = None, grade = None):
-        assert(grade in [None, 'complete', 'incomplete', 'fail'])
+        assert grade in [None, 'complete', 'incomplete', 'fail']
 
         endpoint = ['courses', self.course.course_id, 'assignments', self.assignment_id, 'submissions', user]
         params = {'comment[group_comment]': 'false'}
@@ -945,3 +945,7 @@ class Assignment:
         if grade:
             params['submission[posted_grade]'] = grade
         self.canvas.put(endpoint, params = params)
+
+def user_first_and_last_name(user):
+    (last, first) = user.sortable_name.split(',', maxsplit = 1)
+    return (last.strip(), first.strip())

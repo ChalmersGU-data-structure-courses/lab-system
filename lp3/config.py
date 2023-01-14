@@ -4,10 +4,12 @@ from pathlib import PurePosixPath
 import re
 from types import SimpleNamespace
 
+import gdpr_coding
 import gitlab_tools
+import lab_handlers
 import lab_handlers_java
 import print_parse
-import robograder_java
+import tester_java
 from this_dir import this_dir
 
 # Personal configuration.
@@ -25,13 +27,6 @@ canvas = SimpleNamespace(
 
     # Integer id found in Canvas course URL.
     course_id = 23356,
-
-    # Name of Canvas group set where students sign up for lab groups.
-    # We recommend to use a zero-based numerical naming scheme such as 'Lab group 0', 'Lab group 1', etc.
-    # If you allow students to create their own group name,
-    # you have to define further down how this should translate to group names on GitLab.
-    # There are special characters allowed for Canvas group names, but forbidden for GitLab group names.
-    group_set = 'Lab group',
 
     # Path to (unpublished!) folder in Canvas course files where the script will upload submission reports.
     # This folder needs to exist.
@@ -145,33 +140,6 @@ grading_response_template = print_parse.regex_many('Grading template', [], flags
 # Used to initialize grading template instances.
 grading_response_default_outcome = 0
 
-# Parsing and printing of references to a lab group.
-group = SimpleNamespace(
-    # Human-readable id.
-    # Typical use case: values in a column of group identifiers.
-    # Used in the grading sheet and the Canvas submission table.
-    id = print_parse.int_str(),
-
-    # Used for the lab project path.
-    # Used as part of tag names in grading repository.
-    full_id = print_parse.regex_int('group-{}'),
-
-    # Used for the grading project path.
-    full_id_grading = print_parse.regex_int('group-{}'),
-
-    # Full human-readable name.
-    # Used in Canvas group set.
-    name = print_parse.regex_int('Lab group {}', flags = re.IGNORECASE),
-
-    # Used for sorting in grading sheet.
-    sort_key = lambda id: id,
-)
-
-# Format the id for use in a spreadsheet cell.
-# An integer or a string.
-# The below definition is the identity on integers.
-group.as_cell = print_parse.compose(group.id, print_parse.invert(group.id))
-
 # Parsing and printing of references to a lab.
 lab = SimpleNamespace(
     # Human-readable id.
@@ -248,11 +216,58 @@ grading_via_merge_request = SimpleNamespace(
 # Root of the lab repository.
 _lab_repo = this_dir.parent / 'labs'
 
+# Parsing and printing of references to a lab group.
+_group = SimpleNamespace(
+    # Human-readable id.
+    # Typical use case: values in a column of group identifiers.
+    # Used in the grading sheet and the Canvas submission table.
+    id = print_parse.int_str(),
+
+    # Used for the lab project path.
+    # Used as part of tag names in grading repository.
+    full_id = print_parse.regex_int('group-{}'),
+
+    # Used for the grading project path.
+    full_id_grading = print_parse.regex_int('group-{}'),
+
+    # Full human-readable name.
+    # Used in Canvas group set.
+    name = print_parse.regex_int('Lab group {}', flags = re.IGNORECASE),
+
+    # Name of Canvas group set where students sign up for lab groups.
+    # We recommend to use a zero-based numerical naming scheme such as 'Lab group 0', 'Lab group 1', etc.
+    # If you allow students to create their own group name,
+    # you have to define further down how this should translate to group names on GitLab.
+    # There are special characters allowed for Canvas group names, but forbidden for GitLab group names.
+    #
+    # Needs to be a unique key for this group set configuration.
+    group_set_name = 'Lab group',
+
+    # Format the id for use in a spreadsheet cell.
+    # An integer or a string.
+    # The below definition is the identity on integers.
+
+    # Instance of GDPRCoding.
+    # For use in the grading spreadsheet.
+    # Must raise an exception on cell items not belonging to the group range.
+    gdpr_coding = gdpr_coding.GDPRCoding(
+        identifier = print_parse.compose(print_parse.int_str(), print_parse.invert(print_parse.int_str()))
+    ),
+)
+
 # Example lab configuration (for purpose of documentation).
 _lab_config = SimpleNamespace(
     # Filesystem path to the lab source.
+    # Initial lab skeleton is in subfolder 'problem'.
     path_source = _lab_repo / 'labs' / 'goose-recognizer' / 'java',
     path_gitignore = _lab_repo / 'gitignores' / 'java.gitignore',
+
+    # Whether the lab has a solution, in subfolder 'solution'.
+    has_solution = True,
+
+    # An optional group set to use.
+    # If None, the lab is individual.
+    group_set = _group,
 
     # Worksheet identifier of the grading sheet for the lab.
     # This can be of the following types:
@@ -274,12 +289,6 @@ _lab_config = SimpleNamespace(
     # Key of submission handler in the dictionary of request handlers.
     # Its value must be an instance of SubmissionHandler.
     submission_handler_key = None,
-
-    # Whether new-style grading via merge requests should be used.
-    # Currently requires students to not be members of their lab group on GitLab,
-    # but of the individual projects in the their group.
-    # This is because they should only have the guest role in the created grading projects that sit in the same group.
-    grading_via_merge_request = False,
 
     # Lab refresh period if the script is run in an event loop.
     # The webhooks on GitLab may fail to trigger in some cases:
@@ -323,19 +332,21 @@ _lab_config = SimpleNamespace(
 _language = 'java'
 
 class _LabConfig:
-    def __init__(self, k, lab_folder, refresh_period):
+    def __init__(self, k, lab_folder, refresh_period, has_tester = False, has_robograder = False):
         self.path_source = _lab_repo / 'labs' / lab_folder / _language
+        self.has_solution = True
+        self.group_set = None if k == 1 else _group
         self.path_gitignore = _lab_repo / 'gitignores' / f'{_language}.gitignore'
         self.grading_sheet = lab.name.print(k)
         self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-to-be-graded.html'.format(lab.full_id.print(k))
 
         def f():
-            yield ('submission', lab_handlers_java.SubmissionHandler())
-            try:
-                robograder_java.LabRobograder(self.path_source)
+            if has_robograder:
                 yield ('robograding', lab_handlers_java.RobogradingHandler())
-            except robograder_java.RobograderMissingException:
-                pass
+            elif has_tester:
+                yield ('testing', lab_handlers.GenericTestingHandler(tester_java.LabTester.factory))
+
+            yield ('submission', lab_handlers_java.SubmissionHandler(tester_java.LabTester.factory))
         self.request_handlers = dict(f())
 
         self.refresh_period = refresh_period
@@ -345,21 +356,21 @@ class _LabConfig:
             None: gitlab_tools.LabelSpec(name = 'waiting-for-grading', color = 'yellow'),
             0: gitlab_tools.LabelSpec(name = 'incomplete', color = 'red'),
             1: gitlab_tools.LabelSpec(name = 'pass', color = 'green'),
-        },
+        }
 
     # Key of submission handler in the dictionary of request handlers.
     # Its value must be an instance of SubmissionHandler.
     submission_handler_key = 'submission'
 
-def _lab_item(k, *args):
-    return (k, _LabConfig(k, *args))
+def _lab_item(k, *args, **kwargs):
+    return (k, _LabConfig(k, *args, **kwargs))
 
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
-    _lab_item(1, 'binary-search'       , datetime.timedelta(minutes = 15)),  # noqa: E203
-#    _lab_item(2, 'text-indexing'       , datetime.timedelta(minutes = 15)),  # noqa: E203
-#    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15)),  # noqa: E203
-#    _lab_item(4, 'path-finder'         , datetime.timedelta(minutes = 15)),  # noqa: E203
+    _lab_item(1, 'binary-search'       , datetime.timedelta(minutes = 15), has_robograder = True),  # noqa: E203
+    #_lab_item(2, 'text-indexing'       , datetime.timedelta(minutes = 15)),  # noqa: E203
+    #_lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15)),  # noqa: E203
+    #_lab_item(4, 'path-finder'         , datetime.timedelta(minutes = 15)),  # noqa: E203
 ])
 
 # Students taking part in labs who are not registered on Canvas.
@@ -374,16 +385,9 @@ outside_canvas = []
 # Giving a value of 'None' means that the student should be ignored.
 name_corrections = {}
 
-# Format CID as email address (CID@chalmers.se).
-# This is not necessarily a valid email address for this user (e.g., not for non-staff).
-_cid = print_parse.regex('{}@chalmers.se')
-
-_cid_gitlab_exceptions = print_parse.from_dict([
+_cid_to_gitlab_username = print_parse.from_dict([
     ('REDACTED_CID', 'REDACTED_EMAIL_USERNAME'),
 ])
-
-# Format GU ID as email address (GU-ID@gu.se).
-_gu_id = print_parse.regex('{}@gu.se')
 
 # Retrieve the Chalmers GitLab username for a user id on Chalmers/GU Canvas.
 # This is needed to:
@@ -391,14 +395,31 @@ _gu_id = print_parse.regex('{}@gu.se')
 # * add students as retrieved from Canvas to groups or projects on GitLab.
 # Return None if not possible.
 # Takes the course object and the Canvas user object as arguments.
+_canvas_id_to_gitlab_username_override = {
+    122370000000266484: 'benu',
+    122370000000062483: 'REDACTED_CID',
+    122370000000262907: 'portase',
+    122370000000245410: 'davidroc',
+    122370000000043893: 'REDACTED_CID',
+    122370000000259641: 'kaeriks',
+}
+
+# TODO: find CIDs for:
+# 122370000000259648; gusandwip; William Andersson; Andersson, William
+# 122370000000234578; gusbomjod; Jonathan Boman; Boman, Jonathan
+# 122370000000266483; guslinhph; Linh Pham; Pham, Linh
+
 def gitlab_username_from_canvas_user_id(course, user_id):
-    login_id = course.canvas_login_id(user_id)
     try:
-        cid = _cid.parse(login_id)
-    except ValueError:
-        return None
+        cid = _canvas_id_to_gitlab_username_override[user_id]
+    except KeyError:
+        try:
+            cid = course.cid_from_canvas_id_via_login_id_or_ldap_name(user_id)
+        except LookupError:
+            return None
+
     try:
-        return _cid_gitlab_exceptions.print(cid)
+        return _cid_to_gitlab_username.print(cid)
     except KeyError:
         return cid
 
