@@ -961,3 +961,7 @@ class Assignment:
         if grade:
             params['submission[posted_grade]'] = grade
         self.canvas.put(endpoint, params = params)
+
+def user_first_and_last_name(user):
+    (last, first) = user.sortable_name.split(',', maxsplit = 1)
+    return (last.strip(), first.strip())

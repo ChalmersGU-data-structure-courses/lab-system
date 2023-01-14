@@ -120,7 +120,7 @@ def parse_grading_columns(config, header_row):
 
     return (group_column, query_column_groups)
 
-def parse_group_rows(config, values):
+def parse_group_rows(config, gdpr_coding, values):
     '''
     Determine which row indices in a column correspond to student groups.
     This is done by attempting to parse each entry as a group id.
@@ -132,17 +132,18 @@ def parse_group_rows(config, values):
             try:
                 value = value['userEnteredValue']
                 value = google_tools.sheets.extended_value_extract_primitive(value)
-                yield (config.group.as_cell.parse(value), i)
+                yield (gdpr_coding.identifier.parse(value), i)
             except Exception:
                 continue
     return general.sdict(f())
 
-def parse(config, sheet_data):
+def parse(config, gdpr_coding, sheet_data):
     '''
     Parse a grading sheet.
 
     Arguments:
     * config: Configuration name space as in gitlab_config.py.template.
+    * gdpr_coding: instance of GDPR coding.
     * sheet_data: A value of type google_tools.sheets.SheetData.
     Returns a value of type GradingSheetData.
 
@@ -161,7 +162,7 @@ def parse(config, sheet_data):
 
     return GradingSheetData(
         sheet_data = sheet_data,
-        group_rows = parse_group_rows(config, (
+        group_rows = parse_group_rows(config, gdpr_coding, (
             (row, sheet_data.value(row, group_column))
             for row in range(sheet_data.num_rows) if not row in ignore
         )),
@@ -229,29 +230,28 @@ class GradingSheet:
     def __init__(
         self,
         grading_spreadsheet,
+        lab,
         gspread_worksheet = None,
         *,
-        lab_id = None,
         name = None,
         logger = logger,
     ):
         '''
-        Exactly one of lab_id and name must be specified.
+        The lab instance is currently only used to retrieve the GDPR sort key of its student connector.
         We allow the name to be specified in case it is different from lab id it parses to.
         '''
-        self.grading_spreadsheet = grading_spreadsheet
         self.logger = logger
+        self.grading_spreadsheet = grading_spreadsheet
+        self.lab = lab
 
         if gspread_worksheet:
             self.gspread_worksheet = gspread_worksheet
 
         pp = self.grading_spreadsheet.config.lab.name
         if name is not None:
-            self.lab_id = pp.parse(name)
             self.name = name
         else:
-            self.lab_id = lab_id
-            self.name = pp.print(lab_id)
+            self.name = pp.print(lab.id)
 
         # Updated in write_query_cell.
         self.needed_num_queries = 0
@@ -292,7 +292,7 @@ class GradingSheet:
 
     @functools.cached_property
     def sheet_parsed(self):
-        return parse(self.grading_spreadsheet.config, self.sheet_data)
+        return parse(self.grading_spreadsheet.config, self.lab.student_connector.gdpr_coding(), self.sheet_data)
 
     @functools.cached_property
     def group_range(self):
@@ -312,6 +312,16 @@ class GradingSheet:
             self.sheet_properties.sheetId,
             google_tools.sheets.Dimension.rows,
             *range,
+        )
+
+    def format_group(self, group_id, group_link):
+        return google_tools.sheets.cell_data(
+            userEnteredValue = google_tools.sheets.extended_value_number_or_string(
+                self.lab.student_connector.gdpr_coding().identifier.print(group_id)
+            ),
+            userEnteredFormat = (
+                None if group_link is None else google_tools.sheets.linked_cell_format(group_link(group_id))
+            ),
         )
 
     def delete_existing_groups(self, request_buffer):
@@ -344,7 +354,7 @@ class GradingSheet:
     def insert_groups(self, groups, group_link, request_buffer):
         '''
         Update grading sheet with rows for groups.
-        This will create new rows as per the ordering specified by config.group.sort_key.
+        This will create new rows as per the GDPR coding of the student connector of the lab.
         The final ordering will only be correct if the previous ordering was correct.
 
         Arguments:
@@ -361,7 +371,7 @@ class GradingSheet:
         '''
         self.logger.debug('creating rows for potentially new groups...')
 
-        sort_key = self.grading_spreadsheet.config.group.sort_key
+        sort_key = self.lab.student_connector.gdpr_coding().sort_key
         groups = sorted(groups, key = sort_key)
 
         # Sorting for the previous groups should not be necessary.
@@ -400,7 +410,7 @@ class GradingSheet:
                     inherit_from_before = inherit_from_before,
                 ),
                 google_tools.sheets.request_update_cells(
-                    [[self.grading_spreadsheet.format_group(group_id, group_link)] for (group_id, _) in xs],
+                    [[self.format_group(group_id, group_link)] for (group_id, _) in xs],
                     fields = google_tools.sheets.cell_link_fields,
                     range = google_tools.sheets.grid_range(
                         self.sheet_properties.sheetId,
@@ -640,16 +650,18 @@ class GradingSheet:
                 )
 
 class GradingSpreadsheet:
-    def __init__(self, config, logger = logger):
+    def __init__(self, config, labs, logger = logger):
         '''
-        Needs only the following from the course object:
-        * course.config for grading-sheet-related configuration,
-        * course.gspread_client and course.spreadsheets for access to Google Sheets API.
-        The config argument is the lab config.
-        It is used to access the spreadsheet and worksheet.
+        Arguments:
+        * config: course configuration
+
+        The labs argument is a mapping from lab ids to instances of Lab.
+        It is currently only used to retrieve the sort key for group ids.
         '''
         self.config = config
         self.logger = logger
+
+        self.labs = labs
 
     @functools.cached_property
     def gspread_client(self):
@@ -672,7 +684,8 @@ class GradingSpreadsheet:
         for worksheet in self.gspread_spreadsheet.worksheets():
             try:
                 lab_id = self.config.lab.name.parse(worksheet.title)
-                yield (lab_id, GradingSheet(self, name = worksheet.title, gspread_worksheet = worksheet))
+                if lab_id in self.labs:
+                    yield (lab_id, GradingSheet(self, name = worksheet.title, gspread_worksheet = worksheet))
             except Exception:
                 pass
 
@@ -713,16 +726,6 @@ class GradingSpreadsheet:
     def feed_request_buffer(self, request_buffer, *requests):
         (request_buffer.add if request_buffer else self.update)(*requests)
 
-    def format_group(self, group_id, group_link):
-        return google_tools.sheets.cell_data(
-            userEnteredValue = google_tools.sheets.extended_value_number_or_string(
-                self.config.group.as_cell.print(group_id)
-            ),
-            userEnteredFormat = (
-                None if group_link is None else google_tools.sheets.linked_cell_format(group_link(group_id))
-            ),
-        )
-
     @functools.cached_property
     def template_grading_sheet_qualified_id(self):
         '''Takes config.grading_sheet.template and resolves the worksheet identifier to an id.'''
@@ -736,7 +739,7 @@ class GradingSpreadsheet:
 
     def create_grading_sheet_from_template(self, title):
         '''
-        Create an copy of the template sheet grading in the specified spreadsheet with the specified title.
+        Create a copy of the template sheet grading in the specified spreadsheet with the specified title.
         Returns a value of SheetProperties (deserialized JSON) as per the Google Sheets API.
         '''
         (template_id, template_worksheet_id) = self.template_grading_sheet_qualified_id
@@ -756,9 +759,9 @@ class GradingSpreadsheet:
             self.update(google_tools.sheets.request_delete_sheet(id))
             raise
 
-    def grading_sheet_create(self, lab_id, groups = [], group_link = None, exist_ok = False, use_prev = False):
+    def grading_sheet_create(self, lab, groups = [], group_link = None, exist_ok = False, use_prev = False):
         '''
-        Create a new worksheet in the grading sheet for the lab specified by 'lab_id'.
+        Create a new worksheet in the grading sheet for the given lab (instance of Lab).
 
         Other arguments are as follows:
         * groups:
@@ -778,47 +781,46 @@ class GradingSpreadsheet:
 
         Returns the created instance of GradingSheet.
         '''
-        self.logger.info(f'creating grading sheet for {self.config.lab.name.print(lab_id)}...')
+        self.logger.info(f'creating grading sheet for {lab.name}...')
 
-        if lab_id in self.grading_sheets:
-            msg = f'grading sheet for {self.config.lab.name.print(lab_id)} already exists'
+        if lab.id in self.grading_sheets:
+            msg = f'grading sheet for {lab.name} already exists'
             if exist_ok:
                 self.logger.debug(msg)
                 return
             raise ValueError(msg)
 
-        name = self.config.lab.name.print(lab_id)
         if use_prev and self.grading_sheets:
             grading_sheet = max(self.grading_sheets.values(), key = lambda x: x.index())
             self.logger.debug('using grading sheet {grading_sheet.name} as template')
             worksheet = grading_sheet.gspread_worksheet.duplicate(
                 insert_sheet_index = grading_sheet.index() + 1,
-                new_sheet_name = name
+                new_sheet_name = lab.name,
             )
         else:
             self.logger.debug('using template document as template')
             worksheet = gspread.Worksheet(
                 self.gspread_spreadsheet,
-                self.create_grading_sheet_from_template(name)
+                self.create_grading_sheet_from_template(lab.name)
             )
 
         try:
-            grading_sheet = GradingSheet(self, lab_id = lab_id, gspread_worksheet = worksheet)
+            grading_sheet = GradingSheet(self, lab = lab, gspread_worksheet = worksheet)
             grading_sheet.setup_groups(groups, group_link, delete_previous = True)
         except Exception:
             self.update(google_tools.sheets.request_delete_sheet(worksheet.id))
             raise
 
-        self.grading_sheets[lab_id] = grading_sheet
-        self.logger.info(f'creating grading sheet for {self.config.lab.name.print(lab_id)}: done')
+        self.grading_sheets[lab.id] = grading_sheet
+        self.logger.info(f'creating grading sheet for {lab.name}: done')
         return grading_sheet
 
-    def ensure_grading_sheet(self, lab_id, groups = [], group_link = None):
-        self.logger.info(f'ensuring grading sheet for {self.config.lab.name.print(lab_id)}...')
-        grading_sheet = self.grading_sheets.get(lab_id)
+    def ensure_grading_sheet(self, lab, groups = [], group_link = None):
+        self.logger.info(f'ensuring grading sheet for {lab.name}...')
+        grading_sheet = self.grading_sheets.get(lab.name)
         if grading_sheet:
             grading_sheet.setup_groups(groups, group_link)
         else:
-            grading_sheet = self.grading_sheet_create(lab_id, groups, group_link, exist_ok = True)
-        self.logger.info(f'ensuring grading sheet for {self.config.lab.name.print(lab_id)}: done')
+            grading_sheet = self.grading_sheet_create(lab, groups, group_link, exist_ok = True)
+        self.logger.info(f'ensuring grading sheet for {lab.name}: done')
         return grading_sheet

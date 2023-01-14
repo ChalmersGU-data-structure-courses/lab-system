@@ -183,77 +183,23 @@ class GradingViaMergeRequest:
         '''
         r = gitlab_tools.CachedProject(
             gl = self.gl,
-            path = self.course.group(self.group.id).path / self.course.config.lab.full_id_grading.print(self.lab.id),
-            name = '{} — Grading'.format(self.lab.name),
             logger = self.logger,
+            path = self.group.path / 'grading',
+            name = '{} — Grading'.format(self.lab.name_full),
         )
 
         def create():
-            project = gitlab_tools.CachedProject.create(r, self.course.group(self.group.id).get)
+            project = self.lab.official_project.get.forks.create({
+                'namespace_path': str(r.path.parent),
+                'path': r.path.name,
+                'name': r.name,
+                'description': f'Grading for [{self.lab.name_full}]({self.group.project.lazy.web_url})',
+            })
             try:
-                for target in [self.course.config.branch.problem, 'submission']:
-                    self.lab.repo.git.push(
-                        project.ssh_url_to_repo,
-                        git_tools.refspec(
-                            git_tools.local_branch(self.course.config.branch.problem),
-                            target,
-                            force = True,
-                        ),
-                    )
-
-                # Hack
-                time.sleep(0.1)
-
-                self.merge_request = project.mergerequests.create({
-                    'source_branch': 'submission',
-                    'target_branch': 'problem',
-                    'title': f'Grading for {self.group.name}',
-                    'description': self.merge_request_description(),
-                })
-
-                self.status_repo_init(project)
-
-                project.protectedbranches.delete(self.course.config.branch.problem)
-
-                # Hack
-                time.sleep(0.1)
-
-                project.default_branch = self.course.config.branch.master
-                project.description = f'Grading for [{self.lab.name_full}]({self.group.project.lazy.web_url})'
-                project.lfs_enabled = False
+                project = self.gl.projects.get(project.id, lazy = True)
                 project.issues_enabled = False
-                project.wiki_enabled = False
+                project.lfs_enabled = False
                 project.packages_enabled = False
-                project.jobs_enabled = False
-                project.snippets_enabled = False
-                project.container_registry_enabled = False
-                project.service_desk_enabled = False
-                project.shared_runners_enabled = False
-                project.ci_forward_deployment_enabled = False
-                project.ci_job_token_scope_enabled = False
-                project.public_jobs = False
-                project.remove_source_branch_after_merge = False
-                project.auto_devops_enabled = False
-                project.keep_latest_artifact = False
-                project.requirements_enabled = False
-                project.security_and_compliance_enabled = False
-                project.request_access_enabled = False
-                project.forking_access_level = 'disabled'
-                project.analytics_access_level = 'disabled'
-                project.operations_access_level = 'disabled'
-                project.releases_access_level = 'disabled'
-                project.pages_access_level = 'disabled'
-                project.security_and_compliance_access_level = 'disabled'
-                project.emails_disabled = False
-                project.permissions = {'project_access': None, 'group_access': None}
-                # TODO
-                # Enable the below when https://gitlab.com/gitlab-org/gitlab/-/merge_requests/106755 has been released.
-                # The milestone is 15.7.
-                # Currently we can only change these settings via the user interface.
-                # project.environments_access_level = 'disabled'
-                # project.feature_flags_access_level = 'disabled'
-                # project.infrastructure_access_level = 'disabled'
-                # project.monitor_access_level = 'disabled'
                 project.save()
 
                 for label_spec in self.lab.config.outcome_labels.values():
@@ -261,6 +207,27 @@ class GradingViaMergeRequest:
                         'name': label_spec.name,
                         'color': label_spec.color,
                     })
+
+                project = gitlab_tools.wait_for_fork(self.gl, project)
+
+                project.branches.create({
+                    'branch': 'submission',
+                    'ref': self.course.config.branch.master,
+                })
+
+                self.merge_request = project.mergerequests.create({
+                    'source_branch': 'submission',
+                    'target_branch': self.course.config.branch.master,
+                    'title': f'Grading for {self.group.name}',
+                    'description': self.merge_request_description(),
+                })
+
+                self.status_repo_init(project)
+
+                # Hack
+                time.sleep(0.1)
+                r.get = project
+
             except:  # noqa: E722
                 r.delete()
                 self.status_repo_delete(force = True)

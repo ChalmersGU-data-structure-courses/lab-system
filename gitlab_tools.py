@@ -267,6 +267,16 @@ def invitation_list(gitlab_client, entity):
         **list_all_args,
     )
 
+def invitation_dict(gl, entity):
+    '''
+    The argument entity is a GitLab group or project object.
+    Returns a dictionary mapping email addresses to an invitation in entity.
+    '''
+    return general.sdict(
+        (invitation['invite_email'], invitation)
+        for invitation in invitation_list(gl, entity)
+    )
+
 @gitlab.exceptions.on_http_error(gitlab.exceptions.GitlabCreateError)
 def invitation_create(gitlab_client, entity, email, access_level, **kwargs):
     r = gitlab_client.http_post(
@@ -325,8 +335,11 @@ def mentions(users):
     Get mentions string for an iterable of users.
     Including this in an issue or comment will typically
     trigger notification to the mentioned users.
+
+    The trailing whitespace seems necessary.
+    Otherwise, edit fields flip out with autocompletion of users.
     '''
-    return ' '.join(map(format_username, users))
+    return ' '.join(map(format_username, users)) + ' '
 
 def append_paragraph(text, paragraph):
     '''Append a paragraph to a given Markdown text.'''
