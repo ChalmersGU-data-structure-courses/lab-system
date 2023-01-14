@@ -603,8 +603,9 @@ class GroupProject:
         self.id = id
         self.logger = logger
 
-        self.name = self.course.config.group.name.print(id)
-        self.remote = self.course.config.group.full_id.print(id)
+        self.remote = self.lab.student_connector.gitlab_group_slug_pp().print(id)
+        self.path = self.lab.path / self.remote
+        self.name = self.lab.student_connector.gitlab_group_name(id)
 
         self.handler_data = {
             handler_key: HandlerData(self, handler_key)
@@ -615,34 +616,63 @@ class GroupProject:
     def course(self):
         return self.lab.course
 
-    @functools.cached_property
+    @property
     def gl(self):
         return self.lab.gl
 
     @functools.cached_property
+    def group(self):
+        r = gitlab_tools.CachedGroup(
+            gl = self.gl,
+            logger = self.logger,
+            path = self.path,
+            name = self.name,
+        )
+
+        def create():
+            gitlab_tools.CachedGroup.create(r, self.lab.gitlab_group.get)
+            with contextlib.suppress(AttributeError):
+                del self.groups
+        r.create = create
+
+        def delete():
+            gitlab_tools.CachedGroup.delete(r)
+            with contextlib.suppress(AttributeError):
+                self.lab.groups.pop(self.id)
+                self.lab.student_groups.pop(self.id)
+        r.delete = delete
+
+        return r
+
+    @functools.cached_property
     def project(self):
         '''
-        A lab project for a student group.
+        The lab project on Chalmers GitLab.
         On creation, the repository is forked from the official repository.
         That one needs to be initialized.
         '''
         r = gitlab_tools.CachedProject(
             gl = self.gl,
-            path = self.lab.path / self.course.config.lab.full_id.print(self.lab.id),
-            name = self.lab.name_full,
             logger = self.logger,
+            path = self.path / 'work',
+            name = self.lab.name_full,
         )
 
         def create():
-            project = self.lab.offical_project.forks.create({
-                'namespace_path': str(self.lab.path),
-                'path': r.path,
+            project = self.lab.official_project.get.forks.create({
+                'namespace_path': str(r.path.parent),
+                'path': r.path.name,
                 'name': r.name,
             })
             try:
-                project = gitlab_tools.wait_for_fork(project)
+                project = self.gl.projects.get(project.id, lazy = True)
+                project.lfs_enabled = False
+                project.packages_enabled = False
+                project.save()
+
+                project = gitlab_tools.wait_for_fork(self.gl, project)
             except:  # noqa: E722
-                project.delete()
+                r.delete()
                 raise
             r.get = project
 
@@ -674,15 +704,9 @@ class GroupProject:
     @functools.cached_property
     def members(self):
         '''
-        The members of a student group project are taken from these sources:
-        * members of the containing student group,
-        * members of the project iself (for students that have been added because they changed groups).
-        In both cases, we restrict to users with developer or maintainer rights.
+        The members of this student project.
         '''
-        return general.dict_union(map(self.course.student_members, [
-            self.course.group(self.id),
-            self.project,
-        ])).values()
+        return self.course.student_members(self.project).values()
 
     def make_members_direct(self):
         '''
