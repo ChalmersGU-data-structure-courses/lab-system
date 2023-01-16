@@ -454,7 +454,13 @@ class RequestAndResponses:
         if result is not None:
             self.logger.debug(general.join_lines(['Handler result:', str(result)]))
 
-        if self.group and self.lab.config.grading_via_merge_request:
+        def checks():
+            yield self.lab.config.grading_via_merge_request
+            yield self.group
+            yield self.handler_data.is_submission_handler
+            yield result['accepted']
+            yield result['review_needed']
+        if all(checks()):
             self.group.grading_via_merge_request.sync_submission(self)
 
         # Create tag <full-group-id>/<request_name>/handled
@@ -671,6 +677,7 @@ class GroupProject:
                 project.save()
 
                 project = gitlab_tools.wait_for_fork(self.gl, project)
+                self.lab.configure_student_project(project)
             except:  # noqa: E722
                 r.delete()
                 raise
@@ -1272,11 +1279,10 @@ class GroupProject:
         def handlers():
             yield ((self.project.name, 'tag_push'), self.parse_hook_event_tag)
             yield ((self.project.name, 'issue'), self.parse_hook_event_issue)
-            if self.lab.config.grading_via_merge_request:
-                yield (
-                    (self.grading_via_merge_request.project.name, 'merge_requests'),
-                    self.parse_hook_event_grading_merge_request,
-                )
+            yield (
+                (self.grading_via_merge_request.project.name, 'merge_requests'),
+                self.parse_hook_event_grading_merge_request,
+            )
         handler = dict(handlers()).get((project_name, event_type))
 
         if not handler is None:
@@ -1287,7 +1293,7 @@ class GroupProject:
 
             self.logger.warning(
                 f'Received unknown webhook event of type {event_type} '
-                'for project {self.project.path_with_namespace}.'
+                f'for project {self.project.path_with_namespace}.'
             )
             self.logger.debug(f'Webhook event:\n{hook_event}')
 

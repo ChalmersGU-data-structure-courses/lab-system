@@ -291,7 +291,7 @@ class Course:
     def graders_group(self):
         return gitlab_tools.CachedGroup(
             **self.entity_cached_params,
-            path = self.config.path.graders,
+            path = self.config.path_graders,
             name = 'Graders',
         )
 
@@ -684,7 +684,7 @@ class Course:
         # Set up the server for listening for group project events.
         def add_webhook_event(hook_event):
             for result in webhook_listener.parse_hook_event(
-                courses_by_groups_path = {self.config.path.groups: self},
+                courses_by_groups_path = {self.config.path_groups: self},
                 hook_event = hook_event,
                 strict = False
             ):
@@ -853,7 +853,7 @@ class Course:
         import google_tools.sheets
 
         # Shortcut
-        spreadsheets = grading_sheet.GradingSpreadsheet(self.config).google
+        spreadsheets = grading_sheet.GradingSpreadsheet(self.config, self.labs).google
 
         try:
             yield
