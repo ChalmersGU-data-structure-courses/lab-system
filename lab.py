@@ -75,7 +75,20 @@ class StudentConnectorIndividual(StudentConnector):
         return frozenset(f())
 
     def gitlab_group_slug_pp(self):
-        return print_parse.identity
+        def print(x):
+            return x.strip('1')
+
+        def parse(x):
+            if x in self.course.canvas_user_by_gitlab_username:
+                return x
+            x = x + '1'
+            if x in self.course.canvas_user_by_gitlab_username:
+                return x
+
+        return print_parse.PrintParse(
+            print = print,
+            parse = parse,
+        )
 
     def gitlab_group_name(self, id):
         return self.course.canvas_user_by_gitlab_username[id].name
@@ -587,17 +600,14 @@ class Lab:
     def configure_student_project(self, project):
         self.logger.debug(f'Configuring student project {project.path_with_namespace}')
 
-        # def patterns():
-        #     for request_handler in self.config.request_handlers.values():
-        #         for pattern in request_handler.request_matcher.protection_patterns:
-        #             yield pattern
+        def patterns():
+            for request_handler in self.config.request_handlers.values():
+                for pattern in request_handler.request_matcher.protection_patterns:
+                    yield pattern
 
-        # self.logger.debug('Protecting tags')
-        # gitlab_tools.protect_tags(self.gl, project.id, patterns())
-        # project = gitlab_tools.wait_for_fork(self.gl, project)
-        # self.logger.debug(f'Protecting branch {self.course.config.branch.master}')
-        # gitlab_tools.protect_branch(self.gl, project, self.course.config.branch.master, delete_prev = True)
-        return project
+        self.logger.debug('Protecting tags')
+        gitlab_tools.protect_tags(self.gl, project.id, patterns())
+        gitlab_tools.delete_protected_branches(project)
 
     # OUTDATED
     # TODO:
@@ -840,11 +850,12 @@ class Lab:
         process_requests benefits from being executed inside its scope.
         This is because processing requests may run GradingViaMergeRequest.sync_submissions.
         '''
-        self.logger.info('Parsing response issues.')
+        self.logger.info('Parsing grading request responses.')
 
         with contextlib.ExitStack() as stack:
             def f():
                 for group in self.student_groups.values():
+                    print(group.id)
                     if group.parse_grading_merge_request_responses():
                         yield group.id
                     stack.enter_context(group.grading_via_merge_request.notes_suppress_cache_clear())

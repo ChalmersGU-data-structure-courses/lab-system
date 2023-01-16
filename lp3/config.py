@@ -1,5 +1,6 @@
 # Variables starting with an underscore are only used locally.
 import datetime
+import dateutil
 from pathlib import PurePosixPath
 import re
 from types import SimpleNamespace
@@ -17,6 +18,15 @@ from this_dir import this_dir
 # or contain private information such as authentication tokens.
 from gitlab_config_personal import *  # noqa: F401, F403
 
+
+# Time printing configuration.
+time = SimpleNamespace(
+    # Timezone to use.
+    zone = dateutil.tz.gettz('Europe/Stockholm'),
+
+    # Format string to use.
+    format = '%b %d %H:%M %Z',
+)
 
 # Canvas config
 canvas = SimpleNamespace(
@@ -112,20 +122,26 @@ branch = SimpleNamespace(
 
     solution = 'solution',
     submission = 'submission',
+
+    # Default branch for grading repositories when grading via merge request is used.
+    status = 'status',
 )
+
+_outcomes = {
+    0: 'incomplete',
+    1: 'pass',
+}
 
 # Parsing and printing of outcomes.
 outcome = SimpleNamespace(
     # Full name.
     # Used in interactions with students
     name = print_parse.compose(
-        print_parse.from_dict([
-            (0, 'incomplete'),
-            (1, 'pass'),
-        ]),
+        print_parse.from_dict(_outcomes.items()),
         print_parse.lower,
     ),
 )
+outcomes = _outcomes.keys()
 
 # Format the outcome for use in a spreadsheet cell.
 # An integer or a string.
@@ -387,6 +403,33 @@ name_corrections = {}
 
 _cid_to_gitlab_username = print_parse.from_dict([
     ('REDACTED_CID', 'REDACTED_EMAIL_USERNAME'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
 ])
 
 # Retrieve the Chalmers GitLab username for a user id on Chalmers/GU Canvas.
@@ -402,12 +445,13 @@ _canvas_id_to_gitlab_username_override = {
     122370000000245410: 'davidroc',
     122370000000043893: 'REDACTED_CID',
     122370000000259641: 'kaeriks',
+    122370000000234578: 'bomanjo',
+    122370000000266483: 'linhpha',
+    122370000000259648: 'willand',
 }
 
 # TODO: find CIDs for:
 # 122370000000259648; gusandwip; William Andersson; Andersson, William
-# 122370000000234578; gusbomjod; Jonathan Boman; Boman, Jonathan
-# 122370000000266483; guslinhph; Linh Pham; Pham, Linh
 
 def gitlab_username_from_canvas_user_id(course, user_id):
     try:

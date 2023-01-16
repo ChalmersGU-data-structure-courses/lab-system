@@ -83,6 +83,10 @@ def protect_tags(gl, project_id, patterns, delete_existing = False, exist_ok = T
         with exist_ok_check(exist_ok):
             project.protectedtags.create({'name': pattern, 'create_access_level': gitlab.const.DEVELOPER_ACCESS})
 
+def delete_protected_branches(project):
+    for branch in list_all(project.protectedbranches):
+        branch.delete()
+
 def protect_branch(gl, project, branch, delete_prev = False):
     if delete_prev:
         project.protectedbranches.delete(branch)

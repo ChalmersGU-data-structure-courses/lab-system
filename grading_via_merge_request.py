@@ -101,7 +101,7 @@ class GradingViaMergeRequest:
         try:
             repo = git.Repo.init(
                 str(self.status_repo_dir),
-                initial_branch = self.course.config.branch.master,
+                initial_branch = self.course.config.branch.status,
                 bare = True,
             )
             with repo.config_writer() as c:
@@ -113,8 +113,8 @@ class GradingViaMergeRequest:
                 (project if project else self.project.get).ssh_url_to_repo,
                 no_tags = True,
                 overwrite = True,
-                fetch_branches = [(git_tools.Namespacing.local, self.course.config.branch.master)],
-                push_branches = [self.course.config.branch.master],
+                fetch_branches = [(git_tools.Namespacing.local, self.course.config.branch.status)],
+                push_branches = [self.course.config.branch.status],
             )
 
             if project:
@@ -126,7 +126,7 @@ class GradingViaMergeRequest:
                         parent_commits = [],
                     )
                 # TODO: outputs "creating head" (on stderr)
-                repo.create_head(self.course.config.branch.master, commit, force = True)
+                repo.create_head(self.course.config.branch.status, commit, force = True)
                 repo.remote('origin').push()
 
         except:  # noqa: E722
@@ -144,7 +144,7 @@ class GradingViaMergeRequest:
             self.status_repo.remote('origin').fetch()
             self.status_repo_up_to_date = True
 
-        branch = getattr(self.status_repo.heads, self.course.config.branch.master)
+        branch = getattr(self.status_repo.heads, self.course.config.branch.status)
         commit_prev = branch.commit
         with self.status_tree_manager(self.status_repo) as tree:
             if tree == commit_prev.tree:
@@ -223,6 +223,13 @@ class GradingViaMergeRequest:
                 })
 
                 self.status_repo_init(project)
+
+                # Hack
+                time.sleep(0.1)
+
+                #project = gitlab_tools.wait_for_fork(self.gl, project)
+                project.default_branch = self.course.config.branch.status
+                project.save()
 
                 # Hack
                 time.sleep(0.1)

@@ -684,8 +684,9 @@ class GradingSpreadsheet:
         for worksheet in self.gspread_spreadsheet.worksheets():
             try:
                 lab_id = self.config.lab.name.parse(worksheet.title)
-                if lab_id in self.labs:
-                    yield (lab_id, GradingSheet(self, name = worksheet.title, gspread_worksheet = worksheet))
+                lab = self.labs.get(lab_id)
+                if lab:
+                    yield (lab_id, GradingSheet(self, lab, name = worksheet.title, gspread_worksheet = worksheet))
             except Exception:
                 pass
 
