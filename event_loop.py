@@ -90,7 +90,7 @@ def run(
             for c in courses:
                 c.hooks_ensure(netloc = webhook_config.netloc_specify)
 
-            courses_by_groups_path = {c.config.path.groups: c for c in courses}
+            courses_by_groups_path = {c.config.path_course: c for c in courses}
 
             def add_webhook_event(hook_event):
                 for result in webhook_listener.parse_hook_event(
@@ -144,7 +144,7 @@ def run(
                         lab.config.refresh_period + delay,
                         refresh_lab,
                         args = [lab],
-                        name = f'lab-refresh-timer<{c.config.path.groups}, {lab.name}>',
+                        name = f'lab-refresh-timer<{c.config.path_course}, {lab.name}>',
                         repeat = True,
                     )
                     thread_managers.append(threading_tools.timer_manager(lab.refresh_timer))
