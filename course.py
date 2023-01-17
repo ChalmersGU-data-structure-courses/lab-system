@@ -612,14 +612,13 @@ class Course:
             lab_id = self.config.lab.full_id.parse(lab_full_id)
         except ValueError:
             lab_id = self.config.lab.full_id_grading.parse(lab_full_id)
-        group_id = self.config.group.id_gitlab.parse(group_id_gitlab)
 
         # Delegate event to lab.
         lab = self.labs.get(lab_id)
         if lab is not None:
             yield from webhook_listener.map_with_callback(
                 lab.course_event,
-                lab.parse_hook_event(hook_event, group_id, strict = strict),
+                lab.parse_hook_event(hook_event, group_id_gitlab, strict = strict),
             )
         else:
             if strict:
