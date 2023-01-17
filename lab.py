@@ -79,11 +79,15 @@ class StudentConnectorIndividual(StudentConnector):
             return x.strip('1')
 
         def parse(x):
+            if x == 'test':
+                return 'test'
+
             if x in self.course.canvas_user_by_gitlab_username:
                 return x
-            x = x + '1'
-            if x in self.course.canvas_user_by_gitlab_username:
-                return x
+            y = x + '1'
+            if y in self.course.canvas_user_by_gitlab_username:
+                return y
+            return None
 
         return print_parse.PrintParse(
             print = print,
@@ -91,6 +95,9 @@ class StudentConnectorIndividual(StudentConnector):
         )
 
     def gitlab_group_name(self, id):
+        if id == 'test':
+            return 'Test Student'
+
         return self.course.canvas_user_by_gitlab_username[id].name
 
     def desired_members(self, id):
