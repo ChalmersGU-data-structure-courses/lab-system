@@ -1312,14 +1312,14 @@ class Lab:
             for (gitlab_username, group) in self.group_by_gitlab_username.items()
         }
 
-    def parse_hook_event(self, hook_event, group_id, strict = False):
+    def parse_hook_event(self, hook_event, group_id_gitlab, strict = False):
         '''
         Arguments:
         * hook_event:
             Dictionary (decoded JSON).
             Event received from a webhook in this lab.
-        * group_id:
-            Group id parsed from the event project path.
+        * group_id_gitlab:
+            Group id as appearing in the project path of the event.
         * strict:
             Whether to fail on unknown events.
 
@@ -1328,6 +1328,7 @@ class Lab:
         - a callback function to handle the event.
         These are the lab events triggered by the webhook event.
         '''
+        group_id = self.student_connect.gitlab_group_slug_pp.parse(group_id_gitlab)
         if group_id in self.groups:
             group = self.student_group(group_id)
             yield from webhook_listener.map_with_callback(
