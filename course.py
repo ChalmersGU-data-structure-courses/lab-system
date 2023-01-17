@@ -528,7 +528,7 @@ class Course:
         def f():
             for spec in self.hook_specs(netloc):
                 yield gitlab_tools.hook_create(netloc)
-        return list(f)
+        return list(f())
 
     def hooks_delete_all(self, netloc = None, except_for = None):
         '''
