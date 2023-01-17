@@ -432,10 +432,13 @@ class Lab:
         #         not x.endswith('-grading'),
         #     ])
 
-        return set(
-            self.student_connector.gitlab_group_slug_pp().parse(group.path)
-            for group in gitlab_tools.list_all(self.gitlab_group.lazy.subgroups)
-        )
+        def f():
+            for group in gitlab_tools.list_all(self.gitlab_group.lazy.subgroups):
+                group_id = self.student_connector.gitlab_group_slug_pp().parse(group.path)
+                if not group_id is None:
+                    yield group_id
+
+        return frozenset(f())
 
     def group_delete_all(self):
         for group_id in self.groups:
