@@ -543,8 +543,10 @@ class GradingViaMergeRequest:
                     'access_level': gitlab.const.REPORTER_ACCESS,
                 })
 
+    # TODO
     def sync_submission(self, submission):
-        return self.sync_submissions([submission])
+        pass
+        #return self.sync_submissions([submission])
 
     def sync_submissions(self, submissions, clear_cache = True):
         '''
