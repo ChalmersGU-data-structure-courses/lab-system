@@ -785,7 +785,7 @@ class Course:
                     self.logger.info(f'Handling event {event}')
                     callback()
 
-    def grading_report(self, scoring = None):
+    def grading_report(self, scoring = None, strict = True):
         '''
         Prepare a grading report for this course.
         This returns a map sending a username on Chalmers GitLab to a map sending lab ids to scores.
@@ -796,14 +796,16 @@ class Course:
         * scoring:
             A function taking a list of submission outcomes and returning a score.
             Defaults to None for no submissions and the maximum function otherwise.
+        * strict:
+            Refuse to compute score if there is an ungraded submission.
         '''
         r = collections.defaultdict(dict)
         for lab in self.labs.values():
-            for (gitlab_username, score) in lab.grading_report(scoring = scoring).items():
+            for (gitlab_username, score) in lab.grading_report(scoring = scoring, strict = strict).items():
                 r[gitlab_username][lab.id] = score
         return r
 
-    def grading_report_with_summary(self, scoring = None, summary = None):
+    def grading_report_with_summary(self, scoring = None, strict = True, summary = None):
         '''
         Prepare a grading report for this course.
         This returns a map sending a username on Chalmers GitLab to a pair of:
@@ -815,11 +817,13 @@ class Course:
         * scoring:
             A function taking a list of submission outcomes and returning a score.
             Defaults to None for no submissions and the maximum function otherwise.
+        * strict:
+            Refuse to compute score if there is an ungraded submission.
         * summary:
             A function taking a map from lab ids to scores and returning a summary score.
             Defaults to None for maps with only values None and the minimum otherwise, with None counting as 0.
         '''
-        u = self.grading_report(scoring = scoring)
+        u = self.grading_report(scoring = scoring, strict = strict)
 
         def summary_default(xs):
             xs = xs.values()

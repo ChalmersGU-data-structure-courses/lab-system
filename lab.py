@@ -1324,7 +1324,7 @@ class Lab:
         with contextlib.suppress(AttributeError):
             del self.group_by_gitlab_username
 
-    def grading_report(self, scoring = None):
+    def grading_report(self, scoring = None, strict = True):
         '''
         Prepare a grading report for this lab.
         This returns a map sending usernames on Chalmers GitLab to scores.
@@ -1334,9 +1334,11 @@ class Lab:
         * scoring:
             A function taking a list of submission outcomes and returning a score.
             Defaults to None for no submissions and the maximum function otherwise.
+        * strict:
+            Refuse to compute score if there is an ungraded submission.
         '''
         return {
-            gitlab_username: group.get_score(scoring = scoring)
+            gitlab_username: group.get_score(scoring = scoring, strict = strict)
             for (gitlab_username, group) in self.group_by_gitlab_username.items()
         }
 
