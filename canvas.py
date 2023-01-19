@@ -424,7 +424,12 @@ class Course:
             params = {'include': ['students']},
             use_cache = use_cache,
         ).students
-        return[] if x is None else x
+        if x is None:
+            x = []
+        return [
+            user for user in x
+            if user.id in self.student_details
+        ]
 
     def get_folder_by_path(self, canvas_dir, use_cache = True):
         canvas_dir = PurePosixPath(canvas_dir)
