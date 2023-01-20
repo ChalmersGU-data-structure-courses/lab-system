@@ -823,7 +823,7 @@ class Lab:
         for group in self.student_groups.values():
             group.parse_request_tags(from_gitlab = from_gitlab)
 
-    def parse_response_issues(self):
+    def parse_response_issues(self, on_duplicate = True, delete_duplicates = False):
         '''
         Parse response issues for group projects on in this lab.
         This calls parse_response_issues in each contained group project.
@@ -832,13 +832,20 @@ class Lab:
         This method needs to be called before requests_and_responses
         in each contained handler data instance can be accessed.
 
+        Arguments:
+        * on_duplicate:
+            - None: Raise an exception.
+            - True: Log a warning and keep the first (newer) item.
+            - False: Log a warning and keep the second (older) item.
+        * delete_duplicates: if true, delete duplicate issues.
+
         Returns the frozen set of group ids with changes in review issues (if configured).
         '''
         self.logger.info('Parsing response issues.')
 
         def f():
             for group in self.student_groups.values():
-                if group.parse_response_issues():
+                if group.parse_response_issues(on_duplicate = on_duplicate, delete_duplicates = delete_duplicates):
                     yield group.id
         return frozenset(f())
 

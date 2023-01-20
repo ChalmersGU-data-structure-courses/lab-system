@@ -6,8 +6,8 @@ logger = logging.getLogger(__name__)
 
 Config = collections.namedtuple(
     'Config',
-    ['location_name', 'item_name', 'item_formatter', 'logger', 'on_duplicate'],
-    defaults = [logger, True],
+    ['location_name', 'item_name', 'item_formatter', 'logger', 'on_duplicate', 'delete_duplicates'],
+    defaults = [logger, True, None],
 )
 Config.__doc__ = '''
     Configuration for functions in this module.
@@ -34,6 +34,9 @@ Config.__doc__ = '''
         - True: Log a warning and keep the first item.
         - False: Log a warning and keep the second item.
         - callable: use the result from duplicates(key, first_value, second_value).
+    * delete_duplicates:
+        Only relevant when on_duplicate is True or False.
+        In that case, if not None, delete_duplicates(other_item, key, other_value) is called.
     '''
 
 def parse_items(config, parser, parser_name, parse_results, items):
@@ -93,12 +96,17 @@ def parse_items(config, parser, parser_name, parse_results, items):
 
                     msg += format(f'First {config.item_name}:', item_prev)
                     msg += format(f'Second {config.item_name}:', item)
-                    (item, value, ignore) = {
-                        True: (item_prev, value_prev, 'second'),
-                        False: (item, value, 'first'),
+                    (item, value, other_item, other_value, ignore) = {
+                        True: (item_prev, value_prev, item, value, 'second'),
+                        False: (item, value, item_prev, value_prev, 'first'),
                     }[config.on_duplicate]
-                    msg += f'Ignoring {ignore} {config.item_name}.\n'
-                    logger.warning(msg)
+                    if config.delete_duplicates:
+                        msg += f'Deleting {ignore} {config.item_name}.\n'
+                        config.delete_duplicates(other_item, key, other_value)
+                        logger.warning(msg)
+                    else:
+                        msg += f'Ignoring {ignore} {config.item_name}.\n'
+                        logger.warning(msg)
             parsed_items[key] = item
             parse_results[key] = value
         else:
