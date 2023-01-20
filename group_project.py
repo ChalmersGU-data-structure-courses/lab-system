@@ -1034,7 +1034,7 @@ class GroupProject:
             order_by = 'created_at',
             sort = 'desc',
         ):
-            if issue.author['id'] in self.course.graders:
+            if any(issue.author['id'] in ids for ids in [self.course.lab_system_users, self.course.graders]):
                 yield issue
 
     @property
@@ -1068,7 +1068,7 @@ class GroupProject:
 
         return general.maybe(functools.partial(general.map_values, action))(self.reviews)
 
-    def parse_response_issues(self):
+    def parse_response_issues(self, on_duplicate = True, delete_duplicates = False):
         '''
         Parse response issues for this project on Chalmers GitLab
         on store the result in self.handler_data.
@@ -1076,6 +1076,13 @@ class GroupProject:
 
         This method needs to be called before requests_and_responses
         in each contained handler data instance can be accessed.
+
+        Arguments:
+        * on_duplicate:
+            - None: Raise an exception.
+            - True: Log a warning and keep the first (newer) item.
+            - False: Log a warning and keep the second (older) item.
+        * delete_duplicates: if true, delete duplicate issues.
 
         Returns a boolean indicating if there is
         a change in the review responses, if configured.
@@ -1094,12 +1101,20 @@ class GroupProject:
             # Disregard unrecognized issues that are closed.
             yield (closed_issue_parser, 'disregard closed issues', None)
 
+        if delete_duplicates:
+            def delete_duplicates(item, key, value):
+                item.delete()
+        else:
+            delete_duplicates = None
+
         item_parser.parse_all_items(
             item_parser.Config(
                 location_name = self.name,
                 item_name = 'response issue',
                 item_formatter = gitlab_tools.format_issue_metadata,
                 logger = self.logger,
+                on_duplicate = on_duplicate,
+                delete_duplicates = delete_duplicates,
             ),
             parser_data(),
             self.official_issues(),
