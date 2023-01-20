@@ -7,6 +7,42 @@ header_grade = 'Grade'
 header_examination_date = 'Examination date'
 
 
+def report_groups_headers(course):
+    def f():
+        yield header_personnummer
+        yield header_gitlab_username
+        yield header_name
+        for lab in course.labs.values():
+            yield lab.name
+    return list(f())
+
+def write_group_membership_report(course):
+    '''
+    Argument path is interpreted relative to course.dir
+    '''
+    with (course.dir / 'groups.csv').open('w') as file:
+        writer = csv.DictWriter(file, report_headers(course), dialect = csv.excel_tab)
+        writer.writeheader()
+        for canvas_user in course.canvas_course.students:
+            gitlab_user = course.gitlab_user_by_canvas_id(canvas_user.id)
+            if gitlab_user is None:
+                continue
+
+            def f(lab):
+                g = lab.group_by_gitlab_username.get(gitlab_user.username)
+                if g:
+                    return g.id
+
+            entry = {
+                header_personnummer: canvas_user.sis_user_id,
+                header_gitlab_username: gitlab_user.username,
+                header_name: canvas_user.sortable_name
+            } | {
+                lab.name: f(lab)
+                for lab in course.labs.values()
+            }
+            writer.writerow(entry)
+
 def report_headers(course):
     def f():
         yield header_personnummer
@@ -15,7 +51,6 @@ def report_headers(course):
         for lab in course.labs.values():
             yield lab.name
         yield header_grade
-        yield header_examination_date
     return list(f())
 
 def read_report_skeleton(course, path):
