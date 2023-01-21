@@ -254,7 +254,7 @@ def create_webhooks():
 
 def delete_webhooks():
     for c in courses.values():
-        c.hooks_delete_all()
+        c.hooks_delete_all(netloc = webhook_config.netloc_specify)
 
 def run():
     exit_stack = contextlib.ExitStack()
