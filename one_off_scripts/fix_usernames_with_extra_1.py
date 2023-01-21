@@ -17,11 +17,12 @@ logger = logging.getLogger(__name__)
 import course
 import gitlab_tools  # noqa: E402
 import lp3.config as config
+import this_dir
 
-c = course.Course(config, 'lp3')
+c = course.Course(config, this_dir.this_dir / 'lp3')
 
 for user in c._gitlab_users.values():
     username = user.username
     if username.endswith('1') and not username.startswith('project'):
         cid = username.strip('1')
-        print(f"    '({cid}', '{username}'),")
+        print(f"    ('{cid}', '{username}'),")
