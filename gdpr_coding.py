@@ -46,7 +46,7 @@ class NameCoding:
                 print = self.encode.__getitem__,
                 parse = self.decode.__getitem__,
             ),
-            sort_key = lambda s: (s[1], s[0], 0 if s.length == 2 else int(s[2:])),
+            sort_key = lambda s: (s[1], s[0], 0 if len(s) == 2 else int(s[2:])),
         )
 
     def _load(self):

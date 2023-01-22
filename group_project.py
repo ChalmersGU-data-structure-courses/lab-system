@@ -454,15 +454,14 @@ class RequestAndResponses:
         if result is not None:
             self.logger.debug(general.join_lines(['Handler result:', str(result)]))
 
-        # TODO
-        # def checks():
-        #     yield self.lab.config.grading_via_merge_request
-        #     yield self.group
-        #     yield self.handler_data.is_submission_handler
-        #     yield result['accepted']
-        #     yield result['review_needed']
-        # if all(checks()):
-        #     self.group.grading_via_merge_request.sync_submission(self)
+        def checks():
+            yield self.lab.config.grading_via_merge_request
+            yield self.group
+            yield self.handler_data.is_submission_handler
+            yield result['accepted']
+            yield result['review_needed']
+        if all(checks()):
+            self.group.grading_via_merge_request.sync_submission(self)
 
         # Create tag <full-group-id>/<request_name>/handled
         # and store handler's result JSON-encoded as its message.
@@ -758,7 +757,7 @@ class GroupProject:
         the contents of the student repository on GitLab Chalmers.
         '''
         self.logger.info(f'Fetching from student repository, remote {self.remote}.')
-        self.lab.repo_command_fetch([self.remote])
+        self.lab.repo_command_fetch(self.repo, [self.remote])
 
     def repo_tag(self, request_name, segments = ['tag']):
         '''
@@ -1137,8 +1136,8 @@ class GroupProject:
 
     # TODO
     def parse_grading_merge_request_responses(self):
-        pass
-        #return self.grading_via_merge_request.update_outcomes()
+        #pass
+        return self.grading_via_merge_request.update_outcomes()
 
     def process_requests(self):
         '''

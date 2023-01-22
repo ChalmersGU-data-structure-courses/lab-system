@@ -575,6 +575,8 @@ def hook_create(spec: HookSpec):
             yield ('url', url)
             yield ('enable_ssl_verification', False)
             yield ('token', spec.secret_token)
+            if 'push' not in spec.events:
+                yield ('push_events', False)
             for event in spec.events:
                 yield (f'{event}_events', True)
         return spec.project.hooks.create(dict(f()))

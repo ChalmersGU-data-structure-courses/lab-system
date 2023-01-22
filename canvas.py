@@ -948,4 +948,4 @@ class Assignment:
 
 def user_first_and_last_name(user):
     (last, first) = user.sortable_name.split(',', maxsplit = 1)
-    return (last.strip(), first.strip())
+    return (first.strip(), last.strip())

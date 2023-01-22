@@ -141,7 +141,7 @@ class GradingViaMergeRequest:
         '''Returns a boolean indicating if the status changes.'''
         self.project.create_ensured()  # do we need this here?
         if not self.status_repo_up_to_date:
-            self.status_repo.remote('origin').fetch()
+            self.lab.repo_command_fetch(self.status_repo, ['origin'])
             self.status_repo_up_to_date = True
 
         branch = getattr(self.status_repo.heads, self.course.config.branch.status)
@@ -156,7 +156,6 @@ class GradingViaMergeRequest:
                 message = 'Status update.',
                 parent_commits = [commit_prev],
             )
-        print('creating head')
         branch.reference = commit
         self.status_repo.remote('origin').push()
         return True
@@ -545,8 +544,7 @@ class GradingViaMergeRequest:
 
     # TODO
     def sync_submission(self, submission):
-        pass
-        #return self.sync_submissions([submission])
+        return self.sync_submissions([submission])
 
     def sync_submissions(self, submissions, clear_cache = True):
         '''

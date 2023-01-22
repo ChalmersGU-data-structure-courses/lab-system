@@ -226,10 +226,11 @@ class GroupColumn(Column):
             dominate.util.text('Group')
 
     def get_value(self, group):
-        group_config = self.lab.course.config.group
+        gdpr_coding = self.lab.student_connector.gdpr_coding()
+        encoded_id = gdpr_coding.identifier.print(group.id)
         return StandardColumnValue(
-            group_config.id.print(group.id),
-            group_config.sort_key(group.id),
+            encoded_id,
+            gdpr_coding.sort_key(encoded_id),
         )
 
 class MembersColumn(Column):
