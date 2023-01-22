@@ -872,7 +872,6 @@ class Lab:
         with contextlib.ExitStack() as stack:
             def f():
                 for group in self.student_groups.values():
-                    print(group.id)
                     if group.parse_grading_merge_request_responses():
                         yield group.id
                     stack.enter_context(group.grading_via_merge_request.notes_suppress_cache_clear())
