@@ -362,7 +362,10 @@ class _LabConfig:
             elif has_tester:
                 yield ('testing', lab_handlers.GenericTestingHandler(tester_java.LabTester.factory))
 
-            yield ('submission', lab_handlers_java.SubmissionHandler(tester_java.LabTester.factory))
+            yield ('submission', lab_handlers_java.SubmissionHandler(
+                tester_java.LabTester.factory,
+                show_solution = self.has_solution,
+            ))
         self.request_handlers = dict(f())
 
         self.refresh_period = refresh_period

@@ -8,7 +8,6 @@ import dominate
 import general
 import git_tools
 import gitlab_tools
-import grading_via_merge_request
 
 
 logger = logging.getLogger(__name__)

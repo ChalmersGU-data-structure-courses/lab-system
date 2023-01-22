@@ -62,6 +62,14 @@ class StudentConnector(abc.ABC):
         '''
         ...
 
+    @abc.abstractmethod
+    def gdpr_link_problematic(self):
+        '''
+        Whether gorup links can be set in non-GDPR-cleared documents.
+        Currently only used in the grading spreadsheet.
+        '''
+        ...
+
 class StudentConnectorIndividual(StudentConnector):
     def __init__(self, course):
         self.course = course
@@ -106,6 +114,9 @@ class StudentConnectorIndividual(StudentConnector):
     def gdpr_coding(self):
         return self.course.student_name_coding.gdpr_coding
 
+    def gdpr_link_problematic(self):
+        return False
+
 class StudentConnectorGroupSet(StudentConnector):
     def __init__(self, group_set):
         self.group_set = group_set
@@ -133,6 +144,8 @@ class StudentConnectorGroupSet(StudentConnector):
     def gdpr_coding(self):
         return self.group_set.config.gdpr_coding
 
+    def gdpr_link_problematic(self):
+        return True
 
 class Lab:
     '''
@@ -1087,6 +1100,11 @@ class Lab:
             self.course.config.grading_sheet.include_groups_with_no_submission and group.non_empty(),
         ])
 
+    @functools.cached_property
+    def grading_sheet_group_link(self):
+        if not self.student_connector.gdpr_link_problematic:
+            return lambda group_id: self.student_group(group_id).project.get.web_url
+
     def update_grading_sheet(self, group_ids = None, deadline = None):
         '''
         Update the grading sheet.
@@ -1114,7 +1132,7 @@ class Lab:
         # Ensure grading sheet has rows for all required groups.
         self.grading_sheet.setup_groups(
             groups = [group.id for group in groups],
-            group_link = lambda group_id: self.student_group(group_id).project.get.web_url,
+            group_link = self.grading_sheet_group_link,
         )
 
         # Ensure grading sheet has sufficient query group columns.
