@@ -131,10 +131,11 @@ class CompilationAndRobogradingColumn(live_submissions_table.Column):
 class SubmissionHandler(lab_handlers.SubmissionHandler):
     '''A submission handler for Java labs.'''
 
-    def __init__(self, tester_factory, robograder_factory = robograder_java.factory, machine_speed = 1):
+    def __init__(self, tester_factory, robograder_factory = robograder_java.factory, machine_speed = 1, show_solution = True):
         self.testing = lab_handlers.SubmissionTesting(tester_factory)
         self.robograder_factory = robograder_factory
         self.machine_speed = machine_speed
+        self.show_solution = show_solution
 
     def setup(self, lab):
         super().setup(lab)
@@ -148,7 +149,10 @@ class SubmissionHandler(lab_handlers.SubmissionHandler):
                 yield ('compilation', CompilationColumn)
             yield from self.testing.grading_columns()
 
-        self.grading_columns = live_submissions_table.with_standard_columns(dict(f()))
+        self.grading_columns = live_submissions_table.with_standard_columns(
+            dict(f()),
+            with_solution = self.show_solution,
+        )
 
     def _handle_request(self, request_and_responses, src, report):
         try:
