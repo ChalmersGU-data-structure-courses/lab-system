@@ -481,6 +481,9 @@ standard_columns_before = {
     'submission': SubmissionFilesColumn,
     'submission-after-previous': SubmissionDiffPreviousColumn,
     'submission-after-problem': SubmissionDiffProblemColumn,
+}
+
+standard_columns_solution = {
     'submission-after-solution': SubmissionDiffSolutionColumn,
 }
 
@@ -488,12 +491,15 @@ standard_columns_after = {
     'message': MessageColumn,
 }
 
-def with_standard_columns(columns = dict()):
-    return dict([
-        *standard_columns_before.items(),
-        *columns.items(),
-        *standard_columns_after.items(),
-    ])
+def with_standard_columns(columns = dict(), with_solution = True):
+    def f():
+        yield from standard_columns_before.items()
+        if with_solution:
+            yield from standard_columns_solution
+        yield from columns.items()
+        yield from standard_columns_after.items()
+
+    return dict(f())
 
 standard_columns = with_standard_columns()
 
