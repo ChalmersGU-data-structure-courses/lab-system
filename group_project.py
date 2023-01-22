@@ -1297,7 +1297,7 @@ class GroupProject:
             yield ((self.project.name, 'tag_push'), self.parse_hook_event_tag)
             yield ((self.project.name, 'issue'), self.parse_hook_event_issue)
             yield (
-                (self.grading_via_merge_request.project.name, 'merge_requests'),
+                (self.grading_via_merge_request.project.name, 'merge_request'),
                 self.parse_hook_event_grading_merge_request,
             )
         handler = dict(handlers()).get((project_name, event_type))
