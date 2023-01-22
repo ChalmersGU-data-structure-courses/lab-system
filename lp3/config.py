@@ -350,7 +350,7 @@ _language = 'java'
 class _LabConfig:
     def __init__(self, k, lab_folder, refresh_period, has_tester = False, has_robograder = False):
         self.path_source = _lab_repo / 'labs' / lab_folder / _language
-        self.has_solution = True
+        self.has_solution = k >= 2
         self.group_set = None if k == 1 else _group
         self.path_gitignore = _lab_repo / 'gitignores' / f'{_language}.gitignore'
         self.grading_sheet = lab.name.print(k)
