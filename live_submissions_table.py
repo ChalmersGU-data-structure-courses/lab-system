@@ -473,35 +473,21 @@ class SubmissionDiffSolutionColumn(SubmissionDiffOfficialColumn):
     def __init__(self, config):
         super().__init__(config, config.lab.head_solution)
 
-standard_columns_before = {
-    'date': DateColumn,
-    'query-number': QueryNumberColumn,
-    'group': GroupColumn,
-    'members': MembersColumn,
-    'submission': SubmissionFilesColumn,
-    'submission-after-previous': SubmissionDiffPreviousColumn,
-    'submission-after-problem': SubmissionDiffProblemColumn,
-}
-
-standard_columns_solution = {
-    'submission-after-solution': SubmissionDiffSolutionColumn,
-}
-
-standard_columns_after = {
-    'message': MessageColumn,
-}
-
 def with_standard_columns(columns = dict(), with_solution = True):
     def f():
-        yield from standard_columns_before.items()
+        yield ('date', DateColumn)
+        yield ('query-number', QueryNumberColumn)
+        yield ('group', GroupColumn)
+        yield ('members', MembersColumn)
+        yield ('submission', SubmissionFilesColumn)
+        yield ('submission-after-previous', SubmissionDiffPreviousColumn)
+        yield ('submission-after-problem', SubmissionDiffProblemColumn)
         if with_solution:
-            yield from standard_columns_solution
+            yield ('submission-after-solution', SubmissionDiffSolutionColumn)
         yield from columns.items()
-        yield from standard_columns_after.items()
+        yield ('message', MessageColumn)
 
     return dict(f())
-
-standard_columns = with_standard_columns()
 
 # class TestOutputDiffColumnValue(ColumnValue):
 #     def __init__(self, name = None, link = None, similarity = 0):
@@ -555,7 +541,7 @@ class LiveSubmissionsTable:
         self,
         lab,
         config,
-        column_types = standard_columns,
+        column_types = with_standard_columns(),
         logger = logging.getLogger(__name__),
     ):
         self.lab = lab
