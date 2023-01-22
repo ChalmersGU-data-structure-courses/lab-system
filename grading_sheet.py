@@ -371,7 +371,11 @@ class GradingSheet:
         '''
         self.logger.debug('creating rows for potentially new groups...')
 
-        sort_key = self.lab.student_connector.gdpr_coding().sort_key
+        gdpr_coding = self.lab.student_connector.gdpr_coding()
+
+        def sort_key(g_id):
+            return gdpr_coding.sort_key(gdpr_coding.identifier.print(g_id))
+
         groups = sorted(groups, key = sort_key)
 
         # Sorting for the previous groups should not be necessary.
@@ -383,7 +387,7 @@ class GradingSheet:
         empty = not self.sheet_parsed.group_rows
 
         # TODO: remove for Python 3.10
-        groups_old_sort_key = [sort_key(group_id) for group_id in groups_old]
+        groups_old_sort_key = [sort_key(group_old) for group_old in groups_old]
 
         # Compute the insertion locations for the new group rows.
         # Sends pairs of an insertion location and a boolean indicating whether to
@@ -396,7 +400,7 @@ class GradingSheet:
             #i = bisect.bisect_left(groups_old, group_id, key = sort_key)
             i = bisect.bisect_left(groups_old_sort_key, sort_key(group_id))
             row_insert = groups_start + i + offset
-            group_name = self.grading_spreadsheet.config.group.name.print(group_id)
+            group_name = self.lab.student_groups[group_id].name
             self.logger.debug(f'adding row {row_insert} for {group_name}')
             insertions[(i, i == len(groups_old) and not empty)].append((group_id, row_insert))
 
@@ -784,11 +788,12 @@ class GradingSpreadsheet:
         '''
         self.logger.info(f'creating grading sheet for {lab.name}...')
 
-        if lab.id in self.grading_sheets:
+        grading_sheet = self.grading_sheets.get(lab.id)
+        if grading_sheet:
             msg = f'grading sheet for {lab.name} already exists'
             if exist_ok:
                 self.logger.debug(msg)
-                return
+                return grading_sheet
             raise ValueError(msg)
 
         if use_prev and self.grading_sheets:

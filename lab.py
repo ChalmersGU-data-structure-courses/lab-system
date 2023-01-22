@@ -104,7 +104,7 @@ class StudentConnectorIndividual(StudentConnector):
         return frozenset([id])
 
     def gdpr_coding(self):
-        return self.course.student_gdpr_coding
+        return self.course.student_name_coding.gdpr_coding
 
 class StudentConnectorGroupSet(StudentConnector):
     def __init__(self, group_set):
@@ -552,13 +552,13 @@ class Lab:
 
         self.repo = repo
 
-    def repo_remote_command(self, command):
+    def repo_remote_command(self, repo, command):
         if self.course.ssh_multiplexer is None:
-            self.repo.git._call_process(*command)
+            repo.git._call_process(*command)
         else:
-            self.course.ssh_multiplexer.git_cmd(self.repo, command)
+            self.course.ssh_multiplexer.git_cmd(repo, command)
 
-    def repo_command_fetch(self, remotes):
+    def repo_command_fetch(self, repo, remotes):
         remotes = list(remotes)
         self.logger.debug(f'Fetching from remotes: {remotes}.')
 
@@ -567,20 +567,20 @@ class Lab:
             yield '--update-head-ok'
             yield from ['--jobs', str(self.course.config.gitlab_ssh.max_sessions)]
             yield from ['--multiple', *remotes]
-        self.repo_remote_command(list(command()))
+        self.repo_remote_command(repo, list(command()))
 
         # Update caching mechanisms.
         self.repo_updated = True
         with contextlib.suppress(AttributeError):
             del self.remote_tags
 
-    def repo_command_push(self, remote):
+    def repo_command_push(self, repo, remote):
         self.logger.debug(f'Pushing to remote: {remote}.')
 
         def command():
             yield 'push'
             yield remote
-        self.repo_remote_command(list(command()))
+        self.repo_remote_command(repo, list(command()))
 
     def repo_fetch_official(self):
         '''
@@ -588,7 +588,7 @@ class Lab:
         repository on Chalmers GitLab to the local grading repository.
         '''
         self.logger.info('Fetching from primary repository.')
-        self.repo_command_fetch([self.course.config.path_lab.official])
+        self.repo_command_fetch(self.repo, [self.course.config.path_lab.official])
 
     # TODO
     def repo_add_solution(self):
@@ -604,7 +604,7 @@ class Lab:
         '''
         if self.repo_updated or force:
             self.logger.info('Pushing to grading repository.')
-            self.repo_command_push(self.course.config.path_lab.grading)
+            self.repo_command_push(self.repo, self.course.config.path_lab.grading)
             self.repo_updated = False
 
     def configure_student_project(self, project):
@@ -718,7 +718,7 @@ class Lab:
             yield self.course.config.path_lab.official
             for group in self.student_groups.values():
                 yield group.remote
-        self.repo_command_fetch(remotes())
+        self.repo_command_fetch(self.repo, remotes())
 
     @functools.cached_property
     def remote_tags(self):
@@ -867,7 +867,7 @@ class Lab:
         process_requests benefits from being executed inside its scope.
         This is because processing requests may run GradingViaMergeRequest.sync_submissions.
         '''
-        self.logger.info('Parsing grading request responses.')
+        self.logger.info('Parsing grading merge request responses.')
 
         with contextlib.ExitStack() as stack:
             def f():
@@ -1069,7 +1069,7 @@ class Lab:
 
     @functools.cached_property
     def grading_sheet(self):
-        return self.course.grading_spreadsheet.ensure_grading_sheet(self.id)
+        return self.course.grading_spreadsheet.ensure_grading_sheet(self)
 
     def normalize_group_ids(self, group_ids = None):
         return self.student_connector.desired_groups() if group_ids is None else group_ids
@@ -1335,7 +1335,7 @@ class Lab:
         - a callback function to handle the event.
         These are the lab events triggered by the webhook event.
         '''
-        group_id = self.student_connect.gitlab_group_slug_pp.parse(group_id_gitlab)
+        group_id = self.student_connector.gitlab_group_slug_pp().parse(group_id_gitlab)
         if group_id in self.groups:
             group = self.student_group(group_id)
             yield from webhook_listener.map_with_callback(

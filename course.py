@@ -129,18 +129,21 @@ class Course:
 
     def canvas_course_refresh(self):
         self.canvas_course = self.canvas_course_get(False)
-        with contextlib.suppress(AttributeError):
-            del self.gdpr_coding
+        if hasattr(self, 'student_name_coding'):
+            self.student_name_coding_update()
 
     @functools.cached_property
-    def student_gdpr_coding(self):
+    def student_name_coding(self):
         def first_and_last_name(cid):
             canvas_user = self.canvas_user_by_gitlab_username[cid]
             return canvas.user_first_and_last_name(canvas_user)
 
-        r = gdpr_coding.NameCoding(self.dir / 'gdpr_coding.json', first_and_last_name)
-        r.add_ids(self.gitlab_username_by_canvas_user_id.values())
-        return r
+        self.student_name_coding = gdpr_coding.NameCoding(self.dir / 'gdpr_coding.json', first_and_last_name)
+        self.student_name_coding_update()
+        return self.student_name_coding
+
+    def student_name_coding_update(self):
+        self.student_name_coding.add_ids(self.gitlab_username_by_canvas_user_id.values())
 
     def canvas_user_login_id(self, user):
         return user._dict.get('login_id')
@@ -636,7 +639,7 @@ class Course:
 
     @functools.cached_property
     def grading_spreadsheet(self):
-        return grading_sheet.GradingSpreadsheet(self.config)
+        return grading_sheet.GradingSpreadsheet(self.config, self.labs)
 
     def grading_template_issue_parser(self, parsed_issues):
         '''Specialization of parse_issues for the grading template issue.'''
