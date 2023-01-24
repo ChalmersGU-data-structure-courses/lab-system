@@ -589,7 +589,7 @@ class GradingSheet:
             if google_tools.sheets.is_subdata(value, value_prev):
                 return
             if google_tools.sheets.is_cell_non_empty(value_prev):
-                group_name = self.grading_spreadsheet.config.group.id.print(group_id)
+                group_name = self.lab.student_connector.gdpr_coding().identifier.print(group_id)
                 query_name = self.grading_spreadsheet.config.grading_sheet.header.query.print(query)
                 self.logger.warning(general.join_lines([
                     f'overwriting existing value for {group_name}, query {query_name}, field {field}:',
