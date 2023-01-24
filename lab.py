@@ -1259,7 +1259,7 @@ class Lab:
             def f():
                 yield refresh_issue_responses and group.parse_response_issues()
                 if self.config.grading_via_merge_request:
-                    yield refresh_grading_merge_request and group.parse_grading_merge_request()
+                    yield refresh_grading_merge_request and group.parse_grading_merge_request_responses()
                     stack.enter_context(group.grading_via_merge_request.notes_suppress_cache_clear())
 
             grading_updates = any(f())

@@ -473,6 +473,8 @@ _canvas_id_to_gitlab_username_override = {
     122370000000234578: 'bomanjo',
     122370000000266483: 'linhpha',
     122370000000259648: 'willand',
+    122370000000204612: 'REDACTED_CID',
+    122370000000220047: 'REDACTED_CID',
 }
 
 # TODO: find CIDs for:

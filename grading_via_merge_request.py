@@ -351,7 +351,7 @@ class GradingViaMergeRequest:
                 system = False
             else:
                 self.logger.warn(self.with_merge_request_url(
-                    f'Grading label changed by non-grader in {self.group.name} in {self.lab.name}:',
+                    f'Grading label changed by non-grader {user_id} in {self.group.name} in {self.lab.name}:',
                 ))
                 continue
 
