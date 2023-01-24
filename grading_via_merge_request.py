@@ -169,7 +169,7 @@ class GradingViaMergeRequest:
             general.join_lines([
                 '**Labels** record your grading status.',
             ]),
-        ]))
+        ])).strip()
 
     @functools.cached_property
     def project(self):
@@ -541,6 +541,7 @@ class GradingViaMergeRequest:
                     'user_id': gitlab_user.id,
                     'access_level': gitlab.const.REPORTER_ACCESS,
                 })
+        self.update_merge_request_description()
 
     # TODO
     def sync_submission(self, submission):
