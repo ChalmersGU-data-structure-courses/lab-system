@@ -345,7 +345,8 @@ class GradingViaMergeRequest:
                 continue
 
             user_id = label_event.user['id']
-            if outcome is None and user_id in self.course.lab_system_users:
+            action = gitlab_tools.parse_label_event_action(label_event.action)
+            if user_id in self.course.lab_system_users and (outcome is None if action else not outcome is None):
                 system = True
             elif user_id in self.course.graders:
                 system = False
@@ -357,7 +358,6 @@ class GradingViaMergeRequest:
 
             username = label_event.user['username']
             date = gitlab_tools.parse_date(label_event.created_at)
-            action = gitlab_tools.parse_label_event_action(label_event.action)
             yield (date, (outcome, action), (username, system))
 
     @functools.cached_property
@@ -399,7 +399,7 @@ class GradingViaMergeRequest:
                 (status, _) = outcome_status[outcome]
                 if action == status:
                     self.logger.warn(self.with_merge_request_url(
-                        'Duplicate action for label {self.setup_data.label_pp.print(outcome)} at {date}:',
+                        f'Duplicate action for label {self.setup_data.label_pp.print(outcome)} at {date}:',
                     ))
             outcome_status[outcome] = (action, (date, info))
 
