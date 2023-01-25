@@ -32,7 +32,7 @@ class ExecutionError(RobograderException):
 Oops, you broke the robograder!
 I encountered a problem while robograding your submission.
 This could be a problem with myself (a robo-bug) or with your code (unexpected changes to class or methods signatures).
-In the latter case, you might elucidate the cause from the below error message.'
+In the latter case, you might elucidate the cause from the below error message.
 In the former case, please tell my designers!
 '''
 

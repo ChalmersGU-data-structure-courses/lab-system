@@ -469,9 +469,14 @@ def cmd_java(
     yield main
     yield from args
 
+def java_xx_option(option, enabled):
+    return str().join(['-XX', ':', '+' if enabled else '-', option])
+
 def java_standard_options():
     if java_version()[0] >= 14:
-        yield str().join(['-XX', ':', '+', 'ShowCodeDetailsInExceptionMessages'])
+        yield java_xx_option('ShowCodeDetailsInExceptionMessages', True)
+    # Having the below option active interferes with cleaning of student exception stack traces.
+    yield java_xx_option('OmitStackTraceInFastThrow', False)
 
 def java_prepend_standard_options(params):
     prepend_iterable(params, 'options', java_standard_options())
