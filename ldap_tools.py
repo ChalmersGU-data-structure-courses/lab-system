@@ -92,7 +92,7 @@ def list_all(client, base, scope, filterstr = None, attrlist = None, page_size =
 # logging.basicConfig()
 # logging.getLogger().setLevel(logging.INFO)
 
-client = ldap.initialize('ldap://ldap.chalmers.se')
+#client = ldap.initialize('ldap://ldap.chalmers.se')
 
 # #ldapsearch -x -H ldap://ldap.chalmers.se '(cn=Bardha Ahmeti)'
 
@@ -134,16 +134,16 @@ def print_record(record):
         print(key + ': ' + str(value))
     print()
 
-with general.timing('test'):
-    #r = search_people(client, ldap.filter.filter_format('(&(department=Data- och informationsteknik))', []))
-    r = search_people(client, ldap.filter.filter_format('(&(uid=niklaxe))', []))
-    rtype, rdata, rmsgid, serverctrls = client.result3(r)
-    print(rtype)
-    print('XXX')
-    print(rdata[0])
-    print(rmsgid)
-    print(serverctrls)
-    print(len(rdata))
+# with general.timing('test'):
+#     #r = search_people(client, ldap.filter.filter_format('(&(department=Data- och informationsteknik))', []))
+#     r = search_people(client, ldap.filter.filter_format('(&(uid=niklaxe))', []))
+#     rtype, rdata, rmsgid, serverctrls = client.result3(r)
+#     print(rtype)
+#     print('XXX')
+#     print(rdata[0])
+#     print(rmsgid)
+#     print(serverctrls)
+#     print(len(rdata))
 
 # CID to email addresses
 # Names to CID
