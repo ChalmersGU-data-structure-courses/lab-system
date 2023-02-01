@@ -1278,7 +1278,7 @@ class GroupProject:
             group_project_event = group_project_event,
         )
 
-    def get_score(self, scoring = None):
+    def get_score(self, scoring = None, strict = True):
         '''
         Get the grading score for this group.
         Scores are user-defined.
@@ -1287,8 +1287,10 @@ class GroupProject:
         * scoring:
             A function taking a list of submission outcomes and returning a score.
             Defaults to None for no submissions and the maximum function otherwise.
+        * strict:
+            Refuse to compute score if there is an ungraded submission.
         '''
-        if self.submission_current() is not None:
+        if strict and self.submission_current() is not None:
             raise ValueError(f'ungraded submission in {self.lab.name} for {self.name}')
 
         def scoring_default(s):
