@@ -1213,3 +1213,62 @@ class Lab:
             lab_id = self.id,
             lab_event = lab_event,
         )
+
+    @functools.cached_property
+    def report_assignment_name(self):
+        return f'{self.name}: Canvas mirror'
+
+    def report_assignment_create(self):
+        self.course.canvas_course.post_assignment({
+            'name': self.report_assignment_name,
+            'grading_type': 'pass_fail',
+            'description': f'This internal assignment is used for reporting {self.name} via CanLa.',
+            'published': 'false',
+        })
+
+    def report_assignment_get(self, ensure = True):
+        try:
+            id = self.course.canvas_course.assignments_name_to_id[self.report_assignment_name]
+        except KeyError:
+            self.course.canvas_course._init_assignments(False)
+            try:
+                id = self.course.canvas_course.assignments_name_to_id[self.report_assignment_name]
+            except KeyError:
+                if not ensure:
+                    raise
+
+                self.report_assignment_create()
+                self.course.canvas_course._init_assignments(False)
+                id = self.course.canvas_course.assignments_name_to_id[self.report_assignment_name]
+
+        return self.course.canvas_course.assignment_details[id]
+
+    def report_assignment_populate(self):
+        grades = self.grading_report()
+
+        id = self.report_assignment_get().id
+        submissions = self.course.canvas_course.get_submissions(id)
+        for submission in submissions:
+            canvas_user_id = submission.user_id
+            canvas_user = self.course.canvas_course.student_details[canvas_user_id]
+            gitlab_user = self.course.gitlab_user_by_canvas_id(canvas_user_id)
+
+            grade = grades.pop(gitlab_user.username)
+            if grade is None:
+                print(f'* {gitlab_user.username}: no graded submission')
+                continue
+
+            self.info(f'* {canvas_user.name}: {grade}')
+            canvas_grade = {
+                0: 'incomplete',
+                1: 'complete',
+            }[grade]
+            endpoint = self.course.canvas_course.endpoint + ['assignments', id, 'submissions', canvas_user_id]
+            self.course.canvas.put(endpoint, {
+                'submission[posted_grade]': canvas_grade
+            })
+
+        if grades:
+            self.logger.warn('Chalmers GitLab users with unreported grades:')
+            for (gitlab_username, grade) in grades.items():
+                print(f'* {gitlab_username}: {grade}')

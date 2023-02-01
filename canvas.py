@@ -1,3 +1,4 @@
+import contextlib
 from datetime import timedelta
 import functools
 import logging
@@ -330,16 +331,16 @@ class Course:
         self.teachers = tuple(filter(Course.is_teacher, self.users))
         self.teacher_details = dict((user.id, user) for user in self.teachers)
 
-    def _init_assignments(self):
+    def _init_assignments(self, use_cache = True):
         self.assignments_name_to_id = dict()
         self.assignment_details = dict()
-        for assignment in self.get_assignments(use_cache = self._use_cache):
+        for assignment in self.get_assignments(use_cache = use_cache):
             self.assignment_details[assignment.id] = assignment
             self.assignments_name_to_id[assignment.name] = assignment.id
 
     @functools.cached_property
     def assignments_name_to_id(self):
-        self._init_assignments()
+        self._init_assignments(self._use_cache)
         return self.assignments_name_to_id
 
     @functools.cached_property
