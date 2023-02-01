@@ -1215,3 +1215,45 @@ class Lab:
             lab_id = self.id,
             lab_event = lab_event,
         )
+
+    def report_assignment_populate(self, scoring = None, strict = True):
+        grades = self.grading_report(scoring = scoring, strict = strict)
+
+        id = self.report_assignment_get().id
+        submissions = self.course.canvas_course.get_submissions(id, use_cache = False)
+        for submission in submissions:
+            canvas_user_id = submission.user_id
+            try:
+                canvas_user = self.course.canvas_course.student_details[canvas_user_id]
+            except KeyError:
+                self.logger.warning(f'* Submission user {canvas_user_id} not a Canvas user (probably it is the test student).')
+                continue
+
+            gitlab_user = self.course.gitlab_user_by_canvas_id(canvas_user_id)
+            if gitlab_user is None:
+                self.logger.warning(f'* Canvas user {canvas_user.name} not on Chalmers GitLab.')
+                continue
+
+            try:
+                grade = grades.pop(gitlab_user.username)
+            except KeyError:
+                self.logger.warning(f'* Canvas user {canvas_user.name} not in lab on Chalmers GitLab.')
+                continue
+            if grade is None:
+                self.logger.warning(f'* {gitlab_user.username} ({canvas_user.name}): no graded submission')
+                continue
+
+            self.logger.info(f'* {canvas_user.name}: {grade}')
+            canvas_grade = {
+                0: 'incomplete',
+                1: 'complete',
+            }[grade]
+            endpoint = self.course.canvas_course.endpoint + ['assignments', id, 'submissions', canvas_user_id]
+            self.course.canvas.put(endpoint, {
+                'submission[posted_grade]': canvas_grade
+            })
+
+        if grades:
+            self.logger.warning('Chalmers GitLab users with unreported grades:')
+            for (gitlab_username, grade) in grades.items():
+                print(f'* {gitlab_username}: {grade}')
