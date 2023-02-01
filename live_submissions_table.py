@@ -518,7 +518,7 @@ def with_standard_columns(columns = dict(), with_solution = True):
 Config = collections.namedtuple(
     'Config',
     ['deadline', 'sort_order'],
-    defaults = [None, ['query-number', 'group', 'date']],
+    defaults = [None, ['query-number', 'date', 'group']],
 )
 Config.__doc__ = '''
     Configuration for a live submissions table.
