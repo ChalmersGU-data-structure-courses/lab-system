@@ -1255,12 +1255,16 @@ class Lab:
             canvas_user = self.course.canvas_course.student_details[canvas_user_id]
             gitlab_user = self.course.gitlab_user_by_canvas_id(canvas_user_id)
 
-            grade = grades.pop(gitlab_user.username)
+            try:
+                grade = grades.pop(gitlab_user.username)
+            except KeyError:
+                self.logger.warn(f'* Canvas user {canvas_user.name} not in lab on Chalmers GitLab.')
+                continue
             if grade is None:
                 print(f'* {gitlab_user.username}: no graded submission')
                 continue
 
-            self.info(f'* {canvas_user.name}: {grade}')
+            self.logger.info(f'* {canvas_user.name}: {grade}')
             canvas_grade = {
                 0: 'incomplete',
                 1: 'complete',
