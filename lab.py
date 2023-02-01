@@ -1269,7 +1269,7 @@ class Lab:
                 self.logger.warn(f'* Canvas user {canvas_user.name} not in lab on Chalmers GitLab.')
                 continue
             if grade is None:
-                print(f'* {gitlab_user.username}: no graded submission')
+                self.logger.warn(f'* {gitlab_user.username} ({canvas_user.name}): no graded submission')
                 continue
 
             self.logger.info(f'* {canvas_user.name}: {grade}')
