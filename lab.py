@@ -1252,7 +1252,12 @@ class Lab:
         submissions = self.course.canvas_course.get_submissions(id)
         for submission in submissions:
             canvas_user_id = submission.user_id
-            canvas_user = self.course.canvas_course.student_details[canvas_user_id]
+            try:
+                canvas_user = self.course.canvas_course.student_details[canvas_user_id]
+            except KeyError:
+                self.logger.warn(f'* Submission user {canvas_user_id} not a Canvas user (probably it is the test student).')
+                continue
+
             gitlab_user = self.course.gitlab_user_by_canvas_id(canvas_user_id)
             if gitlab_user is None:
                 self.logger.warn(f'* Canvas user {canvas_user.name} not on Chalmers GitLab.')
