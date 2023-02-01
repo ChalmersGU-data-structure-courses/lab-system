@@ -1254,6 +1254,9 @@ class Lab:
             canvas_user_id = submission.user_id
             canvas_user = self.course.canvas_course.student_details[canvas_user_id]
             gitlab_user = self.course.gitlab_user_by_canvas_id(canvas_user_id)
+            if gitlab_user is None:
+                self.logger.warn(f'* Canvas user {canvas_user.name} not on Chalmers GitLab.')
+                continue
 
             try:
                 grade = grades.pop(gitlab_user.username)
