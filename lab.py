@@ -1245,8 +1245,8 @@ class Lab:
 
         return self.course.canvas_course.assignment_details[id]
 
-    def report_assignment_populate(self):
-        grades = self.grading_report()
+    def report_assignment_populate(self, scoring = None, strict = True):
+        grades = self.grading_report(scoring = scoring, strict = strict)
 
         id = self.report_assignment_get().id
         submissions = self.course.canvas_course.get_submissions(id)
