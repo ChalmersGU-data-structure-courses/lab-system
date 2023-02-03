@@ -436,6 +436,7 @@ def gitlab_username_from_canvas_user_id(course, user_id):
         try:
             cid = course.cid_from_canvas_id_via_login_id_or_ldap_name(user_id)
         except LookupError:
+            print('XXX', user_id)
             return None
 
     try:

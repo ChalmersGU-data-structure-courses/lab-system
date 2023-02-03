@@ -1225,7 +1225,7 @@ class Lab:
             'name': self.report_assignment_name,
             'grading_type': 'pass_fail',
             'description': f'This internal assignment is used for reporting {self.name} via CanLa.',
-            'published': 'false',
+            'published': 'true',
         })
 
     def report_assignment_get(self, ensure = True):
