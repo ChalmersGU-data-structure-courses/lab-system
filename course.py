@@ -113,7 +113,7 @@ class Course:
             return gs
 
         gs = group_set.GroupSet(self, config)
-        self.group_sets[config.name] = group_set
+        self.group_sets[config.name] = gs
         return gs
 
     @functools.cached_property
