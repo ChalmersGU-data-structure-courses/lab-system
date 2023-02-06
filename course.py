@@ -1262,14 +1262,14 @@ class Course:
 
     @functools.cached_property
     def report_assignment_name(self):
-        return f'Labs: Canvas mirror'
+        return 'Labs: Canvas mirror'
 
     def report_assignment_create(self):
         '''test'''
         self.canvas_course.post_assignment({
             'name': self.report_assignment_name,
             'grading_type': 'pass_fail',
-            'description': f'This internal assignment is used for reporting whether all labs have passed via CanLa.',
+            'description': 'This internal assignment is used for reporting whether all labs have passed via CanLa.',
             'published': 'true',
         })
 
@@ -1293,9 +1293,10 @@ class Course:
     def report_assignment_populate(self, combining = None, scoring = None, strict = True):
         if combining is None:
             def combining(grades):
-                if None in grades.values():
+                xs = grades.values()
+                if all(x is None for x in xs):
                     return None
-                return max(grades.values())
+                return min(0 if x is None else x for x in xs)
 
         grades = {
             lab.id: lab.grading_report(scoring = scoring, strict = strict)
@@ -1319,13 +1320,13 @@ class Course:
 
             def f(lab):
                 try:
-                    return grades[lab.id].pop(gitlab_user.username)
+                    grade = grades[lab.id].pop(gitlab_user.username)
                 except KeyError:
                     self.logger.warning(f'* Canvas user {canvas_user.name} not in {lab.name} on Chalmers GitLab.')
                     return None
                 if grade is None:
                     self.logger.warning(f'* {gitlab_user.username} ({canvas_user.name}): no graded submission in {lab.name}.')
-                    return None
+                return grade
             student_grades = {lab.id: f(lab) for lab in self.labs.values()}
             grade = combining(student_grades)
             if grade is None:
