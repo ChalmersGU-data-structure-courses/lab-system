@@ -386,9 +386,9 @@ def _lab_item(k, *args, **kwargs):
 
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
-    _lab_item(1, 'binary-search'       , datetime.timedelta(minutes = 15), has_robograder = True),  # noqa: E203
+    _lab_item(1, 'binary-search'       , datetime.timedelta(minutes = 60), has_robograder = True),  # noqa: E203
     _lab_item(2, 'indexing'            , datetime.timedelta(minutes = 15), has_robograder = True),  # noqa: E203
-    #_lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15)),  # noqa: E203
+    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 30), has_robograder = True),  # noqa: E203
     #_lab_item(4, 'path-finder'         , datetime.timedelta(minutes = 15)),  # noqa: E203
 ])
 
