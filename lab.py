@@ -129,10 +129,10 @@ class StudentConnectorGroupSet(StudentConnector):
 
     def desired_members(self, id):
         canvas_name = self.group_set.config.name.print(id)
-        canvas_id = self.group_set.canvas_group_set.name_to_id(canvas_name)
+        canvas_id = self.group_set.canvas_group_set.name_to_id[canvas_name]
         return frozenset(
-            self.group_set.course.gitlab_user_by_canvas_id(canvas_user.id)
-            for canvas_user in self.group_set.group_users[canvas_id]
+            self.group_set.course.gitlab_user_by_canvas_id(canvas_user_id).username
+            for canvas_user_id in self.group_set.canvas_group_set.group_users[canvas_id]
         )
 
     def gitlab_group_slug_pp(self):
