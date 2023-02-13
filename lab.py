@@ -457,9 +457,9 @@ class Lab:
         for group_id in self.groups:
             self.student_group(group_id).group.delete()
 
-        with contextlib.suppress(AttributeError):
-            del self.groups
-            del self.student_groups
+        for x in ['groups', 'student_groups']:
+            with contextlib.suppress(AttributeError):
+                delattr(self, x)
 
     def create_groups_from_canvas(self, delete_existing = False):
         if delete_existing:

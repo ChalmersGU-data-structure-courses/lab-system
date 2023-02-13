@@ -281,14 +281,17 @@ class GradingViaMergeRequest:
 
     def notes_clear(self):
         '''Actually, cleares cache for notes and label events.'''
-        with contextlib.suppress(AttributeError):
-            del self.notes
-            del self.synced_submissions
-            del self.synced_submissions_by_date
-            del self.reviewer_intervals
-            del self.reviewer_current
-            del self.label_events
-            del self.submission_outcomes
+        for x in [
+            'notes',
+            'synced_submissions',
+            'synced_submissions_by_date',
+            'reviewer_intervals',
+            'reviewer_current',
+            'label_events',
+            'submission_outcomes',
+        ]:
+            with contextlib.suppress(AttributeError):
+                delattr(self, x)
 
     @contextlib.contextmanager
     def notes_suppress_cache_clear(self):
@@ -454,6 +457,11 @@ class GradingViaMergeRequest:
         if self.notes_suppress_cache_clear_counter == 0 and clear_cache:
             self.notes_clear()
         updated = self.submission_outcomes != x
+
+        self.logger.debug(f'old outcomes: {x}')
+        self.logger.debug(f'new outcomes: {self.submission_outcomes}')
+        self.logger.debug(f'updated: {updated}')
+
         if updated:
             self.status_repo_report_status()
         self.outcome_last_checked = self.submission_outcomes

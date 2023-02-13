@@ -1270,7 +1270,8 @@ class GroupProject:
         self.logger.debug('Received a grading project merge request event.')
         changes = hook_event.get('changes')
         if changes and 'labels' in changes:
-            self.logger.debug('Detected label change from {} to {}')
+            #self.logger.debug(f'Detected label change from {} to {}')
+            self.logger.debug('Detected label change')
             yield (
                 events.GroupProjectWebhookResponseEvent(events.GroupProjectGradingMergeRequestEvent()),
                 lambda: self.lab.refresh_group(self, refresh_grading_merge_request = True),
