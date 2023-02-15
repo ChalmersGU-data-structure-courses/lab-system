@@ -1257,10 +1257,16 @@ class Lab:
 
         with contextlib.ExitStack() as stack:
             def f():
-                yield refresh_issue_responses and group.parse_response_issues()
+                x = refresh_issue_responses and group.parse_response_issues()
+                if x:
+                    self.logger.info('found response issue update')
+                    yield x
                 if self.config.grading_via_merge_request:
-                    yield refresh_grading_merge_request and group.parse_grading_merge_request_responses()
-                    stack.enter_context(group.grading_via_merge_request.notes_suppress_cache_clear())
+                    x = refresh_grading_merge_request and group.parse_grading_merge_request_responses()
+                    if x:
+                        self.logger.info('found merge request update')
+                        stack.enter_context(group.grading_via_merge_request.notes_suppress_cache_clear())
+                        yield x
 
             grading_updates = any(f())
             group.repo_fetch()
