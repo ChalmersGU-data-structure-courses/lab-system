@@ -540,8 +540,8 @@ class Lab:
             # Configure and fetch official repository.
             def branches():
                 yield self.course.config.branch.master
-                #if self.config.has_solution:
-                #    yield self.course.config.branch.solution
+                if self.config.has_solution:
+                    yield self.course.config.branch.solution
             branches = list(branches())
             self.repo_add_remote(
                 self.course.config.path_lab.official,
