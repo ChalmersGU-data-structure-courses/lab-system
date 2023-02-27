@@ -271,6 +271,9 @@ _group = SimpleNamespace(
     ),
 )
 
+# For tuning of timing tests.
+_machine_speed = 0.5
+
 # Example lab configuration (for purpose of documentation).
 _lab_config = SimpleNamespace(
     # Filesystem path to the lab source.
@@ -358,13 +361,19 @@ class _LabConfig:
 
         def f():
             if has_robograder:
-                yield ('robograding', lab_handlers_java.RobogradingHandler())
+                yield ('robograding', lab_handlers_java.RobogradingHandler(
+                    machine_speed = _machine_speed
+                ))
             elif has_tester:
-                yield ('testing', lab_handlers.GenericTestingHandler(tester_java.LabTester.factory))
+                yield ('testing', lab_handlers.GenericTestingHandler(
+                    tester_java.LabTester.factory,
+                    machine_speed = _machine_speed
+                ))
 
             yield ('submission', lab_handlers_java.SubmissionHandler(
                 tester_java.LabTester.factory,
                 show_solution = self.has_solution,
+                machine_speed = _machine_speed,
             ))
         self.request_handlers = dict(f())
 
