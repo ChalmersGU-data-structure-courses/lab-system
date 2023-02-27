@@ -96,9 +96,9 @@ class LabTester:
 
     @classmethod
     @functools.cache
-    def factory(cls, dir_lab):
+    def factory(cls, dir_lab, machine_speed = -1):
         try:
-            return cls(dir_lab)
+            return cls(dir_lab, machine_speed = machine_speed)
         except TesterMissingException:
             return None
 

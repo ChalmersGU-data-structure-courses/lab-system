@@ -132,12 +132,13 @@ class GenericTestingHandler(TestingHandler):
     A generic testing handler using the test framework (see test_lib).
     The tester is required to implement format_tests_output_as_markdown.
     '''
-    def __init__(self, tester_factory):
+    def __init__(self, tester_factory, machine_speed = 1):
         self.tester_factory = tester_factory
+        self.machine_speed = machine_speed
 
     def setup(self, lab):
         super().setup(lab)
-        self.tester = self.tester_factory(lab.config.path_source)
+        self.tester = self.tester_factory(lab.config.path_source, self.machine_speed)
 
     def get_test_report(self, dir_out):
         return markdown.join_blocks(self.tester.format_tests_output_as_markdown(dir_out))
@@ -164,11 +165,12 @@ class SubmissionTesting:
     has_markdown_report = True
     report_path = PurePosixPath('test_report.md')
 
-    def __init__(self, tester_factory):
+    def __init__(self, tester_factory, machine_speed = 1):
         self.tester_factory = tester_factory
+        self.machine_speed = machine_speed
 
     def setup(self, lab):
-        self.tester = self.tester_factory(lab.config.path_source)
+        self.tester = self.tester_factory(lab.config.path_source, self.machine_speed)
         #if not self.lab.submission_solution.repo_tag_exist(segments_test_tag):
         #    with self.lab.submission_solution.checkout_manager() as src:
         #        self.test_submission(self.lab.submission_solution, src)
