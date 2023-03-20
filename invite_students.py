@@ -2,7 +2,7 @@
 #
 # If you run this script in a loop, change the logging level
 # to logging.WARNING and pipe the error output into a log file, e.g.
-#   while [[ 1 ]]; do ./invite_students.py 2>>invite_students_log; sleep 600; done
+#   while [[ 1 ]]; do ./invite_students.py 2>>invite_students_log; sleep 300; done
 # That way, the log file won't contain repeating redundant entries.
 
 from prelude import *
@@ -19,6 +19,7 @@ logging.basicConfig(
 )
 logging.getLogger().setLevel(25)
 
-c.canvas_course_refresh()
-c.canvas_group_set_refresh()
-c.sync_students_to_gitlab(add = True, remove = True, restrict_to_known = True)
+# l should refer to the current lab.
+l.canvas_course_refresh()
+l.canvas_group_set_refresh()
+l.sync_students_to_gitlab(add = True, remove = True, restrict_to_known = True)
