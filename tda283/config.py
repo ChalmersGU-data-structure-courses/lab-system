@@ -414,7 +414,7 @@ def gitlab_username_from_canvas_user_id(course, user_id):
         cid = _canvas_id_to_gitlab_username_override[user_id]
     except KeyError:
         try:
-            cid = course.cid_from_canvas_id_via_login_id_or_ldap_name(user_id)
+            cid = course.cid_from_canvas_id_via_login_id_or_pdb(user_id)
         except LookupError:
             return None
 
