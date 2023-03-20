@@ -473,28 +473,14 @@ _cid_to_gitlab_username = print_parse.from_dict([
 # Return None if not possible.
 # Takes the course object and the Canvas user object as arguments.
 _canvas_id_to_gitlab_username_override = {
-    122370000000266484: 'benu',
-    122370000000062483: 'REDACTED_CID',
-    122370000000262907: 'portase',
-    122370000000245410: 'davidroc',
-    122370000000043893: 'REDACTED_CID',
-    122370000000259641: 'kaeriks',
-    122370000000234578: 'bomanjo',
-    122370000000266483: 'linhpha',
-    122370000000259648: 'willand',
-    122370000000204612: 'REDACTED_CID',
-    122370000000220047: 'REDACTED_CID',
 }
-
-# TODO: find CIDs for:
-# 122370000000259648; gusandwip; William Andersson; Andersson, William
 
 def gitlab_username_from_canvas_user_id(course, user_id):
     try:
         cid = _canvas_id_to_gitlab_username_override[user_id]
     except KeyError:
         try:
-            cid = course.cid_from_canvas_id_via_login_id_or_ldap_name(user_id)
+            cid = course.cid_from_canvas_id_via_login_id_or_pdb(user_id)
         except LookupError:
             return None
 
