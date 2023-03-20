@@ -227,7 +227,7 @@ class Lab:
         self.id_str = self.course.config.lab.id.print(self.id)
         self.name = self.course.config.lab.name.print(self.id)
         self.name_semantic = (self.config.path_source / 'name').read_text().strip()
-        self.name_full = '{} — {}'.format(self.name, self.name_semantic)
+        self.name_full = self.name_semantic
 
         # Student connector
         if self.config.group_set:
@@ -237,7 +237,7 @@ class Lab:
             self.student_connector = StudentConnectorIndividual(self.course)
 
         # Gitlab config
-        self.path = self.course.path / self.course.config.lab.full_id.print(self.id)
+        self.path = self.course.path
 
         # Local grading repository config.
         self.dir_repo = None if self.dir is None else self.dir / 'repo'
@@ -447,9 +447,12 @@ class Lab:
 
         def f():
             for group in gitlab_tools.list_all(self.gitlab_group.lazy.subgroups):
-                group_id = self.student_connector.gitlab_group_slug_pp().parse(group.path)
-                if not group_id is None:
-                    yield group_id
+                try:
+                    group_id = self.student_connector.gitlab_group_slug_pp().parse(group.path)
+                    if not group_id is None:
+                        yield group_id
+                except ValueError:
+                    pass
 
         return frozenset(f())
 
