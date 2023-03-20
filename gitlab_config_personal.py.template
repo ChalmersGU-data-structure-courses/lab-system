@@ -18,6 +18,10 @@ canvas_auth_token = None
 # Path to Google service account credential file
 google_credentials_path = this_dir / 'google_tools' / 'credentials.json'
 
+# PDB login credentials for translating a personnummer to a CID (used for GU students).
+# Format: (username, password)
+pdb_login = (None, None)
+
 # Relative machine speed to calibrate the robograder.
 # A value of 1 corresponds to a decent 2013 desktop machine.
 robograder_machine_speed = 1
