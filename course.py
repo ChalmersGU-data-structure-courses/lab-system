@@ -221,12 +221,10 @@ class Course:
                 else:
                     print(f'Ambiguous results for {student_details.name}')
 
-    @instance_cache
-    def cid_from_canvas_id_via_login_id_or_ldap_name(self, user_id):
+    def cid_from_canvas_id_via_login_id(self, user_id):
         '''
         For login IDs that look like Chalmers login IDs, return the CID directly.
-        Otherwise, attempt an LDAP lookup.
-        Raises a LookupError if the student name (as on Canvas) cannot be uniquely resolved to a CID.
+        Otherwise, return None.
         '''
         user_details = self.canvas_course.user_details[user_id]
         parts = user_details.login_id.split('@', 1)
@@ -248,7 +246,35 @@ class Course:
         if is_cid():
             return parts[0]
 
+    @instance_cache
+    def cid_from_canvas_id_via_login_id_or_ldap_name(self, user_id):
+        '''
+        For login IDs that look like Chalmers login IDs, return the CID directly.
+        Otherwise, attempt an LDAP lookup.
+        Raises a LookupError if the student name (as on Canvas) cannot be uniquely resolved to a CID.
+        '''
+        cid = self.cid_from_canvas_id_via_login_id(user_id)
+        if not cid is None:
+            return cid
+
+        user_details = self.canvas_course.user_details[user_id]
         return self.cid_from_ldap_name(user_details.name)
+
+    @instance_cache
+    def cid_from_canvas_id_via_login_id_or_pdb(self, user_id):
+        '''
+        For login IDs that look like Chalmers login IDs, return the CID directly.
+        Otherwise, attempt a PDB lookup using the personnummer
+        Raises a LookupError if the personnummer cannot be uniquely resolved to a CID.
+        '''
+        cid = self.cid_from_canvas_id_via_login_id(user_id)
+        if not cid is None:
+            return cid
+
+        from chalmers_pdb.tools import personnummer_to_cid
+
+        user_details = self.canvas_course.user_details[user_id]
+        return personnummer_to_cid(user_details.sis_user_id)
 
     @property
     def gitlab_netloc(self):
