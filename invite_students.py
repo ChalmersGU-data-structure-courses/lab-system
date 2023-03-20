@@ -20,6 +20,6 @@ logging.basicConfig(
 logging.getLogger().setLevel(25)
 
 # l should refer to the current lab.
-l.canvas_course_refresh()
-l.canvas_group_set_refresh()
+c.canvas_course_refresh()
+l.student_connector.group_set.canvas_group_set_refresh()
 l.sync_students_to_gitlab(add = True, remove = True, restrict_to_known = True)
