@@ -77,9 +77,10 @@ class StudentConnectorIndividual(StudentConnector):
     def desired_groups(self):
         def f():
             for canvas_user in self.course.canvas_course.students:
-                gitlab_username = self.course.gitlab_username_by_canvas_user_id.get(canvas_user.id)
+                gitlab_username = self.course.gitlab_username_from_canvas_user_id(canvas_user.id, strict = False)
                 if not gitlab_username is None:
                     yield gitlab_username
+
         return frozenset(f())
 
     def gitlab_group_slug_pp(self):
@@ -106,7 +107,11 @@ class StudentConnectorIndividual(StudentConnector):
         if id == 'test':
             return 'Test Student'
 
-        return self.course.canvas_user_by_gitlab_username[id].name
+        canvas_user = self.course.canvas_user_by_gitlab_username.get(id)
+        if canvas_user is None:
+            return f'{id} — not on Canvas'
+
+        return canvas_user.name
 
     def desired_members(self, id):
         return frozenset([id])
@@ -128,12 +133,15 @@ class StudentConnectorGroupSet(StudentConnector):
         )
 
     def desired_members(self, id):
-        canvas_name = self.group_set.config.name.print(id)
-        canvas_id = self.group_set.canvas_group_set.name_to_id[canvas_name]
-        return frozenset(
-            self.group_set.course.gitlab_user_by_canvas_id(canvas_user_id).username
-            for canvas_user_id in self.group_set.canvas_group_set.group_users[canvas_id]
-        )
+        def f():
+            canvas_name = self.group_set.config.name.print(id)
+            canvas_id = self.group_set.canvas_group_set.name_to_id[canvas_name]
+            for canvas_user_id in self.group_set.canvas_group_set.group_users[canvas_id]:
+                gitlab_username = self.group_set.course.gitlab_username_from_canvas_user_id(canvas_user_id, strict = False)
+                if not gitlab_username is None:
+                    yield gitlab_username
+
+        return frozenset(f())
 
     def gitlab_group_slug_pp(self):
         return self.group_set.config.full_id
