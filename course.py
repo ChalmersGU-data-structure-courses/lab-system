@@ -380,6 +380,21 @@ class Course:
                     yield (canvas_user.id, gitlab_username)
         return general.sdict(f())
 
+    def gitlab_username_from_canvas_user_id(self, canvas_user_id, strict = True):
+        '''
+        Prints a warning and returns None if the GitLab username could not be constructed and strict is not set.
+        '''
+        gitlab_username = self.gitlab_username_by_canvas_user_id.get(canvas_user_id)
+        if not gitlab_username is None:
+            return gitlab_username
+
+        msg = f'No GitLab username contructable for Canvas user {canvas_user_id}: {canvas_user.name}, {canvas_user.login_id}, {canvas_user.sis_user_id}'
+        if strict:
+            raise LookupError(msg)
+
+        self.logger.warning(msg)
+        return None
+
     @functools.cached_property
     def canvas_user_by_gitlab_username(self):
         '''
