@@ -895,3 +895,91 @@ class Course:
                 )]
             )
             raise
+
+    @functools.cached_property
+    def report_assignment_name(self):
+        return 'Labs: Canvas mirror'
+
+    def report_assignment_create(self):
+        '''test'''
+        self.canvas_course.post_assignment({
+            'name': self.report_assignment_name,
+            'grading_type': 'pass_fail',
+            'description': 'This internal assignment is used for reporting whether all labs have passed via CanLa.',
+            'published': 'true',
+        })
+
+    def report_assignment_get(self, ensure = True):
+        try:
+            id = self.canvas_course.assignments_name_to_id[self.report_assignment_name]
+        except KeyError:
+            self.canvas_course._init_assignments(False)
+            try:
+                id = self.canvas_course.assignments_name_to_id[self.report_assignment_name]
+            except KeyError:
+                if not ensure:
+                    raise
+
+                self.report_assignment_create()
+                self.canvas_course._init_assignments(False)
+                id = self.canvas_course.assignments_name_to_id[self.report_assignment_name]
+
+        return self.canvas_course.assignment_details[id]
+
+    def report_assignment_populate(self, combining = None, scoring = None, strict = True):
+        if combining is None:
+            def combining(grades):
+                xs = grades.values()
+                if all(x is None for x in xs):
+                    return None
+                return min(0 if x is None else x for x in xs)
+
+        grades = {
+            lab.id: lab.grading_report(scoring = scoring, strict = strict)
+            for lab in self.labs.values()
+        }
+
+        id = self.report_assignment_get().id
+        submissions = self.canvas_course.get_submissions(id, use_cache = False)
+        for submission in submissions:
+            canvas_user_id = submission.user_id
+            try:
+                canvas_user = self.canvas_course.student_details[canvas_user_id]
+            except KeyError:
+                self.logger.warning(f'* Submission user {canvas_user_id} not a Canvas user (probably it is the test student).')
+                continue
+
+            gitlab_user = self.gitlab_user_by_canvas_id(canvas_user_id)
+            if gitlab_user is None:
+                self.logger.warning(f'* Canvas user {canvas_user.name} not on Chalmers GitLab.')
+                continue
+
+            def f(lab):
+                try:
+                    grade = grades[lab.id].pop(gitlab_user.username)
+                except KeyError:
+                    self.logger.warning(f'* Canvas user {canvas_user.name} not in {lab.name} on Chalmers GitLab.')
+                    return None
+                if grade is None:
+                    self.logger.warning(f'* {gitlab_user.username} ({canvas_user.name}): no graded submission in {lab.name}.')
+                return grade
+            student_grades = {lab.id: f(lab) for lab in self.labs.values()}
+            grade = combining(student_grades)
+            if grade is None:
+                continue
+
+            self.logger.info(f'* {canvas_user.name}: {grade}')
+            canvas_grade = {
+                0: 'incomplete',
+                1: 'complete',
+            }[grade]
+            endpoint = self.canvas_course.endpoint + ['assignments', id, 'submissions', canvas_user_id]
+            self.canvas.put(endpoint, {
+                'submission[posted_grade]': canvas_grade
+            })
+
+        for lab in self.labs.values():
+            if grades[lab.id]:
+                self.logger.warning(f'Chalmers GitLab users with unreported grades in {lab.name}:')
+                for (gitlab_username, grade) in grades[lab.id].items():
+                    print(f'* {gitlab_username}: {grade}')
