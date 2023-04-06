@@ -130,3 +130,6 @@
     proot -r /root -w /jail/main -b '/bin:/bin!' -b '/lib64:/lib64!' -b '/lib:/lib!' -b '/usr/bin:/usr/bin!' -b '/usr/lib64:/usr/lib64!' -b '/usr/lib:/usr/lib!' -b '/home/noname:/jail/main!'
   the directory /bin is copied as /bin *and* /jail/bin.
 
+## Grading via merge request
+
+* Investigate why students often don't get added to grading merge requests on their submission (TDA283).
