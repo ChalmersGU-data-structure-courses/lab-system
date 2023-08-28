@@ -3,12 +3,12 @@ import logging
 from gitlab_config_personal import *
 import course
 
-import lp3.config as config
+import lp1.config as config
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 
-c = course.Course(config, 'lp3')
+c = course.Course(config, 'lp1')
 
 l = c.labs[1]
 
