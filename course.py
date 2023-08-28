@@ -227,6 +227,10 @@ class Course:
         Otherwise, return None.
         '''
         user_details = self.canvas_course.user_details[user_id]
+
+        if not hasattr(user_details, "login_id"):
+            raise ValueError('Canvas access token does not have role "Examiner".')
+
         parts = user_details.login_id.split('@', 1)
         looks_like_gu_id = parts[0].startswith('gus')
 
@@ -239,6 +243,10 @@ class Course:
                 return True
 
             if domain == 'gu.se':
+                return False
+
+            # Peter's exeptions
+            if domain == 'cse.gu.se':
                 return False
 
             raise ValueError(f'Unknown domain part in login_id {user_details.login_id}')
