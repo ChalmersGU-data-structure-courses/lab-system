@@ -1,12 +1,13 @@
-import lab_handlers
 import live_submissions_table
 
+import handlers.general
 
-class SubmissionHandler(lab_handlers.SubmissionHandler):
+
+class SubmissionHandler(handlers.general.SubmissionHandler):
     '''A submission handler for Python labs.'''
 
     def __init__(self, tester_factory, machine_speed = 1, show_solution = True):
-        self.testing = lab_handlers.SubmissionTesting(tester_factory)
+        self.testing = handlers.general.SubmissionTesting(tester_factory)
         self.machine_speed = machine_speed
         self.show_solution = show_solution
 
