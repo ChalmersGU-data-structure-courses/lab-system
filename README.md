@@ -40,6 +40,7 @@ We require a Canvas access token.
 * Log into Canvas and go to [settings](https://chalmers.instructure.com/profile/settings) (the links here are for Chalmers Canvas).
 * Under **Approved Integrations** create an access token and store it under `canvas_auth_token` in `gitlab_config_personal.py`.
 * Also store the access token in a file `auth_token` (this is only relevant for old scripts that do not use `gitlab_config_personal.py`).
+* The user providing the access token needs to be enrolled in the course's Canvas as "Examiner".
 
 ### Chalmers GitLab
 
