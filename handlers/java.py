@@ -4,12 +4,13 @@ import dominate
 
 import git_tools
 import gitlab_tools
-import lab_handlers
 import lab_interfaces
 import live_submissions_table
 import path_tools
 import robograder_java
 import submission_java
+
+import handlers.general
 
 
 report_segments = ['report']
@@ -128,11 +129,11 @@ class CompilationAndRobogradingColumn(live_submissions_table.Column):
             callback = format_cell,
         )
 
-class SubmissionHandler(lab_handlers.SubmissionHandler):
+class SubmissionHandler(handlers.general.SubmissionHandler):
     '''A submission handler for Java labs.'''
 
     def __init__(self, tester_factory, robograder_factory = robograder_java.factory, machine_speed = 1, show_solution = True):
-        self.testing = lab_handlers.SubmissionTesting(tester_factory)
+        self.testing = handlers.general.SubmissionTesting(tester_factory)
         self.robograder_factory = robograder_factory
         self.machine_speed = machine_speed
         self.show_solution = show_solution
@@ -189,7 +190,7 @@ class SubmissionHandler(lab_handlers.SubmissionHandler):
             with path_tools.temp_dir() as report:
                 return self._handle_request(request_and_responses, src, report)
 
-class RobogradingHandler(lab_handlers.RobogradingHandler):
+class RobogradingHandler(handlers.general.RobogradingHandler):
     '''A robograding handler for Java labs.'''
 
     def __init__(self, robograder_factory = robograder_java.factory, machine_speed = 1):
