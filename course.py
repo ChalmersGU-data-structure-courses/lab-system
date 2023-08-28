@@ -469,12 +469,12 @@ class Course:
         self.logger.info('adding teachers from Canvas to the grader group')
 
         members = gitlab_tools.members_dict(self.graders_group.lazy)
-        invitations = self.get_invitations(self.graders_group.lazy)
+        invitations = gitlab_tools.invitation_dict(self.gl, self.graders_group.lazy)
 
         # Returns the set of prior invitation emails still valid.
         def invite():
             for user in self.canvas_course.teachers:
-                gitlab_username = self.config.gitlab_username_by_canvas_user_id.get(user.id)
+                gitlab_username = self.gitlab_username_by_canvas_user_id.get(user.id)
                 gitlab_user = self.gitlab_user(gitlab_username)
                 if not gitlab_username in members:
                     if gitlab_user:
@@ -518,7 +518,7 @@ class Course:
         for group_id in self.groups:
             entity = self.group(group_id).lazy
             entity_name = f'{self.config.group.name.print(group_id)} on GitLab'
-            for invitation in self.get_invitations(entity).values():
+            for invitation in gitlab_tools.invitation_dict(self.gl, entity).values():
                 created_at = dateutil.parser.parse(invitation['created_at'])
                 if keep_after is None or created_at < keep_after:
                     email = invitation['invite_email']
