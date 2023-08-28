@@ -351,11 +351,15 @@ class Lab:
     def official_project(self):
         '''
         The official lab project on Chalmers GitLab.
+        The student lab projects are forked from this.
         On creation:
-        * The contents are taken from the specified local lab directory
+        * The contents of the main branch are taken from the problem folder of the specified local lab directory
           (together with an optionally specified .gitignore file).
-          So make sure the problem and solution subdirectories are clean beforehand.
-        * Problem and solution branches are set up.
+          So make sure this directory is clean beforehand.
+
+        This used to contain branches "problem" and "solution".
+        * Branch "problem" does not exist anymore.
+        * Branch "solution" is now part of the grading project instead.
         '''
         r = gitlab_tools.CachedProject(
             gl = self.gl,
@@ -546,24 +550,28 @@ class Lab:
                 c.add_value('advice', 'detachedHead', 'false')
 
             # Configure and fetch official repository.
-            def branches():
-                yield self.course.config.branch.master
-                if self.config.has_solution:
-                    yield self.course.config.branch.solution
-            branches = list(branches())
             self.repo_add_remote(
                 self.course.config.path_lab.official,
                 self.official_project.get,
-                fetch_branches = [(git_tools.Namespacing.local, b) for b in branches],
+                fetch_branches = [(git_tools.Namespacing.local, self.course.config.branch.master)],
                 fetch_tags = [(git_tools.Namespacing.local, git_tools.wildcard)],
             )
             self.repo_fetch_official()
 
+            # Add optional solution.
+            if self.config.has_solution:
+                self.repo_add_solution()
+
             # Configure offical grading repository and student groups.
+            def push_branches():
+                yield self.course.config.branch.master
+                if self.config.has_solution:
+                    yield self.course.config.branch.solution
+
             self.repo_add_remote(
                 self.course.config.path_lab.grading,
                 self.grading_project.get,
-                push_branches = branches,
+                push_branches = list(push_branches()),
                 push_tags = [git_tools.wildcard],
             )
             self.repo_add_groups_remotes(ignore_missing = True)
@@ -572,6 +580,20 @@ class Lab:
             raise
 
         self.repo = repo
+
+    def repo_add_solution(self):
+        '''
+        Add solution to local repo.
+        Call separately if solution has been added later.
+        '''
+        solution_tree = git_tools.create_tree_from_dir(self.repo, self.config.path_source / 'solution')
+        commit = git.Commit.create_from_tree(
+            self.repo,
+            solution_tree,
+            'Official solution.',
+            [self.head_problem.commit],
+        )
+        self.repo.create_head(self.course.config.branch.solution, commit, force = True)
 
     def repo_remote_command(self, repo, command):
         if self.course.ssh_multiplexer is None:
@@ -605,18 +627,10 @@ class Lab:
 
     def repo_fetch_official(self):
         '''
-        Fetch problem branches from the offical
-        repository on Chalmers GitLab to the local grading repository.
+        Fetch main branch from the offical repository on Chalmers GitLab to the local grading repository.
         '''
         self.logger.info('Fetching from primary repository.')
         self.repo_command_fetch(self.repo, [self.course.config.path_lab.official])
-
-    # TODO
-    def repo_add_solution(self):
-        '''
-        Add solution to local repo.
-        '''
-        ...
 
     def repo_push(self, force = False):
         '''
@@ -640,7 +654,7 @@ class Lab:
         gitlab_tools.protect_tags(self.gl, project.id, patterns())
         gitlab_tools.delete_protected_branches(project)
 
-    # OUTDATED
+    # OUTDATED, use create_group_projects instead.
     # TODO:
     # Debug what happens when running this without the grading project having been created.
     # For some reason, project.delete seems to trigger an exception.
