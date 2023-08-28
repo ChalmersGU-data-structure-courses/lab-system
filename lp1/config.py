@@ -7,9 +7,9 @@ from types import SimpleNamespace
 
 import gdpr_coding
 import gitlab_tools
-import lab_handlers
-import lab_handlers_java
-import lab_handlers_python
+import handlers.general
+import handlers.java
+import handlers.python
 import print_parse
 import tester_podman
 from this_dir import this_dir
@@ -358,16 +358,16 @@ class _LabConfig:
 
         def f():
             if has_robograder:
-                yield ('robograding', lab_handlers_java.RobogradingHandler(
+                yield ('robograding', handlers.java.RobogradingHandler(
                     machine_speed = _machine_speed
                 ))
             elif has_tester:
-                yield ('testing', lab_handlers.GenericTestingHandler(
+                yield ('testing', handlers.general.GenericTestingHandler(
                     tester_java.LabTester.factory,
                     machine_speed = _machine_speed
                 ))
 
-            yield ('submission', lab_handlers_java.SubmissionHandler(
+            yield ('submission', handlers.java.SubmissionHandler(
                 tester_java.LabTester.factory,
                 show_solution = self.has_solution,
                 machine_speed = _machine_speed,
@@ -396,7 +396,7 @@ class _LabConfig:
         self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-to-be-graded.html'.format(lab.full_id.print(k))
 
         def f():
-            yield ('submission', lab_handlers_python.SubmissionHandler(
+            yield ('submission', handlers.python.SubmissionHandler(
                 tester_podman.LabTester.factory,
                 #show_solution = self.has_solution,
                 machine_speed = _machine_speed,
