@@ -1,0 +1,59 @@
+query MyQuery {
+  course(id: "21130") {
+    id
+    name
+    usersConnection {
+      nodes {
+        enrollments(courseId: "21130") {
+          state
+          type
+        }
+        name
+      }
+    }
+  }
+}
+
+
+query MyQuery {
+  course(id: "21130") {
+    groupSetsConnection {
+      nodes {
+        name
+        groupsConnection {
+          edges {
+            node {
+              membersConnection {
+                nodes {
+                  user {
+                    _id
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+
+12523~LwkMtHn07Yqi1GDW0GhZR3D52RMgl9kxgoDgMt5ypBhkatRzI6dt4DHqIeSa9uj0
+
+curl 'https://chalmers.instructure.com/api/v1/inst_access_tokens' \
+  -X POST \
+  -H "Accept: application/json" \
+  -H 'Authorization: Bearer 12523~LwkMtHn07Yqi1GDW0GhZR3D52RMgl9kxgoDgMt5ypBhkatRzI6dt4DHqIeSa9uj0'
+
+eyJhbGciOiJSU0EtT0FFUCIsImVuYyI6IkExMjhDQkMtSFMyNTYifQ.OTza2iiooV4NWURvS8dy32B_D-BOnVY-gbxBJQRLoqIFfQbcheuYYCjFLF3-81Rs5QU0ZjzP14MbqPXVhKVZRCnhMNmlhIEPnYXlucmtgXhk8OprX72OgPd4nvZdymryi86FzttFRhQYADUEaRneJX9K0M1RwbzKkwOGKOChzmdLezrU8sV5BGsl7n6gLEs-gRN50XH3gEBM36VobcKXV2saKVgjuxswGk2pDa63tBlj-xr_iX1ITaKQy5F5a34YOBN-j0oDEmMHWbSR8AJh0aX7pbTjF5Uvwk9eqf7eEMHddOTUlphgn_LmKia3CmFLSM-baYoEvGHXSnY_oAbxZA.FixC--C9bB62xWhyWCc3Zw.aU_NiXwcT3IL5CCN8fvVJo_jaWCA0jnGJjpLckABeeceEgj8dKF6qiarVtvPDAXZ6p5xJW6J_dRS4L92Sim34vhSg0yQkNR-rE6wgIHqRMjmmPpBAGXma_tz9cv_06_O4x73mka_I97vKttXGTjQ_-pXwVQ9cKA7eyYFI4KoUa-Dap0bdhGD6A0_X222CmcuZepBYTs6pGXqDFTyFIk4-I1O2HhzV8UivLwTzu3DVP5fTnl3U2HHUSFj_R9g1GtxvBGGA9vulRQ7LJKV49kPUQ31KxP7umGMdL_Sz4D5cCAdKHiLD8k5zXyfP2_zQYuQt2FYMxfG-kJyMVjsi4V6q0To0iICBlVA2CBp2Rp4y8sgU54yiwX1DGx1vF84yr71NTkca8XYzFOPH2NxGj5KPFuvmtoA80xdKxmDpZ95u9kL8m_Ce9sqOXmgM6b_hHLsGEikW6kZTIBJiQmWWSOVAaYjbnTd8MXoRSJgYmS__YjhbMiEf5V-7447aG5LFuxTbPXXH0iGPEnLS2dgvJdHcDjeeDFWNVPWebeXp1bQ7FuBiwLL66dx5Q6_BfQlFubMS7P5FX79uQXYr8kKRAtcF1rI8epkNFcPgSrqCGNFTpQ71S8vDfQTGPM-b45GV9XNMxlbfnUopmNXhZRJx4uB_6Y5qsJqSBHeHk-tiRuYtBorfFKQY3cZ-n4_KsBjyUt3dd_Cr5CG--YElfVcjRws2iP2Lax_P_46_wd8QvHL_ODwc8Is6uM6q78FPi5zk64pOT9JkaUJkZawWLwHwXA4gvjWkygyJOpnIMzJvggcqg4XsW3L5NDXTRps39s8PZZECssaYRnzBgid6zngXWfVxJGkiaEICaLnN30NMR1jolh-7sj-KOC_UlD72nKIZ0foW6Bn5dZLhzMBQHD_S9MvwxuNZHvU1fIikAzE1V9mEesWQlb1Rp12_w1sleBcbl20-EADyDYorLyh58LeNYxjXiLAWBMyUt3CHbKTt6PzkI8.Kc1PV_-FgxHAUQxmN4jQEw
+
+curl 'https://chalmers.api.instructure.com/graphql' \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json' \
+  -H 'Authorization: Bearer eyJhbGciOiJSU0EtT0FFUCIsImVuYyI6IkExMjhDQkMtSFMyNTYifQ.OTza2iiooV4NWURvS8dy32B_D-BOnVY-gbxBJQRLoqIFfQbcheuYYCjFLF3-81Rs5QU0ZjzP14MbqPXVhKVZRCnhMNmlhIEPnYXlucmtgXhk8OprX72OgPd4nvZdymryi86FzttFRhQYADUEaRneJX9K0M1RwbzKkwOGKOChzmdLezrU8sV5BGsl7n6gLEs-gRN50XH3gEBM36VobcKXV2saKVgjuxswGk2pDa63tBlj-xr_iX1ITaKQy5F5a34YOBN-j0oDEmMHWbSR8AJh0aX7pbTjF5Uvwk9eqf7eEMHddOTUlphgn_LmKia3CmFLSM-baYoEvGHXSnY_oAbxZA.FixC--C9bB62xWhyWCc3Zw.aU_NiXwcT3IL5CCN8fvVJo_jaWCA0jnGJjpLckABeeceEgj8dKF6qiarVtvPDAXZ6p5xJW6J_dRS4L92Sim34vhSg0yQkNR-rE6wgIHqRMjmmPpBAGXma_tz9cv_06_O4x73mka_I97vKttXGTjQ_-pXwVQ9cKA7eyYFI4KoUa-Dap0bdhGD6A0_X222CmcuZepBYTs6pGXqDFTyFIk4-I1O2HhzV8UivLwTzu3DVP5fTnl3U2HHUSFj_R9g1GtxvBGGA9vulRQ7LJKV49kPUQ31KxP7umGMdL_Sz4D5cCAdKHiLD8k5zXyfP2_zQYuQt2FYMxfG-kJyMVjsi4V6q0To0iICBlVA2CBp2Rp4y8sgU54yiwX1DGx1vF84yr71NTkca8XYzFOPH2NxGj5KPFuvmtoA80xdKxmDpZ95u9kL8m_Ce9sqOXmgM6b_hHLsGEikW6kZTIBJiQmWWSOVAaYjbnTd8MXoRSJgYmS__YjhbMiEf5V-7447aG5LFuxTbPXXH0iGPEnLS2dgvJdHcDjeeDFWNVPWebeXp1bQ7FuBiwLL66dx5Q6_BfQlFubMS7P5FX79uQXYr8kKRAtcF1rI8epkNFcPgSrqCGNFTpQ71S8vDfQTGPM-b45GV9XNMxlbfnUopmNXhZRJx4uB_6Y5qsJqSBHeHk-tiRuYtBorfFKQY3cZ-n4_KsBjyUt3dd_Cr5CG--YElfVcjRws2iP2Lax_P_46_wd8QvHL_ODwc8Is6uM6q78FPi5zk64pOT9JkaUJkZawWLwHwXA4gvjWkygyJOpnIMzJvggcqg4XsW3L5NDXTRps39s8PZZECssaYRnzBgid6zngXWfVxJGkiaEICaLnN30NMR1jolh-7sj-KOC_UlD72nKIZ0foW6Bn5dZLhzMBQHD_S9MvwxuNZHvU1fIikAzE1V9mEesWQlb1Rp12_w1sleBcbl20-EADyDYorLyh58LeNYxjXiLAWBMyUt3CHbKTt6PzkI8.Kc1PV_-FgxHAUQxmN4jQEw' \
+  --data-binary '{"query":"{ whoami { userUuid } }"}'
+
+
+gql-cli 'https://chalmers.instructure.com/api/graphql' -H 'Authorization: Bearer 12523~LwkMtHn07Yqi1GDW0GhZR3D52RMgl9kxgoDgMt5ypBhkatRzI6dt4DHqIeSa9uj0' \
+--print-schema > schema.graphql

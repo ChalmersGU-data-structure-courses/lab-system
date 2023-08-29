@@ -1,0 +1,17 @@
+query testQuery {
+  projects(search: "lab-2-grading") {
+    nodes {
+      fullPath
+      projectMembers(relations: DIRECT) {
+        nodes {
+          accessLevel {
+            integerValue
+          }
+          user {
+            name
+          }
+        }
+      }
+    }
+  }
+}
