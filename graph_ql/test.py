@@ -12,9 +12,9 @@ from gitlab_config_personal import canvas_auth_token, gitlab_private_token
 import gitlab_tools
 
 import canvas
-import canvas_gql
+import graph_ql.canvas
 import general
-import gitlab_gql
+import graph_ql.gitlab
 import print_parse
 
 
@@ -24,7 +24,7 @@ import print_parse
 #c = canvas.Canvas('chalmers.instructure.com')
 #client = canvas_gql.Client(c)
 
-client = gitlab_gql.Client('git.chalmers.se', gitlab_private_token)
+client = graph_ql.gitlab.Client('git.chalmers.se', gitlab_private_token)
 
 #c = canvas.Canvas('canvas.gu.se')
 

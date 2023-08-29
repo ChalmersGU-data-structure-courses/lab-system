@@ -1,0 +1,59 @@
+query MyQuery {
+  course(id: "21130") {
+    id
+    name
+    usersConnection {
+      nodes {
+        enrollments(courseId: "21130") {
+          state
+          type
+        }
+        name
+      }
+    }
+  }
+}
+
+
+query MyQuery {
+  course(id: "21130") {
+    groupSetsConnection {
+      nodes {
+        name
+        groupsConnection {
+          edges {
+            node {
+              membersConnection {
+                nodes {
+                  user {
+                    _id
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+
+REDACTED_BEARER
+
+curl 'https://chalmers.instructure.com/api/v1/inst_access_tokens' \
+  -X POST \
+  -H "Accept: application/json" \
+  -H 'Authorization: Bearer REDACTED_BEARER'
+
+REDACTED_BEARER
+
+curl 'https://chalmers.api.instructure.com/graphql' \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json' \
+  -H 'Authorization: Bearer REDACTED_BEARER' \
+  --data-binary '{"query":"{ whoami { userUuid } }"}'
+
+
+gql-cli 'https://chalmers.instructure.com/api/graphql' -H 'Authorization: Bearer REDACTED_BEARER' \
+--print-schema > schema.graphql
