@@ -11,7 +11,7 @@ import handlers.general
 import handlers.java
 import handlers.python
 import print_parse
-import tester_podman
+import testers.podman
 from this_dir import this_dir
 
 # Personal configuration.
@@ -397,7 +397,7 @@ class _LabConfig:
 
         def f():
             yield ('submission', handlers.python.SubmissionHandler(
-                tester_podman.LabTester.factory,
+                testers.podman.LabTester.factory,
                 #show_solution = self.has_solution,
                 machine_speed = _machine_speed,
             ))
