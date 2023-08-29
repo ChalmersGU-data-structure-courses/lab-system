@@ -12,13 +12,14 @@ import java_tools
 import lab_interfaces
 import markdown
 import submission_java
-import test_lib
+
+import testers.general
 
 
 logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass  # (kw_only = True) only supported in Python 3.10
-class Test(test_lib.Test):
+class Test(testers.general.Test):
     '''
     A Java test specification.
     A test is an invocation of a Java class with a main method.
@@ -49,7 +50,7 @@ class Test(test_lib.Test):
     perm_read: Tuple[Union[str, os.PathLike]] = ()
     perm_write: Tuple[Union[str, os.PathLike]] = ()
 
-class LabTester(test_lib.LabTester):
+class LabTester(testers.general.LabTester):
     '''
     A class for lab testers using the Java Virtual Machine.
     Requires Java version at most 17.
@@ -101,8 +102,8 @@ class LabTester(test_lib.LabTester):
 
     def run_test(self, dir_out: Path, dir_src: Path, name: str, test: Test, dir_bin: Path):
         '''
-        See test_lib.LabTester.run_test.
-        We produce the files according to test_lib.LabTester.record.
+        See testers.general.LabTester.run_test.
+        We produce the files according to testers.general.LabTester.record.
 
         Takes an additional keyword-argument:
         * dir_bin: Path to the compiled submission.
@@ -148,7 +149,7 @@ class LabTester(test_lib.LabTester):
         file_compile_err = '__compile_err',
         file_error = 'error.md',
     ) -> None:
-        '''See test_lib.run_tests.'''
+        '''See testers.general.run_tests.'''
         try:
             stack = contextlib.ExitStack()
             if dir_bin is None:
@@ -188,4 +189,4 @@ class LabTester(test_lib.LabTester):
 
 
 if __name__ == '__main__':
-    test_lib.cli(LabTester)
+    testers.general.cli(LabTester)
