@@ -8,7 +8,8 @@ import subprocess
 from typing import Optional, Tuple, Union
 
 import general
-import test_lib
+
+import testers.general
 
 
 logger = logging.getLogger(__name__)
@@ -23,7 +24,7 @@ def volume_source_path(dir: Path):
     return dir
 
 @dataclasses.dataclass  # (kw_only = True) only supported in Python 3.10
-class Test(test_lib.Test):
+class Test(testers.general.Test):
     '''
     A podman test specification.
     A test is a program execution inside a container image.
@@ -36,7 +37,7 @@ class Test(test_lib.Test):
     * '/submission' has the lab submission together with the content of the test folder overlaid.
       This is also the working directory for the program execution.
 
-    Fields ignored in test_lib.Test: none
+    Fields ignored in testers.general.Test: none
 
     Fields:
     * image: Container image to run.
@@ -49,7 +50,7 @@ class Test(test_lib.Test):
     input: Optional[str] = None
     allow_network: bool = False
 
-class LabTester(test_lib.LabTester):
+class LabTester(testers.general.LabTester):
     '''
     A class for containerized lab testers (using podman).
 
@@ -88,8 +89,8 @@ class LabTester(test_lib.LabTester):
 
     def run_test(self, dir_out: Path, dir_src: Path, name: str, test: Test, **kwargs):
         '''
-        See test_lib.LabTester.run_test.
-        We produce the files according to test_lib.LabTester.record.
+        See testers.general.LabTester.run_test.
+        We produce the files according to testers.general.LabTester.record.
         '''
         logger.debug(f'Running test {name}.')
 
@@ -132,4 +133,4 @@ class LabTester(test_lib.LabTester):
         subprocess.run(cmd, check = True, text = True, stdout = subprocess.PIPE)
 
 if __name__ == '__main__':
-    test_lib.cli(LabTester)
+    testers.general.cli(LabTester)

@@ -12,13 +12,14 @@ from typing import Optional, Tuple, Union
 import seccomp  # noqa: F401
 
 import proot_tools
-import test_lib
+
+import testers.general
 
 
 logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass  # (kw_only = True) only supported in Python 3.10
-class Test(test_lib.Test):
+class Test(testers.general.Test):
     '''
     A Python test specification.
     A test is an invocation of a Python module as main module.
@@ -32,7 +33,7 @@ class Test(test_lib.Test):
 
     The content of the test folder is overlaid on top of the submission folder.
 
-    Fields ignored in test_lib.Test: memory
+    Fields ignored in testers.general.Test: memory
 
     Further fields:
     * script:
@@ -46,9 +47,9 @@ class Test(test_lib.Test):
     args: Tuple[str] = ()
     input: Optional[str] = None
 
-parse_tests = functools.partial(test_lib.parse_tests, Test)
+parse_tests = functools.partial(testers.general.parse_tests, Test)
 
-class LabTester(test_lib.LabTester):
+class LabTester(testers.general.LabTester):
     '''
     A class for Python testers following the architecture
     that is currently implemented for the following Python labs:
@@ -65,8 +66,8 @@ class LabTester(test_lib.LabTester):
 
     def run_test(self, dir_out: Path, dir_src: Path, name: str, test: Test, dir_bin: Path = None):
         '''
-        See test_lib.LabTester.run_test.
-        We produce the files according to test_lib.LabTester.record.
+        See testers.general.LabTester.run_test.
+        We produce the files according to testers.general.LabTester.record.
         '''
         logger.debug(f'Running test {name}.')
 
@@ -91,4 +92,4 @@ class LabTester(test_lib.LabTester):
         )
 
 if __name__ == '__main__':
-    test_lib.cli(LabTester)
+    testers.general.cli(LabTester)
