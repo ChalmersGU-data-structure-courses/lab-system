@@ -92,7 +92,7 @@ class RobogradingHandler(lab_interfaces.RequestHandler):
     You can configure certain aspects by overriding attributes.
     In addition to those of the base class:
     * response_key: The robograding response key (only used internally).
-    * robograder_response_title: The robograding response printer-parser.
+    * response_title: The robograding response printer-parser.
     The last two attributes override response_titles of the base class.
 
     By default, these attribute and the remaining ones of
@@ -100,11 +100,18 @@ class RobogradingHandler(lab_interfaces.RequestHandler):
     '''
     request_matcher = testing_request
     response_key = generic_response_key
-    robograder_response_title = robograder_response_title
+    response_title = robograder_response_title
 
     @property
     def response_titles(self):
         return {self.response_key: self.robograder_response_title}
+
+    def post_response(self, request_and_responses, report):
+        '''Post response issue.'''
+        request_and_responses.post_response_issue(
+            response_key = self.response_key,
+            description = report,
+        )
 
 class TestingHandler(lab_interfaces.RequestHandler):
     '''
@@ -113,7 +120,7 @@ class TestingHandler(lab_interfaces.RequestHandler):
     You can configure certain aspects by overriding attributes.
     In addition to those of the base class:
     * response_key: The robograding response key (only used internally).
-    * tester_response_title: The testing response printer-parser.
+    * response_title: The testing response printer-parser.
     The last two attributes override response_titles of the base class.
 
     By default, these attribute and the remaining ones of
@@ -121,11 +128,18 @@ class TestingHandler(lab_interfaces.RequestHandler):
     '''
     request_matcher = testing_request
     response_key = generic_response_key
-    tester_response_title = tester_response_title
+    response_title = tester_response_title
 
     @property
     def response_titles(self):
         return {self.response_key: self.tester_response_title}
+
+    def post_response(self, request_and_responses, report):
+        '''Post response issue.'''
+        request_and_responses.post_response_issue(
+            response_key = self.response_key,
+            description = report,
+        )
 
 class GenericTestingHandler(TestingHandler):
     '''

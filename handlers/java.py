@@ -214,10 +214,7 @@ class RobogradingHandler(handlers.general.RobogradingHandler):
             robograding_report = e.markdown()
 
         # Post response issue.
-        request_and_responses.post_response_issue(
-            response_key = self.response_key,
-            description = robograding_report,
-        )
+        self.post_response(request_and_responses, robograding_report)
 
     def handle_request(self, request_and_responses):
         with request_and_responses.checkout_manager() as src:
