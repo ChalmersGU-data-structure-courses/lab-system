@@ -1,7 +1,7 @@
 # Variables starting with an underscore are only used locally.
 import datetime
 import dateutil
-from pathlib import PurePosixPath
+from pathlib import PurePosixPath, Path
 import re
 from types import SimpleNamespace
 
@@ -10,6 +10,7 @@ import gitlab_tools
 import handlers.general
 import handlers.java
 import handlers.python
+import handlers.language
 import print_parse
 import testers.podman
 from this_dir import this_dir
@@ -349,44 +350,6 @@ _lab_config = SimpleNamespace(
 )
 
 class _LabConfig:
-    def __init__(self, k, lab_folder, refresh_period, has_tester = False, has_robograder = False):
-        self.path_source = _lab_repo / 'labs' / lab_folder / _language
-        self.group_set = None if k == 1 else _group
-        self.path_gitignore = _lab_repo / 'gitignores' / f'{_language}.gitignore'
-        self.grading_sheet = lab.name.print(k)
-        self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-to-be-graded.html'.format(lab.full_id.print(k))
-
-        def f():
-            if has_robograder:
-                yield ('robograding', handlers.java.RobogradingHandler(
-                    machine_speed = _machine_speed
-                ))
-            elif has_tester:
-                yield ('testing', handlers.general.GenericTestingHandler(
-                    tester_java.LabTester.factory,
-                    machine_speed = _machine_speed
-                ))
-
-            yield ('submission', handlers.java.SubmissionHandler(
-                tester_java.LabTester.factory,
-                show_solution = self.has_solution,
-                machine_speed = _machine_speed,
-            ))
-        self.request_handlers = dict(f())
-
-        self.refresh_period = refresh_period
-
-        self.grading_via_merge_request = True
-        self.outcome_labels = {
-            None: gitlab_tools.LabelSpec(name = 'waiting-for-grading', color = 'yellow'),
-            0: gitlab_tools.LabelSpec(name = 'incomplete', color = 'red'),
-            1: gitlab_tools.LabelSpec(name = 'pass', color = 'green'),
-        }
-
-    # Key of submission handler in the dictionary of request handlers.
-    # Its value must be an instance of SubmissionHandler.
-    submission_handler_key = 'submission'
-class _LabConfig:
     def __init__(self, k, lab_folder, refresh_period):
         self.path_source = _lab_repo / 'labs' / lab_folder
         self.has_solution = True
@@ -398,13 +361,25 @@ class _LabConfig:
         def f():
             yield ('submission', handlers.python.SubmissionHandler(
                 testers.podman.LabTester.factory,
-                #show_solution = self.has_solution,
+                show_solution = self.has_solution,
+                dir_tester = Path() / 'robotester' / 'python',
                 machine_speed = _machine_speed,
             ))
+            yield ('robograding', handlers.language.RobogradingHandler({
+                'java': handlers.java.RobogradingHandler(
+                    dir_robograder = Path() / 'robograder' / 'java',
+                    dir_submission_src = 'java',
+                    machine_speed = 1,
+                ),
+                'python': handlers.general.GenericTestingHandler(
+                    tester_factory = testers.podman.LabTester.factory,
+                    dir_tester = Path() / 'robotester' / 'python',
+                    machine_speed = 1,
+                ),
+            }))
+
         self.request_handlers = dict(f())
-
         self.refresh_period = refresh_period
-
         self.grading_via_merge_request = False
 
     # Key of submission handler in the dictionary of request handlers.
