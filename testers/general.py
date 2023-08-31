@@ -384,8 +384,13 @@ Optionally supported by the tester.
 
     p.add_argument('-l', '--lab', type = Path, metavar = 'LAB', default = Path(), help = '''
 Path the lab (read), defaults to working directory.
+''')
+    p.add_argument('-t', '--tester', type = Path, metavar = 'LAB', default = Path(), help = '''
+Path to the tester relative to the lab directory.
+Defaults to the empty path.
 Must have a self-contained Python file `tests.py` specifying the tests to be run.
 It must define a string-indexed dictionary of instances of the relevant test specification type.
+May also contain a directory `test` that is overlaid over submissions during testing.
 ''')
     p.add_argument('-m', '--machine-speed', type = float, metavar = 'MACHINE_SPEED', default = float(1), help = '''
 The machine speed relative to a 2015 desktop machine.
@@ -420,11 +425,12 @@ Print INFO level (once specified) or DEBUG level (twice specified) logging.
             args.output.mkdir(exist_ok = True)
 
         logger.debug(f'Lab directory: {path_tools.format_path(args.lab)}')
+        logger.debug(f'Tester directory (relative to lab directory): {path_tools.format_path(args.tester)}')
         logger.debug(f'Machine speed: {args.machine_speed}')
         logger.debug(f'Submission directory: {path_tools.format_path(args.submission)}')
         logger.debug(f'Output directory: {path_tools.format_path(dir_out)}')
 
-        tester = Tester(args.lab, args.machine_speed)
+        tester = Tester(dir_lab = args.lab, dir_tester = args.tester, machine_speed = args.machine_speed)
         tester.run_tests(dir_out, args.submission)
         if args.markdown:
             print(markdown.join_blocks(tester.format_tests_output_as_markdown(dir_out)))
