@@ -87,7 +87,7 @@ def run(
         By default, the only permission granted is to read within the submission source directory.
     '''
     with submission_java.run_context(
-        submission_src = submission_src,
+        submission_dir = submission_src,
         submission_bin = submission_bin,
         classpath = classpath,
         entrypoint = entrypoint,
