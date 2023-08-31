@@ -84,14 +84,10 @@ class LabTester(testers.general.LabTester):
     TestSpec = Test
     needs_writable_sub_dir = True
 
-    def __init__(self, dir_lab: Path, machine_speed: float = 1):
-        super().__init__(dir_lab, machine_speed)
+    def __init__(self, dir_lab: Path, dir_tester: Path, machine_speed: float = 1):
+        super().__init__(dir_lab, dir_tester, machine_speed)
 
-        self.test_dir = self.dir_lab / 'test'
-        if not self.test_dir.exists():
-            logger.debug('No test code directory detected.')
-            self.test_dir = None
-        else:
+        if self.has_test_overlay:
             logger.debug('Compiling test code.')
             java_tools.compile(
                 src = self.test_dir,

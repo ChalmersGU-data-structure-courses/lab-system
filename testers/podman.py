@@ -63,8 +63,8 @@ class LabTester(testers.general.LabTester):
     '''
     TestSpec = Test
 
-    def __init__(self, dir_lab: Path, machine_speed: float = 1):
-        super().__init__(dir_lab, machine_speed)
+    def __init__(self, dir_lab: Path, dir_tester: Path, machine_speed: float = 1):
+        super().__init__(dir_lab, dir_tester, machine_speed)
 
         # Make sure the images are available before we run any tests.
         # Unforunately, podman pull does too much work if we already have the image.
