@@ -682,6 +682,7 @@ class GroupProject:
                 r.delete()
                 raise
             r.get = project
+            self.repo_add_remote()
 
         r.create = create
         return r
