@@ -244,12 +244,17 @@ class LabRobograder:
     this is used to determine timeout periods for test cases.
     '''
 
-    def __init__(self, dir_lab, machine_speed = 1):
+    def __init__(self, dir_lab, dir_robograder = rel_dir_robograder, dir_submission_src = Path(), machine_speed = 1):
         '''
         Arguments:
         * dir_lab:
+            The source directory for the robograder.
             The lab directory (instance of pathlib.Path).
             For example: <repo-root>/labs/autocomplete/java
+        * dir_robograder:
+            Relative path to the robograder source in the lab.
+        * dir_submission_src:
+            Relative path of the source code hierarchy in submissions.
         * machine_speed:
             Floating-point number.
             The machine speed relative to a 2015 Desktop machine.
@@ -258,9 +263,10 @@ class LabRobograder:
         not have a robograder, i.e. does not have robograder subdirectory.
         '''
         self.dir_lab = dir_lab
+        self.dir_submission_src = dir_submission_src
         self.machine_speed = machine_speed
 
-        self.robograder_src = self.dir_lab / rel_dir_robograder
+        self.robograder_src = self.dir_lab / dir_robograder
         if not self.robograder_src.is_dir():
             raise RobograderMissingException(f'No robograder found in {path_tools.format_path(self.dir_lab)}')
         logger.debug(f'Detected robograder in {path_tools.format_path(self.dir_lab)}.')
@@ -277,7 +283,7 @@ class LabRobograder:
         logger.info(f'Compiling robograder and dependencies (force = {force}).')
         compile_lib(force = force)
         compile(
-            problem_src = self.problem_src,
+            problem_src = self.problem_src / self.dir_submission_src,
             robograder_src = self.robograder_src,
             classpath = [dir_lib_src],
             skip_if_exist = not force,
@@ -297,9 +303,9 @@ class LabRobograder:
         )
 
 @functools.cache
-def factory(dir_lab, machine_speed = 1):
+def factory(dir_lab, **kwargs):
     try:
-        robograder = LabRobograder(dir_lab, machine_speed)
+        robograder = LabRobograder(dir_lab, **kwargs)
         robograder.compile()
     except RobograderMissingException:
         return None

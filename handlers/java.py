@@ -1,4 +1,4 @@
-from pathlib import PurePosixPath
+from pathlib import PurePosixPath, Path
 
 import dominate
 
@@ -193,13 +193,21 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
 class RobogradingHandler(handlers.general.RobogradingHandler):
     '''A robograding handler for Java labs.'''
 
-    def __init__(self, robograder_factory = robograder_java.factory, machine_speed = 1):
+    def __init__(
+        self,
+        robograder_factory = robograder_java.factory,
+        **kwargs,
+    ):
+        '''
+        Possible arguments (see robograder_java.LabRobograder):
+        * dir_robograder, dir_submission_src, machine_speed:
+        '''
         self.robograder_factory = robograder_factory
-        self.machine_speed = machine_speed
+        self.kwargs = kwargs
 
     def setup(self, lab):
         super().setup(lab)
-        self.robograder = self.robograder_factory(lab.config.path_source, self.machine_speed)
+        self.robograder = self.robograder_factory(dir_lab = lab.config.path_source, **self.kwargs)
 
     def _handle_request(self, request_and_responses, src):
         # If a response issue already exists, we are happy.
@@ -208,7 +216,8 @@ class RobogradingHandler(handlers.general.RobogradingHandler):
 
         # Compile and robograde.
         try:
-            with submission_java.submission_checked_and_compiled(src) as (dir_bin, compiler_report):
+            dir_src = src / self.kwargs['dir_submission_src']
+            with submission_java.submission_checked_and_compiled(dir_src) as (dir_bin, compiler_report):
                 robograding_report = self.robograder.run(src, dir_bin)
         except lab_interfaces.HandlingException as e:
             robograding_report = e.markdown()
