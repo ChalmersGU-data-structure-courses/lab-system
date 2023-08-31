@@ -104,7 +104,7 @@ class RobogradingHandler(lab_interfaces.RequestHandler):
 
     @property
     def response_titles(self):
-        return {self.response_key: self.robograder_response_title}
+        return {self.response_key: self.response_title}
 
     def post_response(self, request_and_responses, report):
         '''Post response issue.'''
@@ -132,7 +132,7 @@ class TestingHandler(lab_interfaces.RequestHandler):
 
     @property
     def response_titles(self):
-        return {self.response_key: self.tester_response_title}
+        return {self.response_key: self.response_title}
 
     def post_response(self, request_and_responses, report):
         '''Post response issue.'''
