@@ -369,12 +369,12 @@ class _LabConfig:
                 'java': handlers.java.RobogradingHandler(
                     dir_robograder = Path() / 'robograder' / 'java',
                     dir_submission_src = 'java',
-                    machine_speed = 1,
+                    machine_speed = _machine_speed,
                 ),
                 'python': handlers.general.GenericTestingHandler(
                     tester_factory = testers.podman.LabTester.factory,
                     dir_tester = Path() / 'robotester' / 'python',
-                    machine_speed = 1,
+                    machine_speed = _machine_speed,
                 ),
             }))
 
