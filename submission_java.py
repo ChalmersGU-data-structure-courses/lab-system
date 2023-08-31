@@ -109,7 +109,7 @@ class FileConflict(lab_interfaces.HandlingException):
 
 @contextlib.contextmanager
 def run_context(
-    submission_src: Path,
+    submission_dir: Path,
     submission_bin: Path,
     classpath: Iterable[Path],
     entrypoint: str,
@@ -122,10 +122,11 @@ def run_context(
     All path arguments are instances of pathlib.Path.
 
     Arguments:
-    * submission_src:
-        The source directory of the submission.
+    * submission_dir:
+        The submission directory.
         Needed because the invocation may access data files from here.
         Also to be used as the working directory for the eventual invocation.
+        Note: this may differ from the package root of the submission.
     * submission_bin:
         The directory of the compiled class files of the submission.
         This may be src_submission if the submission was compiled in-place.
@@ -158,7 +159,7 @@ def run_context(
     def policy_entries():
         for dir in classpath:
             yield (dir, [java_tools.permission_all])
-        yield (submission_bin, [java_tools.permission_file(submission_src.resolve(), True), *permissions])
+        yield (submission_bin, [java_tools.permission_file(submission_dir.resolve(), True), *permissions])
 
     # Necessary if we call java_tools.run in a different working directory
     # and the generator resolves paths.
