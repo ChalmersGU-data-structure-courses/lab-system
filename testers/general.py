@@ -87,26 +87,30 @@ class LabTester:
     needs_writable_sub_dir = False
 
     @classmethod
-    def exists(cls, dir_lab):
+    def exists(cls, dir_lab, dir_tester):
         try:
-            cls.tester_type(dir_lab)
+            cls.tester_type(dir_lab, dir_tester)
             return True
         except TesterMissingException:
             return False
 
     @classmethod
     @functools.cache
-    def factory(cls, dir_lab, machine_speed = -1):
+    def factory(cls, dir_lab, dir_tester, machine_speed = -1):
         try:
-            return cls(dir_lab, machine_speed = machine_speed)
+            return cls(dir_lab, dir_tester, machine_speed = machine_speed)
         except TesterMissingException:
             return None
 
-    def __init__(self, dir_lab: Path, machine_speed: float = 1):
+    def __init__(self, dir_lab: Path, dir_tester: Path, machine_speed: float = 1):
         '''
         Arguments:
         * dir_lab:
-            The lab directory (instance of pathlib.Path).
+            The directory of the lab (instance of pathlib.Path).
+            For example: <repo-root>/labs/autocomplete/java
+        * dir_tester:
+            The directory of the tester (instance of pathlib.Path), relative to dir_lab
+            Location of the test specifications file `tests.py`.
             For example: <repo-root>/labs/autocomplete/java
         * machine_speed:
             Floating-point number.
@@ -116,18 +120,19 @@ class LabTester:
         not have a tester, i.e. does not have test subdirectory.
         '''
         self.dir_lab = dir_lab
+        self.dir_tester = dir_lab / dir_tester
         self.machine_speed = machine_speed
 
-        file_tests = self.dir_lab / 'tests.py'
+        file_tests = self.dir_tester / 'tests.py'
         if not file_tests.exists():
             raise TesterMissingException(
-                f'No test specifications file tests.py found in {path_tools.format_path(self.dir_lab)}'
+                f'No test specifications file tests.py found in {path_tools.format_path(self.dir_tester)}'
             )
 
-        logger.debug(f'Detected tester in {path_tools.format_path(self.dir_lab)}.')
+        logger.debug(f'Detected tester in {path_tools.format_path(self.dir_tester)}.')
         self.tests = parse_tests(self.TestSpec, file_tests)
 
-        self.dir_test = dir_lab / 'test'
+        self.dir_test = self.dir_tester / 'test'
         self.has_test_overlay = self.dir_test.exists()
 
     # TODO: monitor program output and kill as soon as max_output is reached.
@@ -259,7 +264,7 @@ class LabTester:
         if they need the submission directory to be writable for tests.
         '''
         logger.info(
-            f'Running tester for {path_tools.format_path(self.dir_lab)} '
+            f'Running tester for {path_tools.format_path(self.dir_tester)} '
             f'on {path_tools.format_path(dir_src)}.'
         )
 
