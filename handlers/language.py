@@ -21,8 +21,8 @@ def detect_language(path_source: Path, dir_submission: Path):
     process = subprocess.run([
         path_source / 'detect_language.py',
         dir_submission
-    ], capture_output = True)
-    language = process.stdout if process.returncode == 0 else None
+    ], text = True, capture_output = True)
+    language = process.stdout.strip() if process.returncode == 0 else None
     errors = process.stderr if process.stderr else None
     return (language, errors)
 
@@ -53,7 +53,7 @@ def format_errors(fatal, language, errors):
         if msg is not None:
             yield msg + terminator
         if not errors is None:
-            yield markdown.quote(errors)
+            yield markdown.escape_code_block(errors)
 
     return markdown.join_blocks(blocks())
 
@@ -76,27 +76,29 @@ class RobogradingHandler(handlers.general.RobogradingHandler):
         (language, errors) = detect_language(self.lab.config.path_source, src)
         try:
             sub_handler = self.sub_handlers[language]
-            argument = request_and_responses
-            if errors is not None:
-                # Hack to prepend error message
-                msg = format_errors(False, language, errors)
-
-                class Wrapper:
-                    def post_response_issue(self, response_key, title_data = dict(), description = str()):
-                        return request_and_responses.post_response_issue(
-                            response_key,
-                            title_data = title_data,
-                            description = msg + description,
-                        )
-
-                    def __getattr__(self, name):
-                        return request_and_responses.__getattr__(name)
-
-                argument = Wrapper()
-
-            sub_handler.handle_request(argument)
         except KeyError:
             self.post_response(request_and_responses, format_errors(True, language, errors))
+            return
+
+        argument = request_and_responses
+        if errors is not None:
+            # Hack to prepend error message
+            msg = format_errors(False, language, errors)
+
+            class Wrapper:
+                def post_response_issue(self, response_key, title_data = dict(), description = str()):
+                    return request_and_responses.post_response_issue(
+                        response_key,
+                        title_data = title_data,
+                        description = msg + description,
+                    )
+
+                def __getattr__(self, name):
+                    return request_and_responses.__getattr__(name)
+
+            argument = Wrapper()
+
+        sub_handler.handle_request(argument)
 
     def handle_request(self, request_and_responses):
         with request_and_responses.checkout_manager() as src:
