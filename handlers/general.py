@@ -85,6 +85,21 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
         value = f(self.lab.course.config.outcome.name) if hasattr(self, 'lab') else None
         return {self.review_response_key: value}
 
+class SubmissionHandlerStub(SubmissionHandler):
+    '''A stub submission handler that accepts submissions, but does not do anything.'''
+
+    def setup(self, lab):
+        super().setup(lab)
+        self.grading_columns = live_submissions_table.with_standard_columns(
+            with_solution = False,
+        )
+
+    def handle_request(self, request_and_responses):
+        return {
+            'accepted': True,
+            'review_needed': True,
+        }
+
 class RobogradingHandler(lab_interfaces.RequestHandler):
     '''
     A base class for robograding handlers.
