@@ -194,9 +194,10 @@ class SubmissionTesting:
     has_markdown_report = True
     report_path = PurePosixPath('test_report.md')
 
-    def __init__(self, tester_factory, **tester_args):
+    def __init__(self, tester_factory, tester_is_robograder = False, **tester_args):
         self.tester_factory = tester_factory
         self.tester_args = tester_args
+        self.tester_is_robograder = tester_is_robograder
 
     def setup(self, lab):
         self.tester = self.tester_factory(lab.config.path_source, **self.tester_args)
@@ -251,7 +252,7 @@ class SubmissionTesting:
                 return live_submissions_table.CallbackColumnValue(callback = format_cell)
 
         if self.tester:
-            yield ('testing', TestingColumn)
+            yield ('robograding' if self.tester_is_robograder else 'testing', TestingColumn)
 
     def test_report(self, test):
         return markdown.join_blocks(self.tester.format_tests_output_as_markdown(test))
