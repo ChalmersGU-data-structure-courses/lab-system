@@ -7,7 +7,7 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
     '''A submission handler for Python labs.'''
 
     def __init__(self, tester_factory, show_solution = True, **tester_args):
-        self.testing = handlers.general.SubmissionTesting(tester_factory, **tester_args)
+        self.testing = handlers.general.SubmissionTesting(tester_factory, tester_is_robograder = True, **tester_args)
         self.show_solution = show_solution
         self.tester_args = tester_args
 
