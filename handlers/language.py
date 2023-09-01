@@ -1,6 +1,9 @@
 from pathlib import Path
 import subprocess
 
+import dominate
+
+import live_submissions_table
 import markdown
 import print_parse
 
@@ -30,7 +33,7 @@ def pp_submission_fail():
     '''Printer parser for submissions not accepted due to language detection failure.'''
     return print_parse.regex_keyed(
         'Your submission {tag} was not accepted: language detection failure',
-        {'tag': '\\s+'},
+        {'tag': '[^: ]+'},
     )
 
     return print_parse.singleton('Your submission could not be accepted: language detection failure')
@@ -56,6 +59,109 @@ def format_errors(fatal, language, errors):
             yield markdown.escape_code_block(errors)
 
     return markdown.join_blocks(blocks())
+
+class LanguageColumn(live_submissions_table.Column):
+    sortable = True
+
+    def format_header_cell(self, cell):
+        with cell:
+            dominate.util.text('Language')
+
+    def get_value(self, group):
+        submission = group.submission_current(deadline = self.config.deadline)
+        language = submission.handled_result.get('language', '')
+        return live_submissions_table.StandardColumnValue(language)
+
+def wrap_column_types(column_types):
+    '''
+    Takes a dictionary of column classes indexed by language.
+    Wraps them into a column class that dispatches according to the submission language.
+    '''
+    class ColumnWrapper(live_submissions_table.Column):
+        '''
+        A column dispatching according to the submission language.
+        Header cell is taken from first language in given dictionary.
+        '''
+        def __init__(self, table):
+            super().__init__(table)
+            self.columns = {language: column_type(table) for (language, column_type) in column_types.items()}
+            self.sortable = all(column.sortable for column in self.columns.values())
+
+        def format_header_cell(self, cell):
+            column = next(iter(self.columns.values()))
+            return column.format_header_cell(cell)
+
+        def get_value(self, group):
+            submission = group.submission_current(deadline = self.config.deadline)
+            language = submission.handled_result.get('language')
+            try:
+                column = self.columns[language]
+            except KeyError:
+                return live_submissions_table.StandardColumnValue()
+
+            return column.get_value(group)
+
+    return ColumnWrapper
+
+class SubmissionHandler(handlers.general.SubmissionHandler):
+    submission_failure_key = 'submission_failure'
+
+    @property
+    def response_titles(self):
+        return super().response_titles | {self.submission_failure_key: pp_submission_fail()}
+
+    def __init__(self, sub_handlers, shared_columns, show_solution = True):
+        '''
+        Arguments:
+        * sub_handlers: dictionary mapping languages to subhandlers.
+        * shared_columns:
+            Iterable of strings.
+            Columns in the live submission table that should be dispatched to sub handlers.
+        * show_solution: whether to show the solution inthe live submission table.
+        '''
+        self.sub_handlers = sub_handlers
+        self.shared_columns = list(shared_columns)
+        self.show_solution = show_solution
+
+    def setup(self, lab):
+        super().setup(lab)
+        for sub_handler in self.sub_handlers.values():
+            sub_handler.setup(lab)
+
+        def columns():
+            yield ('language', LanguageColumn)
+            for c in self.shared_columns:
+                yield (c, wrap_column_types({
+                    language: sub_handler.grading_columns[c]
+                    for (language, sub_handler) in self.sub_handlers.items()
+                }))
+
+        self.grading_columns = live_submissions_table.with_standard_columns(
+            dict(columns()),
+            with_solution = self.show_solution,
+        )
+
+    def _handle_request(self, request_and_responses, src):
+        # If a submission failure already exists, we are happy.
+        if self.submission_failure_key in request_and_responses.responses:
+            return {'accepted': False}
+
+        # Detect language.
+        (language, errors) = detect_language(self.lab.config.path_source, src)
+        try:
+            sub_handler = self.sub_handlers[language]
+        except KeyError:
+            request_and_responses.post_response_issue(
+                response_key = self.submission_failure_key,
+                description = format_errors(True, language, errors),
+            )
+            return {'accepted': False}
+
+        return {'language': language} | sub_handler.handle_request(request_and_responses)
+
+    def handle_request(self, request_and_responses):
+        with request_and_responses.checkout_manager() as src:
+            return self._handle_request(request_and_responses, src)
 
 class RobogradingHandler(handlers.general.RobogradingHandler):
     def __init__(self, sub_handlers):
