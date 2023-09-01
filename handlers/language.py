@@ -94,7 +94,7 @@ class RobogradingHandler(handlers.general.RobogradingHandler):
                     )
 
                 def __getattr__(self, name):
-                    return request_and_responses.__getattr__(name)
+                    return getattr(request_and_responses, name)
 
             argument = Wrapper()
 
