@@ -160,7 +160,7 @@ class CallbackColumnValue(ColumnValue):
 class StandardColumnValue(ColumnValue):
     '''A simple column value implementation using just a string-convertible value and a sort key.'''
 
-    def __init__(self, value, key):
+    def __init__(self, value = '', key = None):
         '''
         Arguments:
         * value: A string-convertible value.
