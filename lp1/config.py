@@ -350,7 +350,7 @@ _lab_config = SimpleNamespace(
 )
 
 class _LabConfig:
-    def __init__(self, k, lab_folder, refresh_period):
+    def __init__(self, k, lab_folder, refresh_period, submission_ready = True):
         self.path_source = _lab_repo / 'labs' / lab_folder
         self.has_solution = True
         self.group_set = None if k == 1 else _group
@@ -358,27 +358,31 @@ class _LabConfig:
         self.grading_sheet = lab.name.print(k)
         self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-to-be-graded.html'.format(lab.full_id.print(k))
 
-        def f():
-            yield ('submission', handlers.python.SubmissionHandler(
-                testers.podman.LabTester.factory,
-                show_solution = self.has_solution,
-                dir_tester = Path() / 'robotester' / 'python',
-                machine_speed = _machine_speed,
-            ))
-            yield ('robograding', handlers.language.RobogradingHandler({
-                'java': handlers.java.RobogradingHandler(
-                    dir_robograder = Path() / 'robograder' / 'java',
-                    dir_submission_src = 'java',
-                    machine_speed = _machine_speed,
-                ),
-                'python': handlers.general.GenericTestingHandler(
-                    tester_factory = testers.podman.LabTester.factory,
-                    dir_tester = Path() / 'robotester' / 'python',
-                    machine_speed = _machine_speed,
-                ),
+        def submission_ready_no():
+            yield ('submission', handlers.general.SubmissionHandlerStub())
+
+        def submission_ready_yes():
+            java_params = {
+                'dir_robograder': Path() / 'robograder' / 'java',
+                'dir_submission_src': 'java',
+                'machine_speed': _machine_speed,
+            }
+            python_params = {
+                'tester_factory': testers.podman.LabTester.factory,
+                'dir_tester': Path() / 'robotester' / 'python',
+                'machine_speed': _machine_speed,
+            }
+
+            yield ('submission', handlers.language.SubmissionHandler(sub_handlers = {
+                'java': handlers.java.SubmissionHandler(**java_params),
+                'python': handlers.python.SubmissionHandler(**python_params),
+            }, shared_columns = ['robograding'], show_solution = True))
+            yield ('robograding', handlers.language.RobogradingHandler(sub_handlers = {
+                'java': handlers.java.RobogradingHandler(**java_params),
+                'python': handlers.general.GenericTestingHandler(**python_params),
             }))
 
-        self.request_handlers = dict(f())
+        self.request_handlers = dict(submission_ready_yes() if submission_ready else submission_ready_no())
         self.refresh_period = refresh_period
         self.grading_via_merge_request = False
 
@@ -391,7 +395,7 @@ def _lab_item(k, *args, **kwargs):
 
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
-    _lab_item(1, 'binary-search'       , datetime.timedelta(minutes = 60)),  # noqa: E203
+    _lab_item(1, 'binary-search'       , datetime.timedelta(minutes = 60), submission_ready = True),  # noqa: E203
 #    _lab_item(2, 'indexing'            , datetime.timedelta(minutes = 15), has_robograder = True),  # noqa: E203
 #    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15), has_robograder = True),  # noqa: E203
 #    _lab_item(4, 'path-finder'         , datetime.timedelta(minutes = 30), has_robograder = True),  # noqa: E203
