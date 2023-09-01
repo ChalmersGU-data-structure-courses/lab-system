@@ -132,23 +132,29 @@ class CompilationAndRobogradingColumn(live_submissions_table.Column):
 class SubmissionHandler(handlers.general.SubmissionHandler):
     '''A submission handler for Java labs.'''
 
-    def __init__(self, tester_factory, robograder_factory = robograder_java.factory, machine_speed = 1, show_solution = True):
-        self.testing = handlers.general.SubmissionTesting(tester_factory)
+    def __init__(
+        self,
+        robograder_factory = robograder_java.factory,
+        show_solution = True,
+        **kwargs,
+    ):
+        '''
+        Possible extra arguments (see robograder_java.LabRobograder):
+        * dir_robograder, dir_submission_src, machine_speed:
+        '''
         self.robograder_factory = robograder_factory
-        self.machine_speed = machine_speed
         self.show_solution = show_solution
+        self.kwargs = kwargs
 
     def setup(self, lab):
         super().setup(lab)
-        self.testing.setup(lab)
-        self.robograder = self.robograder_factory(lab.config.path_source, self.machine_speed)
+        self.robograder = self.robograder_factory(dir_lab = lab.config.path_source, **self.kwargs)
 
         def f():
             if self.robograder:
                 yield ('robograding', CompilationAndRobogradingColumn)
             else:
                 yield ('compilation', CompilationColumn)
-            yield from self.testing.grading_columns()
 
         self.grading_columns = live_submissions_table.with_standard_columns(
             dict(f()),
@@ -159,8 +165,6 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
         try:
             with submission_java.submission_checked_and_compiled(src) as (dir_bin, compilation_report):
                 compilation_success = True
-                if self.testing:
-                    self.testing.test_submission(request_and_responses, src, dir_bin)
 
                 if self.robograder:
                     try:
