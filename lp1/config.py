@@ -249,7 +249,7 @@ _group = SimpleNamespace(
 
     # Full human-readable name.
     # Used in Canvas group set.
-    name = print_parse.regex_int('Lab group {}', flags = re.IGNORECASE),
+    name = print_parse.regex_int('Lab groups {}', flags = re.IGNORECASE),
 
     # Name of Canvas group set where students sign up for lab groups.
     # We recommend to use a zero-based numerical naming scheme such as 'Lab group 0', 'Lab group 1', etc.
@@ -258,7 +258,7 @@ _group = SimpleNamespace(
     # There are special characters allowed for Canvas group names, but forbidden for GitLab group names.
     #
     # Needs to be a unique key for this group set configuration.
-    group_set_name = 'Lab group',
+    group_set_name = 'Lab groups',
 
     # Format the id for use in a spreadsheet cell.
     # An integer or a string.
@@ -396,7 +396,7 @@ def _lab_item(k, *args, **kwargs):
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
     _lab_item(1, 'binary-search'       , datetime.timedelta(minutes = 60), submission_ready = True),  # noqa: E203
-#    _lab_item(2, 'indexing'            , datetime.timedelta(minutes = 15), has_robograder = True),  # noqa: E203
+    _lab_item(2, 'indexing'            , datetime.timedelta(minutes = 15), submission_ready = False),  # noqa: E203
 #    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15), has_robograder = True),  # noqa: E203
 #    _lab_item(4, 'path-finder'         , datetime.timedelta(minutes = 30), has_robograder = True),  # noqa: E203
 ])
@@ -417,6 +417,20 @@ _cid_to_gitlab_username = print_parse.from_dict([
     ('tcarlos', 'carlos.tome'),
     ('peb', 'Peter.Ljunglof'),
 
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
     ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
     ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
     ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
