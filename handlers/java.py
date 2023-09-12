@@ -145,7 +145,7 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
         Possible extra arguments in case robograder_factory is set (see robograder_java.LabRobograder):
         * dir_robograder, dir_submission_src, machine_speed:
         Possible extra arguments in case tester_factory is set (see testers.java):
-        * dir_lab, dir_tester, machine_speed
+        * dir_lab, dir_tester, dir_submission_src, machine_speed
         '''
         self.robograder_factory = None
         self.tester_factory = None
