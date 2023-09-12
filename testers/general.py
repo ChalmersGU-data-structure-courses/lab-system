@@ -96,9 +96,9 @@ class LabTester:
 
     @classmethod
     @functools.cache
-    def factory(cls, dir_lab, dir_tester, machine_speed = -1):
+    def factory(cls, dir_lab, dir_tester, machine_speed = -1, **kwargs):
         try:
-            return cls(dir_lab, dir_tester, machine_speed = machine_speed)
+            return cls(dir_lab, dir_tester, machine_speed = machine_speed, **kwargs)
         except TesterMissingException:
             return None
 
@@ -385,7 +385,7 @@ Optionally supported by the tester.
     p.add_argument('-l', '--lab', type = Path, metavar = 'LAB', default = Path(), help = '''
 Path the lab (read), defaults to working directory.
 ''')
-    p.add_argument('-t', '--tester', type = Path, metavar = 'LAB', default = Path(), help = '''
+    p.add_argument('-t', '--tester', type = Path, metavar = 'TESTER', default = Path(), help = '''
 Path to the tester relative to the lab directory.
 Defaults to the empty path.
 Must have a self-contained Python file `tests.py` specifying the tests to be run.
@@ -396,6 +396,11 @@ May also contain a directory `test` that is overlaid over submissions during tes
 The machine speed relative to a 2015 desktop machine.
 If not given, defaults to 1.
 Used to calculate appropriate timeout durations.
+''')
+    p.add_argument('-s', '--submission-src', type = Path, metavar = 'SRC_DIR', default = None, help = '''
+Relative path of the source code hierarchy in submissions.
+Useful for labs written in several languages.
+Only used by some testers.
 ''')
     p.add_argument('-v', '--verbose', action = 'count', default = 0, help = '''
 Print INFO level (once specified) or DEBUG level (twice specified) logging.
@@ -424,13 +429,24 @@ Print INFO level (once specified) or DEBUG level (twice specified) logging.
             dir_out = args.output
             args.output.mkdir(exist_ok = True)
 
-        logger.debug(f'Lab directory: {path_tools.format_path(args.lab)}')
-        logger.debug(f'Tester directory (relative to lab directory): {path_tools.format_path(args.tester)}')
-        logger.debug(f'Machine speed: {args.machine_speed}')
         logger.debug(f'Submission directory: {path_tools.format_path(args.submission)}')
         logger.debug(f'Output directory: {path_tools.format_path(dir_out)}')
 
-        tester = Tester(dir_lab = args.lab, dir_tester = args.tester, machine_speed = args.machine_speed)
+        def params():
+            logger.debug(f'Lab directory: {path_tools.format_path(args.lab)}')
+            yield ('dir_lab', args.lab)
+
+            logger.debug(f'Tester directory (relative to lab directory): {path_tools.format_path(args.tester)}')
+            yield ('dir_tester', args.tester)
+
+            logger.debug(f'Machine speed: {args.machine_speed}')
+            yield ('machine_speed', args.machine_speed)
+
+            if args.submission_src is not None:
+                logger.debug(f'Submission source subdirectory: {path_tools.format_path(dir_out)}')
+                yield ('dir_submission_src', Path(args.submission_src))
+
+        tester = Tester(**dict(params()))
         tester.run_tests(dir_out, args.submission)
         if args.markdown:
             print(markdown.join_blocks(tester.format_tests_output_as_markdown(dir_out)))
