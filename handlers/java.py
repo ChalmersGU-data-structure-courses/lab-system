@@ -134,25 +134,46 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
 
     def __init__(
         self,
-        robograder_factory = robograder_java.factory,
+        robograder_factory = None,
+        tester_factory = None,
         show_solution = True,
         **kwargs,
     ):
         '''
-        Possible extra arguments (see robograder_java.LabRobograder):
+        At most one of robograder_factory or tester_factory should be non-None.
+        Whichever is set is used for the optional robograding column.
+        Possible extra arguments in case robograder_factory is set (see robograder_java.LabRobograder):
         * dir_robograder, dir_submission_src, machine_speed:
+        Possible extra arguments in case tester_factory is set (see testers.java):
+        * dir_lab, dir_tester, machine_speed
         '''
-        self.robograder_factory = robograder_factory
+        self.robograder_factory = None
+        self.tester_factory = None
+        if robograder_factory is not None:
+            self.robograder_factory = robograder_factory
+            self.kwargs = kwargs
+        elif tester_factory is not None:
+            self.tester_factory = tester_factory
+            self.testing = handlers.general.SubmissionTesting(self.tester_factory, tester_is_robograder = True, **kwargs)
+        else:
+            # Backwards compatibility: robograder autodetection
+            self.robograder_factory = robograder_factory
+
+        self.has_robograder = self.robograder_factory is not None or self.tester_factory is not None
         self.show_solution = show_solution
-        self.kwargs = kwargs
 
     def setup(self, lab):
         super().setup(lab)
-        self.robograder = self.robograder_factory(dir_lab = lab.config.path_source, **self.kwargs)
+        if self.robograder_factory is not None:
+            self.robograder = self.robograder_factory(dir_lab = lab.config.path_source, **self.kwargs)
+        elif self.tester_factory is not None:
+            self.testing.setup(lab)
 
         def f():
-            if self.robograder:
+            if self.robograder_factory is not None:
                 yield ('robograding', CompilationAndRobogradingColumn)
+            elif self.tester_factory is not None:
+                yield from self.testing.grading_columns()
             else:
                 yield ('compilation', CompilationColumn)
 
@@ -166,12 +187,14 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
             with submission_java.submission_checked_and_compiled(src) as (dir_bin, compilation_report):
                 compilation_success = True
 
-                if self.robograder:
+                if self.robograder_factory is not None:
                     try:
                         robograding_report = self.robograder.run(src, dir_bin)
                     except robograder_java.RobograderException as e:
                         robograding_report = e.markdown()
                     (report / report_robograding).write_text(robograding_report)
+                elif self.tester_factory is not None:
+                    self.testing.test_submission(request_and_responses, src, dir_bin)
         except lab_interfaces.HandlingException as e:
             compilation_success = False
             compilation_report = str(e)
