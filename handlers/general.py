@@ -211,7 +211,7 @@ class SubmissionTesting:
         class TestingColumn(live_submissions_table.Column):
             def format_header_cell(self, cell):
                 with cell:
-                    dominate.util.text('Testing')
+                    dominate.util.text('Robograding' if self_outer.tester_is_robograder else 'Testing')
 
             def get_value(self, group):
                 submission_current = group.submission_current(deadline = self.config.deadline)
