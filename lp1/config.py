@@ -13,6 +13,7 @@ import handlers.python
 import handlers.language
 import print_parse
 import testers.podman
+import testers.java
 from this_dir import this_dir
 
 # Personal configuration.
@@ -362,11 +363,19 @@ class _LabConfig:
             yield ('submission', handlers.general.SubmissionHandlerStub())
 
         def submission_ready_yes():
-            java_params = {
-                'dir_robograder': Path() / 'robograder' / 'java',
-                'dir_submission_src': 'java',
-                'machine_speed': _machine_speed,
-            }
+            if k == 1:
+              java_params = {
+                  'dir_robograder': Path() / 'robograder' / 'java',
+                  'dir_submission_src': 'java',
+                  'machine_speed': _machine_speed,
+              }
+            else:
+                java_params = {
+                    'tester_factory': testers.java.LabTester.factory,
+                    'dir_submission_src': 'java',
+                    'dir_tester': Path() / 'robotester' / 'java',
+                    'machine_speed': _machine_speed,
+                }
             python_params = {
                 'tester_factory': testers.podman.LabTester.factory,
                 'dir_tester': Path() / 'robotester' / 'python',
@@ -377,11 +386,11 @@ class _LabConfig:
                 'java': handlers.java.SubmissionHandler(**java_params),
                 'python': handlers.python.SubmissionHandler(**python_params),
             }, shared_columns = ['robograding'], show_solution = True))
+
             yield ('robograding', handlers.language.RobogradingHandler(sub_handlers = {
-                'java': handlers.java.RobogradingHandler(**java_params),
+                'java': (handlers.java.RobogradingHandler if k == 1 else handlers.general.GenericTestingHandler)(**java_params),
                 'python': handlers.general.GenericTestingHandler(**python_params),
             }))
-
         self.request_handlers = dict(submission_ready_yes() if submission_ready else submission_ready_no())
         self.refresh_period = refresh_period
         self.grading_via_merge_request = False
@@ -396,8 +405,8 @@ def _lab_item(k, *args, **kwargs):
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
     _lab_item(1, 'binary-search'       , datetime.timedelta(minutes = 60), submission_ready = True),  # noqa: E203
-    _lab_item(2, 'indexing'            , datetime.timedelta(minutes = 15), submission_ready = False),  # noqa: E203
-#    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15), has_robograder = True),  # noqa: E203
+    _lab_item(2, 'indexing'            , datetime.timedelta(minutes = 15), submission_ready = True),  # noqa: E203
+    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15), submission_ready = True),  # noqa: E203
 #    _lab_item(4, 'path-finder'         , datetime.timedelta(minutes = 30), has_robograder = True),  # noqa: E203
 ])
 
