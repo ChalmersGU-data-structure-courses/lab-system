@@ -244,7 +244,6 @@ class RequestAndResponses:
         (issue, title_data) = self.responses[self.outcome_response_key]
         return (title_data['outcome'], issue)
 
-
     @functools.cached_property
     def outcome_issue(self):
         '''
