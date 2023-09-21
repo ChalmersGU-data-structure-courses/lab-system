@@ -3,6 +3,8 @@ import subprocess
 
 import dominate
 
+import general
+import lab_interfaces
 import live_submissions_table
 import markdown
 import print_parse
@@ -151,10 +153,18 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
         try:
             sub_handler = self.sub_handlers[language]
         except KeyError:
-            request_and_responses.post_response_issue(
-                response_key = self.submission_failure_key,
-                description = format_errors(True, language, errors),
-            )
+            msg = format_errors(True, language, errors)
+
+            # Is this the official solution?
+            report_msg = general.join_lines(['Could not detect language in official solution:', *msg.splitlines()])
+            request_and_responses.logger.debug(report_msg)
+            if request_and_responses.handler_data is None:
+                raise lab_interfaces.HandlingException(report_msg)
+            else:
+                request_and_responses.post_response_issue(
+                    response_key = self.submission_failure_key,
+                    description = msg,
+                )
             return {'accepted': False}
 
         return {'language': language} | sub_handler.handle_request(request_and_responses)
