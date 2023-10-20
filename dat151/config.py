@@ -6,11 +6,12 @@ from types import SimpleNamespace
 
 import dateutil
 
+import gdpr_coding
 import gitlab_tools
-import lab_handlers
+import handlers.general
 import lab_handlers_dat151
 import print_parse
-import tester_podman
+import testers.podman
 from this_dir import this_dir
 
 # Personal configuration.
@@ -65,7 +66,8 @@ gitlab_ssh = SimpleNamespace(
 )
 
 # Usernames on GitLab that are recognized as acting as the lab system.
-gitlab_lab_system_users = ['lab-system', 'andreas.abel']
+gitlab_lab_system_users = ['lab-system']
+
 
 # Here is the group structure.
 # The top-level groups need to be created (with paths configured below).
@@ -76,45 +78,33 @@ gitlab_lab_system_users = ['lab-system', 'andreas.abel']
 #                       # Members of this group will have access to all lab groups and grading repositories.
 #                       # You can use Course.add_teachers_to_gitlab to populate this group.
 #
-# * labs
-#     ├── 1
-#     │   ├── official  # Official problem and solution repository.
-#     │   │             # Contains a branch 'problem' with the initial lab problem.
-#     │   │             # All lab group repositories are initially clones of the 'problem' branch.
-#     │   │             # Also contains a branch 'solution' with the official lab solution.
-#     │   │             # Can be created by the lab script from a given lab directory in the code repository.
-#     │   │             # Used by the lab script to fork the individual lab group projects.
-#     │   │
-#     │   ├── staging   # Used as a temporary project from which fork the student lab projects.
-#     │   │             # It is derived by the lab script from the official project.
-#     │   │
-#     │   └── grading   # Grading repository, maintained by the lab script.
-#     │                 # Fetches the official problem and solution branches and submissions from individual lab groups.
-#     │                 # Contains merge commits needed to represent three-way diffs on the GitLab UI.
-#     │                 # The individual submissions are available as tags of the form lab-group-XX/submissionYYY.
-#     │                 #
-#     │                 # If a grader wants to work seriously with submission files, they should clone this repository.
-#     │                 # Example use cases:
-#     │                 # - cd lab2-grading
-#     │                 # - git checkout lab_group_13/submission1/tag   to switch to a group's submission
-#     │                 # - git diff problem                            changes compared to problem
-#     │                 # - git diff solution                           changes compared to solution
-#     │                 # - git diff lab_group_13/submission0/tag       changes compared to last submission
-#     │                 # - git diff problem answers.txt                changes in just one file
-#     ...
-#
-# * groups
-#     ├── 0             # A student lab group.
-#     │   │             # You can use Course.sync_students_to_gitlab or Course.invite_students_to_gitlab to create and populate these groups.
-#     │   │             # This will (un)invite based on which assignment group they signed up for in Canvas.
-#     │   │
-#     │   ├── lab1      # For mid-course group membership changes, membership can also
-#     │   │             # be managed at the project level (only for the needed students).
-#     │   │             # Remove them from their group and manually add them to the projects they should have access to.
-#     │   │             # Example: A student may be part of lab1 and lab2 in group 13, but lab3 and lab4 in group 37.
-#     │   │             #          In that case, they should neither be part of group 13 nor of group 37.
-#     │   ...
-#     ├── 1
+# * lab-1
+#     ├── official  # Official problem and solution repository.
+#     │             # Contains a branch 'problem' with the initial lab problem.
+#     │             # All lab group repositories are initially clones of the 'problem' branch.
+#     │             # Also contains a branch 'solution' with the official lab solution.
+#     │             # Can be created by the lab script from a given lab directory in the code repository.
+#     │             # Used by the lab script to fork the individual lab group projects.
+#     │
+#     ├── grading   # Grading repository, maintained by the lab script.
+#     │             # Fetches the official problem and solution branches and submissions from individual lab groups.
+#     │             # Contains merge commits needed to represent three-way diffs on the GitLab UI.
+#     │             # The individual submissions are available as tags of the form lab-group-XX/submissionYYY.
+#     │             #
+#     │             # If a grader wants to work seriously with submission files, they should clone this repository.
+#     │             # Example use cases:
+#     │             # - cd lab2-grading
+#     │             # - git checkout lab_group_13/submission1/tag   to switch to a group's submission
+#     │             # - git diff problem                            changes compared to problem
+#     │             # - git diff solution                           changes compared to solution
+#     │             # - git diff lab_group_13/submission0/tag       changes compared to last submission
+#     │             # - git diff problem answers.txt                changes in just one file
+#     │
+#     ├── group-0          # Lab project for Lab group 0.
+#     │                    # Students are developers.
+#     │
+#     ├── group-0-grading  # Grading project for Lab group 0.
+#     │                    # Students are guests.
 #     ...
 
 # Regarding group and project names on GitLab, we are constrained by the following.
@@ -124,31 +114,26 @@ gitlab_lab_system_users = ['lab-system', 'andreas.abel']
 # This also applies to the content of the name file for each lab.
 # This is because it is currently used to form the full name of a lab on Chalmers Gitlab.
 
-_course_path = PurePosixPath('courses/dat151/2023')
-
-# Absolute paths on Chalmers GitLab to the groups described above.
-path = SimpleNamespace(
-    graders = _course_path / 'graders',
-    labs    = _course_path / 'lab',    # noqa: E221
-    groups  = _course_path / 'group',  # noqa: E221
-)
+path_course = PurePosixPath('courses/dat151/2023')
+path_graders = path_course / 'graders'
 
 # Relative paths to the repositories in each lab as described above.
 path_lab = SimpleNamespace(
-    official = 'official',
+    official = 'primary',
     grading = 'grading',
-    staging = 'staging',
 )
 
 # Branch names
 branch = SimpleNamespace(
-    # Branches in official lab repository.
-    # Must correspond to subfolders of lab in code repository.
-    problem = 'problem',
-    solution = 'solution',
-
     # Default branch name to use.
+    # Also used for problem.
     master = 'main',
+
+    solution = 'solution',
+    submission = 'submission',
+
+    # Default branch for grading repositories when grading via merge request is used.
+    status = 'status',
 )
 
 _outcomes = {
@@ -180,47 +165,13 @@ grading_response_template = print_parse.regex_many('Grading template', [], flags
 # Used to initialize grading template instances.
 grading_response_default_outcome = 0
 
-# Parsing and printing of references to a lab group.
-group = SimpleNamespace(
-    # Human-readable id.
-    # Typical use case: values in a column of group identifiers.
-    # Used in the grading sheet and the Canvas submission table.
-    id = print_parse.int_str(),
-
-    # Version of the group id used on Chalmers GitLab.
-    # Needs to have length at least 2.
-    id_gitlab = print_parse.int_str(format = '02'),
-
-    # Used as part of tag names in grading repository.
-    full_id = print_parse.regex_int('group-{}'),
-
-    # Full human-readable name.
-    # Used in Canvas group set.
-    name = print_parse.regex_int('Lab group {}', flags = re.IGNORECASE),
-
-    # Used for sorting in grading sheet.
-    sort_key = lambda id: id,
-)
-
-# Format the id for use in a spreadsheet cell.
-# An integer or a string.
-# The below definition is the identity on integers.
-group.as_cell = print_parse.compose(group.id, print_parse.invert(group.id))
-
 # Parsing and printing of references to a lab.
 lab = SimpleNamespace(
     # Human-readable id.
     id = print_parse.int_str(),
 
-    # Used as relative path on Chalmers GitLab in the labs group.
-    # Needs to have length at least 2.
-    id_gitlab = print_parse.int_str(format = '02'),
-
-    # Used as relative path on Chalmers GitLab in each student group.
+    # Used as relative path on Chalmers GitLab.
     full_id = print_parse.regex_int('lab-{}'),
-
-    # Used as relative path on Chalmers GitLab for grading project in each student group.
-    full_id_grading = print_parse.regex_int('lab-{}-grading'),
 
     # Actual name.
     name = print_parse.regex_int('Lab {}', flags = re.IGNORECASE),
@@ -238,9 +189,6 @@ lab = SimpleNamespace(
 # * a grader wants to go by a different informal name,
 # * there are two graders with the same first name.
 names_informal = print_parse.from_dict([
-    ('Christian Sattler', 'Christian'),
-    ('REDACTED_NAME', 'REDACTED_FIRST_NAME'),
-    ('REDACTED_NAME', 'REDACTED_FIRST_NAME'),
 ])
 
 # Configuration exclusively related to grading sheets.
@@ -269,13 +217,13 @@ grading_sheet = SimpleNamespace(
     # This is created by the user, but maintained by the lab script.
     # The key (a base64 string) can be found in the URL of the spreadsheet.
     # Individual grading sheets for each lab are worksheets in this spreadsheet.
-    spreadsheet = '1gF2DNGwWfBxmArizLWpLPmxBx6cbbo0fpJZh4zln_V0',
+    spreadsheet = '1l8lHptvWu73iyrelgTEWJujzAfRjpQ2YJBmKShy1u94',
 
     # Template grading sheet on Google Sheets.
     # If the lab script has access to this, it can create initial grading worksheets.
     # Pair of a spreadsheet key and worksheet identifier.
     # The format of the worksheet identifier is as for 'grading_sheet' in the lab configuration.
-    template = ('1gF2DNGwWfBxmArizLWpLPmxBx6cbbo0fpJZh4zln_V0', 'Template'),
+    template = ('1l8lHptvWu73iyrelgTEWJujzAfRjpQ2YJBmKShy1u94', 'Template'),
 
     # Have rows for non-empty groups that have not yet submitted?
     include_groups_with_no_submission = True,
@@ -290,13 +238,63 @@ grading_via_merge_request = SimpleNamespace(
 )
 
 # Root of the lab repository.
-_lab_repo = this_dir.parent / 'lab-sources'
+_lab_repo = this_dir.parent / 'labs'
+
+# Parsing and printing of references to a lab group.
+_group = SimpleNamespace(
+    # Human-readable id.
+    # Typical use case: values in a column of group identifiers.
+    # Used in the grading sheet and the Canvas submission table.
+    id = print_parse.int_str(),
+
+    # Used for the lab project path.
+    # Used as part of tag names in grading repository.
+    full_id = print_parse.regex_int('group-{}'),
+
+    # Used for the grading project path.
+    full_id_grading = print_parse.regex_int('group-{}'),
+
+    # Full human-readable name.
+    # Used in Canvas group set.
+    name = print_parse.regex_int('Lab groups {}', flags = re.IGNORECASE),
+
+    # Name of Canvas group set where students sign up for lab groups.
+    # We recommend to use a zero-based numerical naming scheme such as 'Lab group 0', 'Lab group 1', etc.
+    # If you allow students to create their own group name,
+    # you have to define further down how this should translate to group names on GitLab.
+    # There are special characters allowed for Canvas group names, but forbidden for GitLab group names.
+    #
+    # Needs to be a unique key for this group set configuration.
+    group_set_name = 'Lab groups',
+
+    # Format the id for use in a spreadsheet cell.
+    # An integer or a string.
+    # The below definition is the identity on integers.
+
+    # Instance of GDPRCoding.
+    # For use in the grading spreadsheet.
+    # Must raise an exception on cell items not belonging to the group range.
+    gdpr_coding = gdpr_coding.GDPRCoding(
+        identifier = print_parse.compose(print_parse.int_str(), print_parse.invert(print_parse.int_str()))
+    ),
+)
+
+# For tuning of timing tests.
+_machine_speed = 0.5
 
 # Example lab configuration (for purpose of documentation).
 _lab_config = SimpleNamespace(
     # Filesystem path to the lab source.
+    # Initial lab skeleton is in subfolder 'problem'.
     path_source = _lab_repo / 'labs' / 'goose-recognizer' / 'java',
     path_gitignore = _lab_repo / 'gitignores' / 'java.gitignore',
+
+    # Whether the lab has a solution, in subfolder 'solution'.
+    has_solution = True,
+
+    # An optional group set to use.
+    # If None, the lab is individual.
+    group_set = _group,
 
     # Worksheet identifier of the grading sheet for the lab.
     # This can be of the following types:
@@ -347,7 +345,7 @@ _lab_config = SimpleNamespace(
     # Currently requires students to not be members of their lab group on GitLab,
     # but of the individual projects in the their group.
     # This is because they should only have the guest role in the created grading projects that sit in the same group.
-    grading_via_merge_request = False,
+    grading_via_merge_request = True,
 
     # Only used in new-style grading via merge requests.
     # The label spec for key None corresponds to the waiting-for-grading state.
@@ -358,17 +356,21 @@ _lab_config = SimpleNamespace(
     },
 )
 
+# Root of the lab repository.
+_lab_repo = this_dir.parent / 'lab-sources'
+
 class _LabConfig:
     def __init__(self, k, refresh_period, has_tester, grading_via_merge_request):
         self.path_source = _lab_repo / str(k)
         self.path_gitignore = None
         self.grading_sheet = lab.name.print(k)
         self.canvas_path_awaiting_grading = PurePosixPath(canvas.grading_path) / '{}-to-be-graded.html'.format(lab.full_id.print(k))
+        self.group_set = _group
 
         def f():
-            yield ('submission', lab_handlers_dat151.SubmissionHandler(tester_podman.LabTester.factory))
+            yield ('submission', lab_handlers_dat151.SubmissionHandler(testers.podman.LabTester.factory))
             if has_tester:
-                yield ('test', lab_handlers.GenericTestingHandler(tester_podman.LabTester.factory))
+                yield ('test', handlers.general.GenericTestingHandler(testers.podman.LabTester.factory))
         self.request_handlers = dict(f())
 
         self.refresh_period = refresh_period
@@ -434,9 +436,8 @@ def gitlab_username_from_canvas_user_id(course, user_id):
         cid = _canvas_id_to_gitlab_username_override[user_id]
     except KeyError:
         try:
-            cid = course.cid_from_canvas_id_via_login_id_or_ldap_name(user_id)
+            cid = course.cid_from_canvas_id_via_login_id_or_pdb(user_id)
         except LookupError:
-            print('XXX', user_id)
             return None
 
     try:
