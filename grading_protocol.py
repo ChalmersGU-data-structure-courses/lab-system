@@ -28,17 +28,12 @@ def write_group_membership_report(course):
             if gitlab_user is None:
                 continue
 
-            def f(lab):
-                g = lab.group_by_gitlab_username.get(gitlab_user.username)
-                if g:
-                    return g.id
-
             entry = {
                 header_personnummer: canvas_user.sis_user_id,
                 header_gitlab_username: gitlab_user.username,
                 header_name: canvas_user.sortable_name
             } | {
-                lab.name: f(lab)
+                lab.name: lab.group_by_gitlab_username.get(gitlab_user.username)
                 for lab in course.labs.values()
             }
             writer.writerow(entry)
