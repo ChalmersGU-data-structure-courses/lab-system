@@ -19,10 +19,12 @@ logging.basicConfig(
 )
 logging.getLogger().setLevel(25)  # 25: between INFO and WARNING
 
-# l should refer to the current lab.
-c.canvas_course_refresh()
-if isinstance(l.student_connector, StudentConnectorGroupSet):
-    l.student_connector.group_set.canvas_group_set_refresh()
-l.create_groups_from_canvas()
-l.create_group_projects(exist_ok = True)
-l.sync_students_to_gitlab(add = True, remove = True, restrict_to_known = True)
+for c in courses:
+    c.canvas_course_refresh()
+
+for l in current_labs:
+  if isinstance(l.student_connector, StudentConnectorGroupSet):
+      l.student_connector.group_set.canvas_group_set_refresh()
+  l.create_groups_from_canvas()
+  l.create_group_projects(exist_ok = True)
+  l.sync_students_to_gitlab(add = True, remove = True, restrict_to_known = True)

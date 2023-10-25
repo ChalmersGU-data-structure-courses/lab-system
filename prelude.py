@@ -3,15 +3,24 @@ import logging
 from gitlab_config_personal import *
 import course
 
-import lp3.config as config
+import lp2.DAT038.config as config_038
+import lp2.DAT525.config as config_525
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 
-c = course.Course(config, 'lp3')
+# DAT038
+c_038 = course.Course(config_038, 'lp2/DAT038')
 
-l = c.labs[1]
+# DAT525
+c_525 = course.Course(config_525, 'lp2/DAT525')
 
+courses = [c_525, c_038]
+
+l1_525 = c_525.labs[1]
+l1_038 = c_038.labs[1]
+
+current_labs = [l1_525, l1_038]
 #l.sync_students_to_gitlab(add = True, remove = True)
 
 #l.setup()
