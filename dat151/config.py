@@ -256,7 +256,7 @@ _group = SimpleNamespace(
 
     # Full human-readable name.
     # Used in Canvas group set.
-    name = print_parse.regex_int('Lab groups {}', flags = re.IGNORECASE),
+    name = print_parse.regex_int('Lab group {}', flags = re.IGNORECASE),
 
     # Name of Canvas group set where students sign up for lab groups.
     # We recommend to use a zero-based numerical naming scheme such as 'Lab group 0', 'Lab group 1', etc.
@@ -265,7 +265,7 @@ _group = SimpleNamespace(
     # There are special characters allowed for Canvas group names, but forbidden for GitLab group names.
     #
     # Needs to be a unique key for this group set configuration.
-    group_set_name = 'Lab groups',
+    group_set_name = 'Lab group',
 
     # Format the id for use in a spreadsheet cell.
     # An integer or a string.
@@ -360,7 +360,7 @@ _lab_config = SimpleNamespace(
 _lab_repo = this_dir.parent / 'lab-sources'
 
 class _LabConfig:
-    def __init__(self, k, refresh_period, has_tester, grading_via_merge_request):
+    def __init__(self, k, refresh_period, has_tester):
         self.path_source = _lab_repo / str(k)
         self.path_gitignore = None
         self.grading_sheet = lab.name.print(k)
@@ -375,7 +375,7 @@ class _LabConfig:
 
         self.refresh_period = refresh_period
 
-        self.grading_via_merge_request = grading_via_merge_request
+        self.grading_via_merge_request = True
         self.outcome_labels = {
             None: gitlab_tools.LabelSpec(name = 'waiting-for-grading', color = 'yellow'),
             0: gitlab_tools.LabelSpec(name = 'incomplete', color = 'red'),
@@ -391,10 +391,10 @@ def _lab_item(k, *args):
 
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
-    _lab_item(1, datetime.timedelta(minutes = 15), True, True),
-    _lab_item(2, datetime.timedelta(minutes = 15), True, True),
-    _lab_item(3, datetime.timedelta(minutes = 15), True, True),
-    _lab_item(4, datetime.timedelta(minutes = 15), True, True),
+    _lab_item(1, datetime.timedelta(minutes = 15), True),
+    _lab_item(2, datetime.timedelta(minutes = 15), True),
+    _lab_item(3, datetime.timedelta(minutes = 15), True),
+    _lab_item(4, datetime.timedelta(minutes = 15), True),
 ])
 # P.S.: minutes for eventloop script
 
