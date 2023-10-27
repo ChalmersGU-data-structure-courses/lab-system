@@ -386,7 +386,7 @@ class Course:
                 gitlab_username = self.config.gitlab_username_from_canvas_user_id(self, canvas_user.id)
                 if not gitlab_username is None:
                     yield (canvas_user.id, gitlab_username)
-        return general.sdict(f())
+        return general.sdict(f(), strict = False)
 
     def gitlab_username_from_canvas_user_id(self, canvas_user_id, strict = True):
         '''
