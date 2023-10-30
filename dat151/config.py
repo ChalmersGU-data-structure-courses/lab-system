@@ -366,6 +366,7 @@ class _LabConfig:
         self.grading_sheet = lab.name.print(k)
         self.canvas_path_awaiting_grading = PurePosixPath(canvas.grading_path) / '{}-to-be-graded.html'.format(lab.full_id.print(k))
         self.group_set = _group
+        self.has_solution = True
 
         def f():
             yield ('submission', lab_handlers_dat151.SubmissionHandler(testers.podman.LabTester.factory))
@@ -392,9 +393,9 @@ def _lab_item(k, *args):
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
     _lab_item(1, datetime.timedelta(minutes = 15), True),
-    _lab_item(2, datetime.timedelta(minutes = 15), True),
-    _lab_item(3, datetime.timedelta(minutes = 15), True),
-    _lab_item(4, datetime.timedelta(minutes = 15), True),
+#    _lab_item(2, datetime.timedelta(minutes = 15), True),
+#    _lab_item(3, datetime.timedelta(minutes = 15), True),
+#    _lab_item(4, datetime.timedelta(minutes = 15), True),
 ])
 # P.S.: minutes for eventloop script
 

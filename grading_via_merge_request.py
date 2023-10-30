@@ -224,7 +224,7 @@ class GradingViaMergeRequest:
                 self.status_repo_init(project)
 
                 # Hack
-                time.sleep(0.1)
+                time.sleep(0.5)
 
                 #project = gitlab_tools.wait_for_fork(self.gl, project)
                 project.default_branch = self.course.config.branch.status

@@ -324,7 +324,7 @@ class LabTester:
 
         err = self.filter_errors(read_file('file_err'))
         if err:
-            yield general.join_lines(['Errors:'])
+            yield general.join_lines(['Printed on standard error:'])
             yield markdown.escape_code_block(err)
 
         def result_msg():
