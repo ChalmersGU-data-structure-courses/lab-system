@@ -32,11 +32,12 @@ p.add_argument('-c', '--compile', action = 'store_true', help = f'''
 Compile the robograder before executing.
 For convenience, this also compiles the robograding library in {path_tools.format_path(robograder_java.dir_lib)}.
 ''')
-p.add_argument('-l', '--lab', type = Path, metavar = 'LAB', default = dir_executable, help = f'''
-The directory of the lab.
-The robograder sits within the subdirectory {path_tools.format_path(robograder_java.rel_dir_robograder)}.
-If omitted, it defaults to {path_tools.format_path(dir_executable)}.
-(This value is inferred from the execution path of this script.)
+p.add_argument('-l', '--lab', type = Path, metavar = 'LAB', default = Path(), help = '''
+Path the lab (read), defaults to working directory.
+''')
+p.add_argument('-r', '--robograder', type = Path, metavar = 'ROBOGRADER', default = robograder_java.rel_dir_robograder, help = f'''
+Path to the robograder relative to the lab directory.
+Defaults to {path_tools.format_path(robograder_java.rel_dir_robograder)}.
 ''')
 p.add_argument('-r', '--robograder', type = Path, metavar = 'ROBOGRADER', default = Path('robograder'), help = '''
 Path to the robograder relative to the lab directory.

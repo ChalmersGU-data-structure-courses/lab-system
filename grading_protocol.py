@@ -161,7 +161,7 @@ def report_course(course, xs, path_extra, update_lab = True, summary = None):
         a tab-separated CSV file containing lab grades for students not appearing in the input files requests.
     '''
     # Make sure all requests are processed.
-    for lab in c.labs.values():
+    for lab in course.labs.values():
         lab.setup_request_handlers()
         lab.parse_response_issues()
         lab.repo_fetch_all()

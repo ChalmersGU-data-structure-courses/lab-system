@@ -242,12 +242,13 @@ class SubmissionTesting:
                                     submission_current.repo_tag(segments),
                                     self_outer.report_path,
                                 ))
-                        with dominate.tags.p():
-                            live_submissions_table.format_url('vs. solution', gitlab_tools.url_compare(
-                                self.lab.grading_project.get,
-                                self.lab.submission_solution.repo_tag(self_outer.segments_test),
-                                submission_current.repo_tag(self_outer.segments_test),
-                            ))
+                        if self.lab.config.has_solution:
+                            with dominate.tags.p():
+                                live_submissions_table.format_url('vs. solution', gitlab_tools.url_compare(
+                                    self.lab.grading_project.get,
+                                    self.lab.submission_solution.repo_tag(self_outer.segments_test),
+                                    submission_current.repo_tag(self_outer.segments_test),
+                                ))
 
                 return live_submissions_table.CallbackColumnValue(callback = format_cell)
 
