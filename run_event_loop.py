@@ -166,6 +166,7 @@ import contextlib
 import datetime
 import importlib
 import logging
+import logging.handlers
 import threading
 
 import more_itertools
@@ -189,7 +190,7 @@ def handlers():
     yield stderr_handler
     if args.log_file:
         if args.log_file.is_dir():
-            yield logging.RotatingFileHander(args.log_file / 'log', maxBytes = 1024 * 1024 * 64, backupCount = 10)
+            yield logging.handlers.RotatingFileHandler(args.log_file / 'log', maxBytes = 1024 * 1024 * 64, backupCount = 10)
         else:
             yield logging.FileHandler(args.log_file)
 
