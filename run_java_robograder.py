@@ -38,6 +38,10 @@ The robograder sits within the subdirectory {path_tools.format_path(robograder_j
 If omitted, it defaults to {path_tools.format_path(dir_executable)}.
 (This value is inferred from the execution path of this script.)
 ''')
+p.add_argument('-r', '--robograder', type = Path, metavar = 'ROBOGRADER', default = Path('robograder'), help = '''
+Path to the robograder relative to the lab directory.
+Defaults to the empty path.
+''')
 p.add_argument('-m', '--machine-speed', type = float, metavar = 'MACHINE_SPEED', default = float(1), help = '''
 The machine speed relative to a 2015 desktop machine.
 If not given, defaults to 1.
@@ -77,11 +81,20 @@ logging.basicConfig(level = logging_level)
 
 logger = logging.getLogger()
 
-logger.debug(f'Submission directory: {path_tools.format_path(args.submission)}')
-logger.debug(f'Lab directory: {path_tools.format_path(args.lab)}')
-logger.debug(f'Machine speed: {args.machine_speed}')
+def params():
+    logger.debug(f'Lab directory: {path_tools.format_path(args.lab)}')
+    yield ('dir_lab', args.lab)
 
-robograder = robograder_java.LabRobograder(args.lab, args.machine_speed)
+    logger.debug(f'Robograder directory (relative to lab directory): {path_tools.format_path(args.robograder)}')
+    yield ('dir_robograder', args.robograder)
+
+    logger.debug(f'Machine speed: {args.machine_speed}')
+    yield ('machine_speed', args.machine_speed)
+
+    logger.debug(f'Submission source subdirectory: {path_tools.format_path(args.submission)}')
+    yield ('dir_submission_src', Path(args.submission))
+
+robograder = robograder_java.LabRobograder(**dict(params()))
 
 # Compile robograder library and robograder if requested.
 if args.compile:

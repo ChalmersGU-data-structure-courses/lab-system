@@ -443,7 +443,7 @@ Print INFO level (once specified) or DEBUG level (twice specified) logging.
             yield ('machine_speed', args.machine_speed)
 
             if args.submission_src is not None:
-                logger.debug(f'Submission source subdirectory: {path_tools.format_path(dir_out)}')
+                logger.debug(f'Submission source subdirectory: {path_tools.format_path(args.submission_src)}')
                 yield ('dir_submission_src', Path(args.submission_src))
 
         tester = Tester(**dict(params()))
