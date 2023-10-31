@@ -371,7 +371,7 @@ This Python script supports bash completion.
 For this, python-argparse needs to be installed and configured.
 See https://github.com/kislyuk/argcomplete for more information.
 ''')
-    p.add_argument('submission', type = Path, metavar = 'SUBMISSION', mhelp = 'Path the submission (read-only).')
+    p.add_argument('submission', type = Path, metavar = 'SUBMISSION', help = 'Path to the submission (read-only).')
 
     p.add_argument('-o', '--output', type = Path, help = '''
 Optional test output directory (write).
