@@ -47,6 +47,9 @@ The machine speed relative to a 2015 desktop machine.
 If not given, defaults to 1.
 Used to calculate appropriate timeout durations.
 ''')
+p.add_argument('-s', '--submission-src', type = Path, metavar = 'SRC_DIR', default = None, help = '''
+Relative path of the source code hierarchy in submissions.
+''')
 p.add_argument('-h', '--help', action = 'help', help = '''
 Show this help message and exit.
 ''')
@@ -81,6 +84,8 @@ logging.basicConfig(level = logging_level)
 
 logger = logging.getLogger()
 
+logger.debug(f'Submission directory: {path_tools.format_path(args.submission)}')
+
 def params():
     logger.debug(f'Lab directory: {path_tools.format_path(args.lab)}')
     yield ('dir_lab', args.lab)
@@ -91,8 +96,9 @@ def params():
     logger.debug(f'Machine speed: {args.machine_speed}')
     yield ('machine_speed', args.machine_speed)
 
-    logger.debug(f'Submission source subdirectory: {path_tools.format_path(args.submission)}')
-    yield ('dir_submission_src', Path(args.submission))
+    if args.submission_src is not None:
+        logger.debug(f'Submission source subdirectory: {path_tools.format_path(args.submission_src)}')
+        yield ('dir_submission_src', Path(args.submission_src))
 
 robograder = robograder_java.LabRobograder(**dict(params()))
 
