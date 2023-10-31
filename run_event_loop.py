@@ -142,6 +142,7 @@ to be notified on run failure, configure change notifications in this spreadshee
 g.add_argument('-l', '--log-file', type = Path, dest = 'log_file', help = '''
 An optional log file to append debug level logging to.
 This is in addition to the the logging printed to standard error by the --verbose option.
+If this is an existing directory, it will be used for rotating log files.
 ''')
 g.add_argument('-h', '--help', action = 'help', help = '''
 Show this help message and exit.
@@ -187,7 +188,10 @@ def handlers():
     }[min(args.verbose, 2)])
     yield stderr_handler
     if args.log_file:
-        yield logging.FileHandler(args.log_file)
+        if args.log_file.is_dir():
+            yield logging.RotatingFileHander(args.log_file / 'log', maxBytes = 1024 * 1024 * 64, backupCount = 10)
+        else:
+            yield logging.FileHandler(args.log_file)
 
 logging.basicConfig(
     format = '%(asctime)s %(levelname)s %(module)s: %(message)s',
