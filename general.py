@@ -143,12 +143,11 @@ def starfilter(f, xs):
 
 def sdict(xs, strict = True, format_value = None):
     r = dict()
-    if strict:
-        for (k, v) in xs:
-            if k in r:
-                msg_value = '' if format_value is None else f': values {format_value(r[k])} and {format_value(v)}'
-                raise ValueError(f'duplicate entry for key {k}{msg_value}')
-            r[k] = v
+    for (k, v) in xs:
+        if strict and k in r:
+            msg_value = '' if format_value is None else f': values {format_value(r[k])} and {format_value(v)}'
+            raise ValueError(f'duplicate entry for key {k}{msg_value}')
+        r[k] = v
     return r
 
 def multidict(xs):

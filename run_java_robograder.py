@@ -32,20 +32,20 @@ p.add_argument('-c', '--compile', action = 'store_true', help = f'''
 Compile the robograder before executing.
 For convenience, this also compiles the robograding library in {path_tools.format_path(robograder_java.dir_lib)}.
 ''')
-p.add_argument('-l', '--lab', type = Path, metavar = 'LAB', default = dir_executable, help = f'''
-The directory of the lab.
-The robograder sits within the subdirectory {path_tools.format_path(robograder_java.rel_dir_robograder)}.
-If omitted, it defaults to {path_tools.format_path(dir_executable)}.
-(This value is inferred from the execution path of this script.)
+p.add_argument('-l', '--lab', type = Path, metavar = 'LAB', default = Path(), help = '''
+Path the lab (read), defaults to working directory.
 ''')
-p.add_argument('-r', '--robograder', type = Path, metavar = 'ROBOGRADER', default = Path('robograder'), help = '''
+p.add_argument('-r', '--robograder', type = Path, metavar = 'ROBOGRADER', default = robograder_java.rel_dir_robograder, help = f'''
 Path to the robograder relative to the lab directory.
-Defaults to the empty path.
+Defaults to {path_tools.format_path(robograder_java.rel_dir_robograder)}.
 ''')
 p.add_argument('-m', '--machine-speed', type = float, metavar = 'MACHINE_SPEED', default = float(1), help = '''
 The machine speed relative to a 2015 desktop machine.
 If not given, defaults to 1.
 Used to calculate appropriate timeout durations.
+''')
+p.add_argument('-s', '--submission-src', type = Path, metavar = 'SRC_DIR', default = None, help = '''
+Relative path of the source code hierarchy in submissions.
 ''')
 p.add_argument('-h', '--help', action = 'help', help = '''
 Show this help message and exit.
@@ -81,6 +81,8 @@ logging.basicConfig(level = logging_level)
 
 logger = logging.getLogger()
 
+logger.debug(f'Submission directory: {path_tools.format_path(args.submission)}')
+
 def params():
     logger.debug(f'Lab directory: {path_tools.format_path(args.lab)}')
     yield ('dir_lab', args.lab)
@@ -91,8 +93,9 @@ def params():
     logger.debug(f'Machine speed: {args.machine_speed}')
     yield ('machine_speed', args.machine_speed)
 
-    logger.debug(f'Submission source subdirectory: {path_tools.format_path(args.submission)}')
-    yield ('dir_submission_src', Path(args.submission))
+    if args.submission_src is not None:
+        logger.debug(f'Submission source subdirectory: {path_tools.format_path(args.submission_src)}')
+        yield ('dir_submission_src', Path(args.submission_src))
 
 robograder = robograder_java.LabRobograder(**dict(params()))
 
