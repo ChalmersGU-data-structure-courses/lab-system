@@ -654,14 +654,12 @@ class Lab:
         gitlab_tools.protect_tags(self.gl, project.id, patterns())
         gitlab_tools.delete_protected_branches(project)
 
-    # OUTDATED, use create_group_projects instead.
-    # TODO:
-    # Debug what happens when running this without the grading project having been created.
-    # For some reason, project.delete seems to trigger an exception.
     def create_group_projects_fast(self, exist_ok = False):
         '''
         Create all student projects for this lab.
         Each project is forked from the staging project and appropriately configured.
+
+        OUTDATED (non-functional), use create_group_projects instead.
         '''
         with self.with_staging_project() as staging_project:
             projects = dict()
