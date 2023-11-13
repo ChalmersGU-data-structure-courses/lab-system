@@ -166,6 +166,11 @@ class Lab:
     - delete_group_projects
     - hooks_manager
 
+    If the groups come from Canvas:
+    - create_groups_from_canvas
+    - deploy: do all steps to deploy a lab for the first time
+      (needs lab sources to be prepared and testing docker image built) 
+
     This class also manages a local repository called the grading repository
     that fetches from official and student projects on Chalmers GitLab
     and pushes to the grading project on Chalmers GitLab.
@@ -1575,3 +1580,57 @@ class Lab:
                     self.logger.warning(
                         f'missing member {user_str_from_gitlab_username(gitlab_username)} of {entity_name}'
                     )
+
+
+    def deploy_via_lab_sources_and_canvas(self):
+        '''
+        Perform all steps to deploy a lab in sequence.
+            
+        Steps:
+        - creating a new project for the lab in the course
+        - creating base projects for sources and grading
+        - creating a project for each group according to Canvas groups
+        - populating the group projects with clones of the lab sources
+
+        Prerequisites:
+        - lab sources repo updated on the server
+        - deploy directories built there (`make all`)
+        - test runner built there (`make test-image`)
+
+        To undo, call:
+        - gitlab_group.delete()
+        - repo_delete()
+        '''
+        self.logger.info(
+            '''
+            Deploying lab
+            -------------
+
+            Note: requires lab sources to be deployed and test runner image built.
+
+            '''
+        )         
+
+        self.logger.info('=== Creating project root for lab ===') 
+        self.gitlab_group.create()
+        
+        self.logger.info('=== Creating "official" project for lab ===') 
+        self.official_project.create()
+        
+        self.logger.info('=== Creating "grading" project for lab ===') 
+        self.grading_project.create()
+        
+        self.logger.info('=== Creating student grous according to Canvas groups ===') 
+        self.create_groups_from_canvas()
+
+        self.logger.info('=== Forking student projects from official project ===')
+        self.create_group_projects()
+
+        self.logger.info(
+            '''
+            Note: students are not yet added/invited to lab projects.
+            Run 'sync_students_to_gitlab()' when ready.
+            ''')
+        # Or you could also call sync_students_to_gitlab.
+        # But that's dangerous because you can't delete things and start again without creating noise.
+                    
