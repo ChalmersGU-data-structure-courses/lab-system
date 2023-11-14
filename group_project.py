@@ -695,7 +695,35 @@ class GroupProject:
         r.create = create
         return r
 
-    def repo_add_remote(self, ignore_missing = False):
+    def upload_solution(self, path = None, force = False):
+        '''
+        If path is None, we look for a solution in 'solution' or 'solution/<id>' relative to the lab sources.
+        We include a prefix of the hash of the submission so that reuploads will be reprocessed by the submission system.
+
+        BUG: Solution reprocessing does not work if  solution commits starts with the same prefix.
+        '''
+        if not self.is_solution:
+            self.logger.warn('Uploading solution to student project.')
+            if not force:
+                raise ValueError('not solution project')
+
+        if path is None:
+            if self.id in self.lab.solutions.keys() and self.id != 'solution':
+                path = PurePosixPath() / 'solution' / self.id
+            else:
+                path = PurePosixPath() / 'solution'
+
+        tree = git_tools.create_tree_from_dir(self.lab.repo, self.lab.config.path_source / path)
+        msg = (self.lab.solutions[self.id] if self.is_solution else 'Solution in student project') + '.'
+        commit = git.Commit.create_from_tree(self.lab.repo, tree, msg, [self.lab.head_problem.commit])
+        if self.is_solution:
+            hash = commit.hexsha[:8]
+            self.lab.repo.remote(self.remote).push(refspec = [
+                git_tools.refspec(src = commit, dst = self.lab.course.config.branch.master),
+                git_tools.refspec(src = commit, dst = f'refs/tags/submission-{hash}'),
+            ], force = True)
+
+    def repo_add_remote(self, ignore_missing = False, **kwargs):
         '''
         Add the student repository on Chalmers GitLab as a remote to the local repository.
         This configures the refspecs for fetching in the manner expected by this script.
