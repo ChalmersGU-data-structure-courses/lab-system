@@ -138,9 +138,21 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
                     for (language, sub_handler) in self.sub_handlers.items()
                 }))
 
+        def choose_solution(submission):
+            with submission.checkout_manager() as src:
+                (language, errors) = detect_language(self.lab.config.path_source, src)
+                if language is None:
+                    return None
+
+                try:
+                    return (language, self.lab.groups[language].submission_current())
+                except (KeyError, AttributeError):
+                    raise ValueError(f'Diff with solution: no solution found for language {language}')
+
         self.grading_columns = live_submissions_table.with_standard_columns(
             dict(columns()),
             with_solution = self.show_solution,
+            choose_solution = choose_solution,
         )
 
     def _handle_request(self, request_and_responses, src):
