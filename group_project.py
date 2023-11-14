@@ -57,19 +57,15 @@ class RequestAndResponses:
 
     @property
     def group(self):
-        return None if self.handler_data is None else self.handler_data.group
-
-    @property
-    def _group(self):
-        return self.lab if self.group is None else self.group
+        return self.handler_data.group
 
     @property
     def logger(self):
-        return self.lab.logger if self.handler_data is None else self.handler_data.logger
+        return self.handler_data.logger
 
     @functools.cached_property
     def repo_remote_tag(self):
-        return git.Reference(self.lab.repo, str(git_tools.remote_tag(self._group.remote, self.request_name)))
+        return git.Reference(self.lab.repo, str(git_tools.remote_tag(self.group.remote, self.request_name)))
 
     @functools.cached_property
     def repo_remote_commit(self):
@@ -81,19 +77,19 @@ class RequestAndResponses:
 
     def repo_tag(self, segments = ['tag']):
         '''Forwards to self.group.repo_tag.'''
-        return GroupProject.repo_tag(self._group, self.request_name, segments)
+        return GroupProject.repo_tag(self.group, self.request_name, segments)
 
     def repo_tag_exist(self, segments):
         '''Forwards to self.group.repo_tag_exist.'''
-        return GroupProject.repo_tag_exist(self._group, self.request_name, segments)
+        return GroupProject.repo_tag_exist(self.group, self.request_name, segments)
 
     def repo_tag_create(self, segments = ['tag'], ref = None, **kwargs):
         '''Forwards to self.group.repo_tag_create.'''
-        return GroupProject.repo_tag_create(self._group, self.request_name, segments, ref, **kwargs)
+        return GroupProject.repo_tag_create(self.group, self.request_name, segments, ref, **kwargs)
 
     def repo_tag_delete(self, segments = ['tag']):
         '''Forwards to self.group.repo_tag_delete.'''
-        return GroupProject.repo_tag_delete(self._group, self.request_name, segments)
+        return GroupProject.repo_tag_delete(self.group, self.request_name, segments)
 
     def repo_tag_create_json(self, segments, ref = None, data = None, **kwargs):
         '''
@@ -440,16 +436,12 @@ class RequestAndResponses:
             force = True,
         )
 
-        if self.group:
-            # Call handler with this object as argment.
-            self.logger.debug(
-                f'Handling request {self.request_name} {where} '
-                f'using handler {self.handler_data.handler_key}'
-            )
-            result = self.handler_data.handler.handle_request(self)
-        else:  # Fake submission (official problem or solution).
-            result = self.lab.submission_handler.handle_request(self)
-
+        # Call handler with this object as argment.
+        self.logger.debug(
+            f'Handling request {self.request_name} {where} '
+            f'using handler {self.handler_data.handler_key}'
+        )
+        result = self.handler_data.handler.handle_request(self)
         if result is not None:
             self.logger.debug(general.join_lines(['Handler result:', str(result)]))
 
@@ -601,7 +593,10 @@ class HandlerData:
 
 class GroupProject:
     '''
-    This class abstracts over a lab project of a student or lab group on Chalmers GitLab.
+    This class abstracts over:
+    * a lab project of a student or lab group,
+    * a official solution
+    on Chalmers GitLab.
     It collects instances of HandlerData.
     Each instances of this class is managed by an instance of lab.Lab.
     '''
@@ -610,14 +605,26 @@ class GroupProject:
         self.id = id
         self.logger = logger
 
-        self.remote = self.lab.student_connector.gitlab_group_slug_pp().print(id)
-        self.path = self.lab.path / self.remote
-        self.name = self.lab.student_connector.gitlab_group_name(id)
+        self.is_known = self.id in self.lab.group_ids_desired
+        self.is_solution = lab.group_id_is_solution(id)
 
-        self.handler_data = {
-            handler_key: HandlerData(self, handler_key)
-            for handler_key in self.lab.config.request_handlers.keys()
-        }
+        if self.is_solution:
+            self.remote = self.id
+            self.name = self.lab.solutions[self.id]
+        elif self.is_known:
+            c = self.lab.student_connector
+            self.remote = c.gitlab_group_slug_pp().print(self.id)
+            self.name = c.gitlab_group_name(self.id)
+        else:
+            self.remote = self.id
+            self.name = self.id
+
+        self.path = self.lab.path / self.remote
+        if self.is_known:
+            self.handler_data = {
+                handler_key: HandlerData(self, handler_key)
+                for handler_key in self.lab.config.request_handlers.keys()
+            }
 
     @property
     def course(self):
@@ -639,14 +646,13 @@ class GroupProject:
         def create():
             gitlab_tools.CachedGroup.create(r, self.lab.gitlab_group.get)
             with contextlib.suppress(AttributeError):
-                del self.groups
+                del self.lab.groups
         r.create = create
 
         def delete():
             gitlab_tools.CachedGroup.delete(r)
             with contextlib.suppress(AttributeError):
                 self.lab.groups.pop(self.id)
-                self.lab.student_groups.pop(self.id)
         r.delete = delete
 
         return r
@@ -678,12 +684,13 @@ class GroupProject:
                 project.save()
 
                 project = gitlab_tools.wait_for_fork(self.gl, project)
-                self.lab.configure_student_project(project)
+                self.lab.configure_student_project(project, self.is_solution)
+
+                r.get = project
+                self.repo_add_remote()
             except:  # noqa: E722
                 r.delete()
                 raise
-            r.get = project
-            self.repo_add_remote()
 
         r.create = create
         return r
@@ -702,6 +709,7 @@ class GroupProject:
                 fetch_branches = [(git_tools.Namespacing.remote, git_tools.wildcard)],
                 fetch_tags = [(git_tools.Namespacing.remote, git_tools.wildcard)],
                 prune = True,
+                **kwargs,
             )
         except gitlab.GitlabGetError as e:
             if ignore_missing and e.response_code == 404 and e.error_message == '404 Project Not Found':
@@ -766,13 +774,6 @@ class GroupProject:
         Construct a tag reference object for the current lab group.
         This only constructs an in-memory object and does not yet interact with the grading repository.
         The tag's name has the group's remote prefixed.
-
-        HACK:
-        This method and the following related ones may
-        also be called with self an instance of lab.Lab.
-        In that case, the remote is omitted from the tag name.
-        This is used for the pseudo-instances of SubmissionAndResponse
-        for the official problem and solution.
 
         Arguments:
         * tag_name: Instance of PurePosixPath, str, or gitlab.v4.objects.tags.ProjectTag.

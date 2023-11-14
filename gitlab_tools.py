@@ -62,7 +62,7 @@ def wait_for_fork(gl, project, fork_poll_interval = 0.5, check_immediately = Tru
     logger.debug('Finished waiting for fork.')
     return project
 
-def protect_tags(gl, project_id, patterns, delete_existing = False, exist_ok = True):
+def protect_tags(gl, project_id, patterns = [], delete_existing = False, exist_ok = True):
     project = gl.projects.get(project_id, lazy = True)
     if delete_existing or exist_ok:
         protected_prev = list_all(project.protectedtags)
