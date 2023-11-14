@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 import shutil
 import tempfile
-from typing import Iterable
+from typing import Iterable, Optional
 
 import git
 import gitlab
@@ -88,15 +88,13 @@ class StudentConnectorIndividual(StudentConnector):
             return x.strip('1')
 
         def parse(x):
-            if x == 'test':
-                return 'test'
-
             if x in self.course.canvas_user_by_gitlab_username:
                 return x
+            # HACK
             y = x + '1'
             if y in self.course.canvas_user_by_gitlab_username:
                 return y
-            return None
+            raise ValueError(f'unknown student {x} on GitLab')
 
         return print_parse.PrintParse(
             print = print,
@@ -158,11 +156,13 @@ class StudentConnectorGroupSet(StudentConnector):
 class Lab:
     '''
     This class abstracts over a single lab in a course.
+    Each instance is managed by an instance of course.Course.
+    In turn, it manages instances of group_project.GroupProject in `groups`.
 
     The lab is hosted on Chalmers GitLab.
     Related attributes and methods:
     - official_project, grading_project
-    - create_group_projects, create_group_projects_fast
+    - create_group_projects
     - delete_group_projects
     - hooks_manager
 
@@ -200,10 +200,6 @@ class Lab:
 
     This class is configured by the config argument to its constructor.
     The format of this argument is documented in gitlab.config.py.template under _lab_config.
-
-    This class manages instances of group_project.GroupProject.
-    See student_group and student_groups.
-    Each instance of this class is managed by an instance of course.Course.
     '''
     def __init__(self, course, id, config = None, dir = None, deadline = None, logger = logging.getLogger(__name__)):
         '''
@@ -362,9 +358,12 @@ class Lab:
           (together with an optionally specified .gitignore file).
           So make sure this directory is clean beforehand.
 
-        This used to contain branches "problem" and "solution".
-        * Branch "problem" does not exist anymore.
-        * Branch "solution" is now part of the grading project instead.
+        This used to contain branches "problem" and "solution", but that is outdated.
+        We use separate group projects for solutions.
+
+        As an alternative to creating this project, you can create it yourself.
+        Remember to configure it as a forking basis.
+        For example you may want to disable feature that are distracting to students.
         '''
         r = gitlab_tools.CachedProject(
             gl = self.gl,
@@ -393,7 +392,6 @@ class Lab:
                         shutil.copyfile(self.config.path_gitignore, Path(dir) / '.gitignore')
                     push_branch(
                         self.course.config.branch.master,
-                        self.config.path_source / 'problem',
                         'Initial commit.',
                     )
 
@@ -454,49 +452,60 @@ class Lab:
         return r
 
     @functools.cached_property
-    def groups(self):
-        # def actual_project(x):
-        #     return all([
-        #         not x in [self.course.config.path_lab.official, self.course.config.path_lab.grading],
-        #         not x.endswith('-playground'),
-        #         not x.endswith('-grading'),
-        #     ])
-
+    def solutions(self):
         def f():
-            for group in gitlab_tools.list_all(self.gitlab_group.lazy.subgroups):
-                group_id = self.student_connector.gitlab_group_slug_pp().parse(group.path)
-                if not group_id is None:
-                    yield group_id
+            if self.config.has_solution is True:
+                yield ('solution', 'Official solution')
+            elif isinstance(self.config.has_solution, tuple):
+                for solution in self.config.has_solution:
+                    yield (solution, f'Official solution — {solution}')
+        return dict(f())
+
+    def group_id_is_solution(self, id):
+        return id in self.solutions.keys()
+
+    @functools.cached_property
+    def group_ids_desired(self):
+        def f():
+            yield from self.student_connector.desired_groups()
+            yield from self.solutions.keys()
 
         return frozenset(f())
 
-    def group_delete_all(self):
-        for group_id in self.groups:
-            self.student_group(group_id).group.delete()
+    @functools.cached_property
+    def groups(self):
+        def group_ids():
+            for group in gitlab_tools.list_all(self.gitlab_group.lazy.subgroups):
+                try:
+                    yield self.student_connector.gitlab_group_slug_pp().parse(group.path)
+                except ValueError:
+                    yield group.path
 
-        for x in ['groups', 'student_groups']:
-            with contextlib.suppress(AttributeError):
-                delattr(self, x)
+        return {id: group_project.GroupProject(self, id) for id in group_ids()}
 
-    def create_groups_from_canvas(self, delete_existing = False):
-        if delete_existing:
-            self.group_delete_all()
-        groups_old = () if delete_existing else self.groups
-
-        for group_id in self.student_connector.desired_groups():
-            if not group_id in groups_old:
-                self.student_group(group_id).group.create()
+    def groups_delete_all(self, keep_student_groups = True, keep_solution_groups = True):
+        for (id, group) in tuple(self.groups.items()):
+            if not (keep_solution_groups if self.group_id_is_solution(id) else keep_student_groups):
+                group.group.delete()
 
         with contextlib.suppress(AttributeError):
             del self.groups
 
-    @instance_cache.instance_cache
-    def student_group(self, group_id):
-        return group_project.GroupProject(self, group_id)
+    def group_create(self, id):
+        group = group_project.GroupProject(self, id)
+        group.group.create()
+        self.groups[id] = group
 
-    @functools.cached_property
-    def student_groups(self):
-        return {group_id: self.student_group(group_id) for group_id in self.groups}
+    def groups_create_desired(self, keep_existing = True):
+        if keep_existing:
+            ids_old = self.groups.keys()
+        else:
+            self.group_delete_all()
+            ids_old = ()
+
+        for id in self.group_ids_desired:
+            if not id in ids_old:
+                self.group_create(id)
 
     @functools.cached_property
     def repo(self):
@@ -523,11 +532,11 @@ class Lab:
 
     def repo_add_groups_remotes(self, **kwargs):
         '''
-        Configure fetching remotes for all student groups in local grading repository.
+        Configure fetching remotes in local grading repository for all groups on GitLab.
         This overwrites any existing configuration for such remotes, except for groups no longer existing.
         '''
-        for group_id in self.groups:
-            self.student_group(group_id).repo_add_remote(ignore_missing = True)
+        for group in self.groups.values():
+            group.repo_add_remote(**kwargs)
 
     def repo_delete(self, force = False):
         '''
@@ -563,20 +572,10 @@ class Lab:
             )
             self.repo_fetch_official()
 
-            # Add optional solution.
-            if self.config.has_solution:
-                self.repo_add_solution()
-
-            # Configure offical grading repository and student groups.
-            def push_branches():
-                yield self.course.config.branch.master
-                if self.config.has_solution:
-                    yield self.course.config.branch.solution
-
             self.repo_add_remote(
                 self.course.config.path_lab.grading,
                 self.grading_project.get,
-                push_branches = list(push_branches()),
+                push_branches = [],
                 push_tags = [git_tools.wildcard],
             )
             self.repo_add_groups_remotes(ignore_missing = True)
@@ -585,20 +584,6 @@ class Lab:
             raise
 
         self.repo = repo
-
-    def repo_add_solution(self):
-        '''
-        Add solution to local repo.
-        Call separately if solution has been added later.
-        '''
-        solution_tree = git_tools.create_tree_from_dir(self.repo, self.config.path_source / 'solution')
-        commit = git.Commit.create_from_tree(
-            self.repo,
-            solution_tree,
-            'Official solution.',
-            [self.head_problem.commit],
-        )
-        self.repo.create_head(self.course.config.branch.solution, commit, force = True)
 
     def repo_remote_command(self, repo, command):
         if self.course.ssh_multiplexer is None:
@@ -647,68 +632,41 @@ class Lab:
             self.repo_command_push(self.repo, self.course.config.path_lab.grading)
             self.repo_updated = False
 
-    def configure_student_project(self, project):
+    def configure_student_project(self, project, is_solution):
+        '''
+        BUG.
+        Gitlab seems to suffer from a race condition.
+        Sometimes, the deletion of the protected branches is not honored.
+        Adding a time delay after waiting for forking completion seems to avoid this.
+        TODO: add (configurable) time delay.
+        '''
         self.logger.debug(f'Configuring student project {project.path_with_namespace}')
 
         def patterns():
-            for request_handler in self.config.request_handlers.values():
-                for pattern in request_handler.request_matcher.protection_patterns:
-                    yield pattern
+            if not is_solution:
+                for request_handler in self.config.request_handlers.values():
+                    for pattern in request_handler.request_matcher.protection_patterns:
+                        yield pattern
 
+        # Should only be needed for solution projects.
+        # Protected tags are inherited from primary project by forking.
         self.logger.debug('Protecting tags')
-        gitlab_tools.protect_tags(self.gl, project.id, patterns())
+        gitlab_tools.protect_tags(self.gl, project.id, patterns(), delete_existing = is_solution)
+
+        self.logger.debug('Deleting protected branches')
         gitlab_tools.delete_protected_branches(project)
 
-    def create_group_projects_fast(self, exist_ok = False):
-        '''
-        Create all student projects for this lab.
-        Each project is forked from the staging project and appropriately configured.
-
-        OUTDATED (non-functional), use create_group_projects instead.
-        '''
-        with self.with_staging_project() as staging_project:
-            projects = dict()
-
-            try:
-                for group_id in self.groups:
-                    c = self.student_group(group_id).project
-                    self.logger.info(f'Forking project {c.path}')
-                    try:
-                        projects[group_id] = staging_project.forks.create({
-                            'namespace_path': str(c.path.parent),
-                            'path': c.path.name,
-                            'name': c.name,
-                        })
-                    except gitlab.GitlabCreateError as e:
-                        if exist_ok and e.response_code == 409:
-                            if self.logger:
-                                self.logger.info('Skipping because project already exists')
-                        else:
-                            raise
-
-                for (group_id, project) in tuple(projects.items()):
-                    self.logger.info(f'Configuring project {project.path_with_namespace}')
-                    project = self.configure_student_project(project)
-                    project.delete_fork_relation()
-                    self.student_group(group_id).project.get = project
-                    del projects[group_id]
-                    self.student_group(group_id).repo_add_remote()
-            except:  # noqa: E722
-                for project in projects.values():
-                    self.gl.projects.delete(project.path_with_namespace)
-                raise
-
     def create_group_projects(self, exist_ok = False):
-        for group_id in self.groups:
-            x = self.student_group(group_id).project
+        for group in self.groups.values():
+            x = group.project
             if exist_ok:
                 x.create_ensured()
             else:
                 x.create()
 
     def delete_group_projects(self):
-        for group_id in self.groups:
-            self.student_group(group_id).project.delete()
+        for group in self.groups.values():
+            group.project.delete()
 
     def hotfix_groups(
         self,
@@ -716,7 +674,7 @@ class Lab:
         group_ids = None,
         merge_files = False,
         fail_on_problem = True,
-        notify_students: str = None,
+        notify_students: Optional[str] = None,
     ):
         '''
         Attempt to apply a hotfix to all student projects.
@@ -738,7 +696,7 @@ class Lab:
         Will log a warning if the merge has already been applied.
         '''
         for group_id in self.normalize_group_ids(group_ids):
-            self.student_group(group_id).hotfix(
+            self.groups[group_id].hotfix(
                 branch_hotfix,
                 self.course.config.branch.master,
                 merge_files = merge_files,
@@ -754,7 +712,7 @@ class Lab:
 
         def remotes():
             yield self.course.config.path_lab.official
-            for group in self.student_groups.values():
+            for group in self.groups.values():
                 yield group.remote
         self.repo_command_fetch(self.repo, remotes())
 
@@ -771,7 +729,7 @@ class Lab:
         remote_tags = refs[git_tools.refs.name][git_tools.remote_tags.name]
 
         def f():
-            for group in self.student_groups.values():
+            for group in self.groups.values():
                 value = remote_tags.get(group.remote, dict())
                 yield (group.id, git_tools.flatten_references_hierarchy(value))
         return dict(f())
@@ -788,7 +746,7 @@ class Lab:
         return refs[git_tools.refs.name][git_tools.tags.name]
 
     def hook_specs(self, netloc = None) -> Iterable[gitlab_tools.HookSpec]:
-        for group in self.student_groups.values():
+        for group in self.groups.values():
             yield from group.hook_specs(netloc)
 
     # Alternative implementation
@@ -858,7 +816,7 @@ class Lab:
         in each contained handler data instance can be accessed.
         '''
         self.logger.info('Parsing request tags.')
-        for group in self.student_groups.values():
+        for group in self.groups.values():
             group.parse_request_tags(from_gitlab = from_gitlab)
 
     def parse_response_issues(self, on_duplicate = True, delete_duplicates = False):
@@ -882,7 +840,7 @@ class Lab:
         self.logger.info('Parsing response issues.')
 
         def f():
-            for group in self.student_groups.values():
+            for group in self.groups.values():
                 if group.parse_response_issues(on_duplicate = on_duplicate, delete_duplicates = delete_duplicates):
                     yield group.id
         return frozenset(f())
@@ -909,7 +867,7 @@ class Lab:
 
         with contextlib.ExitStack() as stack:
             def f():
-                for group in self.student_groups.values():
+                for group in self.groups.values():
                     if group.parse_grading_merge_request_responses():
                         yield group.id
                     stack.enter_context(group.grading_via_merge_request.notes_suppress_cache_clear())
@@ -956,11 +914,9 @@ class Lab:
         This is because processing requests may run GradingViaMergeRequest.sync_submissions.
         '''
         self.logger.info('Processing requests.')
-        if self.config.has_solution:
-            self.submission_solution.process_request()
 
         def f():
-            for group in self.student_groups.values():
+            for group in self.groups.values():
                 requests_new = group.process_requests()
                 if requests_new[self.config.submission_handler_key]:
                     yield group.id
@@ -978,7 +934,7 @@ class Lab:
 
     def handle_requests(self):
         self.logger.info('Handling request tags.')
-        for group in self.student_groups.values():
+        for group in self.groups.values():
             group.handle_requests()
 
     @contextlib.contextmanager
@@ -994,30 +950,6 @@ class Lab:
     @functools.cached_property
     def head_problem(self):
         return git_tools.normalize_branch(self.repo, self.course.config.branch.master)
-
-    @functools.cached_property
-    def head_solution(self):
-        if self.config.has_solution:
-            return git_tools.normalize_branch(self.repo, self.course.config.branch.solution)
-
-    @functools.cached_property
-    def submission_problem(self):
-        return group_project.RequestAndResponses(
-            self,
-            None,
-            self.course.config.branch.master,
-            (self.head_problem, self.head_problem.commit),
-        )
-
-    @functools.cached_property
-    def submission_solution(self):
-        if self.config.has_solution:
-            return group_project.RequestAndResponses(
-                self,
-                None,
-                self.course.config.branch.solution,
-                (self.head_solution, self.head_solution.commit),
-            )
 
     @functools.cached_property
     def compiler(self):
@@ -1038,10 +970,9 @@ class Lab:
 
     def groups_with_live_submissions(self, deadline = None):
         '''A generator for groups with live submissions for the given optional deadline.'''
-        for group_id in self.groups:
-            group = self.student_group(group_id)
+        for group in self.groups.values():
             if group.submission_current(deadline = deadline) is not None:
-                yield group_id
+                yield group.id
 
     @contextlib.contextmanager
     def live_submissions_table_staging_manager(self):
@@ -1096,13 +1027,13 @@ class Lab:
                     continue
 
     def parse_grading_issues(self):
-        for group_id in self.groups:
-            self.student_group(group_id).grading_issues = dict()
+        for group in self.groups.values():
+            group.grading_issues = dict()
 
         r = self.course.parse_response_issues(self.grading_project)
         for ((request, response_type), value) in r.items():
-            (group_id, request) = self.course.qualify_with_slash.parse(request)
-            self.student_group(group_id).grading_issues[(request, response_type)] = value
+            (id, request) = self.course.qualify_with_slash.parse(request)
+            self.groups[id].grading_issues[(request, response_type)] = value
 
     @functools.cached_property
     def grading_sheet(self):
@@ -1113,10 +1044,13 @@ class Lab:
 
     def include_group_in_grading_sheet(self, group, deadline = None):
         '''
-        We include a group in the grading sheet if it has a submission.
+        We include a group in the grading sheet if it is a student group with a submission.
         Extra groups to include can be configured in the grading sheet config using:
         * include_groups_with_no_submission
         '''
+        if not group.is_known or group.is_solution:
+            return False
+
         if deadline is None:
             deadline = self.deadline
 
@@ -1128,7 +1062,7 @@ class Lab:
     @functools.cached_property
     def grading_sheet_group_link(self):
         if not self.student_connector.gdpr_link_problematic:
-            return lambda group_id: self.student_group(group_id).project.get.web_url
+            return lambda group_id: self.groups[group_id].project.get.web_url
 
     def update_grading_sheet(self, group_ids = None, deadline = None):
         '''
@@ -1147,7 +1081,8 @@ class Lab:
         group_ids = self.normalize_group_ids(group_ids)
         groups = [
             group
-            for group in map(self.student_group, group_ids)
+            for (id, group) in self.groups.items()
+            if id in group_ids
             if self.include_group_in_grading_sheet(group, deadline)
         ]
 
@@ -1211,12 +1146,12 @@ class Lab:
             If set, overrides self.deadline.
         '''
         if group_ids is None:
-            group_ids = self.groups
+            group_ids = self.groups.keys()
         group_ids = tuple(group_ids)
 
         # Clear group members cache.
-        for group_id in group_ids:
-            self.student_group(group_id).members_clear()
+        for id in group_ids:
+            self.groups[id].members_clear()
 
         # Update submission systems.
         if hasattr(self, 'live_submissions_table'):
@@ -1340,7 +1275,7 @@ class Lab:
     @functools.cached_property
     def group_by_gitlab_username(self):
         def f():
-            for group in self.student_groups.values():
+            for group in self.groups.values():
                 for gitlab_user in group.members:
                     yield (gitlab_user.username, group)
         return general.sdict(f(), format_value = lambda group: group.name)
@@ -1383,19 +1318,20 @@ class Lab:
         - a callback function to handle the event.
         These are the lab events triggered by the webhook event.
         '''
-        group_id = self.student_connector.gitlab_group_slug_pp().parse(group_id_gitlab)
-        if group_id in self.groups:
-            group = self.student_group(group_id)
-            yield from webhook_listener.map_with_callback(
-                group.lab_event,
-                group.parse_hook_event(hook_event, strict = strict),
-            )
-        else:
-            if strict:
-                raise ValueError(f'Unknown group id {group_id}')
-
-            self.logger.warning(f'Received webhook event for unknown group id {group_id}.')
+        id = self.student_connector.gitlab_group_slug_pp().parse(group_id_gitlab)
+        try:
+            group = self.groups[id]
+        except LookupError:
+            self.logger.warning(f'Received webhook event for unknown group id {id}.')
             self.logger.debug(f'Webhook event:\n{hook_event}')
+            if strict:
+                raise ValueError(f'Unknown group id {id}')
+            return
+
+        yield from webhook_listener.map_with_callback(
+            group.lab_event,
+            group.parse_hook_event(hook_event, strict = strict),
+        )
 
     @property
     def course_event(self):
@@ -1444,7 +1380,7 @@ class Lab:
         if grades:
             self.logger.warning('Chalmers GitLab users with unreported grades:')
             for (gitlab_username, grade) in grades.items():
-                print(f'* {gitlab_username}: {grade}')
+                self.logger.warning(f'* {gitlab_username}: {grade}')
 
     def sync_students_to_gitlab(self, *, add = True, remove = True, restrict_to_known = True):
         '''
@@ -1510,7 +1446,7 @@ class Lab:
 
         for group_id in self.student_connector.desired_groups():
             entity_name = f'{self.student_connector.gitlab_group_name(group_id)} on GitLab'
-            entity = self.student_group(group_id).project.lazy
+            entity = self.groups[group_id].project.lazy
 
             # Current members and invitations.
             # If restrict_to_known holds, restricts to gitlab users and email addresses

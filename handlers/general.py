@@ -194,10 +194,11 @@ class SubmissionTesting:
     has_markdown_report = True
     report_path = PurePosixPath('test_report.md')
 
-    def __init__(self, tester_factory, tester_is_robograder = False, **tester_args):
+    def __init__(self, tester_factory, tester_is_robograder = False, solution = 'solution', **tester_args):
         self.tester_factory = tester_factory
         self.tester_args = tester_args
         self.tester_is_robograder = tester_is_robograder
+        self.solution = solution
 
     def setup(self, lab):
         self.tester = self.tester_factory(lab.config.path_source, **self.tester_args)
@@ -246,7 +247,7 @@ class SubmissionTesting:
                             with dominate.tags.p():
                                 live_submissions_table.format_url('vs. solution', gitlab_tools.url_compare(
                                     self.lab.grading_project.get,
-                                    self.lab.submission_solution.repo_tag(self_outer.segments_test),
+                                    self.lab.groups[self_outer.solution].submission_current().repo_tag(self_outer.segments_test),
                                     submission_current.repo_tag(self_outer.segments_test),
                                 ))
 

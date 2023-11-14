@@ -96,6 +96,16 @@ class ColumnValue:
         '''
         raise NotImplementedError()
 
+class ColumnValueEmpty:
+    def sort_key(self):
+        return 0
+
+    def has_content(self):
+        return False
+
+    def format_cell(self, cell):
+        return ''
+
 class Column:
     '''
     Required attributes:
@@ -225,12 +235,18 @@ class GroupColumn(Column):
             dominate.util.text('Group')
 
     def get_value(self, group):
-        gdpr_coding = self.lab.student_connector.gdpr_coding()
-        encoded_id = gdpr_coding.identifier.print(group.id)
-        return StandardColumnValue(
-            encoded_id,
-            gdpr_coding.sort_key(encoded_id),
-        )
+        if not group.is_known:
+            encoded_id = f'{group.name} (unknown)'
+            sort_key = (0, encoded_id)
+        elif group.is_solution:
+            encoded_id = group.name
+            sort_key = (1, encoded_id)
+        else:
+            gdpr_coding = self.lab.student_connector.gdpr_coding()
+            encoded_id = gdpr_coding.identifier.print(group.id)
+            sort_key = (2, gdpr_coding.sort_key(encoded_id))
+
+        return StandardColumnValue(encoded_id, sort_key)
 
 class MembersColumn(Column):
     def format_header_cell(self, cell):
@@ -420,59 +436,75 @@ class SubmissionDiffColumnValue(ColumnValue):
                         dominate.util.text('graded by ')
                         format_url(*self.linked_grader)
 
-class SubmissionDiffPreviousColumn(Column):
+class SubmissionDiffColumn(Column):
+    def __init__(self, config, title):
+        super().__init__(config)
+        self.title = title
+
+    def base_ref(self, group):
+        raise NotImplemented()
+
     def format_header_cell(self, cell):
         add_class(cell, 'extension-column')
         with cell:
-            dominate.util.text('previous..')
+            dominate.util.text(self.title)
 
     def get_value(self, group):
-        submissions_with_outcome = list(group.submissions_with_outcome(deadline = self.config.deadline))
-        if not submissions_with_outcome:
+        submission_current = group.submission_current(deadline = self.config.deadline)
+        x = self.base_ref(group)
+        if x is None:
             return SubmissionDiffColumnValue(None)
 
-        submission_current = group.submission_current(deadline = self.config.deadline)
-        submission_previous = submissions_with_outcome[-1]
+        (name, a) = x
+        b = submission_current.repo_tag()
+
         return SubmissionDiffColumnValue(
-            (submission_previous.request_name + '..', gitlab_tools.url_compare(
-                self.lab.grading_project.get,
-                submission_previous.repo_tag(),
-                submission_current.repo_tag(),
-            )),
-            (submission_previous.grader_informal_name, submission_previous.link),
-            is_same = False,  # TODO: implement
+            (name + '..', gitlab_tools.url_compare(self.lab.grading_project.get, a, b)),
+            is_same = a.commit == b.commit,
         )
 
-class SubmissionDiffOfficialColumn(Column):
-    def __init__(self, config, branch):
-        super().__init__(config)
-        self.branch = branch
+class SubmissionDiffPreviousColumn(SubmissionDiffColumn):
+    def __init__(self, config):
+        super().__init__(config, 'previous')
 
-    def format_header_cell(self, cell):
-        add_class(cell, 'extension-column')
-        with cell:
-            dominate.util.text(self.branch.name)
+    def base_ref(self, group):
+        submissions_with_outcome = list(group.submissions_with_outcome(deadline = self.config.deadline))
+        if submissions_with_outcome:
+            submission_previous = submissions_with_outcome[-1]
+            return (submission_previous.request_name, submission_previous.repo_tag())
 
-    def get_value(self, group):
+class SubmissionDiffProblemColumn(SubmissionDiffColumn):
+    def __init__(self, config):
+        super().__init__(config, 'problem')
+
+    def base_ref(self, group):
+        return ('problem', self.lab.head_problem)
+
+class SubmissionDiffSolutionColumn(SubmissionDiffColumn):
+    @classmethod
+    def factory(cls, choose_solution = None):
+        return lambda config: cls(config, choose_solution)
+
+    def __init__(self, config, choose_solution = None):
+        super().__init__(config, 'solution')
+        self.choose_solution = choose_solution
+
+    def base_ref(self, group):
+        if self.choose_solution is None:
+            try:
+                return ('solution', self.lab.groups['solution'].submission_current().repo_tag())
+            except (KeyError, AttributeError):
+                raise ValueError('Diff with solution: no solution available')
+
         submission_current = group.submission_current(deadline = self.config.deadline)
-        return SubmissionDiffColumnValue(
-            (self.branch.name + '..', gitlab_tools.url_compare(
-                self.lab.grading_project.get,
-                self.branch.name,
-                submission_current.repo_tag(),
-            )),
-            is_same = False,  # TODO: implement
-        )
+        x = self.choose_solution(submission_current)
+        if x is None:
+            return None
 
-class SubmissionDiffProblemColumn(SubmissionDiffOfficialColumn):
-    def __init__(self, config):
-        super().__init__(config, config.lab.head_problem)
+        (name, submission_solution) = x
+        return (name, submission_solution.repo_tag())
 
-class SubmissionDiffSolutionColumn(SubmissionDiffOfficialColumn):
-    def __init__(self, config):
-        super().__init__(config, config.lab.head_solution)
-
-def with_standard_columns(columns = dict(), with_solution = True):
+def with_standard_columns(columns = dict(), with_solution = True, choose_solution = None):
     def f():
         yield ('date', DateColumn)
         yield ('query-number', QueryNumberColumn)
@@ -482,7 +514,8 @@ def with_standard_columns(columns = dict(), with_solution = True):
         yield ('submission-after-previous', SubmissionDiffPreviousColumn)
         yield ('submission-after-problem', SubmissionDiffProblemColumn)
         if with_solution:
-            yield ('submission-after-solution', SubmissionDiffSolutionColumn)
+            yield ('submission-after-solution', SubmissionDiffSolutionColumn.factory(choose_solution = choose_solution))
+
         yield from columns.items()
         yield ('message', MessageColumn)
 
@@ -562,7 +595,7 @@ class LiveSubmissionsTable:
         This method can update the local grading repository, so a push is
         required afterwards before building or uploading the live submissions table.
         '''
-        group = self.lab.student_group(group_id)
+        group = self.lab.groups[group_id]
         logger.info(f'updating row for {group.name} in live submissions table')
         if group.submission_current(deadline = self.config.deadline):
             self.group_rows[group.id] = {
@@ -611,7 +644,7 @@ class LiveSubmissionsTable:
         # Make sure all needed group rows are built.
         for group_id in group_ids:
             if not group_id in self.group_rows:
-                group = self.lab.student_group(group_id)
+                group = self.lab.group[group_id]
                 raise ValueError(f'live submissions table misses row for {group.name}')
 
         # Compute the columns (with column values) for these submissions.
@@ -620,7 +653,7 @@ class LiveSubmissionsTable:
             for (name, column) in self.columns.items():
                 r = types.SimpleNamespace()
                 r.values = dict(
-                    (group_id, column.get_value(self.lab.student_group(group_id)))
+                    (group_id, column.get_value(self.lab.groups[group_id]))
                     for group_id in group_ids
                 )
                 if any(value.has_content() for value in r.values.values()):
@@ -680,7 +713,7 @@ class LiveSubmissionsTable:
                         column.format_header_cell(cell)
                 with dominate.tags.tbody():
                     for group_id in group_ids:
-                        logger.debug(f'processing {self.lab.student_group(group_id).name}')
+                        logger.debug(f'processing {self.lab.groups[group_id].name}')
                         with dominate.tags.tr():
                             for (name, data) in column_data.items():
                                 column = self.columns[name]

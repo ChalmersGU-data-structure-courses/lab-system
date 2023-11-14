@@ -400,7 +400,7 @@ class GradingSheet:
             #i = bisect.bisect_left(groups_old, group_id, key = sort_key)
             i = bisect.bisect_left(groups_old_sort_key, sort_key(group_id))
             row_insert = groups_start + i + offset
-            group_name = self.lab.student_groups[group_id].name
+            group_name = self.lab.groups[group_id].name
             self.logger.debug(f'adding row {row_insert} for {group_name}')
             insertions[(i, i == len(groups_old) and not empty)].append((group_id, row_insert))
 

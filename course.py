@@ -551,7 +551,7 @@ class Course:
     def student_projects(self):
         '''A generator for all contained student group projects.'''
         for lab in self.labs.values():
-            yield from lab.student_groups.values()
+            yield from lab.groups.values()
 
     @functools.cached_property
     def hook_netloc_default(self):
