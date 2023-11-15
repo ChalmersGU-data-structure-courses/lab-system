@@ -577,6 +577,14 @@ class HandlerData:
                     request_and_responses.responses[response_key] = issue_data
         return result
 
+    def requests_and_responses_handled(self):
+        def f():
+            for request_and_responses in self.requests_and_responses.values():
+                if request_and_responses.handled:
+                    yield request_and_responses
+
+        return tuple(f())
+
     def process_requests(self):
         '''
         Process requests.

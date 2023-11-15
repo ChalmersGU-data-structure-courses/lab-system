@@ -102,13 +102,18 @@ class SubmissionHandlerStub(SubmissionHandler):
 
 class RobogradingHandler(lab_interfaces.RequestHandler):
     '''
-    A base class for robograding handlers.
+    A base class for robograding (or testing) handlers.
 
     You can configure certain aspects by overriding attributes.
     In addition to those of the base class:
     * response_key: The robograding response key (only used internally).
     * response_title: The robograding response printer-parser.
-    The last two attributes override response_titles of the base class.
+    * format_count:
+        An optional function taking a natural number.
+        Returns an optional Markdown message on the number of previous attempts.
+        We prefix response issues with this.
+
+    The first two attributes override response_titles of the base class.
 
     By default, these attribute and the remaining ones of
     the base class take their values from this module.
@@ -116,45 +121,31 @@ class RobogradingHandler(lab_interfaces.RequestHandler):
     request_matcher = testing_request
     response_key = generic_response_key
     response_title = robograder_response_title
+    format_count = None
 
     @property
     def response_titles(self):
         return {self.response_key: self.response_title}
 
+    def counts_so_far(self, request_and_responses):
+        handler_data = request_and_responses.handler_data
+        return len(handler_data.requests_and_responses_handled())
+
     def post_response(self, request_and_responses, report):
         '''Post response issue.'''
+        if self.format_count is not None:
+            n = self.counts_so_far(request_and_responses)
+            msg = self.format_count(n)
+            if msg is not None:
+                report = markdown.join_blocks([msg, report])
+
         request_and_responses.post_response_issue(
             response_key = self.response_key,
             description = report,
         )
 
-class TestingHandler(lab_interfaces.RequestHandler):
-    '''
-    A base class for testing handlers.
-
-    You can configure certain aspects by overriding attributes.
-    In addition to those of the base class:
-    * response_key: The robograding response key (only used internally).
-    * response_title: The testing response printer-parser.
-    The last two attributes override response_titles of the base class.
-
-    By default, these attribute and the remaining ones of
-    the base class take their values from this module.
-    '''
-    request_matcher = testing_request
-    response_key = generic_response_key
+class TestingHandler(RobogradingHandler):
     response_title = tester_response_title
-
-    @property
-    def response_titles(self):
-        return {self.response_key: self.response_title}
-
-    def post_response(self, request_and_responses, report):
-        '''Post response issue.'''
-        request_and_responses.post_response_issue(
-            response_key = self.response_key,
-            description = report,
-        )
 
 class GenericTestingHandler(TestingHandler):
     '''
@@ -182,9 +173,9 @@ class GenericTestingHandler(TestingHandler):
                 self.tester.run_tests(dir_out, src)
                 report = self.get_test_report(dir_out)
                 logger.debug(report)
-                request_and_responses.post_response_issue(
-                    response_key = self.response_key,
-                    description = report,
+                self.post_response(
+                    request_and_responses,
+                    report,
                 )
 
 class SubmissionTesting:
