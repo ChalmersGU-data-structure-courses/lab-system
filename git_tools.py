@@ -332,8 +332,7 @@ def checkout(repo, dir, ref, capture_stderr = False):
 @contextlib.contextmanager
 def checkout_manager(repo, ref):
     ''' Context manager for a temporary directory containing a checkout. '''
-    with tempfile.TemporaryDirectory() as dir:
-        dir = Path(dir)
+    with path_tools.temp_dir() as dir:
         checkout(repo, dir, ref)
         yield dir
 
@@ -413,8 +412,7 @@ def merge_blobs(
     other: git.objects.Blob,
     *merge_file_options,
 ) -> git.objects.Blob:
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        tmp_dir = Path(tmp_dir)
+    with path_tools.temp_dir() as tmp_dir:
         file_current = tmp_dir / 'current'
         file_base = tmp_dir / 'base'
         file_other = tmp_dir / 'other'
