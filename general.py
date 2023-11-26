@@ -350,10 +350,14 @@ def log_command(logger, cmd, working_dir = False):
         shlex.join(map(str, cmd)),
     ))
 
-def wait_and_check(process, cmd):
+def wait_and_check(process, cmd, stderr = None):
     r = process.wait()
     if r != 0:
-        raise subprocess.CalledProcessError(r, cmd)
+        raise subprocess.CalledProcessError(
+            r,
+            cmd,
+            stderr = stderr
+        )
 
 def unique_list(xs):
     return list(dict.fromkeys(xs))

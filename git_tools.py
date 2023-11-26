@@ -16,6 +16,7 @@ import gitdb
 
 import general
 import path_tools
+import threading_tools
 
 
 logger = logging.getLogger(__name__)
@@ -305,15 +306,28 @@ def tag_onesided_merge(repo, tag_name, commit, new_parent):
         commit = onesided_merge(repo, commit, new_parent)
     return repo.create_tag(tag_name, commit)
 
-def checkout(repo, dir, ref):
-    ''' Checkout a reference into the given directory. '''
+def checkout(repo, dir, ref, capture_stderr = False):
+    '''Checkout a reference into the given directory.'''
     cmd = ['tar', '-x']
     with path_tools.working_dir(dir):
         general.log_command(logger, cmd, True)
-        tar = subprocess.Popen(cmd, stdin = subprocess.PIPE)
+        tar = subprocess.Popen(
+            cmd,
+            stdin = subprocess.PIPE,
+            stderr = subprocess.PIPE if capture_stderr else None
+        )
+
+    if capture_stderr:
+        t = threading_tools.FileReader(tar.stderr)
+
     repo.archive(tar.stdin, ref)
     tar.stdin.close()
-    general.wait_and_check(tar, cmd)
+
+    general.wait_and_check(
+        tar,
+        cmd,
+        stderr = t.get_result() if capture_stderr else None,
+    )
 
 @contextlib.contextmanager
 def checkout_manager(repo, ref):

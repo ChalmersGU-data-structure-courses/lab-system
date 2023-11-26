@@ -62,3 +62,22 @@ def timer_manager(timer):
         timer.cancel()
 
     return general.add_cleanup(thread_manager(timer), cleanup)
+
+class FunctionThread(threading.Thread):
+    def __init__(self, function):
+        def runner(*args, **kwargs):
+            self.result = function(*args, **kwargs)
+
+        super().__init__(target = runner)
+        self.start()
+
+    def get_result(self):
+        self.join()
+        return self.result
+
+class FileReader(FunctionThread):
+    def __init__(self, file):
+        def reader():
+            return file.read()
+
+        super().__init__(function = reader)
