@@ -131,8 +131,8 @@ class RequestAndResponses:
         def report_markdown(self):
             return markdown.join_blocks([
                 general.join_lines([
-                    f'I failed to check out your commit `{markdown.escape(self.request_and_responses.request_name)}`.'
-                    'This was the problem:'
+                    f'I failed to check out your commit `{markdown.escape(self.request_and_responses.request_name)}`.',
+                    'This was the problem:',
                 ]),
                 markdown.escape_code_block(self.message),
                 general.join_lines([
