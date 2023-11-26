@@ -326,7 +326,7 @@ def checkout(repo, dir, ref, capture_stderr = False):
     general.wait_and_check(
         tar,
         cmd,
-        stderr = t.get_result() if capture_stderr else None,
+        stderr = t.get_result().decode() if capture_stderr else None,
     )
 
 @contextlib.contextmanager

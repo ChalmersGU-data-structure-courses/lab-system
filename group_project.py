@@ -5,6 +5,7 @@ import json
 import logging
 from pathlib import PurePosixPath
 import shlex
+import subprocess
 from typing import Iterable
 
 import git
@@ -17,6 +18,7 @@ import item_parser
 import git_tools
 import gitlab_tools
 import grading_via_merge_request
+import markdown
 
 
 class RequestAndResponses:
@@ -116,8 +118,40 @@ class RequestAndResponses:
         '''
         return git_tools.read_text_file_from_tree(self.repo_tag(segments).commit.tree, path)
 
+    class CheckoutError(Exception):
+        def __init__(self, request_and_responses, e):
+            self.message = e.stderr
+            self.request_and_responses = request_and_responses
+            super().__init__(self.message)
+
+        def report_markdown(self):
+            return markdown.join_blocks([
+                general.join_lines([
+                    f'I failed to check out your commit `{markdown.escape(self.request_and_responses.request_name)}`.'
+                    'This was the problem:'
+                ]),
+                markdown.escape_code_block(self.message),
+                general.join_lines([
+                    'Please fix the problem and try again.',
+                    'If you are unable to do so, please contact the person responsible for the labs.',
+                ]),
+            ])
+
+    def checkout(self, dir, segments = ['tag']):
+        '''
+        Use this method instead of checkout_manager if you want to deal with checkout errors.
+        '''
+        try:
+            git_tools.checkout(self.lab.repo, dir, self.repo_tag(segments), capture_stderr = True)
+        except subprocess.CalledProcessError as e:
+            raise RequestAndResponses.CheckoutError(self, e) from e
+
     @contextlib.contextmanager
     def checkout_manager(self, segments = ['tag']):
+        '''
+        In contrast to checkout, errors raised by this manager are not supposed to be catched.
+        Any error is printed to stderr.
+        '''
         with git_tools.checkout_manager(self.lab.repo, self.repo_tag(segments)) as src:
             yield src
 
