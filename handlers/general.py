@@ -1,6 +1,7 @@
 import logging
 from pathlib import PurePosixPath
 import re
+import subprocess
 
 import dominate
 
@@ -177,15 +178,21 @@ class GenericTestingHandler(TestingHandler):
         if self.response_key in request_and_responses.responses:
             return
 
-        with request_and_responses.checkout_manager() as src:
-            with path_tools.temp_dir() as dir_out:
-                self.tester.run_tests(dir_out, src)
-                report = self.get_test_report(dir_out)
-                logger.debug(report)
-                request_and_responses.post_response_issue(
-                    response_key = self.response_key,
-                    description = report,
-                )
+        with path_tools.temp_dir() as src:
+            try:
+                request_and_responses.checkout(src)
+            except request_and_responses.CheckoutError as e:
+                report = e.report_markdown()
+            else:
+                with path_tools.temp_dir() as dir_out:
+                    self.tester.run_tests(dir_out, src)
+                    report = self.get_test_report(dir_out)
+
+        logger.debug(report)
+        request_and_responses.post_response_issue(
+            response_key = self.response_key,
+            description = report,
+        )
 
 class SubmissionTesting:
     segments_test = ['test']
