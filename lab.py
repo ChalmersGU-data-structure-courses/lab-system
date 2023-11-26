@@ -333,8 +333,8 @@ class Lab:
     #         def create(self):
     #             super().create(self.outer.group.get())
     #
-    #             with tempfile.TemporaryDirectory() as dir:
-    #                 repo = git.Repo.init(dir)
+    #             with path_tools.temp_dir() as dir:
+    #                 repo = git.Repo.init(dir.__fspath__())
     #
     #                 def push_branch(name, message):
     #                     shutil.copytree(self.outer.config.path_source / name, dir, dirs_exist_ok = True)
@@ -376,8 +376,8 @@ class Lab:
         def create():
             project = gitlab_tools.CachedProject.create(r, self.gitlab_group.get)
             try:
-                with tempfile.TemporaryDirectory() as dir:
-                    repo = git.Repo.init(dir)
+                with path_tools.temp_dir() as dir:
+                    repo = git.Repo.init(dir.__fspath__())
 
                     def push_branch(name, path, message):
                         shutil.copytree(path, dir, dirs_exist_ok = True, symlinks = True)
@@ -988,8 +988,8 @@ class Lab:
         that is used for transient results such as compilation products.
         '''
         with git_tools.checkout_manager(self.repo, commit) as src:
-            with tempfile.TemporaryDirectory() as bin:
-                yield (src, Path(bin))
+            with path_tools.temp_dir() as bin:
+                yield (src, bin)
 
     @functools.cached_property
     def head_problem(self):
