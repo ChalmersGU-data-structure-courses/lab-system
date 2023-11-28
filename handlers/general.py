@@ -1,7 +1,7 @@
+import functools
 import logging
 from pathlib import PurePosixPath
 import re
-import subprocess
 
 import dominate
 
@@ -40,6 +40,14 @@ def grading_response_for_outcome(outcome_name):
         )
     )
 
+submission_failure_response_key = 'submission_failure'
+
+submission_failure_title = print_parse.regex_non_canonical_keyed(
+    'Your submission {tag} was not accepted',
+    'Your submission (?P<tag>[^: ]*) was not accepted',
+    flags = re.IGNORECASE,
+)
+
 testing_request = lab_interfaces.RegexRequestMatcher(
     ['test*', 'Test*'],
     '(?:t|T)est[^/: ]*',
@@ -70,21 +78,52 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
     You can configure certain aspects by overriding attributes.
     In addition to those of the base class:
     * grading_response_for_outcome (replacing response_titles):
-        Function taking an outcome printer-parser
-        and returning the grading response printer-parser.
+        Function taking an outcome printer-parser and returning the grading response printer-parser.
+    * submission_failure:
+        Optional Key-value pair for response_titles for submissions that fail to be accepted.
     By default, this attribute and the remaining ones of
     the base class take their values from this module.
     '''
     request_matcher = submission_request
     review_response_key = review_response_key
     grading_response_for_outcome = grading_response_for_outcome
+    submission_failure = (submission_failure_response_key, submission_failure_title)
 
-    @property
+    @functools.cached_property
     def response_titles(self):
-        # TODO: Fix. Why do we need qualification SubmissionHandler?
-        f = SubmissionHandler.grading_response_for_outcome
-        value = f(self.lab.course.config.outcome.name) if hasattr(self, 'lab') else None
-        return {self.review_response_key: value}
+        def f():
+            yield (
+                self.review_response_key,
+                grading_response_for_outcome(self.lab.course.config.outcome.name) if hasattr(self, 'lab') else None,
+            )
+            if self.submission_failure is not None:
+                yield self.submission_failure
+
+        return dict(f())
+
+    def handle_request_callback_with_src(self, request_and_responses, handle_request_with_src):
+        '''
+        Handles a submission by checking it out and calling handle_request_with_src.
+        This is a function taking arguments request_and_responses and src.
+
+        Requires submission_failure to be set.
+        For example, checkout problems can arise from symlinks with targets that are too long.
+        This commonly happens when Windows students change the target of a symlink to the content of its target.
+        '''
+        with path_tools.temp_dir() as src:
+            try:
+                request_and_responses.checkout(src)
+            except request_and_responses.CheckoutError as e:
+                request_and_responses.post_response_issue(
+                    self.submission_failure[0],
+                    description = e.report_markdown(),
+                )
+                return {
+                    'accepted': False,
+                    'review_needed': False,
+                }
+
+            return handle_request_with_src(request_and_responses, src)
 
 class SubmissionHandlerStub(SubmissionHandler):
     '''A stub submission handler that accepts submissions, but does not do anything.'''
@@ -100,6 +139,21 @@ class SubmissionHandlerStub(SubmissionHandler):
             'accepted': True,
             'review_needed': True,
         }
+
+class SubmissionHandlerWithCheckout(SubmissionHandler):
+    '''
+    A submission handler that checks out the submission.
+    Useful as a base class.
+    Requires submission_failure to be set (see SubmissionHandler.handle_request_callback_with_src).
+    '''
+    def handle_request_with_src(self, request_and_responses, src):
+        return {
+            'accepted': True,
+            'review_needed': True,
+        }
+
+    def handle_request(self, request_and_responses):
+        return self.handle_request_callback_with_src(request_and_responses, self.handle_request_with_src)
 
 class RobogradingHandler(lab_interfaces.RequestHandler):
     '''
