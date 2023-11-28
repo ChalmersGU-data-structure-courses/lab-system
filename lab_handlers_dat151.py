@@ -1,10 +1,8 @@
-from pathlib import PurePosixPath
-
 import handlers.general
 import live_submissions_table
 
 
-class SubmissionHandler(handlers.general.SubmissionHandler):
+class SubmissionHandler(handlers.general.SubmissionHandlerWithCheckout):
     '''
     A stub submission handler.
 
@@ -25,10 +23,9 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
         self.grading_columns = live_submissions_table.with_standard_columns(dict(f()))
         self.grading_columns.pop('submission-after-solution')
 
-    def handle_request(self, request_and_responses):
-        with request_and_responses.checkout_manager() as src:
-            self.testing.test_submission(request_and_responses, src)
-            return {
-                'accepted': True,
-                'review_needed': True,
-            }
+    def handle_request_with_src(self, request_and_responses, src):
+        self.testing.test_submission(request_and_responses, src)
+        return {
+            'accepted': True,
+            'review_needed': True,
+        }
