@@ -543,6 +543,7 @@ class GradingViaMergeRequest:
             yield git_tools.create_tree_from_dir(repo, dir)
 
     def add_students(self):
+        self.group.members_clear()
         for gitlab_user in self.group.members:
             with gitlab_tools.exist_ok():
                 self.project.lazy.members.create({
