@@ -10,7 +10,7 @@ logging.getLogger().setLevel(logging.INFO)
 
 c = course.Course(config, 'dat151')
 
-l = c.labs[2]
+l = c.labs[3]
 
 #l.sync_students_to_gitlab(add = True, remove = True)
 
