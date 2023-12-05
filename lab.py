@@ -1626,6 +1626,11 @@ class Lab:
         self.logger.info('=== Forking student projects from official project ===')
         self.create_group_projects()
 
+        if self.config.grading_via_merge_request:
+            self.logger.info('=== Creating grading projects ===')
+            for g in l.student_groups.values():
+                g.grading_via_merge_request.project.create()
+
         self.logger.info(
             '''
             Note: students are not yet added/invited to lab projects.
