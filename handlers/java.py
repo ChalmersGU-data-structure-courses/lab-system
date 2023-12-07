@@ -193,8 +193,6 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
                     except robograder_java.RobograderException as e:
                         robograding_report = e.markdown()
                     (report / report_robograding).write_text(robograding_report)
-                elif self.tester_factory is not None:
-                    self.testing.test_submission(request_and_responses, src, dir_bin)
         except lab_interfaces.HandlingException as e:
             compilation_success = False
             compilation_report = str(e)
@@ -206,6 +204,13 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
             commit_message = 'compilation and robograding report',
             force = True,
         )
+
+        # HACK:
+        # This will compile again if previous compilation fails.
+        # This is so that the compilation errors are included in the test report.
+        if self.tester_factory is not None:
+            self.testing.test_submission(request_and_responses, src, dir_bin)
+
         return {
             'accepted': True,
             'review_needed': True,
