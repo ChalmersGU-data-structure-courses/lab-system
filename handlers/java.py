@@ -205,11 +205,9 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
             force = True,
         )
 
-        # HACK:
-        # This will compile again if previous compilation fails.
-        # This is so that the compilation errors are included in the test report.
+        # HACK: this will compile again needlessly.
         if self.tester_factory is not None:
-            self.testing.test_submission(request_and_responses, src, dir_bin)
+            self.testing.test_submission(request_and_responses, src)
 
         return {
             'accepted': True,
