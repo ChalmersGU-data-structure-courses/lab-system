@@ -29,14 +29,6 @@ from _2020_lp2.submission_fix_lib import HandlerException
 logger = logging.getLogger(__name__)
 
 
-class BearerAuth(requests.auth.AuthBase):
-    def __init__(self, token):
-        self.token = token
-
-    def __call__(self, r):
-        r.headers['Authorization'] = f'Bearer {self.token}'
-        return r
-
 # This class manages requests to Canvas and their caching.
 # Caching is important to maintain quick execution time of higher level scripts on repeat invocation.
 # Cache behaviour is controlled by the parameter 'use_cache' of the request methods.
@@ -62,7 +54,7 @@ class Canvas:
         self.base_url_api = self.base_url + '/api/v1'
 
         self.session = requests.Session()
-        self.session.auth = BearerAuth(self.auth_token)
+        self.session.auth = general.BearerAuth(self.auth_token)
         #self.session.headers.update({'Authorization': 'Bearer {}'.format(self.auth_token)})
 
         self.session_file = requests.Session()

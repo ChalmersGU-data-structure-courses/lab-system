@@ -18,6 +18,8 @@ import string
 import subprocess
 import sys
 
+import requests
+
 
 def identity(x):
     return x
@@ -180,14 +182,6 @@ map_with_key_ = compose(map_with_key, ignore_none_keys)
 dict_from_fun = compose(map_with_val, dict)
 sdict_from_fun = compose(map_with_val, sdict)
 multidict_from_fun = compose(map_with_val, multidict)
-
-def component(i):
-    return lambda x: x[i]
-
-first  = component(0)  # noqa E221
-second = component(1)
-third  = component(2)  # noqa E221
-fourth = component(3)
 
 def ev(*x):
     return lambda f: f(*x)
@@ -687,3 +681,15 @@ def caching(f):
 
 def now():
     return datetime.now(tz = timezone.utc)
+
+
+## # Network protocols
+
+# TODO: move elsewhere.
+class BearerAuth(requests.auth.AuthBase):
+    def __init__(self, token):
+        self.token = token
+
+    def __call__(self, r):
+        r.headers['Authorization'] = f'Bearer {self.token}'
+        return r
