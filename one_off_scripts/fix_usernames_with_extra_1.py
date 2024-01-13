@@ -15,7 +15,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 import course
-import gitlab_tools  # noqa: E402
+import gitlab.tools  # noqa: E402
 import lp3.config as config
 import this_dir
 

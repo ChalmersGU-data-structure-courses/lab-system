@@ -641,12 +641,19 @@ def intercalate(it, middle, start = _OMIT, end = _OMIT):
 
 @contextlib.contextmanager
 def traverse_managers_iterable(xs):
+    '''Lazy traversal of context managers.'''
     with contextlib.ExitStack() as stack:
         def f():
             for x in xs:
                 yield stack.enter_context(x)
 
-        yield f
+        yield f()
+
+@contextlib.contextmanager
+def traverse_managers_list(xs):
+    '''Strict traversal of context managers.'''
+    with traverse_managers_iterable(xs) as it:
+        yield list(it)
 
 # In itertools from 3.10.
 def pairwise(iterable):

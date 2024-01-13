@@ -1,5 +1,5 @@
 import base64
-import canvas
+import canvas.client_rest as canvas
 import dataclasses
 import functools
 import itertools
@@ -12,14 +12,13 @@ from gql.transport.requests import RequestsHTTPTransport
 from gql.dsl import dsl_gql, DSLSchema, DSLType, DSLQuery, DSLInlineFragment, DSLSelectable
 import more_itertools
 
+import graphql.client
+
 import general
 import print_parse
 
 
 logger = logging.getLogger(__name__)
-
-def query(*args, **kwargs):
-    return dsl_gql(DSLQuery(*args, **kwargs))
 
 def id_newstyle(type, id):
     return base64.standard_b64encode(f'{type._type}-{id}'.encode()).decode()
@@ -38,7 +37,7 @@ class QueryNode:
     id: int
     fields: Iterable[DSLSelectable]
 
-class Client:
+class Client(graphql.client.ClientBase):
     def __init__(self, canvas_client):
         self.canvas = canvas_client
         self.transport = RequestsHTTPTransport(

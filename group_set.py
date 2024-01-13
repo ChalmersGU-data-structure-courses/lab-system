@@ -2,7 +2,7 @@ import contextlib
 import functools
 import logging
 
-import canvas
+import canvas.client_rest as canvas
 import general
 
 class GroupSet:

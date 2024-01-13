@@ -6,7 +6,7 @@ import time
 
 sys.path.append(str(Path('__file__').parent / '..'))
 
-import canvas  # noqa: E402
+import canvas.client_rest as canvas  # noqa: E402
 import general  # noqa: E402
 
 logging.basicConfig(
@@ -16,7 +16,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-from gitlab_config_personal import canvas_auth_token  # noqa: E402
+from gitlab_config_personal import canvas.client_rest as canvas_auth_token  # noqa: E402
 c = canvas.Canvas('chalmers.instructure.com', auth_token = canvas_auth_token)
 course_id = 23356
 desired_name = 'LP3 Data structures and algorithms'

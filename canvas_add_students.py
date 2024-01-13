@@ -1,18 +1,12 @@
-#!/usr/bin/env python3
 import logging
-from pathlib import Path
-import sys
 
-sys.path.append(str(Path('__file__').parent / '..'))
+import canvas.client_rest as canvas
 
-import canvas.client_rest as canvas  # noqa: E402
+from gitlab_config_personal import canvas.client_rest as canvas_auth_token
 
-logging.basicConfig(
-    format = '%(asctime)s %(levelname)s %(module)s: %(message)s',
-    datefmt = '%Y-%m-%d %H:%M:%S',
-    level = logging.WARNING,
-)
-logger = logging.getLogger(__name__)
+logging.basicConfig()
+logging.getLogger().setLevel(logging.INFO)
+
 
 def id_chalmers_from_gu(id):
     return 122370000000000000 + id
@@ -27,7 +21,6 @@ def add_user(course, section_id, user_id):
     }
     course.canvas.post(course.endpoint + ['enrollments'], params = params)
 
-from gitlab_config_personal import canvas.client_rest as canvas_auth_token  # noqa: E402
 canvas_chalmers = canvas.Canvas('chalmers.instructure.com', auth_token = canvas_auth_token)
 canvas_gu = canvas.Canvas('canvas.gu.se', auth_token = canvas_auth_token)
 
@@ -39,7 +32,7 @@ s = target_course.get_section('Added Manually')
 for student in source_course.students:
     chalmers_id = id_chalmers_from_gu(student.id)
     if chalmers_id in target_course.user_details:
-        logger.debug(f'{student.name} is already in course.')
+        print(f'{student.name} is already in course.')
     else:
-        logging.warning(f'Adding {student.name} to course')
+        print(f'Adding {student.name} to course...')
         add_user(target_course, s.id, chalmers_id)

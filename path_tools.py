@@ -2,6 +2,7 @@ import abc
 import contextlib
 import datetime
 import errno
+import fcntl
 import functools
 import itertools
 import json
@@ -52,6 +53,45 @@ def working_dir(path):
         os.chdir(old)
 
 
+# ## File descriptor resource management.
+
+@contextlib.contextmanager
+def closing_fd(fd):
+    try:
+        yield
+    finally:
+        os.close(fd)
+
+@contextlib.contextmanager
+def dir_fd(path, **kwargs):
+    dir_fd = os.open(path, flags = os.O_PATH | os.O_DIRECTORY | os.O_CLOEXEC, **kwargs)
+    with closing_fd(dir_fd):
+        yield dir_fd
+
+
+# ## File locking.
+
+@contextlib.contextmanager
+def file_lock(fd, shared = False):
+    try:
+        fcntl.flock(fd, fcntl.LOCK_SH if shared else fcntl.LOCK_EX)
+        yield
+    finally:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+
+@contextlib.contextmanager
+def lock_file(path, shared = False, mode = 0o666, **kwargs):
+    fd = os.open(
+        path,
+        flags = os.O_CREAT | (os.O_RDWR if shared else os.O_RDONLY) | os.O_CLOEXEC,
+        mode = mode,
+        **kwargs,
+    )
+    with closing_fd(fd):
+        with file_lock(fd, shared = shared):
+            yield
+
+
 # ## File modification times.
 
 # In the symlink case, we also need to check the modification time of each directory in the symlink path.
@@ -76,15 +116,17 @@ def get_content_modification_time(dir_base, path):
         t = max(t, get_content_modification_time(path.parent / path.readlink()))
     return t
 
-def get_modification_time(path):
-    return os.path.getmtime(path)
-
 def modified_at(path):
     return datetime.datetime.fromtimestamp(os.path.getmtime(path), tz = datetime.timezone.utc)
 
-def set_modification_time(path, date):
+def get_modification_time(path, **kwargs):
+    # We use os.stat over getmtime to support more arguments.
+    t = os.stat(path, **kwargs).st_mtime
+    return datetime.datetime.fromtimestamp(t)
+
+def set_modification_time(path, date, **kwargs):
     t = date.timestamp()
-    os.utime(path, (t, t))
+    os.utime(path, (t, t), **kwargs)
 
 class OpenWithModificationTime:
     def __init__(self, path, date):
@@ -246,6 +288,23 @@ def safe_symlink(source, target, exists_ok = False):
             file_exists_error(source)
     else:
         source.symlink_to(target, target.is_dir())
+
+def symlink_force(src, dst, target_is_directory = False, *, dir_fd = None):
+    '''
+    Force create a symlink.
+    Overwrites any existing unlinkable object.
+    See os.symlink.
+
+    Warning: not atomic, will fail if object is recreated concurrently.
+    '''
+    def create():
+        os.symlink(src, dst, target_is_directory, dir_fd = dir_fd)
+
+    try:
+        create()
+    except FileExistsError:
+        os.unlink(dst, dir_fd = dir_fd)
+        create()
 
 # 'rel' is the path to 'dir_from', taken relative to 'dir_to'.
 # Returns list of newly created files.
@@ -622,7 +681,6 @@ class Cache(abc.ABC):
                 self.save_internal(file)
             self.needs_save = False
 
-    @property
     @contextlib.contextmanager
     def updating(self):
         yield
