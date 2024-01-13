@@ -1,0 +1,25 @@
+Idea.
+Write needed student user information into grading merge request.
+That way, the lab system does not rely on Canvas information for this when processing submissions.
+
+For graders user information, we can rely on user profile information on Chalmers GitLab.
+
+What happens if a user gets added manually to a lab project?
+The next time we sync Canvas → GitLab, the system can use placeholder user information.
+
+This decouples the ordinary operation of the lab system from Canvas.
+The responsibility for creating and configuring lab projects probably still belongs the lab system.
+
+So it should react to the following events:
+* create (delete?) a lab project
+* handle a submission, grading, test request
+
+Tasks:
+* Add cache for resolving personnummer to CID via PDB
+* Add cache for users on Chalmers GitLab
+* Add submission handling in merge request in same project.
+* Better webhook management.
+  - Regularly check for their status?
+  - Check status if update is found while polling?
+
+

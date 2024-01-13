@@ -12,6 +12,7 @@ import dateutil.parser
 import gitlab
 
 import general
+import path_tools
 import print_parse
 
 
@@ -694,3 +695,162 @@ def event_type(event):
         if r is not None:
             return r
     raise ValueError(f'no event type found in event {event}')
+
+'''
+Data:
+- last updated
+- 
+'''
+
+
+
+
+class UsernameCache:
+    '''
+    A simple directory-based cache for data stored as a single file.
+    Suitable for interprocess communication.
+
+    For sharing between processes of different users, we recommend the following workflow.
+    * Designate a supplemental group for access to the cache.
+    * Add users that should have access to the cache to this group.
+    * Some user in the supplemental group creates the cache directory.
+      They then create every file in the directory needed by the cache as an empty placeholder, group-writable and owned by the supplemental group.
+      
+      This may be accomplished using 'create_placeholders'.
+      Do not give the cache directory to the supplemental group.
+      This compromises security between its users.
+    * The cache can now be used by all users in the supplemental group.
+
+    Subclasses may add more files to the cache directory as needed.
+    Take care to extend 'paths' as appropriate.
+    '''
+    def __init__(self, gl, path):
+        self.gl = gl
+
+        self.path = Path(path)
+        self.path.mkdir(exist_ok = True)
+
+        self._path_lock = self.path / 'lock'
+        self._path_lock_update = self.path / 'lock_update'
+
+        self.last_updated = DateFile(self.path / 'last_update')
+        self.last_changed = DateFile(self.path / 'last_changed')
+
+        self.path_data = self.path / 'data'
+        self._path_hash = self.path / 'hash'
+
+        self.usernames = None
+
+    def paths(self):
+        '''
+        An iterable of paths used by this cache.
+
+        Overwrite this for caches using more files.
+        '''
+        yield self._path_lock
+        yield self._path_lock_update
+        yield self.last_updated.path
+        yield self.last_changed.path
+        yield self._path_hash
+        yield self.path_data
+
+    def create_placeholders(self, group_id):
+        '''
+        Create placeholder files as needed for a shared cache with other users.
+        Every file needed is created empty, group-writable, owned by the given group.
+        '''
+        with working_dir(self.path):
+            for path_file in self.paths:
+                create_placeholder_file_for_group(path_file, group_id)
+
+    @property
+    @contextlib.contextmanager
+    def reading(self):
+        '''
+        A context manager for reading from the cache.
+        Gives reading permissions.
+
+        Incompatible with 'writing'.
+        '''
+        with lock_file(self._path_lock, shared = True):
+            yield
+
+    @property
+    @contextlib.contextmanager
+    def writing(self):
+        '''
+        A context manager for reading from and writing to the cache.
+        Gives reading and writing permissions.
+
+        Incompatible with 'reading'.
+        '''
+        with lock_file(self._path_lock, shared = False):
+            yield
+
+    @property
+    def inhabited(self):
+        '''
+        Requires reading permissions.
+
+        Checks if the cache is inhabited.
+        '''
+        try:
+            return bool(self._path_hash.read_bytes())
+        except FileNotFoundError:
+            return False
+
+    def hash_differs(self, hash: bytes):
+        '''
+        Requires reading permissions.
+
+        Checks if the cache hash differs with respect to the given hash.
+        '''
+        return hash != self._path_hash.read_bytes()
+
+    def hash_update(self):
+        '''
+        Requires writing permissions.
+
+        Updates the hash after data has been written.
+        Return a boolean indicating if it changed.
+        '''
+        with self.path_data.open('b') as file:
+            hash = hashlib.file_digest(file, hashlib.sha1).digest()
+            changed = hash_differs(hash)
+            if changed:
+                self._path_hash.write_bytes(hash)
+            return changed
+
+    @property
+    @contextlib.contextmanager
+    def updating(self):
+        '''
+        A context manager for updating the cache.
+
+        Updating usually involves gathering new data before writing it to the cache.
+        Gathering the new data can take long (e.g., network access).
+        Therefore, we may want to separaste it from writing to the cache.
+
+        The usual flow is as follows:
+          with cache.reading:
+            
+
+          with cache.updating:
+            [check if update to desired recency already happened; if so, return]
+            date = datetime.now(timezone.utc)
+            [obtain the new data]
+            with cache.writing:
+              [write the new data to the cache]
+              cache.last_updated.write(date)
+        '''
+        with lock_file(self._path_lock_update, shared = False):
+            yield
+
+
+
+
+
+
+
+
+

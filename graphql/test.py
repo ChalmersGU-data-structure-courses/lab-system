@@ -8,10 +8,10 @@ import gitlab
 from gql.transport.requests import RequestsHTTPTransport
 from gql.dsl import dsl_gql, DSLSchema, DSLQuery, DSLInlineFragment
 
-from gitlab_config_personal import canvas_auth_token, gitlab_private_token
-import gitlab_tools
+from gitlab_config_personal import canvas.client_rest as canvas_auth_token, gitlab_private_token
+import gitlab.tools
 
-import canvas
+import canvas.client_rest as canvas
 import graph_ql.canvas
 import general
 import graph_ql.gitlab
@@ -85,7 +85,7 @@ with general.timing('issues'):
 
 # with general.timing('members via REST'):
 #     for g in range(1, 101):
-#         gitlab_tools.list_all(gl.projects.get(
+#         gitlab.tools.list_all(gl.projects.get(
 #             f'courses/lp2-data-structures/groups/{g:02d}/lab-1-java',
 #             lazy = True,
 #         ).members_all)

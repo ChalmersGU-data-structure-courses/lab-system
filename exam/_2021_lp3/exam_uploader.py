@@ -11,7 +11,7 @@ import random
 import shlex
 import shutil
 
-import canvas
+import canvas.client_rest as canvas
 import path_tools
 
 import gitlab_config as config

@@ -7,7 +7,7 @@ import gspread
 import logging
 import re
 
-import canvas
+import canvas.client_rest as canvas
 import exam_uploader
 import general
 import gitlab_config as config

@@ -130,7 +130,7 @@ def is_up_to_date(src_file):
     Here, "up-to-date" means newer modification time.
     '''
     bin_file = src_file.with_suffix('.class')
-    return bin_file.exists() and os.path.getmtime(bin_file) > path_tools.get_modification_time(src_file)
+    return bin_file.exists() and os.path.getmtime(bin_file) > os.path.getmtime(src_file)
 
 def all_up_to_date(
     src = None,

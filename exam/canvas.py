@@ -13,7 +13,7 @@ import sys
 import gspread
 import PyPDF2
 
-import canvas
+import canvas.client_rest as canvas
 import general
 import gitlab_config as config  # TODO: fix hardcoded config
 from google_tools.drive import Drive
