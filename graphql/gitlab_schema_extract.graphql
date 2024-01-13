@@ -1,0 +1,38 @@
+scalar UserID
+scalar GroupID
+
+enum Sort {
+  CREATED_ASC
+  CREATED_DESC
+  UPDATED_ASC
+  UPDATED_DESC
+}
+
+type PageInfo {
+  endCursor: String
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+}
+
+type UserCoreConnection {
+  count: Int!
+  nodes: [UserCore]
+  pageInfo: PageInfo!
+}
+
+type UserCore {
+  username: String!
+	id: ID!
+}
+
+type Query {
+  users(
+    after: String
+    before: String
+    first: Int
+    last: Int
+    groupId: GroupID
+    sort: Sort = created_desc
+  ): UserCoreConnection
+}

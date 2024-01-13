@@ -1,4 +1,4 @@
-import canvas
+import canvas.client_rest as canvas
 
 import gitlab_config as config
 

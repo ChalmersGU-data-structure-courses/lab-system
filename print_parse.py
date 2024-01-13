@@ -4,9 +4,9 @@ import base64
 import builtins
 import collections
 import dataclasses
-import datetime
+import datetime as module_datetime
 import functools
-import json
+import json as module_json
 import pathlib
 import re
 import shlex
@@ -408,11 +408,11 @@ URL_HTTPS = functools.partial(URL, 'https')
 
 url = compose(
     combine_namedtuple(urllib.parse.SplitResult(
-        identity,
-        netloc,
-        pure_posix_path,
-        query,
-        identity,
+        identity,  # type: ignore
+        netloc,  # type: ignore
+        pure_posix_path,  # type: ignore
+        query,  # type: ignore
+        identity,  # type: ignore
     )),
     PrintParse(
         print = urllib.parse.urlunsplit,
@@ -423,6 +423,11 @@ url = compose(
 command_line = PrintParse(
     print = shlex.join,
     parse = shlex.split,
+)
+
+string_coding = PrintParse(
+    str.encode,
+    bytes.decode,
 )
 
 ascii = PrintParse(
@@ -443,25 +448,22 @@ base64_standard = PrintParse(
 
 base64_standard_str = compose(ascii, base64_standard, invert(ascii))
 
-module_datetime = datetime
-
 def datetime(format):
     return PrintParse(
         print = lambda x: module_datetime.datetime.strftime(x, format),
         parse = lambda x: module_datetime.datetime.strptime(x, format),
     )
 
-module_json = json
+def json_coding(**kwargs):
+    return PrintParse(
+        print = functools.partial(module_json.dumps, **kwargs),
+        parse = module_json.loads,
+    )
 
-json = PrintParse(
-    print = module_json.dumps,
-    parse = module_json.loads,
-)
+json_coding_nice = json_coding(indent = 4, sort_keys = True)
 
-json_nice = PrintParse(
-    print = functools.partial(module_json.dumps, indent = 4, sort_keys = True),
-    parse = module_json.loads,
-)
+# TODO: change name
+json = json_coding()
 
 def dataclass_dict(cls):
     fields = cls.__dataclass_fields__
@@ -484,13 +486,13 @@ def dataclass_dict(cls):
             for (name, field) in fields.items()
         })
 
-    cls.pp = PrintParse(print = print, parse = parse)
+    cls.pp_dict = PrintParse(print = print, parse = parse)
     return cls
 
 def dataclass_json(cls, nice = False):
     dataclass_dict(cls)
-    cls.pp = compose(cls.pp, json_nice if nice else json)
+    cls.pp_json = compose(cls.pp_dict, json_coding_nice if nice else json)
     return cls
 
-def field(pp):
+def dataclass_field(pp):
     return dataclasses.field(metadata = {'pp': pp})
