@@ -7,7 +7,7 @@ import dominate
 
 import general
 import git_tools
-import gitlab.tools
+import gitlab_.tools
 
 
 logger = logging.getLogger(__name__)
@@ -269,7 +269,7 @@ class MembersColumn(Column):
             return bool(self.members)
 
         def fill_in_member(self, gitlab_user, canvas_user):
-            dominate.util.text(gitlab.tools.format_username(gitlab_user))
+            dominate.util.text(gitlab_.tools.format_username(gitlab_user))
             if canvas_user is not None:
                 dominate.util.text(': ')
                 if canvas_user.enrollments:
@@ -397,7 +397,7 @@ class SubmissionFilesColumn(Column):
                     group.grading_via_merge_request.merge_request.web_url,
                 )
             else:
-                linked_grading_response = ('open issue', gitlab.tools.url_issues_new(
+                linked_grading_response = ('open issue', gitlab_.tools.url_issues_new(
                     group.project.get,
                     title = self.lab.submission_handler.response_titles[response_key].print({
                         'tag': submission.request_name,
@@ -407,7 +407,7 @@ class SubmissionFilesColumn(Column):
                 ))
 
         return SubmissionFilesColumn.Value(
-            (submission.request_name, gitlab.tools.url_tree(group.project.get, submission.request_name)),
+            (submission.request_name, gitlab_.tools.url_tree(group.project.get, submission.request_name)),
             linked_grading_response,
         )
 
@@ -459,7 +459,7 @@ class SubmissionDiffColumn(Column):
         b = submission_current.repo_tag()
 
         return SubmissionDiffColumnValue(
-            (name + '..', gitlab.tools.url_compare(self.lab.grading_project.get, a, b)),
+            (name + '..', gitlab_.tools.url_compare(self.lab.grading_project.get, a, b)),
             is_same = a.commit == b.commit,
         )
 

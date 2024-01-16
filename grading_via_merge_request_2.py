@@ -1,6 +1,6 @@
 import functools
 
-import gitlab.tools
+import gitlab_.tools
 import print_parse
 
 
@@ -10,15 +10,15 @@ sync_message = print_parse.regex_many(
 )
 
 def note_date(note):
-    return gitlab.tools.parse_date(note.created_at)
+    return gitlab_.tools.parse_date(note.created_at)
 
 
 class Notes:
     def __init__(self, g):
         self.g = g
-        self.notes = gitlab.tools.list_all(g.merge_request.notes, sort = 'asc')
+        self.notes = gitlab_.tools.list_all(g.merge_request.notes, sort = 'asc')
         self.note_dates = {
-            note.id: gitlab.tools.parse_date(note.created_at)
+            note.id: gitlab_.tools.parse_date(note.created_at)
             for note in self.notes
         }
 
@@ -40,7 +40,7 @@ class Notes:
         def column_specs():
             yield markdown.ColumnSpec(title = markdown.link(
                 'Submission tag',
-                gitlab.tools.url_tag_name(self.group.project.lazy),
+                gitlab_.tools.url_tag_name(self.group.project.lazy),
             ))
             yield markdown.ColumnSpec(title = 'Synchronized')
             yield markdown.ColumnSpec(title = 'Outcome', align = markdown.Alignment.CENTER)
@@ -55,13 +55,13 @@ class Notes:
                 def col_request_name():
                     return markdown.link(
                         request_name,
-                        gitlab.tools.url_tree(self.group.project.lazy, request_name)
+                        gitlab_.tools.url_tree(self.group.project.lazy, request_name)
                     )
 
                 def col_sync():
                     return markdown.link(
-                        self.course.format_datetime(gitlab.tools.parse_date(note.created_at)),
-                        gitlab.tools.url_merge_request_note(self.merge_request, note)
+                        self.course.format_datetime(gitlab_.tools.parse_date(note.created_at)),
+                        gitlab_.tools.url_merge_request_note(self.merge_request, note)
                     )
 
                 def col_outcome():
@@ -70,7 +70,7 @@ class Notes:
 
                 def col_grader():
                     if has_outcome:
-                        return markdown.link(grader, gitlab.tools.url_username(self.gl, grader))
+                        return markdown.link(grader, gitlab_.tools.url_username(self.gl, grader))
 
                 yield (col_request_name(), col_sync(), col_outcome(), col_grader())
 

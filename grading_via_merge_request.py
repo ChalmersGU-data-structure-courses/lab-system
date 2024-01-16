@@ -12,7 +12,7 @@ import more_itertools
 
 import general
 import git_tools
-import gitlab.tools
+import gitlab_.tools
 import markdown
 import path_tools
 import print_parse
@@ -180,7 +180,7 @@ class GradingViaMergeRequest:
         * problem: lab problem stub,
         * submission: branch tracking submission tags in the student project,
         '''
-        r = gitlab.tools.CachedProject(
+        r = gitlab_.tools.CachedProject(
             gl = self.gl,
             logger = self.logger,
             path = self.group.path / 'grading',
@@ -207,7 +207,7 @@ class GradingViaMergeRequest:
                         'color': label_spec.color,
                     })
 
-                project = gitlab.tools.wait_for_fork(self.gl, project)
+                project = gitlab_.tools.wait_for_fork(self.gl, project)
 
                 project.branches.create({
                     'branch': 'submission',
@@ -226,7 +226,7 @@ class GradingViaMergeRequest:
                 # Hack
                 time.sleep(0.1)
 
-                #project = gitlab.tools.wait_for_fork(self.gl, project)
+                #project = gitlab_.tools.wait_for_fork(self.gl, project)
                 project.default_branch = self.course.config.branch.status
                 project.save()
 
@@ -259,7 +259,7 @@ class GradingViaMergeRequest:
     @functools.cached_property
     def merge_request(self):
         self.project.create_ensured()  # do we need this here?
-        (merge_request,) = gitlab.tools.list_all(self.project.lazy.mergerequests)
+        (merge_request,) = gitlab_.tools.list_all(self.project.lazy.mergerequests)
         return merge_request
 
     def merge_request_cached(self):
@@ -274,7 +274,7 @@ class GradingViaMergeRequest:
 
     @functools.cached_property
     def notes(self):
-        return gitlab.tools.list_all(self.merge_request.notes, sort = 'asc')
+        return gitlab_.tools.list_all(self.merge_request.notes, sort = 'asc')
 
     def notes_cached(self):
         return 'notes' in self.__dict__
@@ -303,7 +303,7 @@ class GradingViaMergeRequest:
 
     @functools.cached_property
     def notes_by_date(self):
-        return [(gitlab.tools.parse_date(note.created_at), note) for note in self.notes]
+        return [(gitlab_.tools.parse_date(note.created_at), note) for note in self.notes]
 
     def synced_submissions_generator(self):
         for note in self.notes:
@@ -311,7 +311,7 @@ class GradingViaMergeRequest:
                 try:
                     line = note.body.splitlines()[0]
                     (request_name, _) = self.sync_message.parse(line)
-                    yield (request_name, (gitlab.tools.parse_date(note.created_at), note))
+                    yield (request_name, (gitlab_.tools.parse_date(note.created_at), note))
                 except ValueError:
                     pass
         pass
@@ -326,7 +326,7 @@ class GradingViaMergeRequest:
 
     @functools.cached_property
     def reviewer_intervals(self):
-        return list(gitlab.tools.parse_reviewer_intervals(self.notes))
+        return list(gitlab_.tools.parse_reviewer_intervals(self.notes))
 
     @functools.cached_property
     def reviewer_current(self):
@@ -341,14 +341,14 @@ class GradingViaMergeRequest:
                 return (reviewer, start)
 
     def label_events_generator(self):
-        for label_event in gitlab.tools.list_all(self.merge_request.resourcelabelevents):
+        for label_event in gitlab_.tools.list_all(self.merge_request.resourcelabelevents):
             try:
                 outcome = self.setup_data.label_pp.parse(label_event.label['name'])
             except KeyError:
                 continue
 
             user_id = label_event.user['id']
-            action = gitlab.tools.parse_label_event_action(label_event.action)
+            action = gitlab_.tools.parse_label_event_action(label_event.action)
             if user_id in self.course.lab_system_users and (outcome is None if action else not outcome is None):
                 system = True
             elif user_id in self.course.graders:
@@ -360,7 +360,7 @@ class GradingViaMergeRequest:
                 continue
 
             username = label_event.user['username']
-            date = gitlab.tools.parse_date(label_event.created_at)
+            date = gitlab_.tools.parse_date(label_event.created_at)
             yield (date, (outcome, action), (username, system))
 
     @functools.cached_property
@@ -381,7 +381,7 @@ class GradingViaMergeRequest:
         # But the key argument is only supported from 3.10.
         i = bisect.bisect_right([date for (date, _) in self.notes_by_date], date) - 1
         note = self.notes_by_date[i][1] if i >= 0 else None
-        return gitlab.tools.url_merge_request_note(self.merge_request, note)
+        return gitlab_.tools.url_merge_request_note(self.merge_request, note)
 
     def submission_label_events(self, request_from = None, request_to = None):
         if not request_from is None:
@@ -483,7 +483,7 @@ class GradingViaMergeRequest:
         def column_specs():
             yield markdown.ColumnSpec(title = markdown.link(
                 'Submission tag',
-                gitlab.tools.url_tag_name(self.group.project.lazy),
+                gitlab_.tools.url_tag_name(self.group.project.lazy),
             ))
             yield markdown.ColumnSpec(title = 'Synchronized')
             yield markdown.ColumnSpec(title = 'Outcome', align = markdown.Alignment.CENTER)
@@ -498,13 +498,13 @@ class GradingViaMergeRequest:
                 def col_request_name():
                     return markdown.link(
                         request_name,
-                        gitlab.tools.url_tree(self.group.project.lazy, request_name)
+                        gitlab_.tools.url_tree(self.group.project.lazy, request_name)
                     )
 
                 def col_sync():
                     return markdown.link(
-                        self.course.format_datetime(gitlab.tools.parse_date(note.created_at)),
-                        gitlab.tools.url_merge_request_note(self.merge_request, note)
+                        self.course.format_datetime(gitlab_.tools.parse_date(note.created_at)),
+                        gitlab_.tools.url_merge_request_note(self.merge_request, note)
                     )
 
                 def col_outcome():
@@ -513,7 +513,7 @@ class GradingViaMergeRequest:
 
                 def col_grader():
                     if has_outcome:
-                        return markdown.link(grader, gitlab.tools.url_username(self.gl, grader))
+                        return markdown.link(grader, gitlab_.tools.url_username(self.gl, grader))
 
                 yield (col_request_name(), col_sync(), col_outcome(), col_grader())
 
@@ -545,7 +545,7 @@ class GradingViaMergeRequest:
     def add_students(self):
         self.group.members_clear()
         for gitlab_user in self.group.members:
-            with gitlab.tools.exist_ok():
+            with gitlab_.tools.exist_ok():
                 self.project.lazy.members.create({
                     'user_id': gitlab_user.id,
                     'access_level': gitlab.const.REPORTER_ACCESS,
@@ -603,7 +603,7 @@ class GradingViaMergeRequest:
             time.sleep(0.1)
 
             def body():
-                link = gitlab.tools.url_tree(self.group.project.get, submission.request_name)
+                link = gitlab_.tools.url_tree(self.group.project.get, submission.request_name)
                 yield general.join_lines([self.sync_message.print((submission.request_name, link))])
                 submission_message = git_tools.tag_message(
                     submission.repo_remote_tag,
