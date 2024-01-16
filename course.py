@@ -635,7 +635,7 @@ class Course:
         finally:
             self.logger.info('Deleted project hooks in all labs')
 
-    def parse_hook_event(self, hook_event, lab_full_id, group_id_gitlab, strict = False):
+    def parse_hook_event(self, hook_event, lab_full_id, project_slug, strict = False):
         '''
         Arguments:
         * hook_event:
@@ -643,8 +643,8 @@ class Course:
             Event received from a webhook in this course.
         * lab_full_id:
             Lab id as appearing in the project path of the event.
-        * group_id_gitlab:
-            Group id as appearing in the project path of the event.
+        * project_slug:
+            Project as appearing in the project path of the event.
         * strict:
             Whether to fail on unknown events.
 
@@ -671,7 +671,7 @@ class Course:
         if lab is not None:
             yield from webhook_listener.map_with_callback(
                 lab.course_event,
-                lab.parse_hook_event(hook_event, group_id_gitlab, strict = strict),
+                lab.parse_hook_event(hook_event, project_slug, strict = strict),
             )
         else:
             if strict:
