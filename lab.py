@@ -467,14 +467,15 @@ class Lab:
     @functools.cached_property
     def groups(self):
         def group_ids():
-            for project in gitlab_.tools.list_all(self.gitlab_group.lazy.projects):
-                if project.path.startswith(self.group_prefix):
-                    group_id_printed = project.path.removeprefix(self.group_prefix)
-                    group_id = self.student_connector.gitlab_group_slug_pp().parse(group_id_printed)
-                    if not group_id is None:
-                        yield group_id
-                elif project.path in self.solutions.keys():
-                    yield project.path
+            yield 'sattler'
+        #     for project in gitlab_.tools.list_all(self.gitlab_group.lazy.projects):
+        #         if project.path.startswith(self.group_prefix):
+        #             group_id_printed = project.path.removeprefix(self.group_prefix)
+        #             group_id = self.student_connector.gitlab_group_slug_pp().parse(group_id_printed)
+        #             if not group_id is None:
+        #                 yield group_id
+        #         elif project.path in self.solutions.keys():
+        #             yield project.path
 
         return {id: group_project.GroupProject(self, id) for id in group_ids()}
 
@@ -1299,14 +1300,14 @@ class Lab:
             for (gitlab_username, group) in self.group_by_gitlab_username.items()
         }
 
-    def parse_hook_event(self, hook_event, group_id_gitlab, strict = False):
+    def parse_hook_event(self, hook_event, project_slug, strict = False):
         '''
         Arguments:
         * hook_event:
             Dictionary (decoded JSON).
             Event received from a webhook in this lab.
-        * group_id_gitlab:
-            Group id as appearing in the project path of the event.
+        * project_slug:
+            Project as appearing in the project path of the event.
         * strict:
             Whether to fail on unknown events.
 
@@ -1315,7 +1316,11 @@ class Lab:
         - a callback function to handle the event.
         These are the lab events triggered by the webhook event.
         '''
-        id = self.student_connector.gitlab_group_slug_pp().parse(group_id_gitlab)
+        if not project_slug.startswith(self.group_prefix):
+            raise Exception(f'Unexpected project slug in hook event: {project_slug}')
+
+        project_slug = project_slug.removeprefix(self.group_prefix)
+        id = self.student_connector.gitlab_group_slug_pp().parse(project_slug)
         try:
             group = self.groups[id]
         except LookupError:

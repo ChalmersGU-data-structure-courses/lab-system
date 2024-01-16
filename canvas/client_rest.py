@@ -14,7 +14,7 @@ import urllib.parse
 
 from general import (
     from_singleton, group_by, doublequote, JSONObject, json_encoder, print_error,
-    on, eq, without_adjacent_dups, join_lines,
+    on, eq, without_adjacent_dups, join_lines, BearerAuth
 )
 from path_tools import (
     add_suffix, format_path,
@@ -54,7 +54,7 @@ class Canvas:
         self.base_url_api = self.base_url + '/api/v1'
 
         self.session = requests.Session()
-        self.session.auth = general.BearerAuth(self.auth_token)
+        self.session.auth = BearerAuth(self.auth_token)
         #self.session.headers.update({'Authorization': 'Bearer {}'.format(self.auth_token)})
 
         self.session_file = requests.Session()
