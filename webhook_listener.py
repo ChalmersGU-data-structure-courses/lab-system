@@ -142,7 +142,7 @@ def parse_hook_event(courses_by_groups_path, hook_event, strict = False):
     with parsing_error_manager(hook_event):
         # Find the relevant lab and group project.
         project_path = PurePosixPath(hook_event['project']['path_with_namespace'])
-        (project_slug, group_id_gitlab, lab_full_id, *path_groups_parts_rev) = reversed(project_path.parts)
+        (project_slug, lab_full_id, *path_groups_parts_rev) = reversed(project_path.parts)
         path_groups = PurePosixPath(*reversed(path_groups_parts_rev))
 
         course = courses_by_groups_path.get(path_groups)
@@ -152,7 +152,7 @@ def parse_hook_event(courses_by_groups_path, hook_event, strict = False):
                 course.parse_hook_event(
                     hook_event = hook_event,
                     lab_full_id = lab_full_id,
-                    group_id_gitlab = group_id_gitlab,
+                    project_slug = project_slug,
                     strict = strict,
                 ),
             )

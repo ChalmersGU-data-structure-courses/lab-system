@@ -431,3 +431,8 @@ def resolve_unmerged_blobs(repo, index, *merge_file_options):
         merge_blobs(repo, base, current, other, *merge_file_options)
         for (filename, ((_, base), (_, current), (_, other))) in index.unmerged_blobs().items()
     )
+
+def get_root_commit(commit):
+    while commit.parents:
+        commit = commit.parents[0]
+    return commit

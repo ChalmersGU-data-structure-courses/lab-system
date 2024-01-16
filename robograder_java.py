@@ -244,7 +244,7 @@ class LabRobograder:
     this is used to determine timeout periods for test cases.
     '''
 
-    def __init__(self, dir_lab, dir_robograder = rel_dir_robograder, dir_submission_src = Path(), machine_speed = 1):
+    def __init__(self, dir_lab, dir_robograder = rel_dir_robograder, dir_submission_src = Path(), dir_problem = Path('problem'), machine_speed = 1):
         '''
         Arguments:
         * dir_lab:
@@ -255,6 +255,8 @@ class LabRobograder:
             Relative path to the robograder source in the lab.
         * dir_submission_src:
             Relative path of the source code hierarchy in submissions.
+        * dir_problem:
+            Relative path to the lab problem.
         * machine_speed:
             Floating-point number.
             The machine speed relative to a 2015 Desktop machine.
@@ -271,7 +273,7 @@ class LabRobograder:
             raise RobograderMissingException(f'No robograder found in {path_tools.format_path(self.dir_lab)}')
         logger.debug(f'Detected robograder in {path_tools.format_path(self.dir_lab)}.')
 
-        self.problem_src = self.dir_lab / 'problem'
+        self.problem_src = self.dir_lab / dir_problem
 
     def compile(self, force = False):
         '''

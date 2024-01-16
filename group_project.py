@@ -650,20 +650,17 @@ class GroupProject:
         self.is_known = self.id in self.lab.group_ids_desired
         self.is_solution = lab.group_id_is_solution(id)
 
-        self.path = self.lab.path / self.path_name
-        self.name = f'{self.lab.name_full} — {self.lab.student_connector.gitlab_group_name(id)}'
-
         if self.is_solution:
             self.remote = self.id
             self.path_name = self.id
             self.name = self.lab.solutions[self.id]
-        elif:
+        else:
             c = self.lab.student_connector
             self.remote = c.gitlab_group_slug_pp().print(id)
             self.path_name = f'{self.lab.group_prefix}{self.remote}'
             self.name = f'{self.lab.name_full} — {self.lab.student_connector.gitlab_group_name(id)}'
 
-        self.path = self.lab.path / self.remote
+        self.path = self.lab.path / self.path_name
         if self.is_known:
             self.handler_data = {
                 handler_key: HandlerData(self, handler_key)
