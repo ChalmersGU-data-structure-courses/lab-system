@@ -7,10 +7,13 @@ from types import SimpleNamespace
 
 import gdpr_coding
 import gitlab_.tools
-import lab_handlers
-import lab_handlers_java
+import handlers.general
+import handlers.java
+import handlers.python
+import handlers.language
 import print_parse
-import tester_java
+import testers.podman
+import testers.java
 from this_dir import this_dir
 
 # Personal configuration.
@@ -180,7 +183,6 @@ lab = SimpleNamespace(
 # * a grader wants to go by a different informal name,
 # * there are two graders with the same first name.
 names_informal = print_parse.from_dict([
-    ('REDACTED_NAME', 'REDACTED_FIRST_NAME'),
 ])
 
 # Configuration exclusively related to grading sheets.
@@ -209,7 +211,7 @@ grading_sheet = SimpleNamespace(
     # This is created by the user, but maintained by the lab script.
     # The key (a base64 string) can be found in the URL of the spreadsheet.
     # Individual grading sheets for each lab are worksheets in this spreadsheet.
-    spreadsheet = '1AL60xqNQD25yevWc8BgQRzl_dnpiz41QnxCIh2E3rrA',
+    spreadsheet = '1WuYyVCzq726JOBcNSLXta-iVZdX1032_l2T_UNPaiMY',
 
     # Template grading sheet on Google Sheets.
     # If the lab script has access to this, it can create initial grading worksheets.
@@ -348,38 +350,50 @@ _lab_config = SimpleNamespace(
     },
 )
 
-_language = 'java'
-
 class _LabConfig:
-    def __init__(self, k, lab_folder, refresh_period, has_tester = False, has_robograder = False):
-        self.path_source = _lab_repo / 'labs' / lab_folder / _language
-        self.has_solution = k >= 2
+    def __init__(self, k, lab_folder, refresh_period, submission_ready = True):
+        self.path_source = _lab_repo / 'labs' / lab_folder
+        self.has_solution = True
         self.group_set = None if k == 1 else _group
-        self.path_gitignore = _lab_repo / 'gitignores' / f'{_language}.gitignore'
+        self.path_gitignore = None
         self.grading_sheet = lab.name.print(k)
         self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-to-be-graded.html'.format(lab.full_id.print(k))
 
-        def f():
-            if has_robograder:
-                yield ('robograding', lab_handlers_java.RobogradingHandler(
-                    machine_speed = _machine_speed
-                ))
-            elif has_tester:
-                yield ('testing', lab_handlers.GenericTestingHandler(
-                    tester_java.LabTester.factory,
-                    machine_speed = _machine_speed
-                ))
+        def submission_ready_no():
+            yield ('submission', handlers.general.SubmissionHandlerStub())
 
-            yield ('submission', lab_handlers_java.SubmissionHandler(
-                tester_java.LabTester.factory,
-                show_solution = self.has_solution,
-                machine_speed = _machine_speed,
-            ))
-        self.request_handlers = dict(f())
+        def submission_ready_yes():
+            if k == 1:
+              java_params = {
+                  'dir_robograder': Path() / 'robograder' / 'java',
+                  'dir_problem': Path() / 'problem' / 'java',
+                  'machine_speed': _machine_speed,
+              }
+            else:
+                java_params = {
+                    'tester_factory': testers.java.LabTester.factory,
+                    'dir_tester': Path() / 'robotester' / 'java',
+                    'dir_problem': Path() / 'problem' / 'java',
+                    'machine_speed': _machine_speed,
+                }
+            python_params = {
+                'tester_factory': testers.podman.LabTester.factory,
+                'dir_tester': Path() / 'robotester' / 'python',
+                'machine_speed': _machine_speed,
+            }
 
+            yield ('submission', handlers.language.SubmissionHandler(sub_handlers = {
+                'java': handlers.java.SubmissionHandler(**java_params),
+                'python': handlers.python.SubmissionHandler(**python_params),
+            }, shared_columns = ['robograding'], show_solution = True))
+
+            yield ('robograding', handlers.language.RobogradingHandler(sub_handlers = {
+                'java': (handlers.java.RobogradingHandler if k == 1 else handlers.general.GenericTestingHandler)(**java_params),
+                'python': handlers.general.GenericTestingHandler(**python_params),
+            }))
+        self.request_handlers = dict(submission_ready_yes() if submission_ready else submission_ready_no())
         self.refresh_period = refresh_period
-
-        self.grading_via_merge_request = True
+        self.grading_via_merge_request = False
         self.outcome_labels = {
             None: gitlab_.tools.LabelSpec(name = 'waiting-for-grading', color = 'yellow'),
             0: gitlab_.tools.LabelSpec(name = 'incomplete', color = 'red'),
@@ -395,9 +409,9 @@ def _lab_item(k, *args, **kwargs):
 
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
-    _lab_item(1, 'binary-search'       , datetime.timedelta(minutes = 60), has_robograder = True),  # noqa: E203
-#    _lab_item(2, 'indexing'            , datetime.timedelta(minutes = 15), has_robograder = True),  # noqa: E203
-#    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15), has_robograder = True),  # noqa: E203
+    _lab_item(1, 'binary-search'       , datetime.timedelta(minutes = 15), submission_ready = True),  # noqa: E203
+#    _lab_item(2, 'indexing'            , datetime.timedelta(minutes = 15), submission_ready = True),  # noqa: E203
+#    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15), submission_ready = True),  # noqa: E203
 #    _lab_item(4, 'path-finder'         , datetime.timedelta(minutes = 30), has_robograder = True),  # noqa: E203
 ])
 
@@ -414,56 +428,6 @@ outside_canvas = []
 name_corrections = {}
 
 _cid_to_gitlab_username = print_parse.from_dict([
-    ('REDACTED_CID', 'REDACTED_EMAIL_USERNAME'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
-    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
 ])
 
 # Retrieve the Chalmers GitLab username for a user id on Chalmers/GU Canvas.
@@ -473,7 +437,7 @@ _cid_to_gitlab_username = print_parse.from_dict([
 # Return None if not possible.
 # Takes the course object and the Canvas user object as arguments.
 _canvas_id_to_gitlab_username_override = {
-    122370000000301806: 'REDACTED_CID'
+    122370000000301806: 'REDACTED_CID',
 }
 
 def gitlab_username_from_canvas_user_id(course, user_id):
