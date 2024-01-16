@@ -1557,9 +1557,6 @@ class Lab:
         
         self.logger.info('=== Creating "grading" project for lab ===') 
         self.grading_project.create()
-        
-        self.logger.info('=== Creating student grous according to Canvas groups ===') 
-        self.create_groups_from_canvas()
 
         self.logger.info('=== Forking student projects from official project ===')
         self.create_group_projects()
