@@ -467,15 +467,14 @@ class Lab:
     @functools.cached_property
     def groups(self):
         def group_ids():
-            yield 'sattler'
-        #     for project in gitlab_.tools.list_all(self.gitlab_group.lazy.projects):
-        #         if project.path.startswith(self.group_prefix):
-        #             group_id_printed = project.path.removeprefix(self.group_prefix)
-        #             group_id = self.student_connector.gitlab_group_slug_pp().parse(group_id_printed)
-        #             if not group_id is None:
-        #                 yield group_id
-        #         elif project.path in self.solutions.keys():
-        #             yield project.path
+            for project in gitlab_.tools.list_all(self.gitlab_group.lazy.projects):
+                if project.path.startswith(self.group_prefix):
+                    group_id_printed = project.path.removeprefix(self.group_prefix)
+                    group_id = self.student_connector.gitlab_group_slug_pp().parse(group_id_printed)
+                    if not group_id is None:
+                        yield group_id
+                elif project.path in self.solutions.keys():
+                    yield project.path
 
         return {id: group_project.GroupProject(self, id) for id in group_ids()}
 
