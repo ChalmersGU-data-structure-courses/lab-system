@@ -67,7 +67,7 @@ class StudentCallableRobograderData(HandlerData):
                 try:
                     self.lab.compiler.compile(src, bin)
                 except course_basics.SubmissionHandlingException as e:
-                    description = gitlab.tools.append_paragraph(
+                    description = gitlab_.tools.append_paragraph(
                         e.markdown(),
                         'If you believe this is a mistake on our end, please contact the responsible teacher.'
                     )
