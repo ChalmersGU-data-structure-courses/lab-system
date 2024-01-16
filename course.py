@@ -23,7 +23,7 @@ import more_itertools
 import canvas.client_rest as canvas
 import events
 import gdpr_coding
-import gitlab.tools
+import gitlab_.tools
 import grading_sheet
 import group_set
 from instance_cache import instance_cache
@@ -296,7 +296,7 @@ class Course:
     def gl(self):
         r = gitlab.Gitlab(
             self.config.gitlab_url,
-            private_token = gitlab.tools.read_private_token(self.config.gitlab_private_token)
+            private_token = gitlab_.tools.read_private_token(self.config.gitlab_private_token)
         )
         r.auth()
         return r
@@ -318,7 +318,7 @@ class Course:
 
     @functools.cached_property
     def course_group(self):
-        return gitlab.tools.CachedGroup(
+        return gitlab_.tools.CachedGroup(
             **self.entity_cached_params,
             path = self.path,
             name = 'Course Name (TODO)',
@@ -326,7 +326,7 @@ class Course:
 
     @functools.cached_property
     def graders_group(self):
-        return gitlab.tools.CachedGroup(
+        return gitlab_.tools.CachedGroup(
             **self.entity_cached_params,
             path = self.config.path_graders,
             name = 'Graders',
@@ -334,7 +334,7 @@ class Course:
 
     @functools.cached_property
     def graders(self):
-        return gitlab.tools.members_from_access(
+        return gitlab_.tools.members_from_access(
             self.graders_group.lazy,
             [gitlab.const.OWNER_ACCESS]
         )
@@ -351,13 +351,13 @@ class Course:
     def labs(self):
         return frozenset(
             self.config.lab.id_gitlab.parse(lab.path)
-            for lab in gitlab.tools.list_all(self.labs_group.lazy.subgroups)
+            for lab in gitlab_.tools.list_all(self.labs_group.lazy.subgroups)
         )
 
     @functools.cached_property
     def _gitlab_users(self):
         self.logger.info('Retrieving all users on Chalmers GitLab')
-        return gitlab.tools.users_dict(self.gl.users)
+        return gitlab_.tools.users_dict(self.gl.users)
 
     def gitlab_user(self, gitlab_username):
         '''
@@ -469,8 +469,8 @@ class Course:
         '''
         self.logger.info('adding teachers from Canvas to the grader group')
 
-        members = gitlab.tools.members_dict(self.graders_group.lazy)
-        invitations = gitlab.tools.invitation_dict(self.gl, self.graders_group.lazy)
+        members = gitlab_.tools.members_dict(self.graders_group.lazy)
+        invitations = gitlab_.tools.invitation_dict(self.gl, self.graders_group.lazy)
 
         # Returns the set of prior invitation emails still valid.
         def invite():
@@ -480,7 +480,7 @@ class Course:
                 if not gitlab_username in members:
                     if gitlab_user:
                         self.logger.debug(f'adding {user.name}')
-                        with gitlab.tools.exist_ok():
+                        with gitlab_.tools.exist_ok():
                             self.graders_group.lazy.members.create({
                                 'user_id': gitlab_user.id,
                                 'access_level': gitlab.const.OWNER_ACCESS,
@@ -491,8 +491,8 @@ class Course:
                             yield user.email
                         else:
                             self.logger.debug(f'inviting {user.name} via {user.email}')
-                            with gitlab.tools.exist_ok():
-                                gitlab.tools.invitation_create(
+                            with gitlab_.tools.exist_ok():
+                                gitlab_.tools.invitation_create(
                                     self.gl,
                                     self.graders_group.lazy,
                                     user.email,
@@ -501,8 +501,8 @@ class Course:
 
         for email in invitations.keys() - invite():
             self.logger.debug(f'deleting obsolete invitation of {email}')
-            with gitlab.tools.exist_ok():
-                gitlab.tools.delete(self.gl, self.graders_group.lazy, email)
+            with gitlab_.tools.exist_ok():
+                gitlab_.tools.delete(self.gl, self.graders_group.lazy, email)
 
     def recreate_student_invitations(self, keep_after = None):
         '''
@@ -519,16 +519,16 @@ class Course:
         for group_id in self.groups:
             entity = self.group(group_id).lazy
             entity_name = f'{self.config.group.name.print(group_id)} on GitLab'
-            for invitation in gitlab.tools.invitation_dict(self.gl, entity).values():
+            for invitation in gitlab_.tools.invitation_dict(self.gl, entity).values():
                 created_at = dateutil.parser.parse(invitation['created_at'])
                 if keep_after is None or created_at < keep_after:
                     email = invitation['invite_email']
                     self.logger.info(f'Recreating invitation from {created_at} of {email} to {entity_name}.')
-                    with gitlab.tools.exist_ok():
-                        gitlab.tools.invitation_delete(self.gl, entity, email)
+                    with gitlab_.tools.exist_ok():
+                        gitlab_.tools.invitation_delete(self.gl, entity, email)
                     try:
-                        with gitlab.tools.exist_ok():
-                            gitlab.tools.invitation_create(self.gl, entity, email, gitlab.const.DEVELOPER_ACCESS)
+                        with gitlab_.tools.exist_ok():
+                            gitlab_.tools.invitation_create(self.gl, entity, email, gitlab.const.DEVELOPER_ACCESS)
                     except gitlab.exceptions.GitlabCreateError as e:
                         self.logger.error(str(e))
 
@@ -537,7 +537,7 @@ class Course:
         Get the student members of a group or project.
         We approximate this as meaning members that have developer or maintainer rights.
         '''
-        return gitlab.tools.members_from_access(
+        return gitlab_.tools.members_from_access(
             cached_entity.lazy,
             [gitlab.const.DEVELOPER_ACCESS, gitlab.const.MAINTAINER_ACCESS]
         )
@@ -573,25 +573,25 @@ class Course:
             netloc = self.hook_netloc_default
         return print_parse.netloc_normalize(netloc)
 
-    def hook_specs(self, netloc = None) -> Iterable[gitlab.tools.HookSpec]:
+    def hook_specs(self, netloc = None) -> Iterable[gitlab_.tools.HookSpec]:
         for lab in self.labs.values():
             yield from lab.hook_specs(netloc)
 
     def hooks_create(self, netloc = None):
         def f():
             for spec in self.hook_specs(netloc):
-                yield gitlab.tools.hook_create(spec)
+                yield gitlab_.tools.hook_create(spec)
         return list(f())
 
     def hooks_delete_all(self, netloc = None, except_for = None):
         '''
         Delete all webhooks in all group project in all labs set up with the given netloc on GitLab.
-        See gitlab.tools.hooks_delete_all.
+        See gitlab_.tools.hooks_delete_all.
         '''
         self.logger.info('Deleting all project hooks in all labs')
         netloc = self.hook_normalize_netloc(netloc)
         for spec in self.hook_specs(netloc):
-            gitlab.tools.hooks_delete_all(spec.project, except_for = except_for)
+            gitlab_.tools.hooks_delete_all(spec.project, except_for = except_for)
 
     def hooks_ensure(self, netloc = None, sample_size = 10):
         '''
@@ -606,13 +606,13 @@ class Course:
         netloc = self.hook_normalize_netloc(netloc)
         if sample_size is None:
             for spec in self.hook_specs(netloc):
-                gitlab.tools.hook_ensure(spec)
+                gitlab_.tools.hook_ensure(spec)
         else:
             specs = list(self.hook_specs(netloc))
             specs_selection = random.sample(specs, min(len(specs), sample_size))
             try:
                 for spec in specs_selection:
-                    gitlab.tools.hook_ensure(spec)
+                    gitlab_.tools.hook_ensure(spec)
             except ValueError as e:
                 self.logger.info(
                     f'Live webhook(s) do(es) not match hook configuration {spec}: {str(e)}'
@@ -630,7 +630,7 @@ class Course:
         '''
         self.logger.info('Creating project hooks in all labs')
         try:
-            with general.traverse_managers_iterable(gitlab.tools.hook_manager(spec) for spec in self.hook_specs) as it:
+            with general.traverse_managers_iterable(gitlab_.tools.hook_manager(spec) for spec in self.hook_specs) as it:
                 yield list(it)
         finally:
             self.logger.info('Deleted project hooks in all labs')

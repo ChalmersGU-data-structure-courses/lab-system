@@ -6,7 +6,7 @@ import re
 import dominate
 
 import general
-import gitlab.tools
+import gitlab_.tools
 import lab_interfaces
 import live_submissions_table
 import markdown
@@ -281,7 +281,7 @@ class SubmissionTesting:
                     with cell:
                         with dominate.tags.p():
                             if self_outer.report_path is None:
-                                live_submissions_table.format_url('test', gitlab.tools.url_tree(
+                                live_submissions_table.format_url('test', gitlab_.tools.url_tree(
                                     self.lab.grading_project.get,
                                     submission_current.repo_tag(self_outer.segments_test),
                                 ))
@@ -290,14 +290,14 @@ class SubmissionTesting:
                                     True: self_outer.segments_test_report,
                                     False: self_outer.segments_test,
                                 }[self_outer.has_markdown_report]
-                                live_submissions_table.format_url('report', gitlab.tools.url_blob(
+                                live_submissions_table.format_url('report', gitlab_.tools.url_blob(
                                     self.lab.grading_project.get,
                                     submission_current.repo_tag(segments),
                                     self_outer.report_path,
                                 ))
                         if self.lab.config.has_solution:
                             with dominate.tags.p():
-                                live_submissions_table.format_url('vs. solution', gitlab.tools.url_compare(
+                                live_submissions_table.format_url('vs. solution', gitlab_.tools.url_compare(
                                     self.lab.grading_project.get,
                                     self.lab.groups[self_outer.solution].submission_current().repo_tag(self_outer.segments_test),
                                     submission_current.repo_tag(self_outer.segments_test),

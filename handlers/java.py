@@ -3,7 +3,7 @@ from pathlib import PurePosixPath, Path
 import dominate
 
 import git_tools
-import gitlab.tools
+import gitlab_.tools
 import lab_interfaces
 import live_submissions_table
 import path_tools
@@ -28,7 +28,7 @@ class CompilationColumn(live_submissions_table.Column):
         submission_current = group.submission_current(deadline = self.config.deadline)
 
         report = submission_current.repo_tag(report_segments)
-        url = gitlab.tools.url_blob(
+        url = gitlab_.tools.url_blob(
             self.lab.grading_project.get,
             report.name,
             report_compilation,
@@ -67,7 +67,7 @@ class RobogradingColumn(live_submissions_table.Column):
             return live_submissions_table.CallbackColumnValue(has_content = False)
 
         report = submission_current.repo_tag(report_segments)
-        url = gitlab.tools.url_blob(
+        url = gitlab_.tools.url_blob(
             self.lab.grading_project.get,
             report.name,
             report_robograding,
@@ -94,7 +94,7 @@ class CompilationAndRobogradingColumn(live_submissions_table.Column):
         report = submission_current.repo_tag(report_segments)
 
         def link_for(name, path):
-            a = live_submissions_table.format_url(name, gitlab.tools.url_blob(
+            a = live_submissions_table.format_url(name, gitlab_.tools.url_blob(
                 self.lab.grading_project.get,
                 report.name,
                 path,

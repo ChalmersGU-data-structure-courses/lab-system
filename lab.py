@@ -14,7 +14,7 @@ import gitlab.v4.objects.tags
 import events
 import general
 import git_tools
-import gitlab.tools
+import gitlab_.tools
 import google_tools.sheets
 import grading_sheet
 import grading_via_merge_request
@@ -275,7 +275,7 @@ class Lab:
         '''
         The group for this lab on Chalmers GitLab.
         '''
-        r = gitlab.tools.CachedGroup(
+        r = gitlab_.tools.CachedGroup(
             gl = self.gl,
             logger = self.logger,
             path = self.path,
@@ -283,7 +283,7 @@ class Lab:
         )
 
         def create():
-            gitlab.tools.CachedGroup.create(
+            gitlab_.tools.CachedGroup.create(
                 r,
                 self.course.course_group.get,
                 description = self.name_semantic,
@@ -308,7 +308,7 @@ class Lab:
     #       So make sure the problem and solution subdirectories are clean beforehand.
     #     * Problem and solution branches are set up.
     #     '''
-    #     def OfficialProject(gitlab.tools.CachedProject):
+    #     def OfficialProject(gitlab_.tools.CachedProject):
     #         def __init__(self, outer):
     #             self.outer = outer
     #             super().__init__(
@@ -357,7 +357,7 @@ class Lab:
         Remember to configure it as a forking basis.
         For example you may want to disable feature that are distracting to students.
         '''
-        r = gitlab.tools.CachedProject(
+        r = gitlab_.tools.CachedProject(
             gl = self.gl,
             logger = self.logger,
             path = self.path / self.course.config.path_lab.official,
@@ -365,7 +365,7 @@ class Lab:
         )
 
         def create():
-            project = gitlab.tools.CachedProject.create(r, self.gitlab_group.get)
+            project = gitlab_.tools.CachedProject.create(r, self.gitlab_group.get)
             try:
                 with path_tools.temp_dir() as dir:
                     repo = git.Repo.init(dir.__fspath__())
@@ -430,7 +430,7 @@ class Lab:
         The grading project on Chalmers GitLab.
         When created, it is empty.
         '''
-        r = gitlab.tools.CachedProject(
+        r = gitlab_.tools.CachedProject(
             gl = self.gl,
             logger = self.logger,
             path = self.path / self.course.config.path_lab.grading,
@@ -438,7 +438,7 @@ class Lab:
         )
 
         def create():
-            gitlab.tools.CachedProject.create(r, self.gitlab_group.get)
+            gitlab_.tools.CachedProject.create(r, self.gitlab_group.get)
         r.create = create
 
         return r
@@ -467,7 +467,7 @@ class Lab:
     @functools.cached_property
     def groups(self):
         def group_ids():
-            for project in gitlab_tools.list_all(self.gitlab_group.lazy.projects):
+            for project in gitlab_.tools.list_all(self.gitlab_group.lazy.projects):
                 if project.path.startswith(self.group_prefix):
                     group_id_printed = project.path.removeprefix(self.group_prefix)
                     group_id = self.student_connector.gitlab_group_slug_pp().parse(group_id_printed)
@@ -646,12 +646,12 @@ class Lab:
         # Should only be needed for solution projects.
         # Protected tags are inherited from primary project by forking.
         self.logger.debug('Protecting tags')
-        gitlab.tools.protect_tags(self.gl, project.id, patterns(), delete_existing = is_solution)
+        gitlab_.tools.protect_tags(self.gl, project.id, patterns(), delete_existing = is_solution)
 
         self.logger.debug('Setting up protected branches')
-        gitlab.tools.delete_protected_branches(project)
-        gitlab.tools.protect_branch(self.gl, project, 'java')
-        gitlab.tools.protect_branch(self.gl, project, 'python')
+        gitlab_.tools.delete_protected_branches(project)
+        gitlab_.tools.protect_branch(self.gl, project, 'java')
+        gitlab_.tools.protect_branch(self.gl, project, 'python')
 
     def create_group_projects(self, exist_ok = False):
         for group in self.groups.values():
@@ -742,7 +742,7 @@ class Lab:
         refs = git_tools.references_hierarchy(self.repo)
         return refs[git_tools.refs.name][git_tools.tags.name]
 
-    def hook_specs(self, netloc = None) -> Iterable[gitlab.tools.HookSpec]:
+    def hook_specs(self, netloc = None) -> Iterable[gitlab_.tools.HookSpec]:
         for group in self.groups.values():
             yield from group.hook_specs(netloc)
 
@@ -1118,7 +1118,7 @@ class Lab:
                     grading_sheet.Query(
                         submission = google_tools.sheets.cell_link_with_fields(
                             submission.request_name,
-                            gitlab.tools.url_tag_name(group.project.get, submission.request_name),
+                            gitlab_.tools.url_tag_name(group.project.get, submission.request_name),
                         ),
                         grader = grader,
                         score = outcome,
@@ -1451,12 +1451,12 @@ class Lab:
             self.logger.debug(f'checking {entity_name}')
             members = {
                 gitlab_user.username
-                for gitlab_user in gitlab.tools.members_dict(entity).values()
+                for gitlab_user in gitlab_.tools.members_dict(entity).values()
                 if general.when(restrict_to_known, gitlab_user.username in self.course.canvas_user_by_gitlab_username)
             }
 
             def invitations():
-                for email in gitlab.tools.invitation_dict(self.gl, entity):
+                for email in gitlab_.tools.invitation_dict(self.gl, entity):
                     if restrict_to_known and not known_gitlab_username_from_email(email):
                         continue
                     yield email
@@ -1473,8 +1473,8 @@ class Lab:
             for email in invitations - invitations_desired:
                 if email:
                     self.logger.warning(f'deleting invitation of {user_str_from_email(email)} to {entity_name}')
-                    with gitlab.tools.exist_ok():
-                        gitlab.tools.invitation_delete(self.gl, entity, email)
+                    with gitlab_.tools.exist_ok():
+                        gitlab_.tools.invitation_delete(self.gl, entity, email)
                 else:
                     self.logger.warning(f'extra invitation of {user_str_from_email(email)} to {entity_name}')
 
@@ -1483,7 +1483,7 @@ class Lab:
                     self.logger.warning(
                         f'removing {user_str_from_gitlab_username(gitlab_username)} from {entity_name}'
                     )
-                    with gitlab.tools.exist_ok():
+                    with gitlab_.tools.exist_ok():
                         entity.members.delete(self.course.gitlab_user(gitlab_username).id)
                 else:
                     self.logger.warning(
@@ -1494,8 +1494,8 @@ class Lab:
                 if add:
                     self.logger.log(25, f'inviting {user_str_from_email(email)} to {entity_name}')
                     try:
-                        with gitlab.tools.exist_ok():
-                            gitlab.tools.invitation_create(self.gl, entity, email, gitlab.const.DEVELOPER_ACCESS)
+                        with gitlab_.tools.exist_ok():
+                            gitlab_.tools.invitation_create(self.gl, entity, email, gitlab.const.DEVELOPER_ACCESS)
                     except gitlab.exceptions.GitlabCreateError as e:
                         self.logger.error(str(e))
                 else:
@@ -1504,7 +1504,7 @@ class Lab:
             for gitlab_username in members_desired - members:
                 if add:
                     self.logger.log(25, f'adding {user_str_from_gitlab_username(gitlab_username)} to {entity_name}')
-                    with gitlab.tools.exist_ok():
+                    with gitlab_.tools.exist_ok():
                         entity.members.create({
                             'user_id': self.course.gitlab_user(gitlab_username).id,
                             'access_level': gitlab.const.DEVELOPER_ACCESS,

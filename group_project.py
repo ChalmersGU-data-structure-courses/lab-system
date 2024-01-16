@@ -16,7 +16,7 @@ import events
 import instance_cache
 import item_parser
 import git_tools
-import gitlab.tools
+import gitlab_.tools
 import grading_via_merge_request
 import markdown
 
@@ -602,7 +602,7 @@ class HandlerData:
             for (request_name, issue_data) in u.items():
                 request_and_responses = result.get(request_name)
                 if request_and_responses is None:
-                    self.logger.warning(gitlab.tools.format_issue_metadata(
+                    self.logger.warning(gitlab_.tools.format_issue_metadata(
                         issue_data[0],
                         f'Response issue in {self.group.name} '
                         'with no matching request tag (ignoring):'
@@ -680,7 +680,7 @@ class GroupProject:
 
     @functools.cached_property
     def group(self):
-        r = gitlab.tools.CachedGroup(
+        r = gitlab_.tools.CachedGroup(
             gl = self.gl,
             logger = self.logger,
             path = self.path,
@@ -688,13 +688,13 @@ class GroupProject:
         )
 
         def create():
-            gitlab.tools.CachedGroup.create(r, self.lab.gitlab_group.get)
+            gitlab_.tools.CachedGroup.create(r, self.lab.gitlab_group.get)
             with contextlib.suppress(AttributeError):
                 del self.lab.groups
         r.create = create
 
         def delete():
-            gitlab.tools.CachedGroup.delete(r)
+            gitlab_.tools.CachedGroup.delete(r)
             with contextlib.suppress(AttributeError):
                 self.lab.groups.pop(self.id)
         r.delete = delete
@@ -708,7 +708,7 @@ class GroupProject:
         On creation, the repository is forked from the official repository.
         That one needs to be initialized.
         '''
-        r = gitlab.tools.CachedProject(
+        r = gitlab_.tools.CachedProject(
             gl = self.gl,
             logger = self.logger,
             path = self.path,
@@ -727,7 +727,7 @@ class GroupProject:
                 project.packages_enabled = False
                 project.save()
 
-                project = gitlab.tools.wait_for_fork(self.gl, project)
+                project = gitlab_.tools.wait_for_fork(self.gl, project)
                 self.lab.configure_student_project(project, self.is_solution)
 
                 r.get = project
@@ -803,7 +803,7 @@ class GroupProject:
         Useful in preparation for removing members from the student group.
         '''
         for gitlab_user in self.members:
-            with gitlab.tools.exist_ok():
+            with gitlab_.tools.exist_ok():
                 self.project.lazy.members.create({
                     'user_id': gitlab_user.id,
                     'access_level': gitlab.const.DEVELOPER_ACCESS,
@@ -827,7 +827,7 @@ class GroupProject:
         Under standard notification settings, it will trigger notifications
         when the resulting text is posted in an issue or comment.
         '''
-        return gitlab.tools.append_mentions(text, self.members)
+        return gitlab_.tools.append_mentions(text, self.members)
 
     @property
     def repo(self):
@@ -1011,7 +1011,7 @@ class GroupProject:
                 'note': self.append_mentions(notify_students)
             })
 
-    def hook_specs(self, netloc = None) -> Iterable[gitlab.tools.HookSpec]:
+    def hook_specs(self, netloc = None) -> Iterable[gitlab_.tools.HookSpec]:
         def f():
             yield (self.project.lazy, ['issues', 'tag_push'])
             if self.lab.config.grading_via_merge_request:
@@ -1020,7 +1020,7 @@ class GroupProject:
 
         netloc = self.course.hook_normalize_netloc(netloc = netloc)
         for (project, events) in f():  # noqa: F402
-            yield gitlab.tools.HookSpec(
+            yield gitlab_.tools.HookSpec(
                 project = project,
                 netloc = netloc,
                 events = events,
@@ -1033,7 +1033,7 @@ class GroupProject:
 
     def tags_from_gitlab(self):
         self.logger.debug(f'Parsing request tags in {self.name} from Chalmers GitLab.')
-        return [(tag.name, tag) for tag in gitlab.tools.get_tags_sorted_by_date(self.project.lazy)]
+        return [(tag.name, tag) for tag in gitlab_.tools.get_tags_sorted_by_date(self.project.lazy)]
 
     def tags_from_repo(self):
         self.logger.debug(f'Parsing request tags in {self.name} from local grading repository.')
@@ -1081,7 +1081,7 @@ class GroupProject:
             item_parser.Config(
                 location_name = self.name,
                 item_name = 'request tag',
-                item_formatter = lambda x: gitlab.tools.format_tag_metadata(self.project.lazy, x[0]),
+                item_formatter = lambda x: gitlab_.tools.format_tag_metadata(self.project.lazy, x[0]),
                 logger = self.logger,
             ),
             f(),
@@ -1103,7 +1103,7 @@ class GroupProject:
         Only official issues can be response issues.
         '''
         self.logger.debug(f'Retrieving response issues in {self.name}.')
-        for issue in gitlab.tools.list_all(
+        for issue in gitlab_.tools.list_all(
             self.project.lazy.issues,
             order_by = 'created_at',
             sort = 'desc',
@@ -1185,7 +1185,7 @@ class GroupProject:
             item_parser.Config(
                 location_name = self.name,
                 item_name = 'response issue',
-                item_formatter = gitlab.tools.format_issue_metadata,
+                item_formatter = gitlab_.tools.format_issue_metadata,
                 logger = self.logger,
                 on_duplicate = on_duplicate,
                 delete_duplicates = delete_duplicates,
@@ -1367,7 +1367,7 @@ class GroupProject:
         These are the group project events triggered by the webhook event.
         '''
         project_name = hook_event['project']['name']
-        event_type = gitlab.tools.event_type(hook_event)
+        event_type = gitlab_.tools.event_type(hook_event)
 
         def handlers():
             yield ((self.project.name, 'tag_push'), self.parse_hook_event_tag)
