@@ -396,7 +396,8 @@ class Course:
         if not gitlab_username is None:
             return gitlab_username
 
-        msg = f'No GitLab username contructable for Canvas user {canvas_user_id}: {canvas_user.name}, {canvas_user.login_id}, {canvas_user.sis_user_id}'
+        canvas_user = self.canvas_course.user_details[canvas_user_id]
+        msg = f'No GitLab username constructable for Canvas user {canvas_user_id}: {canvas_user.name}, {canvas_user.login_id}, {canvas_user.sis_user_id}'
         if strict:
             raise LookupError(msg)
 
