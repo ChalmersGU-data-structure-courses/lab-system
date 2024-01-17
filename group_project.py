@@ -610,8 +610,9 @@ class GroupProject:
         self.logger = logger
 
         self.remote = self.lab.student_connector.gitlab_group_slug_pp().print(id)
-        self.path = self.lab.path / self.remote
-        self.name = self.lab.student_connector.gitlab_group_name(id)
+        self.path_name = f'{self.lab.group_prefix}{self.remote}'
+        self.path = self.lab.path / self.path_name
+        self.name = f'{self.lab.name_full} — {self.lab.student_connector.gitlab_group_name(id)}'
 
         self.handler_data = {
             handler_key: HandlerData(self, handler_key)
@@ -660,8 +661,8 @@ class GroupProject:
         r = gitlab_tools.CachedProject(
             gl = self.gl,
             logger = self.logger,
-            path = self.path / 'work',
-            name = self.lab.name_full,
+            path = self.path,
+            name = self.name,
         )
 
         def create():

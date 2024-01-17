@@ -236,6 +236,7 @@ class Lab:
         self.name = self.course.config.lab.name.print(self.id)
         self.name_semantic = (self.config.path_source / 'name').read_text().strip()
         self.name_full = '{} — {}'.format(self.name, self.name_semantic)
+        self.group_prefix = f'lab{self.id_str}-'
 
         # Student connector
         if self.config.group_set:
@@ -454,16 +455,18 @@ class Lab:
         #     ])
 
         def f():
-            for group in gitlab_tools.list_all(self.gitlab_group.lazy.subgroups):
-                group_id = self.student_connector.gitlab_group_slug_pp().parse(group.path)
-                if not group_id is None:
-                    yield group_id
+            for project in gitlab_tools.list_all(self.gitlab_group.lazy.projects):
+                if project.path.startswith(self.group_prefix):
+                    name = project.path.removeprefix(self.group_prefix)
+                    group_id = self.student_connector.gitlab_group_slug_pp().parse(name)
+                    if not group_id is None:
+                        yield group_id
 
         return frozenset(f())
 
     def group_delete_all(self):
         for group_id in self.groups:
-            self.student_group(group_id).group.delete()
+            self.student_group(group_id).project.delete()
 
         for x in ['groups', 'student_groups']:
             with contextlib.suppress(AttributeError):
@@ -476,7 +479,7 @@ class Lab:
 
         for group_id in self.student_connector.desired_groups():
             if not group_id in groups_old:
-                self.student_group(group_id).group.create()
+                self.student_group(group_id).project.create()
 
         with contextlib.suppress(AttributeError):
             del self.groups
@@ -639,6 +642,8 @@ class Lab:
         self.logger.debug('Protecting tags')
         gitlab_tools.protect_tags(self.gl, project.id, patterns())
         gitlab_tools.delete_protected_branches(project)
+        gitlab_tools.protect_branch(self.gl, project, 'java')
+        gitlab_tools.protect_branch(self.gl, project, 'python')
 
     # OUTDATED
     # TODO:
