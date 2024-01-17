@@ -84,22 +84,7 @@ class StudentConnectorIndividual(StudentConnector):
         return frozenset(f())
 
     def gitlab_group_slug_pp(self):
-        def print(x):
-            return x.strip('1')
-
-        def parse(x):
-            if x in self.course.canvas_user_by_gitlab_username:
-                return x
-            # HACK
-            y = x + '1'
-            if y in self.course.canvas_user_by_gitlab_username:
-                return y
-            raise ValueError(f'unknown student {x} on GitLab')
-
-        return print_parse.PrintParse(
-            print = print,
-            parse = parse,
-        )
+        return print_parse.identity
 
     def gitlab_group_name(self, id):
         if id == 'test':
@@ -112,6 +97,12 @@ class StudentConnectorIndividual(StudentConnector):
         return canvas_user.name
 
     def desired_members(self, id):
+        # HACK
+        if not id in self.course.canvas_user_by_gitlab_username:
+            id_1 = id + '1'
+            if id_1 in self.course.canvas_user_by_gitlab_username:
+                id = id_1
+
         return frozenset([id])
 
     def gdpr_coding(self):
@@ -237,6 +228,7 @@ class Lab:
         self.name = self.course.config.lab.name.print(self.id)
         self.name_semantic = (self.config.path_source / 'name').read_text().strip()
         self.name_full = '{} — {}'.format(self.name, self.name_semantic)
+        self.group_prefix = f'lab{self.id_str}-'
 
         # Student connector
         if self.config.group_set:
@@ -475,18 +467,21 @@ class Lab:
     @functools.cached_property
     def groups(self):
         def group_ids():
-            for group in gitlab.tools.list_all(self.gitlab_group.lazy.subgroups):
-                try:
-                    yield self.student_connector.gitlab_group_slug_pp().parse(group.path)
-                except ValueError:
-                    yield group.path
+            for project in gitlab_tools.list_all(self.gitlab_group.lazy.projects):
+                if project.path.startswith(self.group_prefix):
+                    group_id_printed = project.path.removeprefix(self.group_prefix)
+                    group_id = self.student_connector.gitlab_group_slug_pp().parse(group_id_printed)
+                    if not group_id is None:
+                        yield group_id
+                elif project.path in self.solutions.keys():
+                    yield project.path
 
         return {id: group_project.GroupProject(self, id) for id in group_ids()}
 
     def groups_delete_all(self, keep_student_groups = True, keep_solution_groups = True):
         for (id, group) in tuple(self.groups.items()):
             if not (keep_solution_groups if self.group_id_is_solution(id) else keep_student_groups):
-                group.group.delete()
+                group.project.delete()
 
         with contextlib.suppress(AttributeError):
             del self.groups
@@ -653,8 +648,10 @@ class Lab:
         self.logger.debug('Protecting tags')
         gitlab.tools.protect_tags(self.gl, project.id, patterns(), delete_existing = is_solution)
 
-        self.logger.debug('Deleting protected branches')
+        self.logger.debug('Setting up protected branches')
         gitlab.tools.delete_protected_branches(project)
+        gitlab.tools.protect_branch(self.gl, project, 'java')
+        gitlab.tools.protect_branch(self.gl, project, 'python')
 
     def create_group_projects(self, exist_ok = False):
         for group in self.groups.values():
