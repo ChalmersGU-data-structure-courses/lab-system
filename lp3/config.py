@@ -36,7 +36,7 @@ canvas = SimpleNamespace(
     url = 'chalmers.instructure.com',
 
     # Integer id found in Canvas course URL.
-    course_id = 23356,
+    course_id = 27979,
 
     # Path to (unpublished!) folder in Canvas course files where the script will upload submission reports.
     # This folder needs to exist.
@@ -105,7 +105,7 @@ gitlab_lab_system_users = ['lab-system']
 # This also applies to the content of the name file for each lab.
 # This is because it is currently used to form the full name of a lab on Chalmers Gitlab.
 
-path_course = PurePosixPath('courses/lp3-data-structures')
+path_course = PurePosixPath('courses/lp3-data-structures/2024')
 path_graders = path_course / 'graders'
 
 # Relative paths to the repositories in each lab as described above.
@@ -396,9 +396,9 @@ def _lab_item(k, *args, **kwargs):
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
     _lab_item(1, 'binary-search'       , datetime.timedelta(minutes = 60), has_robograder = True),  # noqa: E203
-    _lab_item(2, 'indexing'            , datetime.timedelta(minutes = 15), has_robograder = True),  # noqa: E203
-    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15), has_robograder = True),  # noqa: E203
-    _lab_item(4, 'path-finder'         , datetime.timedelta(minutes = 30), has_robograder = True),  # noqa: E203
+#    _lab_item(2, 'indexing'            , datetime.timedelta(minutes = 15), has_robograder = True),  # noqa: E203
+#    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15), has_robograder = True),  # noqa: E203
+#    _lab_item(4, 'path-finder'         , datetime.timedelta(minutes = 30), has_robograder = True),  # noqa: E203
 ])
 
 # Students taking part in labs who are not registered on Canvas.
@@ -473,6 +473,7 @@ _cid_to_gitlab_username = print_parse.from_dict([
 # Return None if not possible.
 # Takes the course object and the Canvas user object as arguments.
 _canvas_id_to_gitlab_username_override = {
+    122370000000301806: 'REDACTED_CID'
 }
 
 def gitlab_username_from_canvas_user_id(course, user_id):
