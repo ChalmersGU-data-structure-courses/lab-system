@@ -11,15 +11,18 @@ import importlib
 import logging
 
 from course import Course
-
+from lab import StudentConnectorIndividual, StudentConnectorGroupSet
 
 logging.basicConfig(
     format = '%(asctime)s %(levelname)s %(module)s: %(message)s',
     datefmt = '%Y-%m-%d %H:%M:%S',
 )
-logging.getLogger().setLevel(25)
+logging.getLogger().setLevel(25)  # 25: between INFO and WARNING
 
 # l should refer to the current lab.
 c.canvas_course_refresh()
-l.student_connector.group_set.canvas_group_set_refresh()
+if isinstance(l.student_connector, StudentConnectorGroupSet):
+    l.student_connector.group_set.canvas_group_set_refresh()
+l.create_groups_from_canvas()
+#l.create_group_projects(exist_ok = True)
 l.sync_students_to_gitlab(add = True, remove = True, restrict_to_known = True)
