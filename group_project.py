@@ -650,16 +650,18 @@ class GroupProject:
         self.is_known = self.id in self.lab.group_ids_desired
         self.is_solution = lab.group_id_is_solution(id)
 
+        self.path = self.lab.path / self.path_name
+        self.name = f'{self.lab.name_full} — {self.lab.student_connector.gitlab_group_name(id)}'
+
         if self.is_solution:
             self.remote = self.id
+            self.path_name = self.id
             self.name = self.lab.solutions[self.id]
-        elif self.is_known:
+        elif:
             c = self.lab.student_connector
-            self.remote = c.gitlab_group_slug_pp().print(self.id)
-            self.name = c.gitlab_group_name(self.id)
-        else:
-            self.remote = self.id
-            self.name = self.id
+            self.remote = c.gitlab_group_slug_pp().print(id)
+            self.path_name = f'{self.lab.group_prefix}{self.remote}'
+            self.name = f'{self.lab.name_full} — {self.lab.student_connector.gitlab_group_name(id)}'
 
         self.path = self.lab.path / self.remote
         if self.is_known:
@@ -709,8 +711,8 @@ class GroupProject:
         r = gitlab.tools.CachedProject(
             gl = self.gl,
             logger = self.logger,
-            path = self.path / 'work',
-            name = self.lab.name_full,
+            path = self.path,
+            name = self.name,
         )
 
         def create():
