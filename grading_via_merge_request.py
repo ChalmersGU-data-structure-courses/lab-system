@@ -19,8 +19,9 @@ import print_parse
 
 
 class SetupData:
-    def __init__(self, lab):
+    def __init__(self, lab, language = None):
         self.lab = lab
+        self.language = language
 
     @functools.cached_property
     def label_pp(self):
@@ -29,10 +30,37 @@ class SetupData:
             for (outcome, label_spec) in self.lab.config.outcome_labels.items()
         )
 
+    @property
+    def title_pp(self):
+        return self.lab.config.merge_request_title
+
+    @functools.cached_property
+    def title(self):
+        return self.title_pp.print(self.language)
+
+    # TODO: remove hard-coding
+    @functools.cached_property
+    def source_branch(self):
+        if self.language is None:
+            return 'submission'
+
+        return f'submission-{self.language}'
+
+    @functools.cached_property
+    def target_branch(self):
+        return self.lab.branch_problem(language = self.language)
+
 class GradingViaMergeRequest:
-    sync_message = print_parse.regex_many(
-        'Synchronized submission branch with [{}]({}).',
-        [r'[^\]]*', r'[^\)]*'],
+    sync_message = print_parse.compose(
+        print_parse.combine((print_parse.escape_brackets, print_parse.escape_parens)),
+        print_parse.regex_many(
+            'Synchronized submission branch with [{}]({}).',
+            [r'(?:[^\[\]\\]|\\[\[\]\\])*', r'(?:[^\(\)\\]|\\[\(\)\\])*'],
+        ),
+    )
+
+    non_grader_change_message = general.join_lines(
+        '⚠️**WARNING**⚠️ Grading label change by non-grader detected.'
     )
 
     def __init__(self, setup_data, group, logger = logging.getLogger(__name__)):
@@ -40,11 +68,8 @@ class GradingViaMergeRequest:
         self.group = group
         self.logger = logger
 
-        parent = self.lab.dir_status_repos
-        self.status_repo_dir = None if parent is None else parent / self.group.remote
-        self.status_repo_up_to_date = False
-
         self.notes_suppress_cache_clear_counter = 0
+        self.non_grader_change = False
 
     @property
     def course(self):
@@ -58,189 +83,9 @@ class GradingViaMergeRequest:
     def lab(self):
         return self.group.lab
 
-    @functools.cached_property
-    def status_repo(self):
-        '''
-        Local status repository.
-        This is used as staging for pushing the status report to the main branch in the student grading project.
-        '''
-        try:
-            repo = git.Repo(self.status_repo_dir)
-        except git.NoSuchPathError:
-            self.status_repo_init()
-            return self.repo
-        else:
-            self.status_repo_up_to_date = False
-            return repo
-
-    def status_repo_exists(self):
-        return self.status_repo_dir.exists()
-
-    def status_repo_delete(self, force = False):
-        '''
-        Delete the repository directory.
-        Warning: Make sure that self.dir is correctly configured before calling.
-        '''
-        try:
-            shutil.rmtree(self.status_repo_dir)
-        except FileNotFoundError:
-            if not force:
-                raise
-
-        self.status_repo_up_to_date = False
-
-    def status_repo_init(self, project = None):
-        '''
-        Initialize the local grading repository.
-        If the directory exists, we assume that all remotes are set up.
-        Otherwise, we create the directory and populate it with remotes on Chalmers GitLab as follows.
-        Fetching remotes are given by the official repository and student group repositories.
-        Pushing remotes are just the grading repository.
-        '''
-        self.logger.debug('Initializing local grading status repository.')
-        try:
-            repo = git.Repo.init(
-                str(self.status_repo_dir),
-                initial_branch = self.course.config.branch.status,
-                bare = True,
-            )
-            with repo.config_writer() as c:
-                c.add_value('advice', 'detachedHead', 'false')
-
-            git_tools.add_tracking_remote(
-                repo,
-                'origin',
-                (project if project else self.project.get).ssh_url_to_repo,
-                no_tags = True,
-                overwrite = True,
-                fetch_branches = [(git_tools.Namespacing.local, self.course.config.branch.status)],
-                push_branches = [self.course.config.branch.status],
-            )
-
-            if project:
-                with self.status_tree_manager(repo, for_real = False) as tree:
-                    commit = git.Commit.create_from_tree(
-                        repo = repo,
-                        tree = tree,
-                        message = 'Initial status commit.',
-                        parent_commits = [],
-                    )
-                # TODO: outputs "creating head" (on stderr)
-                repo.create_head(self.course.config.branch.status, commit, force = True)
-                repo.remote('origin').push()
-
-        except:  # noqa: E722
-            self.status_repo_delete(force = True)
-            raise
-
-        self.repo = repo
-        if project:
-            self.status_repo_up_to_date = True
-
-    def status_repo_report_status(self):
-        '''Returns a boolean indicating if the status changes.'''
-        self.project.create_ensured()  # do we need this here?
-        if not self.status_repo_up_to_date:
-            self.lab.repo_command_fetch(self.status_repo, ['origin'])
-            self.status_repo_up_to_date = True
-
-        branch = getattr(self.status_repo.heads, self.course.config.branch.status)
-        commit_prev = branch.commit
-        with self.status_tree_manager(self.status_repo) as tree:
-            if tree == commit_prev.tree:
-                return False
-
-            commit = git.Commit.create_from_tree(
-                repo = self.status_repo,
-                tree = tree,
-                message = 'Status update.',
-                parent_commits = [commit_prev],
-            )
-        branch.reference = commit
-        self.status_repo.remote('origin').push()
-        return True
-
-    def merge_request_description(self):
-        return self.group.append_mentions(markdown.join_blocks([
-            general.join_lines([
-                'Your submission will be reviewed here.',
-                'Feel free to discuss and ask questions!',
-            ]),
-            general.join_lines([
-                '**Labels** record your grading status.',
-            ]),
-        ])).strip()
-
-    @functools.cached_property
+    @property
     def project(self):
-        '''
-        A project used exclusively for grading.
-        Branches:
-        * main: containing a readme linking to the merge request,
-        * problem: lab problem stub,
-        * submission: branch tracking submission tags in the student project,
-        '''
-        r = gitlab_.tools.CachedProject(
-            gl = self.gl,
-            logger = self.logger,
-            path = self.group.path / 'grading',
-            name = '{} — Grading'.format(self.lab.name_full),
-        )
-
-        def create():
-            project = self.lab.official_project.get.forks.create({
-                'namespace_path': str(r.path.parent),
-                'path': r.path.name,
-                'name': r.name,
-                'description': f'Grading for [{self.lab.name_full}]({self.group.project.lazy.web_url})',
-            })
-            try:
-                project = self.gl.projects.get(project.id, lazy = True)
-                project.issues_enabled = False
-                project.lfs_enabled = False
-                project.packages_enabled = False
-                project.save()
-
-                for label_spec in self.lab.config.outcome_labels.values():
-                    project.labels.create({
-                        'name': label_spec.name,
-                        'color': label_spec.color,
-                    })
-
-                project = gitlab_.tools.wait_for_fork(self.gl, project)
-
-                project.branches.create({
-                    'branch': 'submission',
-                    'ref': self.course.config.branch.master,
-                })
-
-                self.merge_request = project.mergerequests.create({
-                    'source_branch': 'submission',
-                    'target_branch': self.course.config.branch.master,
-                    'title': f'Grading for {self.group.name}',
-                    'description': self.merge_request_description(),
-                })
-
-                self.status_repo_init(project)
-
-                # Hack
-                time.sleep(0.1)
-
-                #project = gitlab_.tools.wait_for_fork(self.gl, project)
-                project.default_branch = self.course.config.branch.status
-                project.save()
-
-                # Hack
-                time.sleep(0.1)
-                r.get = project
-
-            except:  # noqa: E722
-                r.delete()
-                self.status_repo_delete(force = True)
-                raise
-
-        r.create = create
-        return r
+        return self.group.project.get
 
     def update_merge_request_description(self):
         '''
@@ -256,11 +101,57 @@ class GradingViaMergeRequest:
             # The edit note is not relevant for us.
         return update_needed
 
+    def merge_request_create(self):
+        '''
+        Branches:
+        * main: containing a readme linking to the merge request,
+        * problem: lab problem stub,
+        * submission: branch tracking submission tags in the student project,
+        '''
+        for label_spec in self.lab.config.outcome_labels.values():
+            with gitlab_.tools.exist_ok():
+                self.project.labels.create({
+                    'name': label_spec.name,
+                    'color': label_spec.color,
+                })
+
+        self.project.branches.create({
+            'branch': self.setup_data.source_branch,
+            'ref': self.setup_data.target_branch,
+        })
+        self.project.protectedbranches.create({
+            'name': self.setup_data.source_branch,
+            'merge_access_level': gitlab.const.MAINTAINER_ACCESS,
+            'push_access_level': gitlab.const.MAINTAINER_ACCESS,
+        })
+        self.merge_request = self.project.mergerequests.create({
+            'source_branch': self.setup_data.source_branch,
+            'target_branch': self.setup_data.target_branch,
+            'title': self.setup_data.title,
+            #'description': '',
+        })
+
     @functools.cached_property
     def merge_request(self):
-        self.project.create_ensured()  # do we need this here?
-        (merge_request,) = gitlab_.tools.list_all(self.project.lazy.mergerequests)
-        return merge_request
+        def f():
+            for merge_request in gitlab_.tools.list_all(self.project.mergerequests):
+                if all([
+                    merge_request.author['id'] in self.course.lab_system_users,
+                    merge_request.title == self.setup_data.title,
+                ]):
+                    yield merge_request
+
+        merge_requests = list(f())
+        try:
+            merge_request_maybe = general.from_singleton_maybe(merge_requests)
+        except ValueError:
+            raise ValueError(f'More than one lab system merge request detected in {self.group.path_name}')
+
+        return merge_request_maybe
+
+    def merge_request_ensure(self):
+        if self.merge_request is None:
+            self.merge_request_create()
 
     def merge_request_cached(self):
         return 'merge_request' in self.__dict__
@@ -354,6 +245,7 @@ class GradingViaMergeRequest:
             elif user_id in self.course.graders:
                 system = False
             else:
+                self.non_grader_change = True
                 self.logger.warn(self.with_merge_request_url(
                     f'Grading label changed by non-grader {user_id} in {self.group.name} in {self.lab.name}:',
                 ))
@@ -443,12 +335,32 @@ class GradingViaMergeRequest:
             more_itertools.consume(it)
         return dict(f())
 
+    @property
+    def last_outcome(self):
+        if not self.submission_outcomes:
+            return None
+
+        return list(self.submission_outcomes.values())[-1]
+
+    def set_labels(self, outcome_new):
+        for outcome in self.course.config.outcomes:
+            with contextlib.suppress(ValueError):
+                self.merge_request.labels.remove(self.setup_data.label_pp.print(outcome))
+        self.merge_request.labels.append(self.setup_data.label_pp.print(outcome_new))
+        self.merge_request.save()
+
+    # TODO: can't use because of race conditions.
+    def reset_labels(self):
+        self.set_labels(self.last_outcome)
+
     def update_outcomes(self, clear_cache = True):
         '''
         Checks if there have been outcome changes since the last time this method was called.
         If within the context of notes_cache_clearing_suppressor, the clear_cache flag is ignored.
-        Updates the readme of the student grading project on outcome update.
         '''
+        if self.merge_request is None:
+            return
+
         try:
             x = self.outcome_last_checked
         except AttributeError:
@@ -463,7 +375,7 @@ class GradingViaMergeRequest:
         self.logger.debug(f'updated: {updated}')
 
         if updated:
-            self.status_repo_report_status()
+            self.update_merge_request_description()
         self.outcome_last_checked = self.submission_outcomes
         return updated
 
@@ -519,38 +431,31 @@ class GradingViaMergeRequest:
 
         return markdown.table(column_specs(), rows())
 
-    def summary(self, for_real = True):
-        '''Unless for_real is set, produces only an initial stub.'''
+    def merge_request_description(self, for_real = True):
         def blocks():
-            mod = 'is' if for_real and self.has_outcome() else 'will be'
-            link = markdown.link('this merge request', f'!{self.merge_request.iid}')
-            yield general.join_lines([f'You submission {mod} graded in {link}.'])
-            if for_real and self.synced_submissions:
-                yield markdown.heading('Status', 1)
-                yield self.summary_table()
+            if not for_real:
+                yield general.join_lines(['Your submission will be reviewed in this merge request.'])
+            else:
+                mod = 'is' if self.has_outcome() else 'will be'
 
-        return markdown.join_blocks(blocks())
+                def lines():
+                    yield f'Your submission {mod} reviewed below.'
+                    if self.synced_submissions:
+                        yield 'Feel free to discuss, ask questions, and request clarifications!'
+                        yield '**Labels** record your grading status, so do not change them.'
+                yield general.join_lines(lines())
 
-    @contextlib.contextmanager
-    def status_dir_manager(self, for_real = True):
-        with path_tools.temp_dir() as dir:
-            (dir / 'README.md').write_text(self.summary(for_real = for_real))
-            yield dir
+                if self.non_grader_change:
+                    yield self.non_grader_change_message
 
-    @contextlib.contextmanager
-    def status_tree_manager(self, repo, for_real = True):
-        with self.status_dir_manager(for_real = for_real) as dir:
-            yield git_tools.create_tree_from_dir(repo, dir)
+                if self.synced_submissions:
+                    yield markdown.heading('Status', 1)
+                    yield self.summary_table()
 
-    def add_students(self):
-        self.group.members_clear()
-        for gitlab_user in self.group.members:
-            with gitlab_.tools.exist_ok():
-                self.project.lazy.members.create({
-                    'user_id': gitlab_user.id,
-                    'access_level': gitlab.const.REPORTER_ACCESS,
-                })
-        self.update_merge_request_description()
+        result = markdown.join_blocks(blocks())
+        if for_real and self.synced_submissions:
+            result = self.group.append_mentions(result)
+        return result.strip()
 
     # TODO
     def sync_submission(self, submission):
@@ -561,6 +466,8 @@ class GradingViaMergeRequest:
         Returns the list of newly synchronized submission request names.
         If within the context of notes_cache_clearing_suppressor, the clear_cache flag is ignored.
         '''
+        self.merge_request_ensure()
+
         def filter_out_synced_submissions(submissions):
             for submission in submissions:
                 if not submission.request_name in self.synced_submissions:
@@ -595,8 +502,12 @@ class GradingViaMergeRequest:
         for submission in submissions:
             self.logger.info(f'Syncing submission {submission.request_name}.')
             self.lab.repo.git.push(
-                self.project.get.ssh_url_to_repo,
-                git_tools.refspec(submission.repo_tag().commit, 'submission', force = True),
+                self.project.ssh_url_to_repo,
+                git_tools.refspec(
+                    submission.repo_tag().commit,
+                    git_tools.local_branch(self.setup_data.source_branch),
+                    force = True,
+                ),
             )
 
             # Hack
@@ -613,14 +524,9 @@ class GradingViaMergeRequest:
                     yield markdown.quote(submission_message)
             self.merge_request.notes.create({'body': markdown.join_blocks(body())})
 
-        for outcome in self.course.config.outcomes:
-            with contextlib.suppress(ValueError):
-                self.merge_request.labels.remove(self.setup_data.label_pp.print(outcome))
-        self.merge_request.labels.append(self.setup_data.label_pp.print(None))
-        self.merge_request.save()
-        self.add_students()
+        self.set_labels(None)
 
         self.notes_clear()
-        self.status_repo_report_status()
+        self.update_merge_request_description()
 
         return [submission.request_name for submission in submissions]

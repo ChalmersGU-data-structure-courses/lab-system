@@ -287,12 +287,33 @@ class RequestAndResponses:
         return issue
 
     @functools.cached_property
+    def language(self):
+        if self.lab.config.multi_language is None:
+            return None
+
+        return self.handled_result['language']
+
+    @functools.cached_property
+    def grading_merge_request(self):
+        if not self.lab.config.grading_via_merge_request:
+            return None
+
+        if self.lab.config.multi_language is None:
+            return self.group.grading_via_merge_request
+
+        return self.group.grading_via_merge_request[self.language]
+
+    @functools.cached_property
+    def head_problem(self):
+        return self.lab.head_problem(language = self.language)
+
+    @functools.cached_property
     def outcome_link_grader_from_grading_merge_request(self):
         '''None unless grading via merge requests has been configured'''
         if not self.lab.config.grading_via_merge_request:
             return None
 
-        return self.group.grading_via_merge_request.outcome_with_link_and_grader(self.request_name)
+        return self.grading_merge_request.outcome_with_link_and_grader(self.request_name)
 
     @functools.cached_property
     def outcome(self):
@@ -486,7 +507,11 @@ class RequestAndResponses:
             yield result['accepted']
             yield result['review_needed']
         if all(checks()):
-            self.group.grading_via_merge_request.sync_submission(self)
+            if self.lab.config.multi_language is None:
+                self.group.grading_via_merge_request.sync_submission(self)
+            else:
+                language = result['language']
+                self.group.grading_via_merge_request[language].sync_submission(self)
 
         # Create tag <full-group-id>/<request_name>/handled
         # and store handler's result JSON-encoded as its message.
@@ -736,7 +761,8 @@ class GroupProject:
         r.create = create
         return r
 
-    def upload_solution(self, path = None, force = False):
+    # TODO: parametrize over submission tag printing.
+    def upload_solution(self, path = None, language = None, force = False):
         '''
         If path is None, we look for a solution in 'solution' or 'solution/<id>' relative to the lab sources.
         We include a prefix of the hash of the submission so that reuploads will be reprocessed by the submission system.
@@ -749,20 +775,21 @@ class GroupProject:
                 raise ValueError('not solution project')
 
         if path is None:
-            if self.id in self.lab.solutions.keys() and self.id != 'solution':
+            if language is not None:
+                path = PurePosixPath() / 'solution' / language
+            elif self.id in self.lab.solutions.keys() and self.id != 'solution':
                 path = PurePosixPath() / 'solution' / self.id
             else:
                 path = PurePosixPath() / 'solution'
 
         tree = git_tools.create_tree_from_dir(self.lab.repo, self.lab.config.path_source / path)
         msg = (self.lab.solutions[self.id] if self.is_solution else 'Solution in student project') + '.'
-        commit = git.Commit.create_from_tree(self.lab.repo, tree, msg, [self.lab.head_problem.commit])
+        commit = git.Commit.create_from_tree(self.lab.repo, tree, msg, [self.lab.head_problem(language = language).commit])
         if self.is_solution:
-            hash = commit.hexsha[:8]
-            self.lab.repo.remote(self.remote).push(refspec = [
-                git_tools.refspec(src = commit, dst = self.lab.course.config.branch.master),
-                git_tools.refspec(src = commit, dst = f'refs/tags/submission-{hash}'),
-            ], force = True)
+            #hash = commit.hexsha[:8]
+            tag_name = 'submission' if language is None else f'submission-solution-{language}'
+            with git_tools.with_tag(self.lab.repo, tag_name, commit) as tag:
+                self.lab.repo.remote(self.remote).push(tag, force = True)
 
     def repo_add_remote(self, ignore_missing = False, **kwargs):
         '''
@@ -922,6 +949,7 @@ class GroupProject:
         self.lab.delete_tag(GroupProject.repo_tag(self, request_name, segments).name)
         GroupProject.repo_tag_mark_repo_updated(self)
 
+    # TODO: update for multi language labs.
     def hotfix(
         self,
         branch_hotfix,
@@ -1009,24 +1037,32 @@ class GroupProject:
             })
 
     def hook_specs(self, netloc = None) -> Iterable[gitlab_.tools.HookSpec]:
-        def f():
-            yield (self.project.lazy, ['issues', 'tag_push'])
+        def events():
+            yield 'issues'
+            yield 'tag_push'
             if self.lab.config.grading_via_merge_request:
-                self.grading_via_merge_request.project.create_ensured()
-                yield (self.grading_via_merge_request.project.lazy, ['merge_requests'])
+                yield 'merge_requests'
 
         netloc = self.course.hook_normalize_netloc(netloc = netloc)
-        for (project, events) in f():  # noqa: F402
-            yield gitlab_.tools.HookSpec(
-                project = project,
-                netloc = netloc,
-                events = events,
-                secret_token = self.course.config.webhook.secret_token,
-            )
+        yield gitlab_.tools.HookSpec(
+            project = self.project.lazy,
+            netloc = netloc,
+            events = list(events()),
+            secret_token = self.course.config.webhook.secret_token,
+        )
 
     @functools.cached_property
     def grading_via_merge_request(self):
-        return grading_via_merge_request.GradingViaMergeRequest(self.lab.grading_via_merge_request_setup_data, self)
+        if self.lab.config.multi_language is None:
+            return grading_via_merge_request.GradingViaMergeRequest(self.lab.grading_via_merge_request_setup_data, self)
+
+        return {
+            language : grading_via_merge_request.GradingViaMergeRequest(
+                self.lab.grading_via_merge_request_setup_data[language],
+                self,
+            )
+            for language in self.lab.config.branch_problem.keys()
+        }
 
     def tags_from_gitlab(self):
         self.logger.debug(f'Parsing request tags in {self.name} from Chalmers GitLab.')
@@ -1206,10 +1242,15 @@ class GroupProject:
             return data_current != data_previous
         return False
 
-    # TODO
     def parse_grading_merge_request_responses(self):
-        #pass
-        return self.grading_via_merge_request.update_outcomes()
+        if self.lab.config.multi_language is None:
+            return self.grading_via_merge_request.update_outcomes()
+
+        def f():
+            for m in self.grading_via_merge_request.values():
+                yield m.update_outcomes()
+
+        return any(list(f()))
 
     def process_requests(self):
         '''
@@ -1228,10 +1269,9 @@ class GroupProject:
         Counts only the accepted submission attempts.
         If deadline is given, we restrict to prior submissions.
         Here, the date refers to the date of the submission commit.
-        Returns an iterable of instances of SubmissionAndRequests ordered by the date.
+        Returns an iterable of instances of RequestAndResponses ordered by the date.
         '''
-        submission_handler_data = self.handler_data[self.lab.config.submission_handler_key]
-        for request_and_responses in submission_handler_data.requests_and_responses.values():
+        for request_and_responses in self.submission_handler_data.requests_and_responses.values():
             if request_and_responses.accepted:
                 if deadline is None or request_and_responses.date <= deadline:
                     yield request_and_responses
@@ -1240,7 +1280,7 @@ class GroupProject:
         '''
         Restricts the output of self.submissions to instances of SubmissionAndRequests with an outcome.
         This could be a submission-handler-provided outcome or a review by a grader.
-        Returns an iterable of instances of SubmissionAndRequests ordered by the date.
+        Returns an iterable of instances of RequestAndResponses ordered by the date.
         '''
         for submission in self.submissions(deadline = deadline):
             if submission.outcome is not None:
@@ -1250,7 +1290,7 @@ class GroupProject:
         '''
         Restrict the output of self.submissions to all relevant submissions.
         A submission is *relevant* if it has an outcome or is the last submission and needs a review.
-        Returns an iterable of instances of SubmissionAndRequests ordered by the date.
+        Returns an iterable of instances of RequestAndResponses ordered by the date.
         '''
         submissions = list(self.submissions(deadline = deadline))
         for (i, submission) in enumerate(submissions):
@@ -1261,7 +1301,7 @@ class GroupProject:
         '''
         With respect to the output of self.submissions, return the last submission
         if it needs a review (i.e. does not uet have an outcome), otherwise return None.
-        Returns an instances of SubmissionAndRequests or None.
+        Returns an instances of RequestAndResponses or None.
         '''
         submissions = list(self.submissions(deadline = deadline))
         if submissions:
@@ -1371,7 +1411,7 @@ class GroupProject:
             yield ((self.project.name, 'issue'), self.parse_hook_event_issue)
             if self.lab.config.grading_via_merge_request:
                 yield (
-                    (self.grading_via_merge_request.project.name, 'merge_request'),
+                    (self.project.name, 'merge_request'),
                     self.parse_hook_event_grading_merge_request,
                 )
         handler = dict(handlers()).get((project_name, event_type))

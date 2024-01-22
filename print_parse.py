@@ -6,6 +6,7 @@ import collections
 import dataclasses
 import datetime as module_datetime
 import functools
+import itertools
 import json as module_json
 import pathlib
 import re
@@ -154,6 +155,35 @@ doublequote = PrintParse(
     parse = ast.literal_eval,
 )
 
+def escape(chars):
+    def print(s):
+        for c in itertools.chain(['\\'], chars):
+            s = s.replace(c, '\\' + c)
+        return s
+
+    def parse_helper(it):
+        while True:
+            try:
+                c = next(it)
+            except StopIteration:
+                return
+
+            if c == '\\':
+                yield next(it)
+            else:
+                yield c
+
+    def parse(s):
+        return ''.join(parse_helper(iter(s)))
+
+    return PrintParse(
+        print = print,
+        parse = parse,
+    )
+
+escape_parens = escape(['(', ')'])
+escape_brackets = escape(['[', ']'])
+
 string_letters = PrintParse(
     print = general.identity,
     parse = ''.join,
@@ -196,7 +226,7 @@ def regex_non_canonical_keyed(holed_string, regex, **kwargs):
 
 # Bug.
 # This and following functions only work for holed_string arguments
-# that don't contained regex special characters (except for the holes).
+# that don't contain regex special characters (except for the holes).
 def regex(holed_string, regex = '.*', **kwargs):
     return regex_non_canonical(
         holed_string,

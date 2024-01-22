@@ -297,9 +297,16 @@ class SubmissionTesting:
                                 ))
                         if self.lab.config.has_solution:
                             with dominate.tags.p():
+                                group_solution = self.lab.groups[self_outer.solution]
+                                if self.lab.config.multi_language is None:
+                                    submission_solution = group_solution.submission_current()
+                                else:
+                                    # TODO: remove hard-coding.
+                                    submission_solution = group_solution.submission_handler_data.requests_and_responses[f'submission-solution-{submission_current.language}']
+
                                 live_submissions_table.format_url('vs. solution', gitlab_.tools.url_compare(
                                     self.lab.grading_project.get,
-                                    self.lab.groups[self_outer.solution].submission_current().repo_tag(self_outer.segments_test),
+                                    submission_solution.repo_tag(self_outer.segments_test),
                                     submission_current.repo_tag(self_outer.segments_test),
                                 ))
 
