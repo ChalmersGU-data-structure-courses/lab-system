@@ -394,7 +394,7 @@ class SubmissionFilesColumn(Column):
             if self.lab.config.grading_via_merge_request:
                 linked_grading_response = (
                     'review merge request',
-                    group.grading_via_merge_request.merge_request.web_url,
+                    submission.grading_merge_request.merge_request.web_url,
                 )
             else:
                 linked_grading_response = ('open issue', gitlab_.tools.url_issues_new(
@@ -478,7 +478,8 @@ class SubmissionDiffProblemColumn(SubmissionDiffColumn):
         super().__init__(config, 'problem')
 
     def base_ref(self, group):
-        return ('problem', self.lab.head_problem)
+        submission_current = group.submission_current(deadline = self.config.deadline)
+        return ('problem', submission_current.head_problem)
 
 class SubmissionDiffSolutionColumn(SubmissionDiffColumn):
     @classmethod
@@ -492,7 +493,13 @@ class SubmissionDiffSolutionColumn(SubmissionDiffColumn):
     def base_ref(self, group):
         if self.choose_solution is None:
             try:
-                return ('solution', self.lab.groups['solution'].submission_current().repo_tag())
+                if self.lab.config.multi_language is None:
+                    return ('solution', self.lab.groups['solution'].submission_current().repo_tag())
+
+                # TODO: remove hard-coding
+                submission_current = group.submission_current(deadline = self.config.deadline)
+                submission_solution = self.lab.groups['solution'].submission_handler_data.requests_and_responses[f'submission-solution-{submission_current.language}']
+                return ('solution', submission_solution.repo_tag())
             except (KeyError, AttributeError):
                 raise ValueError('Diff with solution: no solution available')
 

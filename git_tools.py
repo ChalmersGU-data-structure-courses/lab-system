@@ -436,3 +436,11 @@ def get_root_commit(commit):
     while commit.parents:
         commit = commit.parents[0]
     return commit
+
+@contextlib.contextmanager
+def with_tag(repo, path, ref, message = None):
+    tag = repo.create_tag(path = path, ref = ref, message = message)
+    try:
+        yield tag
+    finally:
+        repo.delete_tag(tag)
