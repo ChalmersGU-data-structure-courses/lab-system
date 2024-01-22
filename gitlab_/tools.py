@@ -457,11 +457,16 @@ def format_issue_metadata(issue, description = None):
         yield f'* URL: {issue.web_url}'
     return general.join_lines(lines())
 
-def move_subgroups(gl, group_source, group_target):
+def move_subgroups_and_subprojects(gl, group_source, group_target):
     for group in list_all(group_source.subgroups):
         if not group.id == group_target.id:
             group = gl.groups.get(group.id)
             group.transfer(group_target.id)
+
+    for project in list_all(group_source.projects):
+        project = gl.projects.get(project.id)
+        project.transfer(group_target.id)
+
 
 @dataclasses.dataclass
 class LabelSpec:
