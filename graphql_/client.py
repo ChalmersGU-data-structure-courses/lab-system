@@ -5,7 +5,7 @@ import more_itertools
 import gql
 from gql.dsl import DSLSchema
 
-from graphql.tools import (
+from graphql_.tools import (
     query, with_processing, labelled
 )
 

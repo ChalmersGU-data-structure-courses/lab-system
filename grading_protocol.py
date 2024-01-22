@@ -24,18 +24,18 @@ def write_group_membership_report(course):
         writer = csv.DictWriter(file, report_headers(course), dialect = csv.excel_tab)
         writer.writeheader()
         for canvas_user in course.canvas_course.students:
-            gitlab_user = course.gitlab_user_by_canvas_id(canvas_user.id)
-            if gitlab_user is None:
+            gitlab_username = course.gitlab_username_by_canvas_id(canvas_user.id)
+            if gitlab_username is None:
                 continue
 
             def f(lab):
-                g = lab.group_by_gitlab_username.get(gitlab_user.username)
+                g = lab.group_by_gitlab_username.get(gitlab_username)
                 if g:
                     return g.id
 
             entry = {
                 header_personnummer: canvas_user.sis_user_id,
-                header_gitlab_username: gitlab_user.username,
+                header_gitlab_username: gitlab_username,
                 header_name: canvas_user.sortable_name
             } | {
                 lab.name: f(lab)
@@ -99,18 +99,18 @@ def prepare_requested_entries(course, requested_entries, by_gitlab_username, exa
             if canvas_user is None:
                 raise ValueError(f'No Canvas user found for personnumber {personnummer}')
 
-            gitlab_user = course.gitlab_user_by_canvas_id(canvas_user.id)
-            if gitlab_user is None:
+            gitlab_username = course.gitlab_username_by_canvas_id(canvas_user.id)
+            if gitlab_username is None:
                 print(f'WARNING: No Chalmers GitLab user found Canvas user {canvas_user.name}')
                 continue
 
-            value = by_gitlab_username.pop(gitlab_user.username, (dict(), None))
+            value = by_gitlab_username.pop(gitlab_username, (dict(), None))
             name = entry.get(header_name)
             if name is None:
                 name = canvas_user.sortable_name
             yield {
                 header_personnummer: entry[header_personnummer],
-                header_gitlab_username: gitlab_user.username,
+                header_gitlab_username: gitlab_username,
                 header_name: entry[header_name]
             } | course.grading_report_format_value(value) | {
                 header_examination_date: examination_date,
