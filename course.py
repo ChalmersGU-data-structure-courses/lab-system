@@ -23,7 +23,9 @@ import more_itertools
 import canvas.client_rest as canvas
 import events
 import gdpr_coding
+import gitlab_.graphql
 import gitlab_.tools
+import gitlab_.users_cache
 import grading_sheet
 import group_set
 from instance_cache import instance_cache
@@ -93,6 +95,8 @@ class Course:
 
         # Map from group set names on Canvas to instances of group_set.GroupSet.
         self.group_sets = dict()
+
+        self.gitlab_users_cache
 
         import lab
         self.labs = dict(
@@ -293,10 +297,14 @@ class Course:
         )
 
     @functools.cached_property
+    def gitlab_token(self):
+        return gitlab_.tools.read_private_token(self.config.gitlab_private_token)
+
+    @functools.cached_property
     def gl(self):
         r = gitlab.Gitlab(
             self.config.gitlab_url,
-            private_token = gitlab_.tools.read_private_token(self.config.gitlab_private_token)
+            private_token = self.gitlab_token,
         )
         r.auth()
         return r
@@ -304,9 +312,8 @@ class Course:
     @functools.cached_property
     def lab_system_users(self):
         return {
-            user.id: user
-            for name in self.config.gitlab_lab_system_users
-            for user in [self.gitlab_user(name)]
+            self.gitlab_users_cache.id_from_username[username]: username
+            for username in self.config.gitlab_lab_system_users
         }
 
     @functools.cached_property
@@ -355,20 +362,25 @@ class Course:
         )
 
     @functools.cached_property
-    def _gitlab_users(self):
-        self.logger.info('Retrieving all users on Chalmers GitLab')
-        return gitlab_.tools.users_dict(self.gl.users)
+    def gitlab_graphql_client(self):
+        return gitlab_.graphql.Client(
+            domain = 'git.chalmers.se',
+            token = self.gitlab_token,
+        )
 
-    def gitlab_user(self, gitlab_username):
+    @functools.cached_property
+    def gitlab_users_cache(self):
+        x = gitlab_.users_cache.UsersCache(self.dir / 'gitlab_users', self.gitlab_graphql_client)
+        self.logger.info('Updating Chalmers GitLab users cache.')
+        x.update()  # TODO: this shouldn't happen here.
+        return x
+
+    def gitlab_user_id(self, gitlab_username):
         '''
         Return the Chalmers GitLab user for a username, or None if none is found.
-
-        Currently, this method uses a cached call retrieving all users on Chalmers GitLab.
-        This takes about 1.5s.
-        If the number of users on Chalmers GitLab grows significantly,
-        it will be faster to switch to lookup calls for individual users.
+        Uses self.gitlab_users_cache.
         '''
-        return None if gitlab_username is None else self._gitlab_users.get(gitlab_username)
+        return self.gitlab_users_cache.id_from_username.get(gitlab_username)
 
     @functools.cached_property
     def gitlab_username_by_canvas_user_id(self):
@@ -416,18 +428,14 @@ class Course:
                 yield (gitlab_username, self.canvas_course.user_details[canvas_user_id])
         return general.sdict(f())
 
-    def gitlab_user_by_canvas_id(self, canvas_id):
-        '''Returns the Chalmers GitLab user for a given Canvas user id, or None if none is found.'''
-        gitlab_username = self.gitlab_username_by_canvas_user_id.get(canvas_id)
-        if gitlab_username is None:
-            return None
+    def gitlab_username_by_canvas_id(self, canvas_id):
+        '''Returns the Chalmers GitLab user ID for a given Canvas user id, or None if none is found.'''
+        return self.gitlab_username_by_canvas_user_id.get(canvas_id)
 
-        return self.gitlab_user(gitlab_username)
-
-    def gitlab_user_by_canvas_name(self, canvas_name):
+    def gitlab_username_by_canvas_name(self, canvas_name):
         '''Returns the Chalmers GitLab user for a given full name on Canvas.'''
         canvas_id = self.canvas_course.user_name_to_id[canvas_name]
-        return self.gitlab_user_by_canvas_id(canvas_id)
+        return self.gitlab_username_by_canvas_id(canvas_id)
 
     def canvas_user_informal_name(self, user):
         '''
@@ -476,13 +484,13 @@ class Course:
         def invite():
             for user in self.canvas_course.teachers:
                 gitlab_username = self.gitlab_username_by_canvas_user_id.get(user.id)
-                gitlab_user = self.gitlab_user(gitlab_username)
+                gitlab_user_id = self.gitlab_users_cache.id_from_username.get(gitlab_username)
                 if not gitlab_username in members:
-                    if gitlab_user:
+                    if not gitlab_user_id is None:
                         self.logger.debug(f'adding {user.name}')
                         with gitlab_.tools.exist_ok():
                             self.graders_group.lazy.members.create({
-                                'user_id': gitlab_user.id,
+                                'user_id': gitlab_user_id,
                                 'access_level': gitlab.const.OWNER_ACCESS,
                             })
                     else:
@@ -973,19 +981,19 @@ class Course:
                 self.logger.warning(f'* Submission user {canvas_user_id} not a Canvas user (probably it is the test student).')
                 continue
 
-            gitlab_user = self.gitlab_user_by_canvas_id(canvas_user_id)
-            if gitlab_user is None:
+            gitlab_username = self.gitlab_username_by_canvas_id(canvas_user_id)
+            if gitlab_username is None:
                 self.logger.warning(f'* Canvas user {canvas_user.name} not on Chalmers GitLab.')
                 continue
 
             def f(lab):
                 try:
-                    grade = grades[lab.id].pop(gitlab_user.username)
+                    grade = grades[lab.id].pop(gitlab_username)
                 except KeyError:
                     self.logger.warning(f'* Canvas user {canvas_user.name} not in {lab.name} on Chalmers GitLab.')
                     return None
                 if grade is None:
-                    self.logger.warning(f'* {gitlab_user.username} ({canvas_user.name}): no graded submission in {lab.name}.')
+                    self.logger.warning(f'* {gitlab_username} ({canvas_user.name}): no graded submission in {lab.name}.')
                 return grade
             student_grades = {lab.id: f(lab) for lab in self.labs.values()}
             grade = combining(student_grades)

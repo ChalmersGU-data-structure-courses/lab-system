@@ -1354,18 +1354,18 @@ class Lab:
                 self.logger.warning(f'* Submission user {canvas_user_id} not a Canvas user (probably it is the test student).')
                 continue
 
-            gitlab_user = self.course.gitlab_user_by_canvas_id(canvas_user_id)
+            gitlab_username = self.course.gitlab_username_by_canvas_id(canvas_user_id)
             if gitlab_user is None:
                 self.logger.warning(f'* Canvas user {canvas_user.name} not on Chalmers GitLab.')
                 continue
 
             try:
-                grade = grades.pop(gitlab_user.username)
+                grade = grades.pop(gitlab_username)
             except KeyError:
                 self.logger.warning(f'* Canvas user {canvas_user.name} not in lab on Chalmers GitLab.')
                 continue
             if grade is None:
-                self.logger.warning(f'* {gitlab_user.username} ({canvas_user.name}): no graded submission')
+                self.logger.warning(f'* {gitlab_username} ({canvas_user.name}): no graded submission')
                 continue
 
             self.logger.info(f'* {canvas_user.name}: {grade}')
@@ -1469,7 +1469,7 @@ class Lab:
             members_desired = set()
             invitations_desired = set()
             for gitlab_username in self.student_connector.desired_members(group_id):
-                if self.course.gitlab_user(gitlab_username):
+                if gitlab_username in self.course.gitlab_users_cache.id_from_username.keys():
                     members_desired.add(gitlab_username)
                 else:
                     invitations_desired.add(pp_email.print(gitlab_username))
@@ -1488,7 +1488,7 @@ class Lab:
                         f'removing {user_str_from_gitlab_username(gitlab_username)} from {entity_name}'
                     )
                     with gitlab_.tools.exist_ok():
-                        entity.members.delete(self.course.gitlab_user(gitlab_username).id)
+                        entity.members.delete(self.course.gitlab_users_cache.id_from_username[gitlab_username])
                 else:
                     self.logger.warning(
                         f'extra member {user_str_from_gitlab_username(gitlab_username)} of {entity_name}'
@@ -1510,7 +1510,7 @@ class Lab:
                     self.logger.log(25, f'adding {user_str_from_gitlab_username(gitlab_username)} to {entity_name}')
                     with gitlab_.tools.exist_ok():
                         entity.members.create({
-                            'user_id': self.course.gitlab_user(gitlab_username).id,
+                            'user_id': self.course.gitlab_users_cache.id_from_username[gitlab_username],
                             'access_level': gitlab.const.DEVELOPER_ACCESS,
                         })
                 else:
