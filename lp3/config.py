@@ -350,6 +350,11 @@ _lab_config = SimpleNamespace(
     },
 )
 
+_pp_language = print_parse.from_dict([
+    ('java', 'Java'),
+    ('python', 'Python'),
+])
+
 class _LabConfig:
     def __init__(self, k, lab_folder, refresh_period, submission_ready = True):
         self.path_source = _lab_repo / 'labs' / lab_folder
@@ -387,17 +392,28 @@ class _LabConfig:
                 'python': handlers.python.SubmissionHandler(**python_params),
             }, shared_columns = ['robograding'], show_solution = True))
 
+            # yield from submission_ready_no()
+
             yield ('robograding', handlers.language.RobogradingHandler(sub_handlers = {
                 'java': (handlers.java.RobogradingHandler if k == 1 else handlers.general.GenericTestingHandler)(**java_params),
                 'python': handlers.general.GenericTestingHandler(**python_params),
             }))
         self.request_handlers = dict(submission_ready_yes() if submission_ready else submission_ready_no())
         self.refresh_period = refresh_period
-        self.grading_via_merge_request = False
+        self.multi_language = True
+        self.grading_via_merge_request = True
         self.outcome_labels = {
             None: gitlab_.tools.LabelSpec(name = 'waiting-for-grading', color = 'yellow'),
             0: gitlab_.tools.LabelSpec(name = 'incomplete', color = 'red'),
             1: gitlab_.tools.LabelSpec(name = 'pass', color = 'green'),
+        }
+        self.merge_request_title = print_parse.compose(
+            _pp_language,
+            print_parse.regex('Grading for {} submission', regex = '[a-zA-Z]*'),
+        )
+        self.branch_problem = {
+            'java': 'java',
+            'python': 'python',
         }
 
     # Key of submission handler in the dictionary of request handlers.
@@ -428,6 +444,7 @@ outside_canvas = []
 name_corrections = {}
 
 _cid_to_gitlab_username = print_parse.from_dict([
+    ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
 ])
 
 # Retrieve the Chalmers GitLab username for a user id on Chalmers/GU Canvas.
@@ -438,6 +455,17 @@ _cid_to_gitlab_username = print_parse.from_dict([
 # Takes the course object and the Canvas user object as arguments.
 _canvas_id_to_gitlab_username_override = {
     122370000000301806: 'REDACTED_CID',
+    122370000000284966: 'REDACTED_CID',
+    122370000000129655: 'nabilsa',
+    122370000000305452: 'REDACTED_CID',
+    122370000000285038: 'REDACTED_CID',
+    122370000000288647: 'REDACTED_CID',
+    122370000000285048: 'REDACTED_CID',
+    122370000000096109: 'REDACTED_CID',
+    122370000000262949: 'REDACTED_CID',
+    122370000000301801: 'REDACTED_CID',
+    122370000000301804: 'REDACTED_CID',
+    122370000000285024: 'REDACTED_CID',
 }
 
 def gitlab_username_from_canvas_user_id(course, user_id):
