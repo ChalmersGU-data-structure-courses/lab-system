@@ -79,7 +79,7 @@ class StudentConnectorIndividual(StudentConnector):
             for canvas_user in self.course.canvas_course.students:
                 gitlab_username = self.course.gitlab_username_from_canvas_user_id(canvas_user.id, strict = False)
                 if not gitlab_username is None:
-                    yield gitlab_username
+                    yield gitlab_username.removesuffix('1')
 
         return frozenset(f())
 
@@ -253,7 +253,14 @@ class Lab:
         )
 
         if self.config.grading_via_merge_request:
-            self.grading_via_merge_request_setup_data = grading_via_merge_request.SetupData(self)
+            if self.config.multi_language is None:
+                self.grading_via_merge_request_setup_data = grading_via_merge_request.SetupData(self)
+            else:
+                self.grading_via_merge_request_setup_data = {
+                    language : grading_via_merge_request.SetupData(self, language = language)
+                    for language in self.config.branch_problem.keys()
+                }
+
             self.dir_status_repos = None if self.dir is None else self.dir / 'status-repos'
             if self.dir_status_repos:
                 self.dir_status_repos.mkdir(exist_ok = True)
@@ -459,22 +466,30 @@ class Lab:
     @functools.cached_property
     def group_ids_desired(self):
         def f():
+            # yield 'sattler'
+            # yield 'solution'
             yield from self.student_connector.desired_groups()
             yield from self.solutions.keys()
 
         return frozenset(f())
 
+    def group_slug_to_id(self, slug):
+        if slug.startswith(self.group_prefix):
+            group_id_printed = slug.removeprefix(self.group_prefix)
+            return self.student_connector.gitlab_group_slug_pp().parse(group_id_printed)
+        if slug in self.solutions.keys():
+            return slug
+        return None
+
     @functools.cached_property
     def groups(self):
         def group_ids():
+            # yield 'sattler'
+            # yield 'solution'
             for project in gitlab_.tools.list_all(self.gitlab_group.lazy.projects):
-                if project.path.startswith(self.group_prefix):
-                    group_id_printed = project.path.removeprefix(self.group_prefix)
-                    group_id = self.student_connector.gitlab_group_slug_pp().parse(group_id_printed)
-                    if not group_id is None:
-                        yield group_id
-                elif project.path in self.solutions.keys():
-                    yield project.path
+                id = self.group_slug_to_id(project.path)
+                if id is not None:
+                    yield id
 
         return {id: group_project.GroupProject(self, id) for id in group_ids()}
 
@@ -488,7 +503,7 @@ class Lab:
 
     def group_create(self, id):
         group = group_project.GroupProject(self, id)
-        group.group.create()
+        group.project.create()
         self.groups[id] = group
 
     def groups_create_desired(self, keep_existing = True):
@@ -559,10 +574,18 @@ class Lab:
                 c.add_value('advice', 'detachedHead', 'false')
 
             # Configure and fetch official repository.
+            # TODO: add language problem branches.
+            def fetch_branches():
+                if self.config.multi_language is None:
+                    yield self.course.config.branch.master
+                else:
+                    for branch in self.config.branch_problem.values():
+                        yield branch
+
             self.repo_add_remote(
                 self.course.config.path_lab.official,
                 self.official_project.get,
-                fetch_branches = [(git_tools.Namespacing.local, self.course.config.branch.master)],
+                fetch_branches = [(git_tools.Namespacing.local, branch) for branch in fetch_branches()],
                 fetch_tags = [(git_tools.Namespacing.local, git_tools.wildcard)],
             )
             self.repo_fetch_official()
@@ -570,7 +593,7 @@ class Lab:
             self.repo_add_remote(
                 self.course.config.path_lab.grading,
                 self.grading_project.get,
-                push_branches = [],
+                push_branches = [(git_tools.Namespacing.local, branch) for branch in fetch_branches()],
                 push_tags = [git_tools.wildcard],
             )
             self.repo_add_groups_remotes(ignore_missing = True)
@@ -867,7 +890,11 @@ class Lab:
                 for group in self.groups.values():
                     if group.parse_grading_merge_request_responses():
                         yield group.id
-                    stack.enter_context(group.grading_via_merge_request.notes_suppress_cache_clear())
+                    if self.config.multi_language is None:
+                        stack.enter_context(group.grading_via_merge_request.notes_suppress_cache_clear())
+                    else:
+                        for m in group.grading_via_merge_request.values():
+                            stack.enter_context(m.notes_suppress_cache_clear())
             yield frozenset(f())
 
     def parse_requests_and_responses(self, from_gitlab = True):
@@ -944,9 +971,14 @@ class Lab:
             with path_tools.temp_dir() as bin:
                 yield (src, bin)
 
-    @functools.cached_property
-    def head_problem(self):
-        return git_tools.normalize_branch(self.repo, self.course.config.branch.master)
+    def branch_problem(self, language = None):
+        if language is None:
+            return self.config.branch_problem
+
+        return self.config.branch_problem[language]
+
+    def head_problem(self, language = None):
+        return git_tools.normalize_branch(self.repo, self.branch_problem(language = language))
 
     @functools.cached_property
     def compiler(self):
@@ -954,13 +986,15 @@ class Lab:
             self.config.compiler.setup(self)
         return self.config.compiler
 
-    def checkout_problem(self):
+    # TODO: unused?
+    def checkout_problem(self, language = None):
         '''A context manager for the checked out problem head (path.Path).'''
-        return git_tools.checkout_manager(self.repo, self.head_problem)
+        return git_tools.checkout_manager(self.repo, self.head_problem(language = language))
 
+    # TODO: unused?
     @contextlib.contextmanager
-    def checkout_and_compile_problem(self):
-        with self.checkout_with_empty_bin_manager(self.head_problem) as (src, bin):
+    def checkout_and_compile_problem(self, language = None):
+        with self.checkout_with_empty_bin_manager(self.head_problem(language = language)) as (src, bin):
             if self.compiler is not None:
                 self.compiler.compile(src, bin)
                 yield (src, bin)
@@ -1222,7 +1256,11 @@ class Lab:
                     x = refresh_grading_merge_request and group.parse_grading_merge_request_responses()
                     if x:
                         self.logger.info('found merge request update')
-                        stack.enter_context(group.grading_via_merge_request.notes_suppress_cache_clear())
+                        if self.config.multi_language is None:
+                            stack.enter_context(group.grading_via_merge_request.notes_suppress_cache_clear())
+                        else:
+                            for m in group.grading_via_merge_request.values():
+                                stack.enter_context(m.notes_suppress_cache_clear())
                         yield x
 
             grading_updates = any(f())
@@ -1315,11 +1353,10 @@ class Lab:
         - a callback function to handle the event.
         These are the lab events triggered by the webhook event.
         '''
-        if not project_slug.startswith(self.group_prefix):
+        id = self.group_slug_to_id(project_slug)
+        if id is None:
             raise Exception(f'Unexpected project slug in hook event: {project_slug}')
 
-        project_slug = project_slug.removeprefix(self.group_prefix)
-        id = self.student_connector.gitlab_group_slug_pp().parse(project_slug)
         try:
             group = self.groups[id]
         except LookupError:
