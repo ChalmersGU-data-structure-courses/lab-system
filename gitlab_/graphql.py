@@ -8,8 +8,8 @@ from gql.transport.requests import RequestsHTTPTransport
 
 import general
 import print_parse
-import graphql.client
-from graphql.tools import (
+import graphql_.client
+from graphql_.tools import (
     query, distribute, tupling, lift, over_list
 )
 from this_dir import this_dir
@@ -42,7 +42,7 @@ class GroupCursor:
     id: int
     name: str
 
-class Client(graphql.client.ClientBase):
+class Client(graphql_.client.ClientBase):
     def __init__(self, domain, token, schema_full = False):
         '''
         Loading the full schema 'gitlab_schema.graphql' takes 2s on my laptop.
@@ -55,7 +55,7 @@ class Client(graphql.client.ClientBase):
             auth = general.BearerAuth(token),
         )
         filename = 'gitlab_schema{}.graphql'.format('' if schema_full else '_extract')
-        path_schema = this_dir / 'graph_ql' / filename
+        path_schema = this_dir / 'graphql_' / filename
         super().__init__(transport, path_schema)
 
     def query_complexity(self):
@@ -123,7 +123,7 @@ class Client(graphql.client.ClientBase):
             (id, username) = item
             return last_known_id is None or id > last_known_id
 
-        yield from filter(f, graphql.client.retrieve_all_from_cursor(
+        yield from filter(f, graphql_.client.retrieve_all_from_cursor(
             self.retrieve_all_users_page,
             cursor,
         ))

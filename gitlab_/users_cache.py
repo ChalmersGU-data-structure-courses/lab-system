@@ -2,7 +2,6 @@ import dataclasses
 from typing import Optional
 
 import hashed_file_cache
-import general
 import print_parse
 
 
@@ -74,18 +73,3 @@ class UsersCache(hashed_file_cache.HashedFileCacheSerializer):
                 raise self.DataUnchanged()
 
         return new_items
-
-import gitlab.graphql
-from gitlab_config_personal import canvas.client_rest as canvas_auth_token, gitlab_private_token
-
-with general.timing():
-    c = gitlab.graphql.Client('git.chalmers.se', gitlab_private_token)
-
-u = UsersCache('gitlab_users', c)
-
-with general.timing():
-    u.update()
-with general.timing():
-    u.clear()
-with general.timing():
-    u.update()

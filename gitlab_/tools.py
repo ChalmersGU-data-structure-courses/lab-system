@@ -646,7 +646,7 @@ def hook_check(spec: HookSpec, hooks):
         ) from None
 
     for event in spec.events:
-        if not getattr(hook, f'{event}_events'):
+        if not hasattr(hook, f'{event}_events'):
             raise ValueError(f'{event} events not configured')
     if hook.enable_ssl_verification:
         raise ValueError('hook does not have SSL certificate verification disabled')
@@ -845,12 +845,3 @@ class UsernameCache:
         '''
         with lock_file(self._path_lock_update, shared = False):
             yield
-
-
-
-
-
-
-
-
-
