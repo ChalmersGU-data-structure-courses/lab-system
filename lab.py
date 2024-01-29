@@ -598,7 +598,7 @@ class Lab:
             self.repo_add_remote(
                 self.course.config.path_lab.grading,
                 self.grading_project.get,
-                push_branches = [(git_tools.Namespacing.local, branch) for branch in fetch_branches()],
+                push_branches = fetch_branches(),
                 push_tags = [git_tools.wildcard],
             )
             self.repo_add_groups_remotes(ignore_missing = True)
