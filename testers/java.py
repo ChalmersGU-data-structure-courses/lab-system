@@ -84,21 +84,31 @@ class LabTester(testers.general.LabTester):
     TestSpec = Test
     needs_writable_sub_dir = True
 
-    def __init__(self, dir_lab: Path, dir_tester: Path, dir_submission_src: Path = Path(), machine_speed: float = 1):
+    def __init__(
+        self,
+        dir_lab: Path,
+        dir_tester: Path,
+        dir_submission_src: Path = Path(),
+        dir_problem = Path('problem'),
+        machine_speed: float = 1,
+    ):
         '''
         Arguments in addition to super class:
         * dir_submission_src:
             Relative path of the source code hierarchy in submissions.
+        * dir_problem:
+            Relative path to the lab problem.
         '''
         super().__init__(dir_lab, dir_tester, machine_speed)
         self.dir_submission_src = dir_submission_src
+        self.problem_src = self.dir_lab / dir_problem
 
         if self.has_test_overlay:
             logger.debug('Compiling test code.')
             java_tools.compile(
                 src = self.dir_test / self.dir_submission_src,
                 bin = self.dir_test / self.dir_submission_src,
-                sourcepath = [self.dir_lab / 'problem' / self.dir_submission_src],
+                sourcepath = [self.problem_src / self.dir_submission_src],
                 implicit = False,
             )
 
