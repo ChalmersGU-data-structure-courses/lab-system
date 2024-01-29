@@ -392,15 +392,19 @@ Must have a self-contained Python file `tests.py` specifying the tests to be run
 It must define a string-indexed dictionary of instances of the relevant test specification type.
 May also contain a directory `test` that is overlaid over submissions during testing.
 ''')
-    p.add_argument('-m', '--machine-speed', type = float, metavar = 'MACHINE_SPEED', default = float(1), help = '''
-The machine speed relative to a 2015 desktop machine.
-If not given, defaults to 1.
-Used to calculate appropriate timeout durations.
+    p.add_argument('-p', '--problem', type = Path, metavar = 'PROBLEM', default = None, help = '''
+Path to the problem source relative to the lab directory.
+Only used by some testers.
 ''')
     p.add_argument('-s', '--submission-src', type = Path, metavar = 'SRC_DIR', default = None, help = '''
 Relative path of the source code hierarchy in submissions.
 Useful for labs written in several languages.
 Only used by some testers.
+''')
+    p.add_argument('-m', '--machine-speed', type = float, metavar = 'MACHINE_SPEED', default = float(1), help = '''
+The machine speed relative to a 2015 desktop machine.
+If not given, defaults to 1.
+Used to calculate appropriate timeout durations.
 ''')
     p.add_argument('-v', '--verbose', action = 'count', default = 0, help = '''
 Print INFO level (once specified) or DEBUG level (twice specified) logging.
@@ -439,12 +443,16 @@ Print INFO level (once specified) or DEBUG level (twice specified) logging.
             logger.debug(f'Tester directory (relative to lab directory): {path_tools.format_path(args.tester)}')
             yield ('dir_tester', args.tester)
 
-            logger.debug(f'Machine speed: {args.machine_speed}')
-            yield ('machine_speed', args.machine_speed)
+            if args.problem is not None:
+                logger.debug(f'Problem directory (relative to lab directory): {path_tools.format_path(args.problem)}')
+                yield ('dir_problem', Path(args.problem))
 
             if args.submission_src is not None:
                 logger.debug(f'Submission source subdirectory: {path_tools.format_path(args.submission_src)}')
                 yield ('dir_submission_src', Path(args.submission_src))
+
+            logger.debug(f'Machine speed: {args.machine_speed}')
+            yield ('machine_speed', args.machine_speed)
 
         tester = Tester(**dict(params()))
         tester.run_tests(dir_out, args.submission)
