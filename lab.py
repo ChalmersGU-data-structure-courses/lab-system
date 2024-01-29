@@ -493,6 +493,11 @@ class Lab:
 
         return {id: group_project.GroupProject(self, id) for id in group_ids()}
 
+    def groups_known(self):
+        for group in self.groups.values():
+            # if group.is_known:
+            yield group
+
     def groups_delete_all(self, keep_student_groups = True, keep_solution_groups = True):
         for (id, group) in tuple(self.groups.items()):
             if not (keep_solution_groups if self.group_id_is_solution(id) else keep_student_groups):
@@ -545,7 +550,7 @@ class Lab:
         Configure fetching remotes in local grading repository for all groups on GitLab.
         This overwrites any existing configuration for such remotes, except for groups no longer existing.
         '''
-        for group in self.groups.values():
+        for group in self.groups_known():
             group.repo_add_remote(**kwargs)
 
     def repo_delete(self, force = False):
@@ -677,7 +682,7 @@ class Lab:
         gitlab_.tools.protect_branch(self.gl, project, 'python')
 
     def create_group_projects(self, exist_ok = False):
-        for group in self.groups.values():
+        for group in self.groups_known():
             x = group.project
             if exist_ok:
                 x.create_ensured()
@@ -685,7 +690,7 @@ class Lab:
                 x.create()
 
     def delete_group_projects(self):
-        for group in self.groups.values():
+        for group in self.groups_known():
             group.project.delete()
 
     def hotfix_groups(
@@ -732,7 +737,7 @@ class Lab:
 
         def remotes():
             yield self.course.config.path_lab.official
-            for group in self.groups.values():
+            for group in self.groups_known():
                 yield group.remote
         self.repo_command_fetch(self.repo, remotes())
 
@@ -749,7 +754,7 @@ class Lab:
         remote_tags = refs[git_tools.refs.name][git_tools.remote_tags.name]
 
         def f():
-            for group in self.groups.values():
+            for group in self.groups_known():
                 value = remote_tags.get(group.remote, dict())
                 yield (group.id, git_tools.flatten_references_hierarchy(value))
         return dict(f())
@@ -766,7 +771,7 @@ class Lab:
         return refs[git_tools.refs.name][git_tools.tags.name]
 
     def hook_specs(self, netloc = None) -> Iterable[gitlab_.tools.HookSpec]:
-        for group in self.groups.values():
+        for group in self.groups_known():
             yield from group.hook_specs(netloc)
 
     # Alternative implementation
@@ -836,7 +841,7 @@ class Lab:
         in each contained handler data instance can be accessed.
         '''
         self.logger.info('Parsing request tags.')
-        for group in self.groups.values():
+        for group in self.groups_known():
             group.parse_request_tags(from_gitlab = from_gitlab)
 
     def parse_response_issues(self, on_duplicate = True, delete_duplicates = False):
@@ -860,7 +865,7 @@ class Lab:
         self.logger.info('Parsing response issues.')
 
         def f():
-            for group in self.groups.values():
+            for group in self.groups_known():
                 if group.parse_response_issues(on_duplicate = on_duplicate, delete_duplicates = delete_duplicates):
                     yield group.id
         return frozenset(f())
@@ -887,7 +892,7 @@ class Lab:
 
         with contextlib.ExitStack() as stack:
             def f():
-                for group in self.groups.values():
+                for group in self.groups_known():
                     if group.parse_grading_merge_request_responses():
                         yield group.id
                     if self.config.multi_language is None:
@@ -940,7 +945,7 @@ class Lab:
         self.logger.info('Processing requests.')
 
         def f():
-            for group in self.groups.values():
+            for group in self.groups_known():
                 requests_new = group.process_requests()
                 if requests_new[self.config.submission_handler_key]:
                     yield group.id
@@ -958,7 +963,7 @@ class Lab:
 
     def handle_requests(self):
         self.logger.info('Handling request tags.')
-        for group in self.groups.values():
+        for group in self.groups_known():
             group.handle_requests()
 
     @contextlib.contextmanager
@@ -1001,7 +1006,7 @@ class Lab:
 
     def groups_with_live_submissions(self, deadline = None):
         '''A generator for groups with live submissions for the given optional deadline.'''
-        for group in self.groups.values():
+        for group in self.groups_known():
             if group.submission_current(deadline = deadline) is not None:
                 yield group.id
 
@@ -1058,7 +1063,7 @@ class Lab:
                     continue
 
     def parse_grading_issues(self):
-        for group in self.groups.values():
+        for group in self.groups_known():
             group.grading_issues = dict()
 
         r = self.course.parse_response_issues(self.grading_project)
@@ -1071,7 +1076,7 @@ class Lab:
         return self.course.grading_spreadsheet.ensure_grading_sheet(self)
 
     def normalize_group_ids(self, group_ids = None):
-        return self.student_connector.desired_groups() if group_ids is None else group_ids
+        return {group.id for group in self.groups_known()} if group_ids is None else group_ids
 
     def include_group_in_grading_sheet(self, group, deadline = None):
         '''
@@ -1310,7 +1315,7 @@ class Lab:
     @functools.cached_property
     def group_by_gitlab_username(self):
         def f():
-            for group in self.groups.values():
+            for group in self.groups_known():
                 for gitlab_user in group.members:
                     yield (gitlab_user.username, group)
         return general.sdict(f(), format_value = lambda group: group.name)
