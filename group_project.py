@@ -686,11 +686,11 @@ class GroupProject:
             self.name = f'{self.lab.name_full} — {self.lab.student_connector.gitlab_group_name(id)}'
 
         self.path = self.lab.path / self.path_name
-        if self.is_known:
-            self.handler_data = {
-                handler_key: HandlerData(self, handler_key)
-                for handler_key in self.lab.config.request_handlers.keys()
-            }
+        #if self.is_known:
+        self.handler_data = {
+            handler_key: HandlerData(self, handler_key)
+            for handler_key in self.lab.config.request_handlers.keys()
+        }
 
     @property
     def course(self):
