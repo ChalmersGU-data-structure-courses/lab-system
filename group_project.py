@@ -71,7 +71,7 @@ class RequestAndResponses:
 
     @functools.cached_property
     def repo_remote_commit(self):
-        return git_tools.commit(self.repo_remote_tag)
+        return git_tools.tag_commit(self.repo_remote_tag)
 
     @functools.cached_property
     def date(self):
