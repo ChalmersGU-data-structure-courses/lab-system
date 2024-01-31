@@ -119,11 +119,7 @@ class GradingViaMergeRequest:
             'branch': self.setup_data.source_branch,
             'ref': self.setup_data.target_branch,
         })
-        self.project.protectedbranches.create({
-            'name': self.setup_data.source_branch,
-            'merge_access_level': gitlab.const.MAINTAINER_ACCESS,
-            'push_access_level': gitlab.const.MAINTAINER_ACCESS,
-        })
+        gitlab_.tools.protect_branch(self.lab.gl, self.project, self.setup_data.source_branch)
         self.merge_request = self.project.mergerequests.create({
             'source_branch': self.setup_data.source_branch,
             'target_branch': self.setup_data.target_branch,
