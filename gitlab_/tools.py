@@ -95,6 +95,7 @@ def protect_branch(gl, project, branch, delete_prev = False):
         'name': branch,
         'merge_access_level': gitlab.const.MAINTAINER_ACCESS,
         'push_access_level': gitlab.const.MAINTAINER_ACCESS,
+        'allow_force_push': True,
     })
 
 def members_from_access(entity, levels):
