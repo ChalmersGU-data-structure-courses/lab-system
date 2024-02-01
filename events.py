@@ -64,13 +64,17 @@ class ReloadCourse(CourseEvent):
     _key = (0,)
 
 @_dataclass_incomparable
+class SyncFromCanvas(CourseEvent):
+    _key = (1, ordering.DiscreteOrder(0))
+
+@_dataclass_incomparable
 class CourseEventInLab(CourseEvent):
     lab_id: typing.Any
     lab_event: LabEvent
 
     @property
     def _key(self):
-        return (1, ordering.DiscreteOrder(self.lab_id), self.lab_event)
+        return (1, ordering.DiscreteOrder(1), ordering.DiscreteOrder(self.lab_id), self.lab_event)
 
 
 # ## Instances of LabEvent.

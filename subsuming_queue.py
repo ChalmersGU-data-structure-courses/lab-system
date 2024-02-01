@@ -39,7 +39,8 @@ class SubsumingQueue:
     '''
     A subsuming queue for elements of a partial order.
     Existing queue entries are replaced by items that have
-    priority over them (except if they have the same priority).
+    priority over them (except if they have the same priority,
+    in which case the itemt is not added).
 
     Queue invariant:
     No two entries have comparable priority.
@@ -55,7 +56,7 @@ class SubsumingQueue:
 
         Does not change the queue if it already contains an equivalent element.
         Evicts all entries the item has priority over.
-        If evictions occur, the  first evicted entry is replaced with new item.
+        If evictions occur, the first evicted entry is replaced with new item.
 
         Adding is constant time.
         The actual work happens in 'remove' when processing the iterator.
