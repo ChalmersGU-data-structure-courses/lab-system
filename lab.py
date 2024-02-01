@@ -1579,11 +1579,31 @@ class Lab:
                         f'missing member {user_str_from_gitlab_username(gitlab_username)} of {entity_name}'
                     )
 
+    def sync_projects_and_students_from_canvas(self, synced_group_sets = set()):
+        '''
+        Create lab projects and sync their membership according to the information on Canvas.
+        Currently does not delete any groups that were deleted on Canvas (for safety).
+
+        The parameter is set of group set names that are considered to been synced recently.
+        If this lab is a group lab and the name of the corresponding Canvas group set is not in set,
+        the group set will be refreshed and its name added to the given set.
+        '''
+        self.logger.info('synchronizing lab projects and their members from Canvas')
+
+        student_connector = self.student_connector
+        if isinstance(student_connector, StudentConnectorGroupSet):
+            group_set = student_connector.group_set
+            group_set_name = group_set.config.group_set_name
+            if not group_set_name in synced_group_sets:
+                group_set.canvas_group_set_refresh()
+                synced_group_sets.add(group_set_name)
+        self.groups_create_desired()
+        self.sync_students_to_gitlab()
 
     def deploy_via_lab_sources_and_canvas(self):
         '''
         Perform all steps to deploy a lab in sequence.
-            
+
         Steps:
         - creating a new project for the lab in the course
         - creating base projects for sources and grading
