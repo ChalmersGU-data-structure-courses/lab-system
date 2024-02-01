@@ -382,6 +382,18 @@ class Course:
         '''
         return self.gitlab_users_cache.id_from_username.get(gitlab_username)
 
+    # HACK
+    def rectify_cid_to_gitlab_username(self, cid):
+        keys = self.gitlab_users_cache.id_from_username.keys()
+        if cid in keys:
+            return cid
+
+        weird = cid + '1'
+        if weird in keys:
+            return weird
+
+        return cid
+
     @functools.cached_property
     def gitlab_username_by_canvas_user_id(self):
         '''

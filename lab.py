@@ -99,13 +99,7 @@ class StudentConnectorIndividual(StudentConnector):
         return canvas_user.name
 
     def desired_members(self, id):
-        # HACK
-        if not id in self.course.canvas_user_by_gitlab_username:
-            id_1 = id + '1'
-            if id_1 in self.course.canvas_user_by_gitlab_username:
-                id = id_1
-
-        return frozenset([id])
+        return frozenset([self.course.rectify_cid_to_gitlab_username(id)])
 
     def gdpr_coding(self):
         return self.course.student_name_coding.gdpr_coding
@@ -1422,7 +1416,7 @@ class Lab:
                 continue
 
             gitlab_username = self.course.gitlab_username_by_canvas_id(canvas_user_id)
-            if gitlab_user is None:
+            if gitlab_username is None:
                 self.logger.warning(f'* Canvas user {canvas_user.name} not on Chalmers GitLab.')
                 continue
 
