@@ -1428,9 +1428,8 @@ class GroupProject:
             )
             self.logger.debug(f'Webhook event:\n{hook_event}')
 
-    @property
-    def lab_event(self):
-        return lambda group_project_event: events.LabEventInGroupProject(
+    def lab_event(self, group_project_event):
+        return events.LabEventInGroupProject(
             group_id = self.id,
             group_project_event = group_project_event,
         )

@@ -1395,9 +1395,8 @@ class Lab:
             group.parse_hook_event(hook_event, strict = strict),
         )
 
-    @property
-    def course_event(self):
-        return lambda lab_event: events.CourseEventInLab(
+    def course_event(self, lab_event):
+        return events.CourseEventInLab(
             lab_id = self.id,
             lab_event = lab_event,
         )

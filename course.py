@@ -708,9 +708,8 @@ class Course:
             self.logger.warning(f'Received webhook event for unknown lab id {lab_id}.')
             self.logger.debug(f'Webhook event:\n{hook_event}')
 
-    @property
-    def program_event(self):
-        return lambda course_event: events.ProgramEventInCourse(
+    def program_event(self, course_event):
+        return events.ProgramEventInCourse(
             course_dir = self.dir,
             course_event = course_event,
         )
