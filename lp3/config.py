@@ -167,6 +167,9 @@ lab = SimpleNamespace(
     # Used as relative path on Chalmers GitLab.
     full_id = print_parse.regex_int('lab-{}'),
 
+    # Used as prefix for projects on Chalmers GitLab.
+    prefix = print_parse.regex_int('lab{}-'),
+
     # Actual name.
     name = print_parse.regex_int('Lab {}', flags = re.IGNORECASE),
 
