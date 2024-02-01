@@ -1,8 +1,10 @@
 import abc
 import contextlib
 import functools
+import itertools
 import logging
 from pathlib import Path
+import random
 import shutil
 import tempfile
 from typing import Iterable
@@ -1072,13 +1074,36 @@ class Lab:
                 )
                 self.file_live_submissions_table_staging.unlink()
             else:
+                # with path_tools.temp_dir() as dir:
+                #     shutil.copyfile(self.file_live_submissions_table_staging, 'index.html')
+                #     tree = git_tools.create_tree_from_dir(dir)
+                #     try:
+                #         parents = [self.repo.heads[self.head_live_submissions_table].commit]
+                #     except IndexError:
+                #         parents = []
+                #     commit = git.Commit.create_from_tree(
+                #         self.repo,
+                #         tree,
+                #         'Update live submissions table.',
+                #         parents,
+                #     )
+                #     self.repo.create_head(self.head_live_submissions_table, commit, force = True)
+                #     self.repo_updated = True
+                #     self.repo_push()
                 self.logger.info('Posting live submissions table to Canvas')
                 target = self.config.canvas_path_awaiting_grading
-                self.course.canvas_course.post_file(
-                    self.file_live_submissions_table_staging,
-                    self.course.canvas_course.get_folder_by_path(target.parent).id,
-                    target.name,
-                )
+                folder_id = self.course.canvas_course.get_folder_by_path(target.parent).id
+                # self.course.canvas_course.post_file(
+                #     self.file_live_submissions_table_staging,
+                #     folder_id,
+                #     target.name,
+                # )
+                # Workaround for https://github.com/instructure/canvas-lms/issues/2309:
+                with path_tools.temp_file() as path:
+                    data = self.file_live_submissions_table_staging.read_text()
+                    data = data + '<!-- ' + str(random.randbytes(16)) + ' -->'
+                    path.write_text(data)
+                    self.course.canvas_course.post_file(path, folder_id, target.name)
                 self.file_live_submissions_table_staging.replace(
                     self.file_live_submissions_table,
                 )
