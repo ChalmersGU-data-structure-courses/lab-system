@@ -297,7 +297,7 @@ else:
     # TODO: if we want to continue supporting multiple courses in this script, find way of passing lab-specific config.
     canvas_sync_config = event_loop.CanvasSyncConfig(
         labs_to_sync = tuple(map(course.config.lab.id.parse, args.sync_from_canvas)),
-        sync_interval = None if args.sync_period is None else datetime.timedelta(minutes = args.sync_period),
+        sync_interval = None if args.sync_period is None else datetime.timedelta(seconds = args.sync_period),
         start_with_sync = bool(args.start_with_sync),
     )
 
