@@ -6,7 +6,6 @@ import canvas.client_rest as canvas
 import general
 
 class GroupSet:
-
     def __init__(self, course, config, logger = logging.getLogger(__name__)):
         self.logger = logger
         self.course = course
