@@ -440,6 +440,14 @@ class Course:
                 yield (gitlab_username, self.canvas_course.user_details[canvas_user_id])
         return general.sdict(f())
 
+    # This thing is a mess.
+    # TODO: refactor.
+    def clear_user_assoc_caches(self):
+        with contextlib.suppress(AttributeError):
+            del self.gitlab_username_by_canvas_user_id
+            del self.canvas_user_by_gitlab_username
+            self.gitlab_users_cache.update()
+
     def gitlab_username_by_canvas_id(self, canvas_id):
         '''Returns the Chalmers GitLab user ID for a given Canvas user id, or None if none is found.'''
         return self.gitlab_username_by_canvas_user_id.get(canvas_id)
@@ -718,6 +726,28 @@ class Course:
             return ((), issue)
 
         return functools.partial(self.parse_issues, 'grading template', parser, parsed_issues)
+
+    def sync_teachers_and_lab_projects(self, lab_ids):
+        '''
+        Update graders group and student lab membership on GitLab according to information on Canvas.
+        Synchronizes only those labs whose ids are specified in the set self.config.labs_to_sync.
+
+        Arguments:
+        * lab_ids: iterable of lab ids to synchronize.
+        '''
+        self.logger.info('synchronizing teachers and students from Canvas to GitLab')
+
+        # Update the user information.
+        self.canvas_course_refresh()
+        self.clear_user_assoc_caches()
+
+        # Sync teachers.
+        self.add_teachers_to_gitlab()
+
+        # Sync students.
+        synced_group_sets = set()
+        for lab_id in lab_ids:
+            self.labs[lab_id].sync_projects_and_students_from_canvas(synced_group_sets)
 
     def setup(self, use_live_submissions_table = True):
         '''Sets up all labs.'''
