@@ -213,20 +213,43 @@ class Canvas:
         return 'true' if v else 'false'
 
     # Returns the id of the posted file.
-    def post_file(self, endpoint, file, folder_id, name, use_curl = False):
+    def post_file(self, endpoint, file, folder_id_or_path, name, use_curl = False):
+        '''
+        Warning:
+        If folder_id_or_path is a path, then any ancestor folders may implicitly be created.
+        They will be published by default.
+
+        Possible Canvas bug (observed repeatedly since 2024-01-17):
+        Sometimes, a file upload with specified folder id fails with error 404 (not found).
+
+        Some further investigation on (2024-01-31):
+        This seems to be related to upload of files with the same content as an old version.
+        Probably some deduplication module in the Canvas server software is now broken.
+        To reproduce:
+        1. Upload file A under path P.
+        2. Upload file B, different from A, under path P.
+        3. Upload file A under path P.
+
+        Reported here: https://github.com/instructure/canvas-lms/issues/2309
+
+        As a workaround, consider appending random data without semantic meaning to every overwriting file upload.
+
+        Warning (2024-01-31):
+        The id of a folder can change.
+        '''
         file = file.resolve()
         size = file.stat().st_size
 
-        r = self.post(endpoint, {
-            'name': name,
-            'size': size,
-            # Why were these options given?
-            # Can't find documentation for them.
-            #'locked': True,
-            #'lock': True,
-            'parent_folder_id': folder_id,
-            'on_duplicate': 'overwrite',  # There should be an 'error' option
-        })
+        def params():
+            yield ('name', name)
+            yield ('size', size)
+            yield ('on_duplicate', 'overwrite')  # Should actually be the default.
+            if isinstance(folder_id_or_path, int):
+                yield ('parent_folder_id', folder_id_or_path)
+            else:
+                yield ('parent_folder_path', str(folder_id_or_path))
+
+        r = self.post(endpoint, dict(params()))
         upload_params = json.loads(json_encoder.encode(r.upload_params))
 
         if use_curl:
@@ -457,8 +480,8 @@ class Course:
         return self.canvas.get_url(endpoint, absolute = absolute)
 
     # Returns the id of the posted file.
-    def post_file(self, file, folder_id, name, locked = False, use_curl = False):
-        file_id = self.canvas.post_file(self.endpoint + ['files'], file, folder_id, name, use_curl = use_curl)
+    def post_file(self, file, folder_id_or_path, name, locked = False, use_curl = False):
+        file_id = self.canvas.post_file(self.endpoint + ['files'], file, folder_id_or_path, name, use_curl = use_curl)
         if locked:
             self.canvas.file_set_locked(file_id, True)
         return file_id
@@ -470,7 +493,7 @@ class Course:
         return dict((file.filename, file) for file in files)
 
     def get_folder(self, id, use_cache = True):
-        return self.canvas.get(['folders', id], use_cache = True)
+        return self.canvas.get(['folders', id], use_cache = use_cache)
 
     def create_folder(self, canvas_dir, unlock_at = None, lock_at = None, locked = None, hidden = None):
         canvas_dir = PurePosixPath(canvas_dir)
