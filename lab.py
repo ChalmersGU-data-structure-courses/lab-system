@@ -370,25 +370,25 @@ class Lab:
         def create():
             project = gitlab_.tools.CachedProject.create(r, self.gitlab_group.get)
             try:
-                with path_tools.temp_dir() as dir:
-                    repo = git.Repo.init(dir.__fspath__())
+                # with path_tools.temp_dir() as dir:
+                #     repo = git.Repo.init(dir.__fspath__())
 
-                    def push_branch(name, path, message):
-                        shutil.copytree(path, dir, dirs_exist_ok = True, symlinks = True)
-                        repo.git.add('--all', '--force')
-                        repo.git.commit('--allow-empty', message = message)
-                        repo.git.push(project.ssh_url_to_repo, git_tools.refspec(
-                            git_tools.head,
-                            git_tools.local_branch(name),
-                            force = True
-                        ))
+                #     def push_branch(name, path, message):
+                #         shutil.copytree(path, dir, dirs_exist_ok = True, symlinks = True)
+                #         repo.git.add('--all', '--force')
+                #         repo.git.commit('--allow-empty', message = message)
+                #         repo.git.push(project.ssh_url_to_repo, git_tools.refspec(
+                #             git_tools.head,
+                #             git_tools.local_branch(name),
+                #             force = True
+                #         ))
 
-                    if self.config.path_gitignore:
-                        shutil.copyfile(self.config.path_gitignore, Path(dir) / '.gitignore')
-                    push_branch(
-                        self.course.config.branch.master,
-                        'Initial commit.',
-                    )
+                #     if self.config.path_gitignore:
+                #         shutil.copyfile(self.config.path_gitignore, Path(dir) / '.gitignore')
+                #     push_branch(
+                #         self.course.config.branch.master,
+                #         'Initial commit.',
+                #     )
 
                 project.lfs_enabled = False
                 project.wiki_enabled = False
