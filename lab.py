@@ -224,7 +224,7 @@ class Lab:
         self.name = self.course.config.lab.name.print(self.id)
         self.name_semantic = (self.config.path_source / 'name').read_text().strip()
         self.name_full = '{} — {}'.format(self.name, self.name_semantic)
-        self.group_prefix = f'lab{self.id_str}-'
+        self.group_prefix = self.course.config.lab.prefix.print(self.id)
 
         # Student connector
         if self.config.group_set:
