@@ -468,6 +468,7 @@ _canvas_id_to_gitlab_username_override = {
     122370000000301804: 'REDACTED_CID',
     122370000000285024: 'REDACTED_CID',
     122370000000301810: 'REDACTED_CID',
+    122370000000285030: 'REDACTED_CID',
 }
 
 def gitlab_username_from_canvas_user_id(course, user_id):
@@ -482,7 +483,7 @@ def gitlab_username_from_canvas_user_id(course, user_id):
     try:
         return _cid_to_gitlab_username.print(cid)
     except KeyError:
-        return cid
+        return course.rectify_cid_to_gitlab_username(cid)
 
 # Configuration for webhooks on Chalmers GitLab.
 # These are used for programmatic push notifications.
