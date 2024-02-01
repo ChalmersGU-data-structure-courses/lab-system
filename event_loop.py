@@ -3,6 +3,7 @@ import dataclasses
 import datetime
 import logging
 import threading
+from typing import Optional
 
 import events
 import general
@@ -15,6 +16,8 @@ import webhook_listener
 
 @dataclasses.dataclass
 class WebhookConfig:
+    '''Configuration for webhooks.'''
+
     netloc_listen: print_parse.NetLoc
     '''The local net location to listen at for webhook notifications.'''
 
@@ -27,12 +30,32 @@ class WebhookConfig:
     The value does not matter, but it should not be guessable.
     '''
 
+@dataclasses.dataclass
+class CanvasSyncConfig:
+    '''Configuration for synchronizing teachers, students, and groups from Canvas to GitLab.'''
+
+    labs_to_sync: tuple
+    '''Tuple of lab ids to synchronize.'''
+
+    sync_interval: Optional[datetime.timedelta]
+    '''
+    How often to synchronize.
+    If not set, don't synchronize except potentially at the start.
+    '''
+
+    start_with_sync: bool
+    '''
+    Whether to start with a synchronization.
+    If false, the first synchronization occurs after sync_interval.
+    '''
+
 logger = logging.getLogger(__name__)
 
 def run(
     courses,
-    run_time = None,
-    webhook_config = None,
+    run_time: Optional[datetime.timedelta] = None,
+    webhook_config: Optional[WebhookConfig] = None,
+    canvas_sync_config: Optional[CanvasSyncConfig] = None,
 ):
     '''
     Run the event loop.
@@ -49,13 +72,14 @@ def run(
         The courses to run the event loop for.
         This function takes care of calling setup.
     * run_time:
-        Optional instance of datetime.timedelta.
         If set, the event loop will exit after this period has elapsed.
         This is the only way for this function to return.
     * webhook_config:
-        Optional instance of WebhookConfig.
         Configuration for webhook notifications from GitLab Chalmers.
         Set to None to disable the webhook mechanism in the event loop.
+    * canvas_sync_config:
+        Configuration for the mechanism synchronizing graders, students, and groups from Canvas to GitLab.
+        Set to None to disable.
     '''
     # Resource management.
     exit_stack = contextlib.ExitStack()
@@ -129,12 +153,34 @@ def run(
             )
             thread_managers.append(threading_tools.timer_manager(shutdown_timer))
 
+        # Set up Canvas sync event timers and add potential initial sync.
+        def sync_from_canvas(course):
+            event_queue.add((
+                course.program_event(events.SyncFromCanvas()),
+                lambda: course.sync_teachers_and_lab_projects(canvas_sync_config.labs_to_sync),
+            ))
+
+        if canvas_sync_config is not None:
+            for course in courses:
+                if canvas_sync_config.start_with_sync:
+                    sync_from_canvas(course)
+                if canvas_sync_config.sync_interval is not None:
+                    course.sync_timer = threading_tools.Timer(
+                        canvas_sync_config.sync_interval,
+                        sync_from_canvas,
+                        args = [course],
+                        name = f'course-sync-from-canvas-timer<{course.config.path_course}>',
+                        repeat = True,
+                    )
+                    thread_managers.append(threading_tools.timer_manager(course.sync_timer))
+
         # Set up lab refresh event timers and add initial lab refreshes.
         def refresh_lab(lab):
             event_queue.add((
                 lab.course.program_event(lab.course_event(events.RefreshLab())),
                 lab.refresh_lab,
             ))
+
         delay = datetime.timedelta()
         for c in courses:
             for lab in c.labs.values():

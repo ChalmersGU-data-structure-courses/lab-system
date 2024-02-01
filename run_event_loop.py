@@ -116,6 +116,42 @@ This is 1–3 API calls per project.
 By default, a limit of 3600 API calls per hour is imposed.
 ''').completer = complete_nothing  # noqa: E501
 
+g = p.add_argument_group(title = 'Canvas sync')
+
+g.add_argument(
+    '-s',
+    '--sync-from-canvas',
+    action = 'append',
+    default = [],
+    metavar = 'LAB_ID',
+    dest = 'sync_from_canvas',
+    help = '''
+Specify a lab id for which user information
+Only has an effect with --start-with-sync and/or --sync-period.
+'''
+).completer = complete_nothing
+
+g.add_argument(
+    '--start-with-sync',
+    action = 'store_true',
+    dest = 'start_with_sync',
+    help = '''
+Synchronize user information from Canvas at the start of the event loop.
+Teachers and teaching assistants on Canvas will be added or invited the course grader group.
+Students will be added or invited to the lab(s) specified by --sync-from-canvas.
+''').completer = complete_nothing
+
+g.add_argument(
+    '--sync-period',
+    type = int,
+    metavar = 'SECONDS',
+    dest = 'sync_period',
+    help = '''
+Synchronize user information from Canvas after every interval of this many seconds.
+Teachers and teaching assistants on Canvas will be added or invited the course grader group.
+Students will be added or invited to the lab(s) specified by --sync-from-canvas.
+''').completer = complete_nothing
+
 g = p.add_argument_group(title = 'other options')
 
 g.add_argument('-j', '--jobs', type = int, default = 5, dest = 'jobs', help = '''
@@ -212,6 +248,7 @@ def courses():
         c = course.Course(config, dir)
         yield (dir, c)
 courses = general.sdict(courses())
+course = list(courses.values())[0]
 
 
 def get_value_from_courses(name, selector):
@@ -252,6 +289,18 @@ else:
     )
     logger.debug(f'Webhook config: {webhook_config}')
 
+# Parse Canvas sync configuration.
+if not args.start_with_sync and args.sync_period is None:
+    canvas_sync_config = None
+else:
+    # We assume all courses share the same labs.
+    # TODO: if we want to continue supporting multiple courses in this script, find way of passing lab-specific config.
+    canvas_sync_config = event_loop.CanvasSyncConfig(
+        labs_to_sync = tuple(map(course.config.lab.id.parse, args.sync_from_canvas)),
+        sync_interval = None if args.sync_period is None else datetime.timedelta(minutes = args.sync_period),
+        start_with_sync = bool(args.start_with_sync),
+    )
+
 
 def create_webhooks():
     for c in courses.values():
@@ -272,6 +321,7 @@ def run():
             courses = courses.values(),
             run_time = general.with_default(lambda x: datetime.timedelta(hours = x), args.run_time),
             webhook_config = webhook_config,
+            canvas_sync_config = canvas_sync_config,
         )
 
 # Perform selected action.
