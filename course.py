@@ -139,7 +139,8 @@ class Course:
     @functools.cached_property
     def student_name_coding(self):
         def first_and_last_name(cid):
-            canvas_user = self.canvas_user_by_gitlab_username[cid]
+            gitlab_username = self.rectify_cid_to_gitlab_username(cid)
+            canvas_user = self.canvas_user_by_gitlab_username[gitlab_username]
             return canvas.user_first_and_last_name(canvas_user)
 
         self.student_name_coding = gdpr_coding.NameCoding(self.dir / 'gdpr_coding.json', first_and_last_name)
@@ -147,7 +148,7 @@ class Course:
         return self.student_name_coding
 
     def student_name_coding_update(self):
-        self.student_name_coding.add_ids(self.gitlab_username_by_canvas_user_id.values())
+        self.student_name_coding.add_ids(map(self.rectify_gitlab_username_to_cid, self.gitlab_username_by_canvas_user_id.values()))
 
     def canvas_user_login_id(self, user):
         return user._dict.get('login_id')
@@ -381,6 +382,10 @@ class Course:
         Uses self.gitlab_users_cache.
         '''
         return self.gitlab_users_cache.id_from_username.get(gitlab_username)
+
+    # HACK
+    def rectify_gitlab_username_to_cid(self, gitlab_username):
+        return gitlab_username.removesuffix('1')
 
     # HACK
     def rectify_cid_to_gitlab_username(self, cid):
