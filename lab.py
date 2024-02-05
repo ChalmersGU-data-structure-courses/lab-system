@@ -81,7 +81,7 @@ class StudentConnectorIndividual(StudentConnector):
             for canvas_user in self.course.canvas_course.students:
                 gitlab_username = self.course.gitlab_username_from_canvas_user_id(canvas_user.id, strict = False)
                 if not gitlab_username is None:
-                    yield gitlab_username.removesuffix('1')
+                    yield self.course.rectify_gitlab_username_to_cid(gitlab_username)
 
         return frozenset(f())
 

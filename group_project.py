@@ -1424,7 +1424,7 @@ class GroupProject:
 
             self.logger.warning(
                 f'Received unknown webhook event of type {event_type} '
-                f'for project {hook_event["project"]["path_with_namespace"]}.'
+                f'for project {hook_event["project"]["path_with_namespace"]} with name {project_name}.'
             )
             self.logger.debug(f'Webhook event:\n{hook_event}')
 
