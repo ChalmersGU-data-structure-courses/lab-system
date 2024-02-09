@@ -59,9 +59,9 @@ class GradingViaMergeRequest:
         ),
     )
 
-    non_grader_change_message = general.join_lines(
+    non_grader_change_message = general.join_lines([
         '⚠️**WARNING**⚠️ Grading label change by non-grader detected.'
-    )
+    ])
 
     def __init__(self, setup_data, group, logger = logging.getLogger(__name__)):
         self.setup_data = setup_data
