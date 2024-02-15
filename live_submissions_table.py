@@ -441,7 +441,15 @@ class SubmissionDiffColumn(Column):
         super().__init__(config)
         self.title = title
 
-    def base_ref(self, group):
+    def base_ref_and_grader(self, group):
+        '''
+        Returns a tuple of:
+        * request name
+        * tag in the grading project
+        * optional pair of:
+          - grader name
+          - grader link
+        '''
         raise NotImplemented()
 
     def format_header_cell(self, cell):
@@ -455,11 +463,12 @@ class SubmissionDiffColumn(Column):
         if x is None:
             return SubmissionDiffColumnValue(None)
 
-        (name, a) = x
+        (name, a, linked_grader) = x
         b = submission_current.repo_tag()
 
         return SubmissionDiffColumnValue(
             (name + '..', gitlab_.tools.url_compare(self.lab.grading_project.get, a, b)),
+            linked_grader = linked_grader,
             is_same = a.commit == b.commit,
         )
 
@@ -471,7 +480,11 @@ class SubmissionDiffPreviousColumn(SubmissionDiffColumn):
         submissions_with_outcome = list(group.submissions_with_outcome(deadline = self.config.deadline))
         if submissions_with_outcome:
             submission_previous = submissions_with_outcome[-1]
-            return (submission_previous.request_name, submission_previous.repo_tag())
+            return (
+                submission_previous.request_name,
+                submission_previous.repo_tag(),
+                (submission_previous.grader_informal_name, submission_previous.link),
+            )
 
 class SubmissionDiffProblemColumn(SubmissionDiffColumn):
     def __init__(self, config):
@@ -479,7 +492,7 @@ class SubmissionDiffProblemColumn(SubmissionDiffColumn):
 
     def base_ref(self, group):
         submission_current = group.submission_current(deadline = self.config.deadline)
-        return ('problem', submission_current.head_problem)
+        return ('problem', submission_current.head_problem, None)
 
 class SubmissionDiffSolutionColumn(SubmissionDiffColumn):
     @classmethod
@@ -494,12 +507,12 @@ class SubmissionDiffSolutionColumn(SubmissionDiffColumn):
         if self.choose_solution is None:
             try:
                 if self.lab.config.multi_language is None:
-                    return ('solution', self.lab.groups['solution'].submission_current().repo_tag())
+                    return ('solution', self.lab.groups['solution'].submission_current().repo_tag(), None)
 
                 # TODO: remove hard-coding
                 submission_current = group.submission_current(deadline = self.config.deadline)
                 submission_solution = self.lab.groups['solution'].submission_handler_data.requests_and_responses[f'submission-solution-{submission_current.language}']
-                return ('solution', submission_solution.repo_tag())
+                return ('solution', submission_solution.repo_tag(), None)
             except (KeyError, AttributeError):
                 raise ValueError('Diff with solution: no solution available')
 
@@ -509,7 +522,7 @@ class SubmissionDiffSolutionColumn(SubmissionDiffColumn):
             return None
 
         (name, submission_solution) = x
-        return (name, submission_solution.repo_tag())
+        return (name, submission_solution.repo_tag(), None)
 
 def with_standard_columns(columns = dict(), with_solution = True, choose_solution = None):
     def f():
