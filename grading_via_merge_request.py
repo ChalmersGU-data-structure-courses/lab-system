@@ -317,7 +317,7 @@ class GradingViaMergeRequest:
         def f():
             it = iter(self.label_events)
             for (request_name, request_name_next) in more_itertools.stagger(
-                self.synced_submissions,
+                self.synced_submissions.keys(),
                 offsets = [0, 1],
                 longest = True,
             ):
@@ -329,6 +329,21 @@ class GradingViaMergeRequest:
                 if consolidated_outcome:
                     yield (request_name, consolidated_outcome)
             more_itertools.consume(it)
+        return dict(f())
+
+    @property
+    def next_submission_with_outcome(self):
+        '''
+        A dictionary sending each request name to the closest future request name with an outcome, if existing.
+        Needed for the case that submissions are synced in the merge request in an order different from the submission dates.
+        '''
+        def f():
+            request_name_with_outcome = None
+            for request_name in reversed(self.synced_submissions.keys()):
+                if request_name in self.submission_outcomes:
+                    request_name_with_outcome = request_name
+                if not request_name_with_outcome is None:
+                    yield (request_name, request_name_with_outcome)
         return dict(f())
 
     @property
@@ -378,8 +393,14 @@ class GradingViaMergeRequest:
     def has_outcome(self):
         return any(outcome is not None for (outcome, _) in self.submission_outcomes.values())
 
-    def outcome_with_link_and_grader(self, request_name):
-        '''Returns None if no outcome exists (e.g. waiting-for-grading).'''
+    def outcome_with_link_and_grader(self, request_name, accumulative = False):
+        '''
+        Returns None if no outcome exists (e.g. waiting-for-grading).
+        If accumulative is true, consider each outcome to also apply to previous synced submissions that do not have their own outcome.
+        '''
+        if accumulative:
+            request_name = self.next_submission_with_outcome.get(request_name, request_name)
+
         try:
             (outcome, (date, (username, system))) = self.submission_outcomes[request_name]
         except KeyError:
