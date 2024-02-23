@@ -677,6 +677,12 @@ class Lab:
         gitlab_.tools.protect_branch(self.gl, project, 'java')
         gitlab_.tools.protect_branch(self.gl, project, 'python')
 
+    def unprotect_main_branches(self):
+        for g in self.groups.values():
+            with gitlab_.tools.exist_ok():
+                g.project.lazy.protectedbranches.delete('main')
+                self.logger.info(f'WARNING: unprotected branch main for group {g.name}')
+
     def create_group_projects(self, exist_ok = False):
         for group in self.groups_known():
             x = group.project
