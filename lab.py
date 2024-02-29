@@ -507,12 +507,16 @@ class Lab:
         group.project.create()
         self.groups[id] = group
 
-    def groups_create_desired(self, keep_existing = True):
+    def groups_create_desired(self, keep_existing = True, refresh = True):
         if keep_existing:
             ids_old = self.groups.keys()
         else:
             self.group_delete_all()
             ids_old = ()
+
+        if refresh:
+            with contextlib.suppress(AttributeError):
+                del self.group_ids_desired
 
         for id in self.group_ids_desired:
             if not id in ids_old:
