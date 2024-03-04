@@ -32,6 +32,11 @@ p.add_argument('-c', '--compile', action = 'store_true', help = f'''
 Compile the robograder before executing.
 For convenience, this also compiles the robograding library in {path_tools.format_path(robograder_java.dir_lib)}.
 ''')
+p.add_argument('-p', '--problem', type = Path, metavar = 'PROBLEM', default = Path('problem'), help = f'''
+Relative path to the lab problem.
+Needed when compiling.
+Defaults to {Path('problem')}.
+''')
 p.add_argument('-l', '--lab', type = Path, metavar = 'LAB', default = Path(), help = '''
 Path the lab (read), defaults to working directory.
 ''')
@@ -89,6 +94,9 @@ def params():
 
     logger.debug(f'Robograder directory (relative to lab directory): {path_tools.format_path(args.robograder)}')
     yield ('dir_robograder', args.robograder)
+
+    logger.debug(f'Problem directory (relative to lab directory): {path_tools.format_path(args.problem)}')
+    yield ('dir_problem', args.problem)
 
     logger.debug(f'Machine speed: {args.machine_speed}')
     yield ('machine_speed', args.machine_speed)
