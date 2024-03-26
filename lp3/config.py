@@ -371,7 +371,7 @@ class _LabConfig:
             yield ('submission', handlers.general.SubmissionHandlerStub())
 
         def submission_ready_yes():
-            if k == 1:
+            if k in [1, 4]:
               java_params = {
                   'dir_robograder': Path() / 'robograder' / 'java',
                   'dir_problem': Path() / 'problem' / 'java',
@@ -395,13 +395,10 @@ class _LabConfig:
                 'python': handlers.python.SubmissionHandler(**python_params),
             }, shared_columns = ['robograding'], show_solution = True))
 
-            # yield from submission_ready_no()
-
-            if k <= 2:
-                yield ('robograding', handlers.language.RobogradingHandler(sub_handlers = {
-                    'java': (handlers.java.RobogradingHandler if k == 1 else handlers.general.GenericTestingHandler)(**java_params),
-                    'python': handlers.general.GenericTestingHandler(**python_params),
-                }))
+            yield ('robograding', handlers.language.RobogradingHandler(sub_handlers = {
+                'java': (handlers.java.RobogradingHandler if k in [1, 4] else handlers.general.GenericTestingHandler)(**java_params),
+                'python': handlers.general.GenericTestingHandler(**python_params),
+            }))
         self.request_handlers = dict(submission_ready_yes() if submission_ready else submission_ready_no())
         self.refresh_period = refresh_period
         self.multi_language = True
@@ -429,10 +426,10 @@ def _lab_item(k, *args, **kwargs):
 
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
-    _lab_item(1, 'binary-search'       , datetime.timedelta(minutes = 15), submission_ready = True),  # noqa: E203
-    _lab_item(2, 'indexing'            , datetime.timedelta(minutes = 15), submission_ready = True),  # noqa: E203
-#    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15), submission_ready = True),  # noqa: E203
-#    _lab_item(4, 'path-finder'         , datetime.timedelta(minutes = 30), has_robograder = True),  # noqa: E203
+    _lab_item(1, 'binary-search'       , datetime.timedelta(minutes = 60), submission_ready = True),  # noqa: E203
+    _lab_item(2, 'indexing'            , datetime.timedelta(minutes = 30), submission_ready = True),  # noqa: E203
+    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15), submission_ready = True),  # noqa: E203
+    _lab_item(4, 'path-finder'         , datetime.timedelta(minutes = 15), submission_ready = True),  # noqa: E203
 ])
 
 # Students taking part in labs who are not registered on Canvas.
@@ -472,6 +469,7 @@ _canvas_id_to_gitlab_username_override = {
     122370000000285024: 'REDACTED_CID',
     122370000000301810: 'REDACTED_CID',
     122370000000285030: 'REDACTED_CID',
+    122370000000262930: 'REDACTED_CID',
 }
 
 def gitlab_username_from_canvas_user_id(course, user_id):
