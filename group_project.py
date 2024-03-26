@@ -307,23 +307,30 @@ class RequestAndResponses:
     def head_problem(self):
         return self.lab.head_problem(language = self.language)
 
-    @functools.cached_property
-    def outcome_link_grader_from_grading_merge_request(self):
+    def outcome_link_grader_from_grading_merge_request_acc(self, accumulative = False):
         '''None unless grading via merge requests has been configured'''
         if not self.lab.config.grading_via_merge_request:
             return None
 
-        return self.grading_merge_request.outcome_with_link_and_grader(self.request_name)
+        return self.grading_merge_request.outcome_with_link_and_grader(self.request_name, accumulative = accumulative)
 
     @functools.cached_property
-    def outcome(self):
+    def outcome_link_grader_from_grading_merge_request(self):
+        return self.outcome_link_grader_from_grading_merge_request_acc()
+
+    def outcome_acc(self, accumulative = False):
         if self.outcome_with_issue:
             (outcome, _) = self.outcome_with_issue
             return outcome
 
-        if self.outcome_link_grader_from_grading_merge_request:
-            (outcome, _, _) = self.outcome_link_grader_from_grading_merge_request
+        x = self.outcome_link_grader_from_grading_merge_request_acc(accumulative = accumulative)
+        if x:
+            (outcome, _, _) = x
             return outcome
+
+    @functools.cached_property
+    def outcome(self):
+        return self.outcome_acc()
 
     @functools.cached_property
     def link(self):
@@ -1300,13 +1307,13 @@ class GroupProject:
     def submission_current(self, deadline = None):
         '''
         With respect to the output of self.submissions, return the last submission
-        if it needs a review (i.e. does not uet have an outcome), otherwise return None.
+        if it needs a review (i.e. does not yet have an outcome), otherwise return None.
         Returns an instances of RequestAndResponses or None.
         '''
         submissions = list(self.submissions(deadline = deadline))
         if submissions:
             submission_last = submissions[-1]
-            if submission_last.outcome is None:
+            if submission_last.outcome_acc(accumulative = True) is None:
                 return submission_last
 
     def parse_hook_event_tag(self, hook_event, strict):
