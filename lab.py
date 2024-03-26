@@ -678,8 +678,8 @@ class Lab:
 
         self.logger.debug('Setting up protected branches')
         gitlab_.tools.delete_protected_branches(project)
-        gitlab_.tools.protect_branch(self.gl, project, 'java')
-        gitlab_.tools.protect_branch(self.gl, project, 'python')
+        for problem in self.heads_problem:
+            gitlab_.tools.protect_branch(self.gl, project, problem)
 
     def create_group_projects(self, exist_ok = False):
         for group in self.groups_known():
@@ -984,6 +984,13 @@ class Lab:
 
     def head_problem(self, language = None):
         return git_tools.normalize_branch(self.repo, self.branch_problem(language = language))
+
+    @property
+    def heads_problem(self):
+        if self.config.multi_language is None:
+            return [self.config.branch_problem]
+        else:
+            return self.config.branch_problem.values()
 
     @functools.cached_property
     def compiler(self):
