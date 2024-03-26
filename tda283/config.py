@@ -251,7 +251,7 @@ _lab = SimpleNamespace(
     refresh_period = datetime.timedelta(minutes = 15),
     has_solution = False,
     multi_language = None,
-    branch_problem = 'main',
+    branch_problem = 'problem',
     grading_via_merge_request = True,
     merge_request_title = print_parse.from_dict({None: 'Grading for submission'}.items()),
     outcome_labels = {
