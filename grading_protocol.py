@@ -1,11 +1,19 @@
 import csv
 
+class LadokDialect(csv.Dialect):
+    delimiter = ';'
+    quotechar = '"'
+    escapechar = None
+    doublequote = True
+    skipinitialspace = False
+    lineterminator = '\r\n'
+    quoting = csv.QUOTE_ALL
+
 header_personnummer = 'Personal identity number'
 header_gitlab_username = 'Chalmers GitLab username'
 header_name = 'Name'
 header_grade = 'Grade'
 header_examination_date = 'Examination date'
-
 
 def report_groups_headers(course):
     def f():
@@ -21,7 +29,7 @@ def write_group_membership_report(course):
     Argument path is interpreted relative to course.dir
     '''
     with (course.dir / 'groups.csv').open('w') as file:
-        writer = csv.DictWriter(file, report_headers(course), dialect = csv.excel_tab)
+        writer = csv.DictWriter(file, report_headers(course), dialect = LadokDialect)
         writer.writeheader()
         for canvas_user in course.canvas_course.students:
             gitlab_username = course.gitlab_username_by_canvas_id(canvas_user.id)
@@ -51,6 +59,7 @@ def report_headers(course):
         for lab in course.labs.values():
             yield lab.name
         yield header_grade
+        yield header_examination_date
     return list(f())
 
 def read_report_skeleton(course, path):
@@ -59,7 +68,7 @@ def read_report_skeleton(course, path):
     '''
     with (course.dir / path).open() as file:
         # Restrict headers.
-        reader = csv.DictReader(file, fieldnames = [header_personnummer, header_name], dialect = csv.excel_tab)
+        reader = csv.DictReader(file, fieldnames = [header_personnummer, header_name], dialect = LadokDialect)
         # Ignore header row.
         it = iter(reader)
         next(it)
@@ -70,7 +79,7 @@ def write_report(course, path, entries):
     Argument path is interpreted relative to course.dir
     '''
     with (course.dir / path).open('w') as file:
-        writer = csv.DictWriter(file, report_headers(course), dialect = csv.excel_tab)
+        writer = csv.DictWriter(file, report_headers(course), dialect = LadokDialect)
         writer.writeheader()
         for entry in entries:
             writer.writerow(entry)
@@ -97,7 +106,8 @@ def prepare_requested_entries(course, requested_entries, by_gitlab_username, exa
             personnummer = entry[header_personnummer].replace('-', '')
             canvas_user = course.canvas_course.user_by_sis_id(personnummer)
             if canvas_user is None:
-                raise ValueError(f'No Canvas user found for personnumber {personnummer}')
+                print(f'WARNING: No Canvas user found for personnumber {personnummer}')
+                continue
 
             gitlab_username = course.gitlab_username_by_canvas_id(canvas_user.id)
             if gitlab_username is None:
@@ -142,7 +152,7 @@ def prepare_remaining_entries(course, by_gitlab_username):
 
     return list(map(f, by_gitlab_username.items()))
 
-def report_course(course, xs, path_extra, update_lab = True, summary = None):
+def report_course(course, xs, path_extra, update_lab = True, summary = None, examination_date = ''):
     '''
     Prepare the assignment protocol for this course.
 
@@ -156,6 +166,7 @@ def report_course(course, xs, path_extra, update_lab = True, summary = None):
         a tab-separated CSV file containing the filled out requests.
     * update_lab:
         Whether to update the lab in this function.
+        TODO: make possible with less updates.
     * path_extra:
         Path to an output file:
         a tab-separated CSV file containing lab grades for students not appearing in the input files requests.
@@ -164,19 +175,20 @@ def report_course(course, xs, path_extra, update_lab = True, summary = None):
     for lab in course.labs.values():
         lab.setup_request_handlers()
         lab.parse_response_issues()
-        lab.repo_fetch_all()
+        if update_lab:
+            lab.repo_fetch_all()
         lab.parse_request_tags(False)
         lab.process_requests()
 
     by_gitlab_username = course.grading_report_with_summary(strict = False, summary = summary)
 
     for (path_requests, path_filled_out) in xs:
-        requested_entries = read_report_skeleton(course, course.dir / path_requests)
+        requested_entries = read_report_skeleton(course, path_requests)
         filled_out_entries = prepare_requested_entries(
             course,
             requested_entries,
             by_gitlab_username,
-            examination_date = '2022-03-19'
+            examination_date = examination_date,
         )
         write_report(course, path_filled_out, filled_out_entries)
 
@@ -185,4 +197,5 @@ def report_course(course, xs, path_extra, update_lab = True, summary = None):
 
 # Example invocation:
 #section_names = ['Chalmers DAT038', 'Chalmers DAT525', 'Chalmers TDA417']
+#section_names = ['Chalmers DAT495', 'GU DIT182']
 #report_course(c, [(section_name + '.in.csv', section_name + '.csv') for section_name in section_names], 'report_extra.csv'])
