@@ -748,6 +748,8 @@ class GroupProject:
         # GitLab does not allow this.
         # This will happen for individual labs where two students have the same name.
         # Can just retry with 2, 3, 4, ... appended.
+
+        # TODO: figure out why some usernames with extra suffix 1 are not found on Canvas.
         def create():
             project = self.lab.official_project.get.forks.create({
                 'namespace_path': str(r.path.parent),
