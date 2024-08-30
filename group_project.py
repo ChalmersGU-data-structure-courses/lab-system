@@ -744,6 +744,10 @@ class GroupProject:
             name = self.name,
         )
 
+        # TODO: handle duplicate project name.
+        # GitLab does not allow this.
+        # This will happen for individual labs where two students have the same name.
+        # Can just retry with 2, 3, 4, ... appended.
         def create():
             project = self.lab.official_project.get.forks.create({
                 'namespace_path': str(r.path.parent),
