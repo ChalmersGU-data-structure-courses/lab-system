@@ -92,7 +92,7 @@ class StudentConnectorIndividual(StudentConnector):
         if id == 'test':
             return 'Test Student'
 
-        canvas_user = self.course.canvas_user_by_gitlab_username.get(id)
+        canvas_user = self.course.canvas_user_by_gitlab_username.get(self.course.rectify_cid_to_gitlab_username(id))
         if canvas_user is None:
             return f'{id} — not on Canvas'
 
