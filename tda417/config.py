@@ -363,7 +363,7 @@ _pp_language = print_parse.from_dict([
 class _LabConfig:
     def __init__(self, k, lab_folder, refresh_period, submission_ready = True):
         self.path_source = _lab_repo / 'labs' / lab_folder
-        self.has_solution = False
+        self.has_solution = True
         self.group_set = None if k == 1 else _group
         self.path_gitignore = None
         self.grading_sheet = lab.name.print(k)
