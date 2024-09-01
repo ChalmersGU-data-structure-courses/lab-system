@@ -393,7 +393,7 @@ class _LabConfig:
             yield ('submission', handlers.language.SubmissionHandler(sub_handlers = {
                 'java': handlers.java.SubmissionHandler(**java_params),
                 'python': handlers.python.SubmissionHandler(**python_params),
-            }, shared_columns = ['robograding'], show_solution = True))
+            }, shared_columns = ['robograding'], show_solution = self.has_solution))
 
             yield ('robograding', handlers.language.RobogradingHandler(sub_handlers = {
                 'java': (handlers.java.RobogradingHandler if k in [1, 4] else handlers.general.GenericTestingHandler)(**java_params),
