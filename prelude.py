@@ -3,14 +3,17 @@ import logging
 from gitlab_config_personal import *
 import course
 
-import lp3.config as config
+import dat525.config as config_dat525
+import tda417.config as config_tda417
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 
-c = course.Course(config, 'lp3')
+dat525 = course.Course(config_dat525, 'dat525')
+tda417 = course.Course(config_tda417, 'tda417')
 
-l = c.labs[1]
+dat525_1 = dat525.labs[1]
+tda417_1 = tda417.labs[1]
 
 #l.sync_students_to_gitlab(add = True, remove = True)
 
@@ -21,3 +24,15 @@ l = c.labs[1]
 #l.process_requests()
 
 #g = list(l.student_groups.values())[0]
+
+# How to setup a new lab:
+# 1. uncomment lab configuration in the config file
+# 2. l = course_object.labs[lab_number]
+# 3. l.gitlab_group.create()
+# 4. l.official_project.create() (creates primary repository)
+# 5. l.grading_project.create() (creates collection repository)
+# 6. create java and python branches in primary repository (using sources from the labs repo)
+# 7. point main branch to one of them (whatever should be the default)
+# 8. start the event loop again, it should create repositories for each student/group
+#    (alternative, call l.groups_create_desired()).
+# 9. if lab has solution configured, "solve" the solution project
