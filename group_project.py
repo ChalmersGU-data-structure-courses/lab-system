@@ -1,6 +1,7 @@
 import contextlib
 import functools
 import general
+import itertools
 import json
 import logging
 from pathlib import PurePosixPath
@@ -748,14 +749,23 @@ class GroupProject:
         # GitLab does not allow this.
         # This will happen for individual labs where two students have the same name.
         # Can just retry with 2, 3, 4, ... appended.
-
-        # TODO: figure out why some usernames with extra suffix 1 are not found on Canvas.
         def create():
-            project = self.lab.official_project.get.forks.create({
-                'namespace_path': str(r.path.parent),
-                'path': r.path.name,
-                'name': r.name,
-            })
+            for i in itertools.count(0):
+                try:
+                    suffix = '' if i == 0 else ' ' + str(i + 1)
+                    project = self.lab.official_project.get.forks.create({
+                        'namespace_path': str(r.path.parent),
+                        'path': r.path.name,
+                        'name': r.name + suffix,
+                    })
+                    break
+                except gitlab.exceptions.GitlabCreateError as e:
+                    if all([
+                        e.response_code == 409,
+                        e.error_message == ['Project namespace name has already been taken', 'Name has already been taken'],
+                    ]):
+                        continue
+                    raise
             try:
                 project = self.gl.projects.get(project.id, lazy = True)
                 project.lfs_enabled = False
