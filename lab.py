@@ -156,7 +156,7 @@ class Lab:
     If the groups come from Canvas:
     - create_groups_from_canvas
     - deploy: do all steps to deploy a lab for the first time
-      (needs lab sources to be prepared and testing docker image built) 
+      (needs lab sources to be prepared and testing docker image built)
 
     This class also manages a local repository called the grading repository
     that fetches from official and student projects on Chalmers GitLab
@@ -711,37 +711,52 @@ class Lab:
         for group in self.groups_known():
             group.project.delete()
 
-    def hotfix_groups(
+    def update_groups_problem(
         self,
-        branch_hotfix,
         group_ids = None,
-        merge_files = False,
-        fail_on_problem = True,
+        force = False,
         notify_students: Optional[str] = None,
     ):
         '''
-        Attempt to apply a hotfix to all student projects.
-        This calls 'hotfix_group' with the master/main branch.
-        If any groups have created separate branches and you wish to hotfix those, use the 'hotfix_group' method.
+        Update the (protected) problem branches in student projects.
+        This calls GroupProject.update_problem for each selected group.
 
-        Flags:
-        * merge_files: if True, attempt a 3-way merge to resolve conflicting files.
+        This will *not* touch any of the branches on which the students do work.
+        See hotfix_groups for that [TODO].
+
+        Arguments:
         * group_ids:
             Iterable for group_ids to hotfix.
             Defaults to all groups.
-        * fail_on_problem:
-            Fail with an exception if a merge cannot be performed.
-            If False, only an error is logged.
-        * notify_students:
-            Notify student members of the hotfix commit by creating a commit comment with this message.
-            The message is appended with mentions of the student members.
-
-        Will log a warning if the merge has already been applied.
+        * force: whether to force push.
+        * notify_students: unimplemented [TODO]
         '''
         for group_id in self.normalize_group_ids(group_ids):
-            self.groups[group_id].hotfix(
-                branch_hotfix,
-                self.course.config.branch.master,
+            self.groups[group_id].hotfix_problem(
+                force = force,
+                notify_students = notify_students,
+            )
+
+    def merge_groups_problem_into_main(
+        self,
+        group_ids = None,
+        target_branch = 'main',
+        merge_files = False,
+        fail_on_problem = True,
+        notify_students: str = None,
+    ):
+        '''
+        Hotfix the main 'target_branch' in student projects group project.
+        This calls GroupProject.merge_problem_into_branch for the main branch in each selected group.
+
+        Arguments:
+        * group_ids:
+            Iterable for group_ids to hotfix.
+            Defaults to all groups.
+        * other arguments: see GroupProject.merge_problem_into_branch.
+        '''
+        for group_id in self.normalize_group_ids(group_ids):
+            self.groups[group_id].merge_problem_into_branch(
                 merge_files = merge_files,
                 fail_on_problem = fail_on_problem,
                 notify_students = notify_students,
@@ -1655,15 +1670,15 @@ class Lab:
             Note: requires lab sources to be deployed and test runner image built.
 
             '''
-        )         
+        )
 
-        self.logger.info('=== Creating project root for lab ===') 
+        self.logger.info('=== Creating project root for lab ===')
         self.gitlab_group.create()
-        
-        self.logger.info('=== Creating "official" project for lab ===') 
+
+        self.logger.info('=== Creating "official" project for lab ===')
         self.official_project.create()
-        
-        self.logger.info('=== Creating "grading" project for lab ===') 
+
+        self.logger.info('=== Creating "grading" project for lab ===')
         self.grading_project.create()
 
         self.logger.info('=== Forking student projects from official project ===')
@@ -1681,4 +1696,3 @@ class Lab:
             ''')
         # Or you could also call sync_students_to_gitlab.
         # But that's dangerous because you can't delete things and start again without creating noise.
-                    
