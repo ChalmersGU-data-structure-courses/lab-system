@@ -126,7 +126,7 @@ g.add_argument(
     metavar = 'LAB_ID',
     dest = 'sync_from_canvas',
     help = '''
-Specify a lab id for which user information
+Specify a lab id for which project membership should be synced from Canvas.
 Only has an effect with --start-with-sync and/or --sync-period.
 '''
 ).completer = complete_nothing
