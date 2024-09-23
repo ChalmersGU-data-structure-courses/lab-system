@@ -96,6 +96,25 @@ def normalize_branch(repo, branch):
 def commit_date(commit):
     return datetime.datetime.fromtimestamp(commit.committed_date).astimezone()
 
+def find_unique_ancestor(repo, commit, ancestors):
+    '''
+    Find out which one of the given ancestors a commit derives from.
+
+    Arguments:
+    * repo: instance of git.Repository
+    * commit: whatever GitPython recognizes as a reference
+    * ancestors: Dictionary valued in commits.
+
+    Returns the unique keys of 'ancestors' whose value is the ancestor of the given commit.
+    Raises UniquenessError if there is no unique such key.
+    '''
+    def f():
+        for (key, ancestor) in ancestors.items():
+            if repo.is_ancestor(ancestor, commit):
+                yield key
+
+    return general.from_singleton(f())
+
 # Tags.
 
 def normalize_tag(repo, tag):

@@ -972,21 +972,97 @@ class GroupProject:
         self.lab.delete_tag(GroupProject.repo_tag(self, request_name, segments).name)
         GroupProject.repo_tag_mark_repo_updated(self)
 
-    # TODO: update for multi language labs.
-    def hotfix(
+    def ancestral_tag(self, problem):
+        return git_tools.normalize_tag(git_tools.refs / 'ancestral' / self.remote / branch.name)
+
+    def update_problem(self, force = False, notify_students: str = None, ensure_ancestral = True):
+        '''
+        Update problem branch(es) in student repositories to the problem commit in the primary repository.
+        No merging is happening.
+
+        Arguments:
+        * force: whether to force push,
+        * notify_students: unimplemented [TODO, see hotfix_branch],
+        * ensure_ancestral:
+            If set, ensure there is a local tag ancestral/<group remote>/<problem> with the previous group problem or earlier.
+            This can be used for language detection in merge_problem_into_branch.
+
+            If this complains it cannot find the remote problem head, the fix is to run self.repo_fetch().
+            If you are updating the problem for all the groups, it is more efficient to run l.repo_fetch_all().
+            TODO: create the ancestral tag already when the group project is created; then no fetch is needed (as long as run with the same local course directory).
+        '''
+	self.logger.info(f'Updating problem branches in {self.project.path}')
+        for problem in self.lab.heads_problem:
+            if ensure_ancestral:
+                tag = self.ancestral_tag(problem)
+                if not git_tools.tag_exists(tag)
+                    self.repo.create_tag(tag.name, ref = git_tools.remote_branch(self.remote, problem))
+
+            problem = git_tools.normalize_branch(self.lab.repo, branch).commit
+            self.repo.remote(self.remote).push(git_tools.refspec(
+		problem.hexsha,
+                branch,
+                force = force,
+            ))
+
+    def detect_ancestor_problem(self, commit):
+        '''
+        Find out which problem a commit derives from.
+        '''
+        return git_tools.find_unique_ancestor(self.repo, commit, {
+            problem: git_tools.normalize_branch(lab.repo, problem)
+            for problem in heads_problem
+        })
+
+    def detect_ancestor_problem_for_merge(self, commit, ancestor_override = dict()):
+        '''
+        Find out which problem a commit derives from in the situation of a hotfix.
+        There, the problem branches in the student project have already been updated.
+
+        Arguments:
+        * ancestors_override:
+            Map of optional entries from problem names to commits.
+            For missing entries, we use the ancestral tag ancestral/<group remote>/<problem>.
+        '''
+        def get_commit(problem):
+            try:
+                return ancestor_override[problem]
+            except KeyError:
+                return self.ancestral_tag(problem).commit
+
+        return git_tools.find_unique_ancestor(self.repo, commit, {
+            problem: get_commit(problem)
+            for problem in heads_problem
+        })
+
+    # TODO.
+    # Consider writing version of hotfix_branch_by_ancestor that goes over all non-protected branches.
+    # That should cover the case where students create their own branch, different from main.
+    # However, students may also have test or feature branches where they do not want automatic problem merges.
+
+    def merge_problem_into_branch(
         self,
-        branch_hotfix,
-        branch_group,
+        problem = None,
+        problem_old = None,
+        target_branch = 'main',
         merge_files = False,
         fail_on_problem = True,
         notify_students: str = None,
     ):
         '''
-        Attempt to hotfix the branch 'branch_group' of the group project.
-        The hotfix branch 'branch_hotfix' in the local grading repository is a descendant of the problem branch.
-        The metadata of the applied commit is taken from the commit pointed to by 'branch_hotfix'.
+        Hotfix the branch 'target_branch' of the group project.
+        This uses a fast-forward if possible, falling back to creating a merge commit.
+
+        To avoid push failure, make sure the local repository is up to date (e.g., self.repo_fetch() or self.lab.repo_fetch_all()).
 
         Arguments:
+        * problem:
+            Problem commit to merge into the target branch.
+            If not specified, it will be automatically detected using detect_ancestor_problem_for_merge.
+        * problem_old:
+            Previous problem commit, ancestor of both the problem commit and the target branch.
+            If unspecified, computed using the git merge base.
+        * target_branch: branch in the student repository to update.
         * merge_files: if True, attempt a 3-way merge to resolve conflicting files.
         * fail_on_problem:
             Fail with an exception if a merge cannot be performed.
@@ -994,69 +1070,86 @@ class GroupProject:
         * notify_students:
             Notify student members of the hotfix commit by creating a commit comment with this message.
             The message is appended with mentions of the student members.
+            Example: 'We updated your branch <target_branch> with fixes. Remember to pull!'
 
         Will log a warning if the merge has already been applied.
         '''
-        self.logger.info(f'Hotfixing {branch_group} in {self.project.path}')
+        self.logger.info(f'Hotfixing {target_branch} in {self.project.path}')
 
-        # Make sure our local mirror of the student branches is as up to date as possible.
-        self.repo_fetch()
+        target_ref = git_tools.resolve(self.repo, git_tools.remote_branch(self.remote, target_branch))
 
-        problem = self.lab.head_problem.commit
-        hotfix = git_tools.normalize_branch(self.repo, branch_hotfix).commit
-        if problem == hotfix:
+        if problem is None:
+            try:
+                problem = self.detect_ancestor_problem_for_merge(target_ref)
+            except UniquenessError as e:
+                ancestors = list(e.iterator)
+                self.logger.error(f'Hotfixing: could not determine unique ancestor for {self.name}: detected {ancestors}')
+                if not fail_on_problem:
+                    return
+                raise Exception('could not detect ancestor problem', ancestors)
+
+        problem = git_tools.resolve(self.repo, problem)
+
+        if problem_old is None:
+            problem_old = self.repo.merge_base(problem, target_ref)  # TOOD: handle errors
+
+        if problem_old == problem:
             self.logger.warning('Hotfixing: hotfix identical to problem.')
             return
 
-        master = git_tools.remote_branch(self.remote, branch_group)
-        index = git.IndexFile.from_tree(self.repo, problem, master, hotfix, i = '-i')
+        target_ref = git_tools.resolve(self.repo, git_tools.remote_branch(self.remote, target_branch))
+        if self.repo.is_ancestor(problem, target_ref):
+            self.logger.info('Hotfixing: hotfix already applied')
+            return
 
-        if index.unmerged_blobs():
-            if not merge_files:
-                self.logger.error(f'Hotfixing: merge conflict for {self.name}, refusing to resolve.')
-                if not fail_on_problem:
-                    return
-                raise Exception('could not perform merge')
-
-            try:
-                git_tools.resolve_unmerged_blobs(self.repo, index)
-            except git.exc.GitCommandError as e:
-                exit_code = e.args[1]
-                if exit_code == 255:
-                    raise
-                if exit_code != 0:
-                    self.logger.error(f'Hotfixing: could not resolve merge conflict for {self.name}.')
+        if self.repo.is_ancestor(target_ref, problem):
+            self.logger.info('fast-forwarding...')
+            resolved_commit = problem
+        else:
+            index = git.IndexFile.from_tree(self.repo, problem_old, target_ref, problem, i = '-i')
+            if index.unmerged_blobs():
+                if not merge_files:
+                    self.logger.error(f'Hotfixing: merge conflict for {self.name}, refusing to resolve.')
                     if not fail_on_problem:
                         return
                     raise Exception('could not perform merge')
 
-        merge = index.write_tree()
-        diff = merge.diff(master)
-        if not diff:
-            self.logger.warning('Hotfixing: hotfix already applied')
-            return
-        for x in diff:
-            self.logger.info(x)
+                try:
+                    git_tools.resolve_unmerged_blobs(self.repo, index)
+                except git.exc.GitCommandError as e:
+                    exit_code = e.args[1]
+                    if exit_code == 255:
+                        raise
+                    if exit_code != 0:
+                        self.logger.error(f'Hotfixing: could not resolve merge conflict for {self.name}.')
+                        if not fail_on_problem:
+                            return
+                        raise Exception('could not perform merge')
 
-        commit = git.Commit.create_from_tree(
-            self.repo,
-            merge,
-            hotfix.message,
-            parent_commits = [git_tools.resolve(self.repo, master)],
-            author = hotfix.author,
-            committer = hotfix.committer,
-            author_date = hotfix.authored_datetime,
-            commit_date = hotfix.committed_datetime,
-        )
+            merge = index.write_tree()
+            diff = merge.diff(target_ref)
+            for x in diff:
+                self.logger.info(x)
+
+            resolved_commit = git.Commit.create_from_tree(
+                self.repo,
+                merge,
+                problem.message,
+                parent_commits = [target_ref, problem],
+                #author = problem.author,
+                #committer = problem.committer,
+                #author_date = problem.authored_datetime,
+                #commit_date = problem.committed_datetime,
+            )
 
         self.repo.remote(self.remote).push(git_tools.refspec(
-            commit.hexsha,
-            self.course.config.branch.master,
+            resolved_commit.hexsha,
+            target_branch,
             force = False,
         ))
         if not notify_students is None:
-            self.project.lazy.commits.get(commit.hexsha, lazy = True).comments.create({
-                'note': self.append_mentions(notify_students)
+            self.project.lazy.commits.get(resolved_commit.hexsha, lazy = True).comments.create({
+               'note': self.append_mentions(notify_students)
             })
 
     def hook_specs(self, netloc = None) -> Iterable[gitlab_.tools.HookSpec]:
