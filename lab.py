@@ -269,6 +269,18 @@ class Lab:
             print_parse.qualify_with_slash
         )
 
+    def create_initial_stuff_on_gitlab(self):
+        self.gitlab_group.create()
+        self.official_project.create()
+        self.grading_project.create()
+        self.logger.info(general.join_lines([
+            'Next steps:',
+            f'* Upload problem branches to primary project: {self.offical_project.get.web_url} and set main branch to what should be the default.',
+            '* Restart event loop.',
+            '* If lab has solution configured, upload tags "submission-solution-<language>" to solution project.',
+            '* If robograding configured, check robograding output for solution submissions in live submissions table.',
+        ]))
+
     @property
     def gl(self):
         return self.course.gl
