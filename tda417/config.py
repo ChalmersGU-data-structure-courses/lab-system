@@ -12,6 +12,7 @@ import handlers.java
 import handlers.python
 import handlers.language
 import print_parse
+import robograder_java
 import testers.podman
 import testers.java
 from this_dir import this_dir
@@ -361,47 +362,48 @@ _pp_language = print_parse.from_dict([
 ])
 
 class _LabConfig:
-    def __init__(self, k, lab_folder, refresh_period, submission_ready = True):
+    def __init__(self, k, lab_folder, refresh_period, group_set = None, robotester = False, use_robograder_instead = False):
         self.path_source = _lab_repo / 'labs' / lab_folder
         self.has_solution = True
-        self.group_set = None if k == 1 else _group
+        self.group_set = group_set
         self.path_gitignore = None
         self.grading_sheet = lab.name.print(k)
         self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-to-be-graded.html'.format(lab.full_id.print(k))
 
-        def submission_ready_no():
-            yield ('submission', handlers.general.SubmissionHandlerStub())
+        def java_params():
+            yield ('dir_problem', Path() / 'problem' / 'java')
+            if robotester:
+                yield ('machine_speed', _machine_speed)
+                if use_robograder_instead:
+                    yield ('robograder_factory', robograder_java.factory)
+                    yield ('dir_robograder', Path() / 'robograder' / 'java')
+                else:
+                    yield ('tester_factory', testers.java.LabTester.factory)
+                    yield ('dir_tester', Path() / 'robotester' / 'java')
 
-        def submission_ready_yes():
-            if k in [1, 4]:
-              java_params = {
-                  'dir_robograder': Path() / 'robograder' / 'java',
-                  'dir_problem': Path() / 'problem' / 'java',
-                  'machine_speed': _machine_speed,
-              }
-            else:
-                java_params = {
-                    'tester_factory': testers.java.LabTester.factory,
-                    'dir_tester': Path() / 'robotester' / 'java',
-                    'dir_problem': Path() / 'problem' / 'java',
-                    'machine_speed': _machine_speed,
-                }
-            python_params = {
-                'tester_factory': testers.podman.LabTester.factory,
-                'dir_tester': Path() / 'robotester' / 'python',
-                'machine_speed': _machine_speed,
-            }
+        def python_params():
+            if robotester:
+                yield ('tester_factory', testers.podman.LabTester.factory)
+                yield ('dir_tester', Path() / 'robotester' / 'python')
+                yield ('machine_speed', _machine_speed)
+
+        def request_handlers():
+            def shared_columns():
+                if robotester:
+                    yield 'robograding'
 
             yield ('submission', handlers.language.SubmissionHandler(sub_handlers = {
-                'java': handlers.java.SubmissionHandler(**java_params),
-                'python': handlers.python.SubmissionHandler(**python_params),
-            }, shared_columns = ['robograding'], show_solution = True))
+                'java': handlers.java.SubmissionHandler(**dict(java_params())),
+                'python': handlers.python.SubmissionHandler(**dict(python_params())),
+            }, shared_columns = list(shared_columns()), show_solution = True))
 
-            yield ('robograding', handlers.language.RobogradingHandler(sub_handlers = {
-                'java': (handlers.java.RobogradingHandler if k in [1, 4] else handlers.general.GenericTestingHandler)(**java_params),
-                'python': handlers.general.GenericTestingHandler(**python_params),
-            }))
-        self.request_handlers = dict(submission_ready_yes() if submission_ready else submission_ready_no())
+            if robotester:
+                yield ('robograding', handlers.language.RobogradingHandler(sub_handlers = {
+                    'java': (handlers.java.RobogradingHandler if use_robograder_instead else handlers.general.GenericTestingHandler)(**dict(java_params())),
+                    'python': handlers.general.GenericTestingHandler(**dict(python_params())),
+                }))
+
+        self.request_handlers = dict(request_handlers())
         self.refresh_period = refresh_period
         self.multi_language = True
         self.grading_via_merge_request = True
@@ -428,10 +430,10 @@ def _lab_item(k, *args, **kwargs):
 
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
-    _lab_item(1, 'binary-search'       , datetime.timedelta(minutes = 15), submission_ready = True),  # noqa: E203
-#    _lab_item(2, 'indexing'            , datetime.timedelta(minutes = 30), submission_ready = True),  # noqa: E203
-#    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15), submission_ready = True),  # noqa: E203
-#    _lab_item(4, 'path-finder'         , datetime.timedelta(minutes = 15), submission_ready = True),  # noqa: E203
+    _lab_item(1, 'binary-search'       , datetime.timedelta(minutes = 30), group_set = None  , robotester = True , use_robograder_instead = True ),  # noqa: E203
+    _lab_item(2, 'indexing'            , datetime.timedelta(minutes = 15), group_set = _group, robotester = True , use_robograder_instead = False),  # noqa: E203
+    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15), group_set = _group, robotester = False, use_robograder_instead = False),  # noqa: E203
+    #_lab_item(4, 'path-finder'         , datetime.timedelta(minutes = 15), group_set = _group, robotester = False, use_robograder_instead = True ),  # noqa: E203
 ])
 
 # Students taking part in labs who are not registered on Canvas.
