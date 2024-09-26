@@ -163,10 +163,10 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
         super().setup(lab)
         if self.tester_factory is not None:
             self.testing.setup(lab)
-        else:
+        elif self.robograder_factory is not None:
             # Backwards compatibility: robograder autodetection
-            if self.robograder_factory is None:
-                self.robograder_factory = robograder_java.factory
+            #if self.robograder_factory is None:
+            #    self.robograder_factory = robograder_java.factory
             self.robograder = self.robograder_factory(dir_lab = lab.config.path_source, **self.kwargs)
 
         def f():

@@ -36,16 +36,45 @@ def flatten(*xss):
 def singleton(x):
     return (x,)
 
-def from_singleton(xs):
-    (x,) = xs
-    return x
+class EmptynessError(ValueError):
+    def __init__(self, element, rest):
+        self.element = element
+        self.rest = rest
 
 def ensure_empty(it):
+    it = iter(it)
     try:
-        next(it)
-        raise ValueError('unexpected element')
+        x = next(it)
+        raise EmptynessError(x, it)
     except StopIteration:
         return
+
+class UniquenessError(ValueError):
+    def __init__(self, iterator):
+        self.iterator = iterator
+
+class UniquenessErrorNone(UniquenessError):
+    def __init__(self):
+        super().__init__(())
+
+class UniquenessErrorMultiple(UniquenessError):
+    def __init__(self, first, second, rest):
+        super().__init__(itertools.chain((first, second), rest)).__init__
+        self.first = first
+        self.second = second
+        self.rest = rest
+
+def from_singleton(xs):
+    xs = iter(xs)
+    try:
+        r = next(xs)
+    except StopIteration:
+        raise UniquenessErrorNone()
+    try:
+        ensure_empty(xs)
+    except EmptynessError as e:
+        raise UniquenessErrorMultiple(r, e.element, e.rest)
+    return r
 
 def from_singleton_maybe(xs):
     xs = iter(xs)
@@ -55,8 +84,8 @@ def from_singleton_maybe(xs):
         return None
     try:
         ensure_empty(xs)
-    except ValueError:
-        raise ValueError('contains more than one element')
+    except EmptynessError as e:
+        raise UniquenessErrorMultiple(r, e.element, e.rest)
     return r
 
 def choose_unique(f, xs):
