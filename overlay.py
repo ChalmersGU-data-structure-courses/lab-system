@@ -23,14 +23,18 @@ class OverlayType:
 
     @classmethod
     @abc.abstractmethod
-    def overlay(cls, dirs: Iterable[Path], writable = False):
+    def overlay(cls, dirs: Iterable[Path | tuple[Path, bool]], writable = False):
         '''
         Context manager for an overlay.
         Mounts the given directories in decreasing precedence.
         Returns a temporary directory with the overlay.
 
+        The boolean component in the iterable dirs indicates whether symlinks should be resolved.
+
         If writable is True, the target directory allows temporary writes.
         Otherwise, it is only guaranteed to be readable.
+
+    If resolve_symlinks is True, symlinks are replaced by their target.
         '''
         pass
 
@@ -41,10 +45,14 @@ class OverlayTypeFallback(OverlayType):
 
     @classmethod
     @contextlib.contextmanager
-    def overlay(cls, dirs: Iterable[Path], writable = False):
+    def overlay(cls, dirs: Iterable[Path | tuple[Path, bool]], writable = False):
         with path_tools.temp_dir() as target:
             for dir in reversed(list(dirs)):
-                shutil.copytree(dir, target, symlinks = True, dirs_exist_ok = True)
+                if isinstance(dir, Path):
+                    resolve_symlinks = False
+                else:
+                    (dir, resolve_symlinks) = dir
+                shutil.copytree(dir, target, symlinks = not resolve_symlinks, dirs_exist_ok = True)
             yield target
 
 def run_and_log(cmd: Iterable[Union[str, Path]]):
@@ -67,7 +75,18 @@ class OverlayTypeFuseFS(OverlayType):
 
     @classmethod
     @contextlib.contextmanager
-    def overlay(cls, dirs: Iterable[Path], writable = False):
+    def overlay(cls, dirs: Iterable[Path | tuple[Path, bool]], writable = False):
+        def dirs_checked():
+            for dir in dirs:
+                if isinstance(dir, Path):
+                    yield dir
+                else:
+                    (dir, resolve_symlinks) = dir
+                    if resolve_symlinks:
+                        raise ValueError("OverlayFS does not support resolving symlinks")
+
+        dirs = list(dirs_checked())
+
         with contextlib.ExitStack() as stack:
             target = stack.enter_context(path_tools.temp_dir())
             if writable:
@@ -101,7 +120,7 @@ def select_overlay_type():
 
     raise ValueError('no supported overlay type')
 
-def overlay(dirs: Iterable[Path], writable = False) -> Iterable[Path]:
+def overlay(dirs: Iterable[Path | tuple[Path, bool]], writable = False) -> Iterable[Path]:
     '''
     Context manager for an overlay.
     Mounts the given directories in decreasing precedence.
@@ -110,8 +129,26 @@ def overlay(dirs: Iterable[Path], writable = False) -> Iterable[Path]:
     If writable is True, the target directory allows temporary writes.
     Otherwise, it is only guaranteed to be readable.
 
+    The boolean component in the iterable dirs indicates whether symlinks should be resolved.
+
     Dynamically determines the best overlay type to use.
-    On Linux, this attempts to use OverlayFS using FUSE.
+    On Linux, this attempts to use OverlayFS using FUSE (does not support resolving symlinks).
     '''
-    overlay_type = select_overlay_type()
+    resolve_some_symlinks = False
+
+    def symlink_resolution_needed():
+        for dir in dirs:
+            yield dir
+            if not isinstance(dir, Path):
+                (_, resolve_symlinks) = dir
+                if resolve_symlinks:
+                    nonlocal resolve_some_symlinks
+                    resolve_some_symlinks = True
+
+    dirs = list(symlink_resolution_needed())
+
+    if resolve_some_symlinks:
+        overlay_type = OverlayTypeFallback
+    else:
+        overlay_type = select_overlay_type()
     return overlay_type.overlay(dirs, writable = writable)
