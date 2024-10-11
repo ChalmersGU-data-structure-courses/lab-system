@@ -273,7 +273,7 @@ class LabTester:
             if self.has_test_overlay or self.needs_writable_sub_dir:
                 def dirs():
                     if self.has_test_overlay:
-                        yield self.dir_test
+                        yield (self.dir_test, True)
                     yield dir_src
 
                 dir_test = stack.enter_context(overlay.overlay(dirs(), writable = self.needs_writable_sub_dir))
