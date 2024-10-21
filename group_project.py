@@ -37,10 +37,6 @@ class RequestAndResponses:
     Each instances of this class is managed by an instance of HandlerData.
     Instances are rather transient.
     They are reconstructed every time request tags or response issues are refreshed.
-
-    There are special instances of this class for the official problem and solution.
-    In that case, the handler_data parameter is None and tag_data is a pair of
-    the corresponding head and commit in the grading repository.
     '''
     def __init__(self, lab, handler_data, request_name, tag_data):
         self.lab = lab
@@ -670,7 +666,7 @@ class GroupProject:
     '''
     This class abstracts over:
     * a lab project of a student or lab group,
-    * a official solution
+    * a primary solution
     on Chalmers GitLab.
     It collects instances of HandlerData.
     Each instances of this class is managed by an instance of lab.Lab.
@@ -735,7 +731,7 @@ class GroupProject:
     def project(self):
         '''
         The lab project on Chalmers GitLab.
-        On creation, the repository is forked from the official repository.
+        On creation, the repository is forked from the primary repository.
         That one needs to be initialized.
         '''
         r = gitlab_.tools.CachedProject(
@@ -753,7 +749,7 @@ class GroupProject:
             for i in itertools.count(0):
                 try:
                     suffix = '' if i == 0 else ' ' + str(i + 1)
-                    project = self.lab.official_project.get.forks.create({
+                    project = self.lab.primary_project.get.forks.create({
                         'namespace_path': str(r.path.parent),
                         'path': r.path.name,
                         'name': r.name + suffix,

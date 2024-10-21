@@ -152,7 +152,7 @@ class Compiler:
 
     def compile(src, bin):
         '''
-        Compile a submission (student submission or official problem/solution).
+        Compile a submission (problem, solution, or student submission).
 
         Arguments:
         * src (input):
@@ -184,9 +184,9 @@ class SubmissionHandler:
             For example, you may use lab.config.path_source to find the lab source directory.
             This may be used to store testing files in a subfolder.
         * src (input):
-            Source directory of the official problem.
+            Source directory of the problem.
         * bin (input):
-            Compiled directory of the official problem.
+            Compiled directory of the problem.
             Not used for interpreted languages.
 
         Use this to perform setup operations, for example compilation of tester or robograder source code.
@@ -217,7 +217,7 @@ class Tester(SubmissionHandler):
 
     def test(self, src, bin, out):
         '''
-        Test a submission (student submission or official problem/solution).
+        Test a submission (problem, solution, or student submission).
 
         Arguments:
         * src (input):
@@ -286,7 +286,7 @@ class Robograder(SubmissionHandler):
 
     def run(self, src, bin):
         '''
-        Robograde a submission (student submission or official problem/solution).
+        Robograde a submission (problem, solution, or student submission).
 
         Arguments:
         * src (input):
@@ -366,7 +366,7 @@ class StudentCallableRobograder(SubmissionHandler):
 
     def _run(self, src, bin):
         '''
-        Robograde a submission (student submission or official problem/solution).
+        Robograde a submission (problem, solution, or student submission).
 
         Arguments:
         * src (input):

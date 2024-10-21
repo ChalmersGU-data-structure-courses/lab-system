@@ -148,7 +148,7 @@ class Lab:
 
     The lab is hosted on Chalmers GitLab.
     Related attributes and methods:
-    - official_project, grading_project
+    - primary_project, grading_project
     - create_group_projects
     - delete_group_projects
     - hooks_manager
@@ -159,7 +159,7 @@ class Lab:
       (needs lab sources to be prepared and testing docker image built)
 
     This class also manages a local repository called the grading repository
-    that fetches from official and student projects on Chalmers GitLab
+    that fetches from primary and student projects on Chalmers GitLab
     and pushes to the grading project on Chalmers GitLab.
     The latter is intended to be consumed by graders.
     Related attributes and methods:
@@ -271,7 +271,7 @@ class Lab:
 
     def create_initial_stuff_on_gitlab(self):
         self.gitlab_group.create()
-        self.official_project.create()
+        self.primary_project.create()
         self.grading_project.create()
         self.logger.info(general.join_lines([
             'Next steps:',
@@ -307,16 +307,16 @@ class Lab:
 
         return r
 
-    # We give an alternative implemention of official_project using inheritance.
+    # We give an alternative implemention of primary_project using inheritance.
     # This example is applicable also to our other usages of CachedGroup and CachedProject.
     # Unfortunately, Python does not support class closures (classes in a function's scope).
     # So boilerplate is needed to store the functions arguments as class instance attributes.
     # That's why we chose to manually implement inheritance in the function scope.
     #
     # @functools.cached_property
-    # def official_project(self):
+    # def primary_project(self):
     #     '''
-    #     The official lab project on Chalmers GitLab.
+    #     The primary lab project on Chalmers GitLab.
     #     On creation:
     #     * The contents are taken from the specified local lab directory
     #       (together with an optionally specified .gitignore file).
@@ -328,8 +328,8 @@ class Lab:
     #             self.outer = outer
     #             super().__init__(
     #                 gl = outer.gl,
-    #                 path = outer.path / outer.course.config.path_lab.official,
-    #                 name = '{} — official repository'.format(outer.name),
+    #                 path = outer.path / outer.course.config.path_lab.primary,
+    #                 name = '{} — primary repository'.format(outer.name),
     #                 logger = outer.logger,
     #             )
     #
@@ -344,7 +344,7 @@ class Lab:
     #                     repo.git.add('--all', '--force')
     #                     repo.git.commit(message = message)
     #                     repo.git.push(
-    #                         self.outer.official_project.ssh_url_to_repo,
+    #                         self.outer.primary_project.ssh_url_to_repo,
     #                         git_tools.refspec(git_tools.head, git_tools.local_branch(name), force = True)
     #                     )
     #
@@ -356,9 +356,9 @@ class Lab:
     #         return OfficialProject(self)
 
     @functools.cached_property
-    def official_project(self):
+    def primary_project(self):
         '''
-        The official lab project on Chalmers GitLab.
+        The primary lab project on Chalmers GitLab.
         The student lab projects are forked from this.
         On creation:
         * The contents of the main branch are taken from the problem folder of the specified local lab directory
@@ -375,7 +375,7 @@ class Lab:
         r = gitlab_.tools.CachedProject(
             gl = self.gl,
             logger = self.logger,
-            path = self.path / self.course.config.path_lab.official,
+            path = self.path / self.course.config.path_lab.primary,
             name = 'Primary repository',
         )
 
@@ -539,7 +539,7 @@ class Lab:
         '''
         Local grading repository.
         This is used as staging for (pushes to) the grading project on Chalmers GitLab.
-        It fetches from the official lab repository and student group repositories.
+        It fetches from the primary lab repository and student group repositories.
         '''
         try:
             return git.Repo(self.dir_repo)
@@ -581,7 +581,7 @@ class Lab:
         Initialize the local grading repository.
         If the directory exists, we assume that all remotes are set up.
         Otherwise, we create the directory and populate it with remotes on Chalmers GitLab as follows.
-        Fetching remotes are given by the official repository and student group repositories.
+        Fetching remotes are given by the primary repository and student group repositories.
         Pushing remotes are just the grading repository.
         '''
         self.logger.info('Initializing local grading repository.')
@@ -590,7 +590,7 @@ class Lab:
             with repo.config_writer() as c:
                 c.add_value('advice', 'detachedHead', 'false')
 
-            # Configure and fetch official repository.
+            # Configure and fetch primary repository.
             # TODO: add language problem branches.
             def fetch_branches():
                 if self.config.multi_language is None:
@@ -600,12 +600,12 @@ class Lab:
                         yield branch
 
             self.repo_add_remote(
-                self.course.config.path_lab.official,
-                self.official_project.get,
+                self.course.config.path_lab.primary,
+                self.primary_project.get,
                 fetch_branches = [(git_tools.Namespacing.local, branch) for branch in fetch_branches()],
                 fetch_tags = [(git_tools.Namespacing.local, git_tools.wildcard)],
             )
-            self.repo_fetch_official()
+            self.repo_fetch_primary()
 
             self.repo_add_remote(
                 self.course.config.path_lab.grading,
@@ -650,12 +650,12 @@ class Lab:
             yield remote
         self.repo_remote_command(repo, list(command()))
 
-    def repo_fetch_official(self):
+    def repo_fetch_primary(self):
         '''
         Fetch main branch from the offical repository on Chalmers GitLab to the local grading repository.
         '''
         self.logger.info('Fetching from primary repository.')
-        self.repo_command_fetch(self.repo, [self.course.config.path_lab.official])
+        self.repo_command_fetch(self.repo, [self.course.config.path_lab.primary])
 
     def repo_push(self, force = False):
         '''
@@ -764,12 +764,12 @@ class Lab:
 
     def repo_fetch_all(self):
         '''
-        Fetch from the official repository and all student repositories.
+        Fetch from the primary repository and all student repositories.
         '''
-        self.logger.info('Fetching from official project and student projects.')
+        self.logger.info('Fetching from primary project and student projects.')
 
         def remotes():
-            yield self.course.config.path_lab.official
+            yield self.course.config.path_lab.primary
             for group in self.groups_known():
                 yield group.remote
         self.repo_command_fetch(self.repo, remotes())
@@ -1675,13 +1675,16 @@ class Lab:
         self.logger.info('=== Creating project root for lab ===')
         self.gitlab_group.create()
 
-        self.logger.info('=== Creating "official" project for lab ===')
-        self.official_project.create()
+        self.logger.info('=== Creating (empty) "primary" project for lab ===')
+        self.primary_project.create()
+
+        self.logger.info('=== Uploading problem branch ===')
+        self.primary_project_problem_branch_create()
 
         self.logger.info('=== Creating "grading" project for lab ===')
         self.grading_project.create()
 
-        self.logger.info('=== Forking student projects from official project ===')
+        self.logger.info('=== Forking student projects from primary project ===')
         self.create_group_projects()
 
         if self.config.grading_via_merge_request:
