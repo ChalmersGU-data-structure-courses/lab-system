@@ -122,7 +122,7 @@ def run(
 #
 # The lab problem folder only has Java source files.
 # It should not be littered with compilation outputs as
-# it is used as source to initialize the official lab repository.
+# it is used as source to initialize the primary lab repository.
 #
 # To simplify the dependency chain, we take from (a) directly the Java files as compilation input.
 # If class files exist in the lab problem folder (they should not), we want to ignore them.
