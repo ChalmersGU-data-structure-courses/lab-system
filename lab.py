@@ -307,54 +307,6 @@ class Lab:
 
         return r
 
-    # We give an alternative implemention of primary_project using inheritance.
-    # This example is applicable also to our other usages of CachedGroup and CachedProject.
-    # Unfortunately, Python does not support class closures (classes in a function's scope).
-    # So boilerplate is needed to store the functions arguments as class instance attributes.
-    # That's why we chose to manually implement inheritance in the function scope.
-    #
-    # @functools.cached_property
-    # def primary_project(self):
-    #     '''
-    #     The primary lab project on Chalmers GitLab.
-    #     On creation:
-    #     * The contents are taken from the specified local lab directory
-    #       (together with an optionally specified .gitignore file).
-    #       So make sure the problem and solution subdirectories are clean beforehand.
-    #     * Problem and solution branches are set up.
-    #     '''
-    #     def OfficialProject(gitlab_.tools.CachedProject):
-    #         def __init__(self, outer):
-    #             self.outer = outer
-    #             super().__init__(
-    #                 gl = outer.gl,
-    #                 path = outer.path / outer.course.config.path_lab.primary,
-    #                 name = '{} — primary repository'.format(outer.name),
-    #                 logger = outer.logger,
-    #             )
-    #
-    #         def create(self):
-    #             super().create(self.outer.group.get())
-    #
-    #             with path_tools.temp_dir() as dir:
-    #                 repo = git.Repo.init(dir.__fspath__())
-    #
-    #                 def push_branch(name, message):
-    #                     shutil.copytree(self.outer.config.path_source / name, dir, dirs_exist_ok = True)
-    #                     repo.git.add('--all', '--force')
-    #                     repo.git.commit(message = message)
-    #                     repo.git.push(
-    #                         self.outer.primary_project.ssh_url_to_repo,
-    #                         git_tools.refspec(git_tools.head, git_tools.local_branch(name), force = True)
-    #                     )
-    #
-    #                 if self.config.path_gitignore:
-    #                     shutil.copyfile(self.outer.config.path_gitignore, Path(dir) / '.gitignore')
-    #                 push_branch(self.outer.course.config.branch.problem, 'Initial commit.')
-    #                 push_branch(self.outer.course.config.branch.solution, 'Official solution.')
-    #
-    #         return OfficialProject(self)
-
     @functools.cached_property
     def primary_project(self):
         '''
@@ -382,26 +334,6 @@ class Lab:
         def create():
             project = gitlab_.tools.CachedProject.create(r, self.gitlab_group.get)
             try:
-                # with path_tools.temp_dir() as dir:
-                #     repo = git.Repo.init(dir.__fspath__())
-
-                #     def push_branch(name, path, message):
-                #         shutil.copytree(path, dir, dirs_exist_ok = True, symlinks = True)
-                #         repo.git.add('--all', '--force')
-                #         repo.git.commit('--allow-empty', message = message)
-                #         repo.git.push(project.ssh_url_to_repo, git_tools.refspec(
-                #             git_tools.head,
-                #             git_tools.local_branch(name),
-                #             force = True
-                #         ))
-
-                #     if self.config.path_gitignore:
-                #         shutil.copyfile(self.config.path_gitignore, Path(dir) / '.gitignore')
-                #     push_branch(
-                #         self.course.config.branch.master,
-                #         'Initial commit.',
-                #     )
-
                 project.lfs_enabled = False
                 project.wiki_enabled = False
                 project.packages_enabled = False
@@ -438,6 +370,63 @@ class Lab:
         r.create = create
 
         return r
+
+    def primary_project_problem_branch_create(self, source = None, branches = 'problem', message = 'Initial version.'):
+        '''
+        Use this for projects with a single problem branch.
+
+        Arguments:
+        * source:
+            Directory path of the sources.
+            If None, uses the configured lab source.
+        * branch: string or iterable of strings of branch names to push to,
+        * message: commit message to use.
+        '''
+        if source is None:
+            source = self.config.path_source
+
+        if isinstance(branches, str):
+            branches = [branches]
+
+        with path_tools.temp_dir() as dir:
+            repo = git.Repo.init(dir.__fspath__())
+
+            shutil.copytree(source, dir, symlinks = True)
+            repo.git.add('--all', '--force')
+            repo.git.commit('--allow-empty', message = message)
+
+            for branch in branches:
+                repo.git.push(
+                    self.primary_project.get.ssh_url_to_repo,
+                    git_tools.refspec(git_tools.head, branch, force = True),
+                )
+
+    def primary_project_problem_branches_create(self, branches, default):
+        '''
+        Use this for projects with multiple problem branches (e.g. for different languages).
+
+        Arguments:
+        * branches is a dictionary from languages to pairs (dir, message) where:
+          - dir is the directory path of the sources,
+          - message is the commit message to use.
+        * default specified the language that should be used for the main branch.
+        '''
+        assert branches.keys() == self.config.branch_problem.keys()
+
+        def process_language(language, make_main):
+            (dir, message) = branches[language]
+
+            def branches():
+                if make_main:
+                    yield self.config.branch.master
+                yield self.config.branch_problem[language]
+
+            self.primary_project_problem_branch_create(dir, branches(), message)
+
+        process_language(default, True)
+        for language in self.config.branch_problem.keys():
+            if language != default:
+                process_language(language, False)
 
     @functools.cached_property
     def grading_project(self):
