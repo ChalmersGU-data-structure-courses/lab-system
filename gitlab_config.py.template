@@ -257,7 +257,6 @@ _lab_config = SimpleNamespace(
     # Filesystem path to the lab source.
     # Initial lab skeleton is in subfolder 'problem'.
     path_source = _lab_repo / 'labs' / 'goose-recognizer' / 'java',
-    path_gitignore = _lab_repo / 'gitignores' / 'java.gitignore',
 
     # Whether the lab has a solution, in subfolder 'solution'.
     has_solution = True,
