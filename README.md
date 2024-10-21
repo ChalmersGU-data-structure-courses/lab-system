@@ -22,13 +22,6 @@ Install the required packages via this command:
 pip install -r requirements.txt
 ```
 
-If you plan to use testing of student submissions in Python, you must also install the following sandboxing dependencies on your system.
-They should be provided as packages by your distribution:
-
-* `proot`
-* `libsebcomp` and its Python bindings for your system.
-  Depending on your distribution, these might for example be called `python-libsecomp`, `python3-seccomp`, or such.
-
 Create an untracked copy of `gitlab_config_personal.py.template` and remove the suffix.
 This file stores personal configuration such as access keys and paths local to your filesystem.
 We will fill in the configuration values below.
@@ -68,7 +61,7 @@ We do integration with Google Sheets etc., we use a Google Cloud project with se
   You will need this to share Google Cloud resources with it.
 * On the newly created service account, select **Manage keys** and create a new key in the default JSON format.
 * Download the JSON file to `google_tools/credentials.json`.
-  If you choose a different location to save this file, update the configuration option `google_credentials_path` in `gitlab_config_personal.py`.
+  If you choose a different location to save this file, update the configuration option `google_credentials_path` in `gitlab_config_personal.py`
 
 All Google resources that the scripts should be able to work on need to be shared with the service account created above.
 The simplest way to do that is to share the Google Drive folder of the course with the service account.
@@ -83,35 +76,39 @@ If the robograder is activated for a lab, a recent version of Java is needed to 
 Because the students may use syntactic features added in recent versions of Java, we recommend to use the most recent version (at least 14).
 We recommend to use the HotSpot implementation (by Oracle) to make sure that exception messages are compatible with what most students will see on their machine.
 
-## Speeding up remote git access
+## Sped up remote git access
 
-The lab scripts will frequently interact with the repositories on Chalmers GitLab.
+The lab scripts frequently interact with the repositories on Chalmers GitLab.
 Under the hood, it does so by calling SSH and asking it to execute certain remote commands.
 
 The Chalmers network limits the number of SSH connection attempts from outside to 10 per minute.
 If you are running the lab scripts from outside the network, this rate limiting will make it impossible to handle all lab groups in a time efficient manner.
 Even inside the network, it it not efficient to establish a new SSH connection for working with each of the many repositories in the Chalmers GitLab group.
 
-For this reason, we recommend using connection sharing.
-Add the following to your SSH configuration file (default: `.ssh/config`):
+For this reason, the lab system uses connection sharing under the hood.
+This corresponds to using the following SSH configuration options:
 
 ```
 Host git.chalmers.se
 ControlPath /tmp/%r@%h:%p
 ```
 
-Before running the lab scripts, execute the following command and leave it running until you are finished:
+and running the following command in the background:
 
 ```
 ssh -MNT git@github.com
 ```
 
-This will establish a single master connection that each individual remote git repository interaction will then run over.
+This will establish a single master connection that each individual remote git repository interaction then runs over.
 The options mean the following:
 
 * **M**: let this connection be the control master,
-* **N**: do not execute remote command
-* **T**: don't allocate terminal.
+* **N**: do not execute remote command,
+* **T**: do not allocate a terminal.
+
+Sometimes, the Python monitoring library (`watchdog`) we use to watch for changes of the master connection bugs out.
+This does not seem to impacted the running of the system so far.
+(TODO: investigate.)
 
 ## A note on Canvas caching
 
@@ -130,61 +127,40 @@ If you find that information handled by the script is no longer up to date, you 
 ### Chalmers GitLab group structure
 
 The following is an overview of the group structure on Chalmers GitLab.
-You need to create the three top-level groups and invite all graders to the group *graders*.
-The remaining hierarchy will be created by the lab scripts.
-
-Note that the names of these groups are just placeholders.
-Their actual name is configured in a configuration file, as explained further down.
+The location and path name of the graders and lab group is configurable.
+There are functions in the `Course` and `Lab` classes to create the groups below.
+Alternatively, you can create them yourself.
 
 ```
-graders             # Who should be allowed to grade?
-                    # Members of this group will have access to all lab groups and grading repositories.
-                    # TODO: write a script function that adds or, if not possible,
-                    #       sends invitation emails to all teachers in the Canvas course.
+graders                 # Who should be allowed to grade?
+                        # Members of this group will have access to all lab groups and grading repositories.
+                        # The lab system has functionality for automatically populating this group with teachers and TAs from Canvas.
 
-labs
-  ├── 1
-  │   ├── official  # Official problem and solution repository.
-  │   │             # Contains a branch 'problem' with the initial lab problem.
-  │   │             # All lab group repositories are initially clones of the 'problem' branch.
-  │   │             # Also contains a branch 'solution' with the official lab solution.
-  │   │             # Can be created by the lab script from a given lab directory in the code repository.
-  │   │             # Used by the lab script to fork the individual lab group projects.
-  │   │
-  │   ├── staging   # Used as a temporary project from which fork the student lab projects.
-  │   │             # It is derived by the lab script from the official project.
-  │   │
-  │   └── grading   # Grading repository, maintained by the lab scripts.
-  │                 # Fetches the official problem and solution branches and submissions from individual lab groups.
-  │                 # Contains merge commits needed to represent three-way diffs on the GitLab UI.
-  │                 # The individual submissions are available as tags of the form group-XX/submissionYYY.
-  │                 #
-  │                 # If a grader wants to work seriously with submission files, they should clone this repository.
-  │                 # Example use cases:
-  │                 # - cd lab2-grading
-  │                 # - git checkout group-13/submission1/tag   to switch to a group's submission
-  │                 # - git diff problem                        changes compared to problem
-  │                 # - git diff solution                       changes compared to solution
-  │                 # - git diff group-13/submission0/tag       changes compared to last submission
-  │                 # - git diff problem answers.txt            changes in just one file
-  ├── 2
-  ...
-
-lab-groups
-  ├── 0             # A student lab group.
-  │   │             # There is a script that will invite students to their group on Chalmers GitLab
-  │   │             # based on which assignment group they signed up for in Canvas.
-  │   │
-  │   ├── lab1      # For mid-course group membership changes, membership can also
-  │   │             # be managed at the project level (only for the needed students).
-  │   │             # Remove them from their lab group and manually add them to the projects they should have access to.
-  │   │             # Example: A student may be part of lab1 and lab2 in group 13, but lab3 and lab4 in group 37.
-  │   │             #          In that case, they should neither be part of group 13 nor of group 37.
-  │   │
-  │   ├── lab2
-  │   ├── lab3
-  │   └── lab4
-  ├── 1
+example-lab
+  ├── primary           # Primary project containing the problem branch (or branches if lab has multiple versions, e.g. for different languages).
+  │                     # The lab system forks all student projects from this project.
+  │                     # So make sure that it is to your liking before that happens.
+  │                     # The main branch should point to the problem branch that should be the default.
+  │                     # If students want to work with another problem, they need to do one of the following:
+  │                     # * reset (and force push) the main branch to that problem,
+  │                     # * create their own branch from the desired problem.
+  │
+  ├── grading           # Grading repository, maintained by the lab scripts.
+  │                     # Fetches from the primary project and solution and student projects.
+  │                     # The individual submissions are available as tags of the form group-XX/submissionYYY.
+  |
+  ├── solution          # Official solution project (only if the lab has a solution).
+  │                     # Student submissions are diffed against the submissions in this project.
+  |                     # Submission testers may use these to produce gold outputs.
+  |
+  ├── student-project   # Example student project.
+  |                     # If this is an individual lab, the respective student should be a developer member.
+  |                     # If this is a group lab, the all students in the group should be developer members.
+  |                     # The lab system has Canvas sync functionality for syncing these memberships from Canvas.
+  |                     # For group labs, it is usually desirable to activate this only for the current lab.
+  |                     # That way, project membership for older labs is unaffected if students move between groups on Canvas.
+  |                     # Also, you can move students between projects manually only possible if sync is disabled.
+  |                     # Otherwise, the lab system would revert your changes the next time the sync happens.
   ...
 ```
 
@@ -208,7 +184,28 @@ Thus, the tag serves as proof of submission.
 *Note*: Some groups confuse tags with commit and create a commit with the intended tag name as commit message.
 TODO: automatically detect these cases and omit warnings.
 
-### Grading on Chalmers GitLab via issues
+If the lab uses multiple problems (e.g. for different languages), the lab system relies on the commit graph to figure out which problem a submission relates to.
+
+### Grading on Chalmers GitLab via merge requests
+
+Once the lab system has processed a submission, it will create a *grading merge request* in the student project.
+This will show the changes made in the submission over the lab problem.
+
+The students will be notified on creation of the merge request.
+This serves as confirmation that the lab system has recognized their submission.
+
+The status of the grading is recorded in the merge request.
+Its description contains a summary table of all past submission attempts.
+A label record the status of the current submission.
+The special label waiting-for-grading is used for submissions that await grading.
+
+The lab system only recognizes label changes made by graders.
+However, it can be confusing for people viewing the merge request when the students change the labels.
+For that reason, the merge system can detect this situation and will then annotate the merge request description with a prominent warning.
+
+### Grading on Chalmers GitLab via issues (outdated)
+
+**Deprecated: consider using grading merge requests instead.**
 
 We use **issues** on Chalmers GitLab to grade submissions.
 
@@ -292,9 +289,9 @@ If the defined height does not suffice, an annoying scroll wheel for the iframe 
 However, Canvas automatically updates links to overwritten course files with the new id.
 Thus, when the lab scripts upload a new submissions table, the Canvas page will reflect the update.
 
-### Robograder
+### Robograder and robotester
 
-Certain labs may support a robograder.
+Certain labs may support a robograder or robotester.
 In that case, a student group may ask that the robograder test their work before they submit it.
 They do this by creating a tag in their repository on Chalmers GitLab referencing the commit they want to have tested.
 
@@ -356,11 +353,6 @@ logging.getLogger().setLevel(logging.INFO)
 ```
 Use log level `logging.DEBUG` for more detailed log messages.
 Use `logging.WARNING` if you only want to see messages for unexpected events.
-This is the recommended log level for commands invoked repeatedly over a long period.
-In a shell, you can run a script in a timed loop and collate its logging output as follows:
-```
-while [[ 1 ]]; do; ./script.py 2>>script.log; sleep 600; done
-```
 
 ### Basic setup
 
@@ -399,33 +391,7 @@ course.add_teachers_to_gitlab()
 ```
 Every examiner, teacher, and teaching assistant on Canvas counts as a teacher in this context.
 You can run this method repeatedly to add teachers who arrive on Canvas later.
-
-### Mirroring group category on GitLab
-
-Suppose you have created a group set on Canvas.
-We assume you have configured this group set in your course configuration module.
-Then you can mirror the group structure on Canvas by calling:
-```
-course.create_groups_from_canvas()
-```
-
-Suppose now that students have signed up for groups or were divided into them by teachers.
-Then you can add or invite students (depending on whether we recognize an account on Chalmers GitLab for them) as follows:
-```
-course.sync_students_to_gitlab()
-```
-You may wish to call this command repeatedly over the beginning part of your course.
-If students have changed group membership after the last invocation, they will be removed from their old group and added to the new one.
-
-You can resend old invitations that haven't been accepted on the webinterface of Chalmers GitLab.
-Unfortunately, this functionality is not exposed via GitLab's API.
-However, you may use the following to recreate old invitations, for example older than a week:
-```
-import datetime
-course.recreate_student_invitations(
-    keep_after = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days = 7)
-)
-```
+The lab system now calls this method automatically when it syncs with Canvas.
 
 ### Creating labs on GitLab
 
@@ -436,19 +402,42 @@ lab = course.labs[3]
 ```
 We start by running:
 ```
-lab.group.create()
+lab.gitlab_group.create()
 ```
 This will create the group for the lab.
-This is where the official project and grading project will reside.
 Next, we run:
 ```
-lab.official_project.create()
+lab.primary_project.create()
 lab.grading_project.create()
 ```
-This creates the official project with problem and solution branches.
-It takes its initial content from the local directory specified in the lab configuration and adds a suitable `.gitignore` file if configured.
-Similarly, this creates the (empty) grading repository that graders can later clone and pull from to get up-to-date submissions and derived information such as test output.
-If we wanted to delete a project to start over, we would call the `delete` method instead of `create`.
+This creates the primary and grading projects, but leaves them empty.
+
+Now you set up the primary project.
+You can clone it from GitLab and push the problem branch (or branches).
+Set the main branch to the default problem branch and make it the default branch.
+
+To automate this, you can use:
+```
+lab.primary_project_problem_branch_create(<path to sources>, 'Initial version.')
+```
+The second argument will be used as commit message.
+
+For multiple problem branches, use `lab.primary_project_problem_branches_create`.
+For example:
+```
+lab.primary_project_problem_branches_create({
+  'java': (<path to sources>, 'Initial Java version.'),
+  'python': (<path to sources>, 'Initial Python version.'),
+}, default='java')
+```
+
+The lab system will in any case attempt to fix problems with protected branches in forked student projects.
+Infrequently, this goes wrong because of some unknown GitLab bug triggered by a race between forking and project configuration.
+This can be fixed by calling
+```
+lab.configure_student_project(project)
+```
+or manually fixing the protected status.
 
 Double-check that the official project has the correct content.
 The student projects will be derived from it.
@@ -462,50 +451,40 @@ It also needs the student group projects and grading project to exist so that th
 You may add an argument `bare = True` to make it a so-called bare git repository.
 This is useful for automated task that don't need a repository with an actual working directory.
 
-Create student projects by running:
-```
-lab.create_group_projects_fast()
-```
-If you made a mistake, you can delete them again by running
-```
-lab.delete_group_projects()
-```
+### Mirroring group category on GitLab
 
-Alternatively, you can access a single group's lab project using
+Suppose you have configured the group set for a lab (or designated it as an individual lab).
+Then you may create the corresponding student projects on GitLab by calling:
 ```
-lab.student_group(<group_id>).project
+lab.groups_create_desired()
 ```
-and create and delete it using the `create` and `delete` methods, respectively.
+You can call this method repeatedly.
+Unless you use non-default arguments, it will ignore existing groups.
+
+Suppose now that students have signed up for groups or were divided into them by teachers (or the lab is individual).
+Then you can add or invite students (depending on whether we recognize an account on Chalmers GitLab for them) as follows:
+```
+lab.sync_students_to_gitlab()
+```
+You may wish to call this command repeatedly over the beginning part of your course.
+If students have changed group membership after the last invocation, they will be removed from their old group and added to the new one.
 
 ### Hotfixing labs
 
-If you notice in mistake in the lab, but students may have already begun working on it, you can *hotfix* the student projects.
-For this, create a hotfix branch in the local grading repository that has the problem branch as ancestor.
-Then call:
+If you notice in mistake in the lab problem, but students may have already begun working on it, you can perform a *hotfix*.
+Push fix commits to the problem branches in the primary project as desired.
+Make sure the local repository is up to date by calling:
 ```
-lab.hotfix_groups(<hotfix branch>)
+lab.repo_fetch()
 ```
-This will only attempt to apply a patch commit to the main branch of each student lab repository.
-It does nothing for groups for which this patch is empty (e.g., because it has already been applied).
-In some cases, the merge may not be possible automatic.
-For those student projects you will have to manually merge the hotfix branch into the main branch.
-You can use
+Then hotfix the student projects using
 ```
-lab.student_group(<group_id>).hotfix(<hotfix branch>, <group branch>)
+lab.update_groups_problem()
+lab.merge_groups_problem_into_main()
 ```
-to hotfix branches other than the main branch for an individual group.
-
-### Issue template for grading
-
-You may provide a *grading issue template* for each lab.
-For this, go to the official repository for the lab and open an issue with title "Grading template" (configurable in the configuration module).
-Edit the description as you please.
-
-When the "open issue" links in the live submissions table are prepared, they are configured to open an issue on Chalmers GitLab with description copies from the grading issue (and mentions of student group project members appended).
-
-Using a template has several benefits:
-* It is nice to have a common structure, using the same formatting for headers.
-  It also makes it harder to miss aspects of the grading.
-  Each key aspect can have a template placeholder in the template.
-* It saves the graders some work for each grading because they do not have to re-enter the document structure of the grading issue.
-* It can teach the graders how to use Markdown for various formatting (headers, code (blocks), block quotes, emphasis).
+See the documentation of these methods for arguments you can tweak.
+For example, it is possible to notify the students about this.
+The lab system will only be able to hotfix groups where no merge conflicts arise.
+For other groups, you have to merge your fixes into their work branch manually.
+Note also that not all students are working on the main branch.
+You can use `group.merge_problem_into_branch` for group-specific merges.
