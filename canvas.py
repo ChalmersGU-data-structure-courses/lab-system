@@ -9,6 +9,7 @@ import re
 import requests
 import shutil
 import subprocess
+import time
 import types
 import urllib.parse
 
@@ -250,6 +251,7 @@ class Canvas:
                 r.upload_url, upload_params, files = {'file': file.read_bytes()}
             ).headers['Location']
 
+        time.sleep(0.5)
         return Canvas.objectify_json(Canvas.get_response_json(self.session.get(location))).id
 
     # Retrieve the list of courses that the current user is a member of.

@@ -16,13 +16,16 @@ logger = logging.getLogger(__name__)
 
 import course
 import gitlab_tools  # noqa: E402
-import lp3.config as config
+import lp2.DAT525.config as config_525
+import lp2.DAT038.config as config_038
 import this_dir
 
-c = course.Course(config, this_dir.this_dir / 'lp3')
+c_525 = course.Course(config_525, this_dir.this_dir / 'lp2/DAT525')
+c_038 = course.Course(config_038, this_dir.this_dir / 'lp2/DAT038')
 
-for user in c._gitlab_users.values():
-    username = user.username
-    if username.endswith('1') and not username.startswith('project'):
-        cid = username.strip('1')
-        print(f"    ('{cid}', '{username}'),")
+for c in c_038:
+  for user in c._gitlab_users.values():
+      username = user.username
+      if username.endswith('1') and not username.startswith('project'):
+          cid = username.strip('1')
+          print(f"    ('{cid}', '{username}'),")

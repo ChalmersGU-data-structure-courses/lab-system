@@ -20,7 +20,21 @@ courses = [c_525, c_038]
 l1_525 = c_525.labs[1]
 l1_038 = c_038.labs[1]
 
-current_labs = [l1_525, l1_038]
+lab1 = [l1_038,l1_525]
+
+l2_525 = c_525.labs[2]
+l2_038 = c_038.labs[2]
+
+lab2 = [l2_525,l2_038]
+
+l3_525 = c_525.labs[3]
+l3_038 = c_038.labs[3]
+
+lab3 = [l3_525,l3_038]
+
+l4_038 = c_038.labs[4]
+lab4 = [l4_038]
+
 #l.sync_students_to_gitlab(add = True, remove = True)
 
 #l.setup()

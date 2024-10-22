@@ -44,7 +44,7 @@ canvas = SimpleNamespace(
 
     # Path to (unpublished!) folder in Canvas course files where the script will upload submission reports.
     # This folder needs to exist.
-    grading_path = 'temp',
+    grading_path = 'temp2',
 )
 
 # URL for Chalmers GitLab.
@@ -299,7 +299,7 @@ _lab_config = SimpleNamespace(
     grading_sheet = 'Lab N',
 
     # Path in Canvas course where the table of submissions awaiting grading should be uploaded.
-    canvas_path_awaiting_grading = PurePosixPath('temp') / 'lab-N-awaiting-grading.html',
+    canvas_path_awaiting_grading = PurePosixPath('temp2') / 'lab-N-awaiting-grading.html',
 
     # Dictionary of request handlers.
     # Its keys should be string-convertible.
@@ -358,7 +358,7 @@ class _LabConfig:
         self.group_set = None if k == 1 else _group
         self.path_gitignore = None
         self.grading_sheet = lab.name.print(k)
-        self.canvas_path_awaiting_grading = PurePosixPath('temp') / '{}-to-be-graded.html'.format(lab.full_id.print(k))
+        self.canvas_path_awaiting_grading = PurePosixPath('temp2') / '{}-to-be-graded.html'.format(lab.full_id.print(k))
 
         def submission_ready_no():
             yield ('submission', handlers.general.SubmissionHandlerStub())
@@ -406,8 +406,8 @@ def _lab_item(k, *args, **kwargs):
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
     _lab_item(1, 'binary-search'       , datetime.timedelta(minutes = 60), submission_ready = True),  # noqa: E203
-#    _lab_item(2, 'indexing'            , datetime.timedelta(minutes = 15), submission_ready = True),  # noqa: E203
-#    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15), submission_ready = True),  # noqa: E203
+    _lab_item(2, 'indexing'            , datetime.timedelta(minutes = 15), submission_ready = True),  # noqa: E203
+    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes = 15), submission_ready = True),  # noqa: E203
 #    _lab_item(4, 'path-finder'         , datetime.timedelta(minutes = 30), has_robograder = True),  # noqa: E203
 ])
 

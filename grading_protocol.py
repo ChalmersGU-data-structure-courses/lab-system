@@ -4,7 +4,7 @@ header_personnummer = 'Personal identity number'
 header_gitlab_username = 'Chalmers GitLab username'
 header_name = 'Name'
 header_grade = 'Grade'
-header_examination_date = 'Examination date'
+#header_examination_date = 'Examination date'
 
 
 def report_groups_headers(course):
@@ -112,9 +112,10 @@ def prepare_requested_entries(course, requested_entries, by_gitlab_username, exa
                 header_personnummer: entry[header_personnummer],
                 header_gitlab_username: gitlab_user.username,
                 header_name: entry[header_name]
-            } | course.grading_report_format_value(value) | {
-                header_examination_date: examination_date,
-            }
+            } | course.grading_report_format_value(value) 
+            #| {
+            #    header_examination_date: examination_date,
+            #}
 
     return list(f())
 
@@ -136,9 +137,10 @@ def prepare_remaining_entries(course, by_gitlab_username):
             header_personnummer: canvas_user.sis_user_id if canvas_user else '',
             header_gitlab_username: gitlab_username,
             header_name: canvas_user.sortable_name if canvas_user else '',
-        } | course.grading_report_format_value(value) | {
-            header_examination_date: '',
-        }
+        } | course.grading_report_format_value(value) 
+        #| {
+        #    header_examination_date: '',
+        #}
 
     return list(map(f, by_gitlab_username.items()))
 

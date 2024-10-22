@@ -22,7 +22,7 @@ logging.getLogger().setLevel(25)  # 25: between INFO and WARNING
 for c in courses:
     c.canvas_course_refresh()
 
-for l in current_labs:
+for l in lab3 + lab4:
   if isinstance(l.student_connector, StudentConnectorGroupSet):
       l.student_connector.group_set.canvas_group_set_refresh()
   l.create_groups_from_canvas()
