@@ -145,7 +145,7 @@ example-lab
   │                     # * reset (and force push) the main branch to that problem,
   │                     # * create their own branch from the desired problem.
   │
-  ├── grading           # Grading repository, maintained by the lab scripts.
+  ├── collection        # Collection repository, written to by the lab scripts.
   │                     # Fetches from the primary project and solution and student projects.
   │                     # The individual submissions are available as tags of the form group-XX/submissionYYY.
   |
@@ -270,7 +270,7 @@ The live submissions table includes information useful to graders:
 * The number of previous attempts.
   The previous grader and a link to their evaluation.
 * A link to the robograder's evaluation of the submission.
-  This is in form of an issue created by the robograder in the grading repository, only visible to graders.
+  This is in form of an issue created by the robograder in the collection repository, only visible to graders.
   If a lab group has not run the robograder themselves, graders may find it useful to copy fragments of the robograder's evaluation into their own grading feedback.
 * The submission message, if any.
 
@@ -421,9 +421,9 @@ This will create the group for the lab.
 Next, we run:
 ```
 lab.primary_project.create()
-lab.grading_project.create()
+lab.collection_project.create()
 ```
-This creates the primary and grading projects, but leaves them empty.
+This creates the primary and collection projects, but leaves them empty.
 
 Now you set up the primary project.
 You can clone it from GitLab and push the problem branch (or branches).
@@ -455,7 +455,7 @@ or manually fixing the protected status.
 Double-check that the official project has the correct content.
 The student projects will be derived from it.
 
-Initialize the local grading repository using
+Initialize the local collection repository using
 ```
 lab.repo_init()
 ```

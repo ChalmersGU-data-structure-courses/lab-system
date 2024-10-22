@@ -31,7 +31,7 @@ class RequestAndResponses:
     To process the request, an instance of this class is passed
     as argument to the handle_request method of the corresponding request handler.
     That method may take a variety of actions such as creating tags (and tagged commits)
-    in the local grading repository (which will afterwards be pushed to the grading repository
+    in the local collection repository (which will afterwards be pushed to the collection repository
     on GitLab Chalmers) or posting issues in the student project on GitLab Chalmers.
 
     Each instances of this class is managed by an instance of HandlerData.
@@ -178,7 +178,7 @@ class RequestAndResponses:
 
     def get_handled(self, read_data = False):
         '''
-        Check the local grading repository whether this request has been handled.
+        Check the local collection repository whether this request has been handled.
         This checks for the existence of a tag <group full id>/<request name>/handled.
         If read_data is set, we read JSON-encoded data from the tag message.
         '''
@@ -196,7 +196,7 @@ class RequestAndResponses:
 
     def set_handled(self, data = None, **kwargs):
         '''
-        Mark this request in the local grading repository as handled.
+        Mark this request in the local collection repository as handled.
         See handled.
         If the optional argument data is given, it is stored in JSON-encoded format in the tag message.
         Further keyword arguments are passed to repo_tag_create.
@@ -382,7 +382,7 @@ class RequestAndResponses:
     #
     # def review(self):
     #     '''
-    #     Check the local grading repository whether this request has been handled.
+    #     Check the local collection repository whether this request has been handled.
     #     This checks for the existence of a tag <group full id>/<request name>/review.
     #     If it exists, reads the JSON-encoded data, a dictionary with the following structure:
     #     * grader: The grader who did the review (username on Chalmers Gitlab).
@@ -419,7 +419,7 @@ class RequestAndResponses:
         '''
         Returns an instance of git.TagReference for the tag with name
             <full group id>/<request name>/after/<prev_name>
-        in the local grading repository.
+        in the local collection repository.
 
         This points to a descendant commit of self.repo_remote_commit, identical in content,
         that is additionally a descendant of whatever commit prev_name refers to.
@@ -428,7 +428,7 @@ class RequestAndResponses:
 
     def repo_tag_after_create(self, prev_name, prev_ref, segments = []):
         '''
-        Given a reference prev_ref in the grading repository, create a tag
+        Given a reference prev_ref in the collection repository, create a tag
             <full group id>/<request name>/<segments>/after/<prev_name>
         for a commit that is a descendant of both self.repo_tag([*segments, 'tag']) and prev_ref.
 
@@ -477,7 +477,7 @@ class RequestAndResponses:
         '''
         Process request.
         This only proceeds if the request is not already
-        marked handled in the local grading repository.
+        marked handled in the local collection repository.
 
         Returns a boolean indicating if the request was not handled before.
         '''
@@ -521,7 +521,7 @@ class RequestAndResponses:
         # and store handler's result JSON-encoded as its message.
         self.set_handled(result)
 
-        # Clear cache of tags in the local grading repository.
+        # Clear cache of tags in the local collection repository.
         with contextlib.suppress(AttributeError):
             del self.lab.tags
 
@@ -652,7 +652,7 @@ class HandlerData:
         '''
         Process requests.
         This method assumes that requests_and_responses has been set up.
-        It skips requests already marked as handled in the local grading repository.
+        It skips requests already marked as handled in the local collection repository.
 
         Returns the set of request names that were newly handled.
         '''
@@ -878,7 +878,7 @@ class GroupProject:
 
     def repo_fetch(self):
         '''
-        Make sure the local grading repository as up to date with respect to
+        Make sure the local collection repository as up to date with respect to
         the contents of the student repository on GitLab Chalmers.
         '''
         self.logger.info(f'Fetching from student repository, remote {self.remote}.')
@@ -887,7 +887,7 @@ class GroupProject:
     def repo_tag(self, request_name, segments = ['tag']):
         '''
         Construct a tag reference object for the current lab group.
-        This only constructs an in-memory object and does not yet interact with the grading repository.
+        This only constructs an in-memory object and does not yet interact with the collection repository.
         The tag's name has the group's remote prefixed.
 
         Arguments:
@@ -911,14 +911,14 @@ class GroupProject:
 
     def repo_tag_exist(self, request_name, segments = ['tag']):
         '''
-        Test whether a tag with specified name and segments for the current lab group exists in the grading repository.
+        Test whether a tag with specified name and segments for the current lab group exists in the collection repository.
         Arguments are as for repo_tag.
         Returns a boolean.
         '''
         return git_tools.tag_exist(GroupProject.repo_tag(self, request_name, segments))
 
     def repo_tag_mark_repo_updated(self):
-        # Mark local grading repository as updated and clear cache of tags.
+        # Mark local collection repository as updated and clear cache of tags.
         lab = self.lab if isinstance(self, GroupProject) else self
         lab.repo_updated = True
         with contextlib.suppress(AttributeError):
@@ -926,7 +926,7 @@ class GroupProject:
 
     def repo_tag_create(self, request_name, segments = ['tag'], ref = None, **kwargs):
         '''
-        Create a tag in the grading repository for the current lab group.
+        Create a tag in the collection repository for the current lab group.
 
         Arguments:
         * request_name, segments: As for repo_tag.
@@ -959,7 +959,7 @@ class GroupProject:
 
     def repo_tag_delete(self, request_name, segments):
         '''
-        Delete a tag in the grading repository for the current lab group.
+        Delete a tag in the collection repository for the current lab group.
         This can be required under normal circumstances if submission review issues are altered.
 
         Arguments:
@@ -1181,7 +1181,7 @@ class GroupProject:
         return [(tag.name, tag) for tag in gitlab_.tools.get_tags_sorted_by_date(self.project.lazy)]
 
     def tags_from_repo(self):
-        self.logger.debug(f'Parsing request tags in {self.name} from local grading repository.')
+        self.logger.debug(f'Parsing request tags in {self.name} from local collection repository.')
         return sorted((
             (str(key), (tag, git_tools.tag_commit(tag)))
             for (key, tag) in self.lab.remote_tags[self.id].items()
@@ -1192,7 +1192,7 @@ class GroupProject:
         Parse request tags for this project and store the result in self.handler_data.
         The boolean parameter from_gitlab determines if:
         * (True) tags read from Chalmers GitLab (a HTTP call)
-        * (False) tags are read from the local grading repository.
+        * (False) tags are read from the local collection repository.
 
         This method needs to be called before requests_and_responses
         in each handler data instance can be accessed.
@@ -1367,7 +1367,7 @@ class GroupProject:
     def process_requests(self):
         '''
         Process requests.
-        This skips requests already marked as handled in the local grading repository.
+        This skips requests already marked as handled in the local collection repository.
 
         Returns a dictionary mapping handler keys to sets of newly handed request names.
         '''

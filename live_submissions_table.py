@@ -445,7 +445,7 @@ class SubmissionDiffColumn(Column):
         '''
         Returns a tuple of:
         * request name
-        * tag in the grading project
+        * tag in the collection project
         * optional pair of:
           - grader name
           - grader link
@@ -467,7 +467,7 @@ class SubmissionDiffColumn(Column):
         b = submission_current.repo_tag()
 
         return SubmissionDiffColumnValue(
-            (name + '..', gitlab_.tools.url_compare(self.lab.grading_project.get, a, b)),
+            (name + '..', gitlab_.tools.url_compare(self.lab.collection_project.get, a, b)),
             linked_grader = linked_grader,
             is_same = a.commit == b.commit,
         )
@@ -612,7 +612,7 @@ class LiveSubmissionsTable:
         '''
         Update the row in this live submissions table for a given group id.
         If the group has no current submission, the row is deleted.
-        This method can update the local grading repository, so a push is
+        This method can update the local collection repository, so a push there is
         required afterwards before building or uploading the live submissions table.
         '''
         group = self.lab.groups[group_id]
@@ -639,7 +639,7 @@ class LiveSubmissionsTable:
         Build the live submissions table.
 
         Before calling this method, all required group rows need to have been updated.
-        As this can update the local grading repository, a push is required
+        As this can update the local collection repository, a push there is required
         before building or uploading the live submissions table.
 
         Arguments:

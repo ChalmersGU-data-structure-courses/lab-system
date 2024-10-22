@@ -51,7 +51,7 @@
   It should be possible for some labs to use personal projects and for other labs to use group-based projects.
   Move from group membership to per-lab membership to simplify things?
 
-* Allow for test output/report to be saved either in the global grading repository or in the student project grade repository.
+* Allow for test output/report to be saved either in the collection repository or in the student project grade repository.
   In the latter case, reference test reports in submission synchronization comments.
 
 * Add event for synchronizing group membership from Canvas.
