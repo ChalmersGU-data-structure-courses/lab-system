@@ -676,15 +676,15 @@ class GroupProject:
         self.id = id
         self.logger = logger
 
-        self.is_known = self.id in self.lab.group_ids_desired
         self.is_solution = lab.group_id_is_solution(id)
-
         if self.is_solution:
+            self.is_known = True
             self.remote = self.id
             self.path_name = self.id
             self.name = self.lab.solutions[self.id]
         else:
             c = self.lab.student_connector
+            self.is_known = self.id in self.lab.group_ids_desired
             self.remote = c.gitlab_group_slug_pp().print(id)
             self.path_name = f'{self.lab.group_prefix}{self.remote}'
             self.name = f'{self.lab.name_full} — {self.lab.student_connector.gitlab_group_name(id)}'
