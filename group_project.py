@@ -987,11 +987,11 @@ class GroupProject:
             If you are updating the problem for all the groups, it is more efficient to run l.repo_fetch_all().
             TODO: create the ancestral tag already when the group project is created; then no fetch is needed (as long as run with the same local course directory).
         '''
-	self.logger.info(f'Updating problem branches in {self.project.path}')
+        self.logger.info(f'Updating problem branches in {self.project.path}')
         for problem in self.lab.heads_problem:
             if ensure_ancestral:
                 tag = self.ancestral_tag(problem)
-                if not git_tools.tag_exists(tag)
+                if not git_tools.tag_exists(tag):
                     self.repo.create_tag(tag.name, ref = git_tools.remote_branch(self.remote, problem))
 
             problem = git_tools.normalize_branch(self.lab.repo, branch).commit
