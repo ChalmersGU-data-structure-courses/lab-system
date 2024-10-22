@@ -3,22 +3,26 @@ import logging
 from gitlab_config_personal import *
 import course
 
-import lp2.config as config
-
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 
-c = course.Course(config, 'lp2')
+# ACTION to get started:
+# * See README.md for general information.
+# * Replace <course code> by sensible folder name.
+# * Instantiate gitlab_config.py.template as <course code>/config.py.
+# * If you want to use systemd to run the event loop:
+#   Instantiate systemd_unit_file.service.template as e.g. <course code>/lab-system.service.
 
+import lp2.config as config
+c = course.Course(config, 'lp2')
 l = c.labs[1]
 
 # How to deploy a new lab:
 # 1. Make sure repository ~/labs is up to date.
 # 2. Run `make problem solution` in the labs repository.
 # 3  Uncomment lab configuration in the config file lp2/config.py
-# 4. l = course_object.labs[lab_number]
-# 5. l.deploy()
-# If something goes wrong, you can start from scratch by running l.gitlab_group.delete().
+# 4. Deploy the lab l: l.deploy()
+# 5. To start from scratch: l.gitlab_group.delete().
 
 # How to interact with the event loop:
 # * Unit files are here:
@@ -32,7 +36,6 @@ l = c.labs[1]
 #     debug level: ~/lab-system/lp2/log/
 
 # How to hotfix labs that are already shared with the students:
-# Test this pull request: https://github.com/ChalmersGU-data-structure-courses/lab-system/pull/22
 # 1. Call Lab.update_groups_problem to fast-forward the protected problem branches in the student groups.
 # 2. Call Lab.merge_groups_problem_into_main to hotfix main branch in student projects.
 
