@@ -306,20 +306,8 @@ class SubmissionGradingRobograder(Robograder):
     '''
     Interface defining a submission-grading robograder.
 
-    Required attributes:
-    * post_in_student_repo:
-        Boolean indicating whether to post the robograding in
-        the student project as opposed to the grading project.
-
     This is triggered by a submission.
     '''
-    def post_in_student_repo(self):
-        '''
-        Returns a Boolean value indicating whether to post the robograding
-        in the student project as opposed to the grading project.
-        '''
-        return False
-
     def index_div_column_title(self):
         '''
         Generate column title in submission index HTML table.
