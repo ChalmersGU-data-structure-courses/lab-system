@@ -1,0 +1,24 @@
+# To deploy this on the lab server:
+# * Create a symlink to this file in ~/.local/share/systemd/user/.
+# * enable lingering for the user: loginctl enable-linger
+# * inspect/enable/start/stop the service using systemctl status/enable/start/stop
+
+[Unit]
+Description=Event loop service for lab system.
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=900s
+KillSignal=SIGINT
+WorkingDirectory=h/lab-system
+# ACTION: specify labs to sync with Canvas (initially just -s 1, then -s 1 and -s <current lab>).
+ExecStart=%h/lab-system/run_event_loop.py -d lp2 -p 4221 -s 1 -start-with-sync --sync-period 900 -e 1qnG1Lfp8Y-_0MpsncASBljDb_NTn1pFk6b0pgjQwka4 -l lp2/log -v run
+
+# Use this for debugging to disable student sync and error notification spam
+#ExecStart=%h/lab-system/run_event_loop.py -d lp2 -p 4221 -l lp2/log -v run
+
+[Install]
+WantedBy=default.target
