@@ -215,9 +215,6 @@ _group = SimpleNamespace(
     # Used as part of tag names in collection repository.
     full_id=print_parse.regex_int('group-{}'),
 
-    # Used for the grading project path.
-    full_id_grading=print_parse.regex_int('group-{}'),
-
     # Full human-readable name.
     # Used in Canvas group set.
     name=print_parse.regex_int('Lab group {}', flags=re.IGNORECASE),
