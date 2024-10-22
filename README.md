@@ -400,6 +400,19 @@ Let us select this lab as a variable:
 ```
 lab = course.labs[3]
 ```
+
+Let us first assume that you are deploying a lab with default locations for problems and solutions.
+In that case, you can deploy it to GitLab using the following all-in-one method:
+```
+lab.deploy()
+```
+
+See the rest of this section for what running this method entails.
+If you need fine-tuning, you can always run each step by itself.
+If you mess up, you can freshen the plate using `lab.gitlab_group.delete()`.
+
+---
+
 We start by running:
 ```
 lab.gitlab_group.create()
@@ -450,6 +463,17 @@ This pulls from the official project.
 It also needs the student group projects and grading project to exist so that the configuration of fetching from student repositories and pushing to the grading repository can be confirmed
 You may add an argument `bare = True` to make it a so-called bare git repository.
 This is useful for automated task that don't need a repository with an actual working directory.
+
+If you have official solutions, You may now want ask the to create the solutions project:
+```
+lab.create_group('solution')
+```
+and upload the official solutions as tags.
+You can do all of that in one step using:
+```
+lab.solution_create_and_populate()
+```
+If your solutions are in non-standard locations, you can use `lab.group['solution'].upload_solution`.
 
 ### Mirroring group category on GitLab
 
