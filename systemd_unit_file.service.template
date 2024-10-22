@@ -19,7 +19,7 @@ Restart=always
 RestartSec=900s
 KillSignal=SIGINT
 # ACTION: fix lab system directory 
-WorkingDirectory=h/lab-system
+WorkingDirectory=%h/lab-system
 # ACTION: replace as follows:
 # * fix path to event loop script
 # * replace COURSE_CODE by lower case course code,
