@@ -501,8 +501,6 @@ class Lab:
     @functools.cached_property
     def group_ids_desired(self):
         def f():
-            # yield 'sattler'
-            # yield 'solution'
             yield from self.student_connector.desired_groups()
             yield from self.solutions.keys()
 
@@ -519,8 +517,6 @@ class Lab:
     @functools.cached_property
     def groups(self):
         def group_ids():
-            # yield 'sattler'
-            # yield 'solution'
             for project in gitlab_.tools.list_all(self.gitlab_group.lazy.projects):
                 id = self.group_slug_to_id(project.path)
                 if id is not None:
@@ -545,6 +541,7 @@ class Lab:
         group = group_project.GroupProject(self, id)
         group.project.create()
         self.groups[id] = group
+        return group
 
     def groups_create_desired(self, keep_existing = True, refresh = True):
         if keep_existing:
