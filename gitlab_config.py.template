@@ -101,9 +101,6 @@ branch = SimpleNamespace(
 
     solution='solution',
     submission='submission',
-
-    # Default branch for grading repositories when grading via merge request is used.
-    status='status',
 )
 
 _outcomes = {
