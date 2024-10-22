@@ -133,8 +133,10 @@ Alternatively, you can create them yourself.
 
 ```
 graders                 # Who should be allowed to grade?
-                        # Members of this group will have access to all lab groups and grading repositories.
-                        # The lab system has functionality for automatically populating this group with teachers and TAs from Canvas.
+                        # You need to add this group as a group member to the group for this course instance.
+                        # It suffices to add it with developer rights.
+                        # Every member will then have access to all subgroups and projects of this course instance on GitLab.
+                        # The lab system has functionality for automatically adding teachers and TAs on Canvas to this group.
 
 example-lab
   ├── primary           # Primary project containing the problem branch (or branches if lab has multiple versions, e.g. for different languages).
@@ -147,9 +149,14 @@ example-lab
   │
   ├── collection        # Collection repository, written to by the lab scripts.
   │                     # Fetches from the primary project and solution and student projects.
-  │                     # The individual submissions are available as tags of the form group-XX/submissionYYY.
+  │                     # The individual submissions are available as tags of the form group-XX/submissionYYY/tag.
+  |                     # This repository contains all the data produced by the lab system when processing submissions.
+  |                     # This includes robograding and test reports (if configured), for example under group-XX/submissionYYY/test_report.
   |
   ├── solution          # Official solution project (only if the lab has a solution).
+  │                     # This counts as a student project for many purposes.
+  │                     # It must have official solution submissions (for all lab versions).
+  │                     # These are made in the same way as in a student project.
   │                     # Student submissions are diffed against the submissions in this project.
   |                     # Submission testers may use these to produce gold outputs.
   |
@@ -229,6 +236,26 @@ It follows that you may change a grading by editing the corresponding grading is
 
 The lab scripts will output warnings if it detects grader-created issues whose title does not follow the standard pattern.
 Common mistakes include typos and incorrect capitalization when referencing the (case-sensitive) tag.
+
+### Collection repository
+
+The lab system writes to a *collection project* on Chalmers GitLab.
+
+This contains:
+* branches for the lab problems (e.g. `problem` or `java`/`python`).
+* all submissions from all groups, under tags `group-XX/submissionYYY/tag`,
+* the official solution submissions (e.g., `solution/submission-python`),
+* all robograding/robotesting output (e.g., `group-XX/submissionYYY/test_report`).
+
+The lab system uses this project to provide diff views on Chalmers GitLab linked to in the live submissions table (e.g., between a student submission and an official solution).
+
+If grader need to work with the files in student submissions, they can simply clone this repository.
+They can then use the usual git commands, for example:
+* checking out a group's submission: `git checkout group-13/submissionSecond/tag`
+* checking what they did: `git diff problem`
+* showing the changes relative to the previous submission: `git diff group-13/submissionFirst/tag`
+* comparing to the official solution: `git diff solution`
+* checking out the compilation and robograding report (if available): `git checkout group-13/submissionSecond/report`
 
 ### Grading sheets on Google Cloud
 
@@ -460,7 +487,6 @@ Initialize the local collection repository using
 lab.repo_init()
 ```
 This pulls from the official project.
-It also needs the student group projects and grading project to exist so that the configuration of fetching from student repositories and pushing to the grading repository can be confirmed
 You may add an argument `bare = True` to make it a so-called bare git repository.
 This is useful for automated task that don't need a repository with an actual working directory.
 
