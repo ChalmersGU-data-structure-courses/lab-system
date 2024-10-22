@@ -291,7 +291,7 @@ class Lab:
         else:
             group.upload_solution()
 
-    def deploy_lab(self):
+    def deploy(self):
         """
         If this method goes wrong:
         * use self.gitlab_group.delete() to clean up after it,
