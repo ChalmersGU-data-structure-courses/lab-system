@@ -1,5 +1,6 @@
 import abc
 import contextlib
+import dataclasses
 import functools
 import itertools
 import logging
@@ -312,17 +313,21 @@ class Lab:
         '''
         The primary lab project on Chalmers GitLab.
         The student lab projects are forked from this.
-        On creation:
-        * The contents of the main branch are taken from the problem folder of the specified local lab directory
-          (together with an optionally specified .gitignore file).
-          So make sure this directory is clean beforehand.
 
-        This used to contain branches "problem" and "solution", but that is outdated.
-        We use separate group projects for solutions.
+        On creation, the project is empty.
 
-        As an alternative to creating this project, you can create it yourself.
-        Remember to configure it as a forking basis.
-        For example you may want to disable feature that are distracting to students.
+        For a single-problem lab, there should be:
+        * a branch self.config.branch_problem with the initial lab problem,
+        * a default branch main branch pointing to the same commit.
+        You can use Lab.primary_project_problem_branch_create for this.
+
+        For a multi-problem lab, there should be:
+        * problem branches according to the values of the dictionary self.config.branch_problem,
+        * main branch pointing to the default problem.
+        You can use Lab.primary_project_problem_branches_create for this.
+
+        It is a good idea to check the contents of this project before forking any student projects.
+        For example you may want to disable features that are distracting to students.
         '''
         r = gitlab_.tools.CachedProject(
             gl = self.gl,
@@ -371,19 +376,25 @@ class Lab:
 
         return r
 
-    def primary_project_problem_branch_create(self, source = None, branches = 'problem', message = 'Initial version.'):
+    def primary_project_problem_branch_create(
+        self,
+        source = None,
+        branches = 'problem',
+        message = 'Initial version.',
+        delete_protected_main = True,
+    ):
         '''
         Use this for projects with a single problem branch.
 
         Arguments:
         * source:
             Directory path of the sources.
-            If None, uses the configured lab source.
+            If None, uses the 'problem' subfolder of the configured lab source.
         * branch: string or iterable of strings of branch names to push to,
         * message: commit message to use.
         '''
         if source is None:
-            source = self.config.path_source
+            source = self.config.path_source / 'problem'
 
         if isinstance(branches, str):
             branches = [branches]
@@ -391,7 +402,7 @@ class Lab:
         with path_tools.temp_dir() as dir:
             repo = git.Repo.init(dir.__fspath__())
 
-            shutil.copytree(source, dir, symlinks = True)
+            shutil.copytree(source, dir, symlinks = True, dirs_exist_ok = True)
             repo.git.add('--all', '--force')
             repo.git.commit('--allow-empty', message = message)
 
@@ -401,27 +412,54 @@ class Lab:
                     git_tools.refspec(git_tools.head, branch, force = True),
                 )
 
-    def primary_project_problem_branches_create(self, branches, default):
+        if delete_protected_main and self.course.config.branch.master in branches:
+            gitlab_.tools.delete_protected_branches(self.primary_project.get)
+
+    @dataclasses.dataclass
+    class ProblemSpecification:
+        path_source: Optional[Path] = None
+        message: Optional[str] = None
+
+    def primary_project_problem_branches_create(self, branch_specs = None, default = None):
         '''
         Use this for projects with multiple problem branches (e.g. for different languages).
 
         Arguments:
-        * branches is a dictionary from languages to pairs (dir, message) where:
-          - dir is the directory path of the sources,
-          - message is the commit message to use.
+        * branches is an optional dictionary from languages to instances of ProblemSpecification.
+          If the attribute path_source is None, attempts to use the subfolder 'problem/<language>' of the configured lab source.
+          If the attribute message is None, uses a sensible default.
+          If the entire dictionary is None, uses these defaults for every language.
         * default specified the language that should be used for the main branch.
+          Defaults, to the first key of self.config.branch_problem.
         '''
-        assert branches.keys() == self.config.branch_problem.keys()
+        if branch_specs is None:
+            branch_specs = {
+                language: Lab.ProblemSpecification(path_source = None, message = None)
+                for language in self.config.branch_problem.keys()
+            }
+
+        assert branch_specs.keys() == self.config.branch_problem.keys()
+
+        if default is None:
+            default = next(iter(self.config.branch_problem.keys()))
 
         def process_language(language, make_main):
-            (dir, message) = branches[language]
+            spec = branch_specs[language]
 
             def branches():
                 if make_main:
-                    yield self.config.branch.master
+                    yield self.course.config.branch.master
                 yield self.config.branch_problem[language]
 
-            self.primary_project_problem_branch_create(dir, branches(), message)
+            source = spec.path_source
+            if source is None:
+                source = self.config.path_source / 'problem' / language
+
+            message = spec.message
+            if message is None:
+                message = f'Initial {language.capitalize()} version.'
+
+            self.primary_project_problem_branch_create(source, branches(), message)
 
         process_language(default, True)
         for language in self.config.branch_problem.keys():
