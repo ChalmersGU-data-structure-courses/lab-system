@@ -270,16 +270,35 @@ class Lab:
             print_parse.qualify_with_slash
         )
 
-    def create_initial_stuff_on_gitlab(self):
+    def solution_create_and_populate(self):
+        """
+        Currently only supports a single solution project.
+        """
+        assert self.config.has_solution == True
+        [solution_name] = self.solutions.keys()
+        group = self.group_create('solution')
+        if self.config.multi_language:
+            for language in self.config.branch_problem.keys():
+                group.upload_solution(language = language)
+        else:
+            group.upload_solution()
+
+    def deploy_data_structures_lab(self):
+        """
+        If this method goes wrong:
+        * use self.gitlab_group.delete() to clean up after it,
+        * try again.
+        """
         self.gitlab_group.create()
         self.primary_project.create()
+        self.primary_project_problem_branches_create()
         self.grading_project.create()
+        if self.config.has_solution is True:
+            self.solution_create_and_populate()
         self.logger.info(general.join_lines([
             'Next steps:',
-            f'* Upload problem branches to primary project: {self.offical_project.get.web_url} and set main branch to what should be the default.',
             '* Restart event loop.',
-            '* If lab has solution configured, upload tags "submission-solution-<language>" to solution project.',
-            '* If robograding configured, check robograding output for solution submissions in live submissions table.',
+            '* Check robograding/-testing output for solution submissions in live submissions table.',
         ]))
 
     @property
