@@ -155,9 +155,17 @@ class Lab:
     - hooks_manager
 
     If the groups come from Canvas:
-    - create_groups_from_canvas
-    - deploy: do all steps to deploy a lab for the first time
-      (needs lab sources to be prepared and testing docker image built)
+    - groups_create_desired()
+
+    All-in-one methods:
+    - deploy_lab:
+      Upload problem and solutions.
+      Does not yet talk to Canvas.
+      This is left to the event loop.
+    - deploy_via_lab_sources_and_canvas: do all steps to deploy a lab for the first time
+      (needs lab sources to be prepared and testing docker image built).
+      Includes forking the student projects.
+      Therefore requires Canvas configuration in the course and lab config.
 
     This class also manages a local repository called the grading repository
     that fetches from primary and student projects on Chalmers GitLab
@@ -283,7 +291,7 @@ class Lab:
         else:
             group.upload_solution()
 
-    def deploy_data_structures_lab(self):
+    def deploy_lab(self):
         """
         If this method goes wrong:
         * use self.gitlab_group.delete() to clean up after it,
