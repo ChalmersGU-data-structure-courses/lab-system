@@ -69,7 +69,7 @@ See gitlab_config.py.template for documentation of the configuration namespace.
 ---
 This directory is where course-related data is stored and managed.
 For example, each lab has a the local repository staging
-the grading repository on GitLab Chalmers.
+the collection repository on GitLab Chalmers.
 ''',
 ).completer = complete_local_dir
 

@@ -149,7 +149,7 @@ class Lab:
 
     The lab is hosted on Chalmers GitLab.
     Related attributes and methods:
-    - primary_project, grading_project
+    - primary_project, collection_project
     - create_group_projects
     - delete_group_projects
     - hooks_manager
@@ -167,9 +167,9 @@ class Lab:
       Includes forking the student projects.
       Therefore requires Canvas configuration in the course and lab config.
 
-    This class also manages a local repository called the grading repository
+    This class also manages a local repository called the collection repository
     that fetches from primary and student projects on Chalmers GitLab
-    and pushes to the grading project on Chalmers GitLab.
+    and pushes to the collection project on Chalmers GitLab.
     The latter is intended to be consumed by graders.
     Related attributes and methods:
     - repo_init
@@ -207,7 +207,7 @@ class Lab:
             lab configuration, typically the value in a lab configuration dictionary.
             If None, will be taken from labs dictionary in course configuration.
         * dir:
-            Local directory used as local copy of the grading repository.
+            Local directory used as local copy of the collection repository.
             Only its parent directory has to exist.
         * deadline:
             Optional deadline for submissioms.
@@ -245,7 +245,7 @@ class Lab:
         # Gitlab config
         self.path = self.course.path / self.course.config.lab.full_id.print(self.id)
 
-        # Local grading repository config.
+        # Local collection repository config.
         self.dir_repo = None if self.dir is None else self.dir / 'repo'
         # Whether we have updated the repository and it needs to be pushed.
         self.repo_updated = False
@@ -271,7 +271,7 @@ class Lab:
                 self.dir_status_repos.mkdir(exist_ok = True)
 
         # Qualify a request by the full group id.
-        # Used as tag names in the grading repository of each lab.
+        # Used as tag names in the collection repository of each lab.
         # TODO: unused?
         self.qualify_request = print_parse.compose(
             print_parse.on(general.component_tuple(0), self.student_connector.gitlab_group_slug_pp()),
@@ -300,7 +300,7 @@ class Lab:
         self.gitlab_group.create()
         self.primary_project.create()
         self.primary_project_problem_branches_create()
-        self.grading_project.create()
+        self.collection_project.create()
         if self.config.has_solution is True:
             self.solution_create_and_populate()
         self.logger.info(general.join_lines([
@@ -494,15 +494,15 @@ class Lab:
                 process_language(language, False)
 
     @functools.cached_property
-    def grading_project(self):
+    def collection_project(self):
         '''
-        The grading project on Chalmers GitLab.
+        The collection project on Chalmers GitLab.
         When created, it is empty.
         '''
         r = gitlab_.tools.CachedProject(
             gl = self.gl,
             logger = self.logger,
-            path = self.path / self.course.config.path_lab.grading,
+            path = self.path / self.course.config.path_lab.collection,
             name = 'Collection repository',
         )
 
@@ -588,8 +588,8 @@ class Lab:
     @functools.cached_property
     def repo(self):
         '''
-        Local grading repository.
-        This is used as staging for (pushes to) the grading project on Chalmers GitLab.
+        Local collection repository.
+        This is used as staging for (pushes to) the collection project on Chalmers GitLab.
         It fetches from the primary lab repository and student group repositories.
         '''
         try:
@@ -610,7 +610,7 @@ class Lab:
 
     def repo_add_groups_remotes(self, **kwargs):
         '''
-        Configure fetching remotes in local grading repository for all groups on GitLab.
+        Configure fetching remotes in local collection repository for all groups on GitLab.
         This overwrites any existing configuration for such remotes, except for groups no longer existing.
         '''
         for group in self.groups_known():
@@ -629,13 +629,13 @@ class Lab:
 
     def repo_init(self, bare = False):
         '''
-        Initialize the local grading repository.
+        Initialize the local collection repository.
         If the directory exists, we assume that all remotes are set up.
         Otherwise, we create the directory and populate it with remotes on Chalmers GitLab as follows.
         Fetching remotes are given by the primary repository and student group repositories.
-        Pushing remotes are just the grading repository.
+        Pushing remotes are just the collection repository.
         '''
-        self.logger.info('Initializing local grading repository.')
+        self.logger.info('Initializing local collection repository.')
         try:
             repo = git.Repo.init(str(self.dir_repo), bare = bare)
             with repo.config_writer() as c:
@@ -659,8 +659,8 @@ class Lab:
             self.repo_fetch_primary()
 
             self.repo_add_remote(
-                self.course.config.path_lab.grading,
-                self.grading_project.get,
+                self.course.config.path_lab.collection,
+                self.collection_project.get,
                 push_branches = fetch_branches(),
                 push_tags = [git_tools.wildcard],
             )
@@ -703,19 +703,19 @@ class Lab:
 
     def repo_fetch_primary(self):
         '''
-        Fetch main branch from the offical repository on Chalmers GitLab to the local grading repository.
+        Fetch main branch from the offical repository on Chalmers GitLab to the local collection repository.
         '''
         self.logger.info('Fetching from primary repository.')
         self.repo_command_fetch(self.repo, [self.course.config.path_lab.primary])
 
     def repo_push(self, force = False):
         '''
-        Push the local grading repository to the grading repository on Chalmers GitLab.
+        Push the local collection repository to the collection repository on Chalmers GitLab.
         Only push if changes have been recorded.
         '''
         if self.repo_updated or force:
-            self.logger.info('Pushing to grading repository.')
-            self.repo_command_push(self.repo, self.course.config.path_lab.grading)
+            self.logger.info('Pushing to collection repository.')
+            self.repo_command_push(self.repo, self.course.config.path_lab.collection)
             self.repo_updated = False
 
     def configure_student_project(self, project, is_solution):
@@ -847,7 +847,7 @@ class Lab:
     def tags(self):
         '''
         A dictionary hierarchy of tag path name segments
-        with values in tags in the local grading repository.
+        with values in tags in the local collection repository.
 
         Clear this cached property after constructing tags.
         '''
@@ -919,7 +919,7 @@ class Lab:
         This calls parse_request_tags in each contained group project.
         The boolean parameter from_gitlab determines if:
         * (True) tags read from Chalmers GitLab (a HTTP call)
-        * (False) tags are read from the local grading repository.
+        * (False) tags are read from the local collection repository.
 
         This method needs to be called before requests_and_responses
         in each contained handler data instance can be accessed.
@@ -1014,7 +1014,7 @@ class Lab:
     def process_requests(self):
         '''
         Process requests in group projects in this lab.
-        This skips requests already marked as handled in the local grading repository.
+        This skips requests already marked as handled in the local collection repository.
         Before calling this method, the following setups steps need to have been executed:
         * self.setup_handlers()
         * requests and responses need to be up to date.
@@ -1180,7 +1180,7 @@ class Lab:
         for group in self.groups_known():
             group.grading_issues = dict()
 
-        r = self.course.parse_response_issues(self.grading_project)
+        r = self.course.parse_response_issues(self.collection_project)
         for ((request, response_type), value) in r.items():
             (id, request) = self.course.qualify_with_slash.parse(request)
             self.groups[id].grading_issues[(request, response_type)] = value
@@ -1283,7 +1283,7 @@ class Lab:
         '''
         Update the submission systems for specified groups.
         The submission systems are:
-        - grading project on Chalmers GitLab,
+        - collection project on Chalmers GitLab,
         - live submissions table (if set up),
         - grading sheet.
 
@@ -1405,7 +1405,7 @@ class Lab:
 
     def checkout_tag_hierarchy(self, dir):
         '''
-        Check out all tags in the grading repository in a hierarchy based at dir.
+        Check out all tags in the collection repository in a hierarchy based at dir.
         The directory dir and its parents are created if they do not exist.
         To save space, tags are omitted if they satisfy one of the following conditions:
         - ultimate path segment is 'handled',
@@ -1413,7 +1413,7 @@ class Lab:
         This is to save space; the content of these tags
         # is identical to that the respective parent tag.
 
-        Use this function to more quickly debug issues with contents of the grading repository.
+        Use this function to more quickly debug issues with contents of the collection repository.
         '''
         for (path, tag) in git_tools.flatten_references_hierarchy(self.tags).items():
             if any([
@@ -1700,7 +1700,7 @@ class Lab:
 
         Steps:
         - creating a new project for the lab in the course
-        - creating base projects for sources and grading
+        - creating base projects for sources and collection
         - creating a project for each group according to Canvas groups
         - populating the group projects with clones of the lab sources
 
@@ -1732,8 +1732,8 @@ class Lab:
         self.logger.info('=== Uploading problem branch ===')
         self.primary_project_problem_branch_create()
 
-        self.logger.info('=== Creating "grading" project for lab ===')
-        self.grading_project.create()
+        self.logger.info('=== Creating "collection" project for lab ===')
+        self.collection_project.create()
 
         self.logger.info('=== Forking student projects from primary project ===')
         self.create_group_projects()

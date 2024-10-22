@@ -91,7 +91,7 @@ path_graders = path_course / 'graders'
 # Relative paths to the repositories in each lab as described above.
 path_lab = SimpleNamespace(
     primary='primary',
-    grading='grading',
+    collection='collection',
 )
 
 # Branch names
@@ -211,8 +211,8 @@ _group = SimpleNamespace(
     # Used in the grading sheet and the Canvas submission table.
     id=print_parse.int_str(),
 
-    # Used for the lab project path.
-    # Used as part of tag names in grading repository.
+    # Used for group project paths.
+    # Used as part of tag names in collection repository.
     full_id=print_parse.regex_int('group-{}'),
 
     # Used for the grading project path.
