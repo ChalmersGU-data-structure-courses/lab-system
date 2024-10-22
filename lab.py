@@ -1736,12 +1736,7 @@ class Lab:
         self.collection_project.create()
 
         self.logger.info('=== Forking student projects from primary project ===')
-        self.create_group_projects()
-
-        if self.config.grading_via_merge_request:
-            self.logger.info('=== Creating grading projects ===')
-            for g in l.student_groups.values():
-                g.grading_via_merge_request.project.create()
+        self.groups_create_desired()
 
         self.logger.info(
             '''

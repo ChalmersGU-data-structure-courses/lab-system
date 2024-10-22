@@ -599,7 +599,7 @@ class Cache(abc.ABC):
     * Canvas users in a course
     * lab group membership on Canvas
     * issues in a student project on Chalmers GitLab
-    * merge request activity in a student grading project on Chalmers GitLab
+    * merge request activity in a student project on Chalmers GitLab
       - special because we can update it incrementally (except for the outcome of the last submission)
 
     Examples for (B):
@@ -609,7 +609,7 @@ class Cache(abc.ABC):
     * Canvas users in a course
     * lab group membership on Canvas
     * issues in a student project on Chalmers GitLab
-    * merge request activity in a student grading project on Chalmers GitLab
+    * merge request activity in a student project on Chalmers GitLab
       - special because we can update it incrementally (except for the outcome of the last submission)
     But in all those cases, we are not actually using the modification time for anything.
 
