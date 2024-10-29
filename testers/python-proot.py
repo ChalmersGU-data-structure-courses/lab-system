@@ -89,6 +89,7 @@ class LabTester(testers.general.LabTester):
             env = env,
             input = test.input,
             timeout = test.timeout,
+            env = testers.general.test_env(test),
         )
 
 if __name__ == '__main__':

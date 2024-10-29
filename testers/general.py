@@ -31,14 +31,25 @@ class Test:
     * timeout: Timeout in seconds after which the test program is killed (defaults to 5).
     * memory: Memory (in MB) the container is allowed to use (defaults to 1024).
     * markdown_output: True if this test's output is in Markdown format.
+    * environment: Environment variables to set.
     '''
     description: Optional[str] = None
     timeout: Optional[int] = 5
     memory: Optional[int] = 1024
     markdown_output: bool = False
+    environment: Optional[dict[str, str]] = None,
 
 def get_description(name: str, test: Test) -> str:
     return name if test.description is None else test.description
+
+def test_env(test: Test) -> dict[str, str]:
+    """
+    Get the environment to use for a test.
+    """
+    env = os.environ
+    if test.environment is not None:
+        env = env | test.environment
+    return env
 
 def parse_tests(test_type, file):
     '''
@@ -74,7 +85,7 @@ class LabTester:
     The lab directory contains a file 'tests.py'.
     This is a self-contained Python script specifying
         tests : Dict[str, Test]
-    where the type Test is specified by the class attribute TestSpec.
+    where the type Test is specified by the class attribute TestSpec
     (and made available to the environment of the execution of tests.py).
 
     Additionally, the lab may contain a subdirectory 'test'.
