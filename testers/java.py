@@ -151,6 +151,7 @@ class LabTester(testers.general.LabTester):
                 input = test.input,
                 timeout = test.timeout,
                 encoding = 'utf-8',
+                env = testers.general.test_env(test),
             )
 
     def run_tests(

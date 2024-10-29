@@ -5,7 +5,7 @@ import logging
 import os
 from pathlib import Path
 import subprocess
-from typing import Optional, Tuple, Union
+from typing import Collection, Optional, Tuple, Union
 
 import general
 
@@ -46,7 +46,7 @@ class Test(testers.general.Test):
     * allow_network: Give network access to container.
     '''
     image: str = None  # Default argument for compatibility with Python <3.10
-    command_line: Tuple[Union[str, os.PathLike]] = None  # Default argument for compatibility with Python <3.10
+    command_line: Collection[Union[str, os.PathLike]] = None  # Default argument for compatibility with Python <3.10
     input: Optional[str] = None
     allow_network: bool = False
 
@@ -121,6 +121,7 @@ class LabTester(testers.general.LabTester):
             args = cmd_start(),
             input = test.input,
             timeout = test.timeout,
+            env = testers.general.test_env(test),
         )
 
         def cmd_remove():
