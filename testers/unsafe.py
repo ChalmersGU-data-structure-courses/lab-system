@@ -35,6 +35,7 @@ class LabTester(testers.general.LabTester):
             input = test.input,
             timeout = test.timeout,
             cwd = dir_src,
+            env = testers.general.test_env(test),
         )
 
 if __name__ == '__main__':
