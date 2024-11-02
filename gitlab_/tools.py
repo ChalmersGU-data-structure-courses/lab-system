@@ -669,7 +669,7 @@ def hook_ensure(spec: HookSpec, hooks = None):
 
     If 'hooks' is None, get the hooks from the project.
     '''
-    logger.debug('Ensuring webhook configuration in {project.web_url}.')
+    logger.debug(f'Ensuring webhook configuration in {project.web_url}.')
     if hooks is None:
         hooks = hooks_get(spec.project)
     try:
