@@ -29,7 +29,7 @@ class CompilationColumn(live_submissions_table.Column):
 
         report = submission_current.repo_tag(report_segments)
         url = gitlab_.tools.url_blob(
-            self.lab.grading_project.get,
+            self.lab.collection_project.get,
             report.name,
             report_compilation,
         )
@@ -68,7 +68,7 @@ class RobogradingColumn(live_submissions_table.Column):
 
         report = submission_current.repo_tag(report_segments)
         url = gitlab_.tools.url_blob(
-            self.lab.grading_project.get,
+            self.lab.collection_project.get,
             report.name,
             report_robograding,
         )
@@ -95,7 +95,7 @@ class CompilationAndRobogradingColumn(live_submissions_table.Column):
 
         def link_for(name, path):
             a = live_submissions_table.format_url(name, gitlab_.tools.url_blob(
-                self.lab.grading_project.get,
+                self.lab.collection_project.get,
                 report.name,
                 path,
             ))

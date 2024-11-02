@@ -282,7 +282,7 @@ class SubmissionTesting:
                         with dominate.tags.p():
                             if self_outer.report_path is None:
                                 live_submissions_table.format_url('test', gitlab_.tools.url_tree(
-                                    self.lab.grading_project.get,
+                                    self.lab.collection_project.get,
                                     submission_current.repo_tag(self_outer.segments_test),
                                 ))
                             else:
@@ -291,7 +291,7 @@ class SubmissionTesting:
                                     False: self_outer.segments_test,
                                 }[self_outer.has_markdown_report]
                                 live_submissions_table.format_url('report', gitlab_.tools.url_blob(
-                                    self.lab.grading_project.get,
+                                    self.lab.collection_project.get,
                                     submission_current.repo_tag(segments),
                                     self_outer.report_path,
                                 ))
@@ -305,7 +305,7 @@ class SubmissionTesting:
                                     submission_solution = group_solution.submission_handler_data.requests_and_responses[f'submission-solution-{submission_current.language}']
 
                                 live_submissions_table.format_url('vs. solution', gitlab_.tools.url_compare(
-                                    self.lab.grading_project.get,
+                                    self.lab.collection_project.get,
                                     submission_solution.repo_tag(self_outer.segments_test),
                                     submission_current.repo_tag(self_outer.segments_test),
                                 ))
