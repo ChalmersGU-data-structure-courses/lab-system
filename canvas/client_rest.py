@@ -304,7 +304,7 @@ class Canvas:
 # Retrieving the user's profile (canvas.get(['users', id, 'profile']) always includes the login_id.
 # The Chalmers login id might not be a valid email address (to confirm).
 class Course:
-    roles_student = ['StudentEnrollment']
+    roles_student = ['StudentEnrollment', 'admitted_student']
     roles_teacher = ['Examiner', 'TeacherEnrollment', 'TaEnrollment']
 
     @staticmethod
