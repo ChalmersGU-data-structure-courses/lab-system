@@ -69,11 +69,11 @@ def server_manager(netloc, secret_token, callback, logger = logger):
 
         # Create the server.
         with http.server.HTTPServer(address, Handler) as server:
-            server.socket = ssl.wrap_socket(
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            context.load_cert_chain(file_cert, file_key)
+            server.socket = context.wrap_socket(
                 server.socket,
-                certfile = file_cert,
-                keyfile = file_key,
-                server_side = True
+                server_side = True,
             )
 
             # Set the server attributes used by the handler.
