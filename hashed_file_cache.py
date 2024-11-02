@@ -51,7 +51,7 @@ def _read_link(dir_fd, read_update_date: bool = False) -> Optional[LinkData]:
 
     update_date = None
     if read_update_date:
-        update_date = path_tools.get_modification_time(_FILENAME_LINK, dir_fd = dir_fd)
+        update_date = path_tools.get_modification_time(_FILENAME_LINK, dir_fd = dir_fd, follow_symlinks = False)
 
     return LinkData(hash = hash, update_date = update_date)
 
