@@ -122,7 +122,7 @@ def modified_at(path):
 def get_modification_time(path, **kwargs):
     # We use os.stat over getmtime to support more arguments.
     t = os.stat(path, **kwargs).st_mtime
-    return datetime.datetime.fromtimestamp(t)
+    return datetime.datetime.fromtimestamp(t, tz = datetime.timezone.utc)
 
 def set_modification_time(path, date, **kwargs):
     t = date.timestamp()
