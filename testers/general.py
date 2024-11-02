@@ -37,7 +37,7 @@ class Test:
     timeout: Optional[int] = 5
     memory: Optional[int] = 1024
     markdown_output: bool = False
-    environment: Optional[dict[str, str]] = None,
+    environment: Optional[dict[str, str]] = None
 
 def get_description(name: str, test: Test) -> str:
     return name if test.description is None else test.description
