@@ -393,8 +393,8 @@ class _LabConfig:
             print_parse.regex('Grading for {} submission', regex='[a-zA-Z]*'),
         )
         self.branch_problem = {
-            'java': 'java',
             'python': 'python',
+            'java': 'java',
         }
 
     # Key of submission handler in the dictionary of request handlers.
