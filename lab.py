@@ -299,7 +299,10 @@ class Lab:
         """
         self.gitlab_group.create()
         self.primary_project.create()
-        self.primary_project_problem_branches_create()
+        if self.config.multi_language is None:
+            self.primary_project_problem_branch_create()
+        else:
+            self.primary_project_problem_branches_create()
         self.collection_project.create()
         if self.config.has_solution is True:
             self.solution_create_and_populate()
