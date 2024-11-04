@@ -702,7 +702,7 @@ class Lab:
             # TODO: add language problem branches.
             def fetch_branches():
                 if self.config.multi_language is None:
-                    yield self.course.config.branch.master
+                    yield "problem"  # self.course.config.branch.master  # TODO: fix in config.
                 else:
                     for branch in self.config.branch_problem.values():
                         yield branch
