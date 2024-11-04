@@ -338,9 +338,9 @@ class _LabConfig:
 
         self.grading_via_merge_request = True
         self.outcome_labels = {
-            None: gitlab_tools.LabelSpec(name = 'waiting-for-grading', color = 'yellow'),
-            0: gitlab_tools.LabelSpec(name = 'incomplete', color = 'red'),
-            1: gitlab_tools.LabelSpec(name = 'pass', color = 'green'),
+            None: gitlab_.tools.LabelSpec(name = 'waiting-for-grading', color = 'yellow'),
+            0: gitlab_.tools.LabelSpec(name = 'incomplete', color = 'red'),
+            1: gitlab_.tools.LabelSpec(name = 'pass', color = 'green'),
         }
 
     # Key of submission handler in the dictionary of request handlers.
