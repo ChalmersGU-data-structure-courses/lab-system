@@ -741,11 +741,11 @@ class GroupProject:
             name = self.name,
         )
 
-        # TODO: handle duplicate project name.
-        # GitLab does not allow this.
-        # This will happen for individual labs where two students have the same name.
-        # Can just retry with 2, 3, 4, ... appended.
         def create():
+            # Handle duplicate project name.
+            # GitLab does not allow this.
+            # This will happen for individual labs where two students have the same name.
+            # Can just retry with 2, 3, 4, ... appended.
             for i in itertools.count(0):
                 try:
                     suffix = '' if i == 0 else ' ' + str(i + 1)
