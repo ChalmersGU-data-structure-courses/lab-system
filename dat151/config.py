@@ -329,6 +329,7 @@ class _LabConfig:
         self.has_solution = True
 
         self.multi_language = None
+        self.branch_problem = 'problem'
 
         def f():
             yield ('submission', lab_handlers_dat151.SubmissionHandler(testers.podman.LabTester.factory))
