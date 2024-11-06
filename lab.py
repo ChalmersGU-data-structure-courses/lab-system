@@ -349,12 +349,12 @@ class Lab:
         For a single-problem lab, there should be:
         * a branch self.config.branch_problem with the initial lab problem,
         * a default branch main branch pointing to the same commit.
-        You can use Lab.primary_project_problem_branch_create for this.
 
         For a multi-problem lab, there should be:
         * problem branches according to the values of the dictionary self.config.branch_problem,
         * main branch pointing to the default problem.
-        You can use Lab.primary_project_problem_branches_create for this.
+
+        In both cases, you can use Lab.primary_project_problem_branches_create for this.
 
         It is a good idea to check the contents of this project before forking any student projects.
         For example you may want to disable features that are distracting to students.
@@ -406,28 +406,24 @@ class Lab:
 
         return r
 
-    def primary_project_problem_branch_create(
+    def primary_project_branch_create(
         self,
-        source = None,
-        branches = 'problem',
-        message = 'Initial version.',
+        source,
+        branches,
+        message,
         delete_protected_main = True,
     ):
         '''
-        Use this for projects with a single problem branch.
+        Creates branch(es) with an initial commit based on a given source folder.
 
         Arguments:
-        * source:
-            Directory path of the sources.
-            If None, uses the 'problem' subfolder of the configured lab source.
-        * branch: string or iterable of strings of branch names to push to,
+        * source: Directory path of the sources.
+        * branch: String or iterable of strings of branch names to push to.
         * message: commit message to use.
         '''
-        if source is None:
-            source = self.config.path_source / 'problem'
-
         if isinstance(branches, str):
             branches = [branches]
+        branches = list(branches)
 
         with path_tools.temp_dir() as dir:
             repo = git.Repo.init(dir.__fspath__())
@@ -452,49 +448,76 @@ class Lab:
 
     def primary_project_problem_branches_create(self, branch_specs = None, default = None):
         '''
-        Use this for projects with multiple problem branches (e.g. for different languages).
+        Use this to create the needed branches in the primary project.
 
         Arguments:
-        * branches is an optional dictionary from languages to instances of ProblemSpecification.
-          If the attribute path_source is None, attempts to use the subfolder 'problem/<language>' of the configured lab source.
+        * branches is optionally:
+          - an instance of ProblemSpecification for non-multi-language labs,
+          - a dictionary from languages to instances of ProblemSpecification for multi-language labs.
+          If the attribute path_source is None, attempts to use a subfolder of the configured lab source:
+          - 'problem' for non-multi-language labs,
+          - 'problem/<language>' for multi-language labs.
           If the attribute message is None, uses a sensible default.
-          If the entire dictionary is None, uses these defaults for every language.
+          If branch_specs is None, uses these defaults for all problem branches.
         * default specified the language that should be used for the main branch.
-          Defaults, to the first key of self.config.branch_problem.
+          Only used for multi-language labs.
+          Defaults to the first key of self.config.branch_problem.
         '''
-        if branch_specs is None:
-            branch_specs = {
-                language: Lab.ProblemSpecification(path_source = None, message = None)
-                for language in self.config.branch_problem.keys()
-            }
+        if self.config.multi_language is None:
+            if branch_specs is None:
+                branch_specs = Lab.ProblemSpecification()
 
-        assert branch_specs.keys() == self.config.branch_problem.keys()
+            path_source = branch_specs.path_source
+            if path_source is None:
+                path_source = self.config.path_source / 'problem'
 
-        if default is None:
-            default = next(iter(self.config.branch_problem.keys()))
-
-        def process_language(language, make_main):
-            spec = branch_specs[language]
-
-            def branches():
-                if make_main:
-                    yield self.course.config.branch.master
-                yield self.config.branch_problem[language]
-
-            source = spec.path_source
-            if source is None:
-                source = self.config.path_source / 'problem' / language
-
-            message = spec.message
+            message = branch_specs.message
             if message is None:
-                message = f'Initial {language.capitalize()} version.'
+                message = 'Initial version.'
 
-            self.primary_project_problem_branch_create(source, branches(), message)
+            self.primary_project_branch_create(
+                source = path_source,
+                branches = [self.course.config.branch.master, 'problem'],
+                message = message,
+            )
+        else:
+            if branch_specs is None:
+                branch_specs = {
+                    language: Lab.ProblemSpecification(path_source = None, message = None)
+                    for language in self.config.branch_problem.keys()
+                }
 
-        process_language(default, True)
-        for language in self.config.branch_problem.keys():
-            if language != default:
-                process_language(language, False)
+            assert branch_specs.keys() == self.config.branch_problem.keys()
+
+            if default is None:
+                default = next(iter(self.config.branch_problem.keys()))
+
+            def process_language(language, make_main):
+                spec = branch_specs[language]
+
+                def branches():
+                    if make_main:
+                        yield self.course.config.branch.master
+                    yield self.config.branch_problem[language]
+
+                source = spec.path_source
+                if source is None:
+                    source = self.config.path_source / 'problem' / language
+
+                message = spec.message
+                if message is None:
+                    message = f'Initial {language.capitalize()} version.'
+
+                self.primary_project_branch_create(
+                    source = source,
+                    branches = branches(),
+                    message = message,
+                )
+
+            process_language(default, True)
+            for language in self.config.branch_problem.keys():
+                if language != default:
+                    process_language(language, False)
 
     @functools.cached_property
     def collection_project(self):
@@ -1733,7 +1756,7 @@ class Lab:
         self.primary_project.create()
 
         self.logger.info('=== Uploading problem branch ===')
-        self.primary_project_problem_branch_create()
+        self.primary_project_problem_branches_create()
 
         self.logger.info('=== Creating "collection" project for lab ===')
         self.collection_project.create()
