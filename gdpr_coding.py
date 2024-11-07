@@ -81,6 +81,7 @@ class NameCoding:
                 break
 
     def add_ids(self, ids):
+        ids = list(ids)
         logger.debug(f'Ensuring codings for: {ids}')
         def key(id):
             (name_first, name_last) = self.first_and_last_name(id)
