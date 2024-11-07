@@ -132,12 +132,15 @@ class Course:
         return self.canvas_course_get(True)
 
     def canvas_course_refresh(self):
+        self.logger.debug('Refreshing Canvas course')
         self.canvas_course = self.canvas_course_get(False)
         if hasattr(self, 'student_name_coding'):
             self.student_name_coding_update()
 
     @functools.cached_property
     def student_name_coding(self):
+        self.logger.debug(f'Creating student name codings')
+
         def first_and_last_name(cid):
             gitlab_username = self.rectify_cid_to_gitlab_username(cid)
             canvas_user = self.canvas_user_by_gitlab_username[gitlab_username]
@@ -148,6 +151,7 @@ class Course:
         return self.student_name_coding
 
     def student_name_coding_update(self):
+        self.logger.debug('Updating student name codings')
         self.student_name_coding.add_ids(map(self.rectify_gitlab_username_to_cid, self.gitlab_username_by_canvas_user_id.values()))
 
     def canvas_user_login_id(self, user):
