@@ -15,10 +15,10 @@ RestartSec=900s
 KillSignal=SIGINT
 WorkingDirectory=%h/lab-system
 # ACTION: specify labs to sync with Canvas (initially just -s 1, then -s 1 and -s <current lab>).
-ExecStart=%h/lab-system/run_event_loop.py -d lp2 -p 4221 -s 1 -start-with-sync --sync-period 900 -e 1qnG1Lfp8Y-_0MpsncASBljDb_NTn1pFk6b0pgjQwka4 -l lp2/log -v run
+ExecStart=%h/lab-system/run_event_loop.py -d lp2 -p 4242 -s 1 --start-with-sync --sync-period 900 -e 1qnG1Lfp8Y-_0MpsncASBljDb_NTn1pFk6b0pgjQwka4 -l lp2/log -v run
 
 # Use this for debugging to disable student sync and error notification spam
-#ExecStart=%h/lab-system/run_event_loop.py -d lp2 -p 4221 -l lp2/log -v run
+#ExecStart=%h/lab-system/run_event_loop.py -d lp2 -p 4242 -l lp2/log -v run
 
 [Install]
 WantedBy=default.target
