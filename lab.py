@@ -1687,10 +1687,11 @@ class Lab:
                 if add:
                     self.logger.log(25, f'adding {user_str_from_gitlab_username(gitlab_username)} to {entity_name}')
                     with gitlab_.tools.exist_ok():
-                        entity.members.create({
-                            'user_id': self.course.gitlab_users_cache.id_from_username[gitlab_username],
-                            'access_level': gitlab.const.DEVELOPER_ACCESS,
-                        })
+                        if user_str_from_gitlab_username(gitlab_username) not in ["hazemto (Hazem Torfah)", "Peter.Ljunglof (Peter Ljunglöf)"]:
+                            entity.members.create({
+                                'user_id': self.course.gitlab_users_cache.id_from_username[gitlab_username],
+                                'access_level': gitlab.const.DEVELOPER_ACCESS,
+                            })
                 else:
                     self.logger.warning(
                         f'missing member {user_str_from_gitlab_username(gitlab_username)} of {entity_name}'
