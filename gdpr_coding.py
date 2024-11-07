@@ -1,6 +1,7 @@
 import dataclasses
 import functools
 import itertools
+import logging
 from typing import Any, Callable
 
 import atomicwrites
@@ -8,6 +9,7 @@ import json
 
 import print_parse
 
+logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass
 class GDPRCoding:
@@ -73,11 +75,13 @@ class NameCoding:
 
         for coding in codings():
             if not coding in self.decode:
+                logger.debug(f'Adding coding {coding} for {id}')
                 self.encode[id] = coding
                 self.decode[coding] = id
                 break
 
     def add_ids(self, ids):
+        logger.debug(f'Ensuring codings for: {ids}')
         def key(id):
             (name_first, name_last) = self.first_and_last_name(id)
             return (name_last, name_first)
