@@ -369,7 +369,7 @@ class RequestAndResponses:
             except KeyError:
                 if self.grader_username in self.course.config.gitlab_lab_system_users:
                     return 'Lab system'
-                raise
+                raise ValueError(f'Unknown GitLab grader username {self.grader_username}. If different from CID, consider adding as override in _cid_to_gitlab_username in course configuration file.')
             return self.course.canvas_user_informal_name(canvas_user)
 
     # TODO:
