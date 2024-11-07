@@ -77,7 +77,7 @@ class Course:
         An optional instance of ssh_tools.Multiplexer.
         Used for executing git commands for Chalmers GitLab over SSH.
     '''
-    def __init__(self, config, timeout = 30, dir = None, *, logger = logging.getLogger(__name__)):
+    def __init__(self, config, dir = None, *, timeout = 30, logger = logging.getLogger(__name__)):
         '''
         Arguments:
         * config: Course configuration, as documented in gitlab_config.py.template.
