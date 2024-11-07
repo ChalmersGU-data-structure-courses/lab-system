@@ -340,6 +340,7 @@ class _LabConfig:
         self.refresh_period = refresh_period
 
         self.grading_via_merge_request = True
+        self.merge_request_title = print_parse.with_none(print_parse.singleton, 'Grading for submission')
         self.outcome_labels = {
             None: gitlab_.tools.LabelSpec(name = 'waiting-for-grading', color = 'yellow'),
             0: gitlab_.tools.LabelSpec(name = 'incomplete', color = 'red'),
