@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 # * a Boolean,
 # * a timestamp: only entries at most this old are considered valid.
 class Canvas:
-    def __init__(self, domain, auth_token = Path(__file__).parent / "auth_token", timeout = 30, cache_dir = Path("cache")):
+    def __init__(self, domain, auth_token = Path(__file__).parent / "auth_token", *, timeout = 30, cache_dir = Path("cache")):
         if isinstance(auth_token, PurePosixPath):
             try:
                 self.auth_token = Path(auth_token).open().read().strip()
