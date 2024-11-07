@@ -10,7 +10,7 @@ Search for ACTION to find locations where you need to take action.
 The default lab configuration is as needed for the data structures course cluster.
 """
 
-import datetime
+from datetime import timedelta
 import dateutil
 from pathlib import PurePosixPath, Path
 import re
@@ -49,7 +49,7 @@ canvas = SimpleNamespace(
     url='chalmers.instructure.com',
 
     # Integer id found in Canvas course URL.
-    course_id=_ACTION_REPLACE_THIS,
+    course_id=31905,
 
     # Path to (unpublished!) folder in Canvas course files.
     # This is where the script will upload submission reports.
@@ -176,7 +176,7 @@ grading_sheet = SimpleNamespace(
     # This is created by the user, but maintained by the lab script.
     # The key (a base64 string) can be found in the URL of the spreadsheet.
     # Individual grading sheets for each lab are worksheets in this spreadsheet.
-    spreadsheet=_ACTION_REPLACE_THIS,
+    spreadsheet="11D2ZQ5YOjlcMYm3emwFY_1mJZxmuxUjXYK257pYcWNQ",
 
     # Template grading sheet on Google Sheets.
     # If the lab script has access to this, it can create initial grading worksheets.
@@ -193,7 +193,7 @@ grading_via_merge_request = SimpleNamespace(
     # For how long does assigning a reviewer block synchronization of new submissions?
     # If set to None, no limit applies.
     # Warnings will be generated if a submission synchronization is blocked.
-    maximum_reserve_time=datetime.timedelta(hours=4),
+    maximum_reserve_time=timedelta(hours=4),
 )
 
 # Root of the lab repository.
@@ -298,7 +298,7 @@ _lab_config = SimpleNamespace(
     #   for webhook-triggered updates.
     # * Values of several hours are acceptable
     #   if the webhook notifications work reliably.
-    refresh_period=datetime.timedelta(minutes=15),
+    refresh_period=timedelta(minutes=15),
 
     # Whether new-style grading via merge requests should be used.
     grading_via_merge_request=True,
@@ -416,10 +416,10 @@ def _lab_item(k, *args, **kwargs):
 #   For older labs, 30 minutes or one hour suffices.
 #   For recent labs, use 15 minutes.
 labs = dict([
-    _lab_item(1, 'binary-search'       , datetime.timedelta(minutes=15), group_set=None  , robotester=True , use_robograder_instead=True ),  # noqa: E202, E203, E501
-#    _lab_item(2, 'indexing'            , datetime.timedelta(minutes=15), group_set=_group, robotester=True , use_robograder_instead=False),  # noqa: E202, E203, E501
-#    _lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes=15), group_set=_group, robotester=True , use_robograder_instead=False),  # noqa: E202, E203, E501
-#    _lab_item(4, 'path-finder'         , datetime.timedelta(minutes=15), group_set=_group, robotester=False, use_robograder_instead=True ),  # noqa: E202, E203, E501
+    _lab_item(1, 'binary-search'       , timedelta(minutes=15), group_set=None  , robotester=True , use_robograder_instead=True ),
+#   _lab_item(2, 'indexing'            , timedelta(minutes=15), group_set=_group, robotester=True , use_robograder_instead=False),
+#   _lab_item(3, 'plagiarism-detection', timedelta(minutes=15), group_set=_group, robotester=True , use_robograder_instead=False),
+#   _lab_item(4, 'path-finder'         , timedelta(minutes=15), group_set=_group, robotester=True , use_robograder_instead=True ),
 ])
 
 # Students taking part in labs who are not registered on Canvas.
@@ -486,7 +486,7 @@ webhook = SimpleNamespace(
     #     lab_refresh_period + k * first_lab_refresh_delay.
     # Useful to avoid processing whole labs contiguously,
     # causing longer response periods for webhook-triggered updates.
-    first_lab_refresh_delay=datetime.timedelta(minutes=3),
+    first_lab_refresh_delay=timedelta(minutes=3),
 )
 
 
