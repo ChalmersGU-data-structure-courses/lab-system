@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 # * a Boolean,
 # * a timestamp: only entries at most this old are considered valid.
 class Canvas:
-    def __init__(self, domain, auth_token = Path(__file__).parent / "auth_token", cache_dir = Path("cache")):
+    def __init__(self, domain, auth_token = Path(__file__).parent / "auth_token", timeout = 30, cache_dir = Path("cache")):
         if isinstance(auth_token, PurePosixPath):
             try:
                 self.auth_token = Path(auth_token).open().read().strip()
@@ -53,6 +53,7 @@ class Canvas:
         self.base_url = 'https://' + self.domain
         self.base_url_api = self.base_url + '/api/v1'
 
+        self.timeout = timeout
         self.session = requests.Session()
         self.session.auth = BearerAuth(self.auth_token)
         #self.session.headers.update({'Authorization': 'Bearer {}'.format(self.auth_token)})
@@ -96,7 +97,7 @@ class Canvas:
 
     # internal
     def get_json(self, endpoint, params = dict()):
-        r = self.session.get(self.get_url(Canvas.with_api(endpoint)), params = params)
+        r = self.session.get(self.get_url(Canvas.with_api(endpoint)), params = params, timeout = self.timeout)
         result = Canvas.get_response_json(r)
         assert not isinstance(r, list)
         return result
@@ -105,13 +106,14 @@ class Canvas:
     def get_list_json(self, endpoint, params = dict()):
         p = params.copy()
         p['per_page'] = '100'
-        r = self.session.get(self.get_url(Canvas.with_api(endpoint)), params = p)
+        r = self.session.get(self.get_url(Canvas.with_api(endpoint)), params = p, timeout = self.timeout)
         x = Canvas.get_response_json(r)
         assert isinstance(x, list)
         while 'next' in r.links:
             r = self.session.get(
                 r.links['next']['url'],
-                headers = {'Authorization': 'Bearer {}'.format(self.auth_token)}
+                headers = {'Authorization': 'Bearer {}'.format(self.auth_token)},
+                timeout = self.timeout,
             )
             x.extend(Canvas.get_response_json(r))
         return x
@@ -151,7 +153,7 @@ class Canvas:
         logger.log(logging.INFO, 'accessing endpoint ' + self.get_url(endpoint))
 
         def constructor(file_path):
-            r = self.session.get(self.get_url(endpoint), params = params)
+            r = self.session.get(self.get_url(endpoint), params = params, timeout = self.timeout)
             r.raise_for_status()
             with open(file_path, 'wb') as file:
                 file.write(r.content)
@@ -196,7 +198,7 @@ class Canvas:
     def post(self, endpoint, data = None, json = None, params = dict()):
         logger.log(logging.INFO, 'POST with endpoint ' + self.get_url(Canvas.with_api(endpoint)))
         return Canvas.objectify_json(Canvas.get_response_json(self.session.post(
-            self.get_url(Canvas.with_api(endpoint)), data = data, json = json, params = params,
+            self.get_url(Canvas.with_api(endpoint)), data = data, json = json, params = params, timeout = self.timeout,
         )))
 
     # Perform a DELETE request to the designated endpoint.
@@ -205,7 +207,7 @@ class Canvas:
     def delete(self, endpoint, params = dict()):
         logger.log(logging.INFO, 'DELETE with endpoint ' + self.get_url(Canvas.with_api(endpoint)))
         return Canvas.objectify_json(Canvas.get_response_json(self.session.delete(
-            self.get_url(Canvas.with_api(endpoint)), params = params,
+            self.get_url(Canvas.with_api(endpoint)), params = params, timeout = self.timeout,
         )))
 
     @staticmethod
@@ -265,7 +267,7 @@ class Canvas:
                 r.upload_url, upload_params, files = {'file': file.read_bytes()}
             ).headers['Location']
 
-        return Canvas.objectify_json(Canvas.get_response_json(self.session.get(location))).id
+        return Canvas.objectify_json(Canvas.get_response_json(self.session.get(location, timeout = self.timeout))).id
 
     # Retrieve the list of courses that the current user is a member of.
     def courses(self):
