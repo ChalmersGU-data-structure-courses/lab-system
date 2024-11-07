@@ -77,7 +77,7 @@ class Course:
         An optional instance of ssh_tools.Multiplexer.
         Used for executing git commands for Chalmers GitLab over SSH.
     '''
-    def __init__(self, config, dir = None, *, logger = logging.getLogger(__name__)):
+    def __init__(self, config, timeout = 30, dir = None, *, logger = logging.getLogger(__name__)):
         '''
         Arguments:
         * config: Course configuration, as documented in gitlab_config.py.template.
@@ -90,6 +90,8 @@ class Course:
         self.config = config
         self.dir = None if dir is None else Path(dir)
         self.path = self.config.path_course
+
+        self.timeout = timeout
 
         self.ssh_multiplexer = None
 
@@ -310,6 +312,7 @@ class Course:
         r = gitlab.Gitlab(
             self.config.gitlab_url,
             private_token = self.gitlab_token,
+            timeout = self.timeout,
         )
         r.auth()
         return r
@@ -741,8 +744,8 @@ class Course:
         self.logger.info('synchronizing teachers and students from Canvas to GitLab')
 
         # Update the user information.
-        self.canvas_course_refresh()
         self.clear_user_assoc_caches()
+        self.canvas_course_refresh()
 
         # Sync teachers.
         self.add_teachers_to_gitlab()
