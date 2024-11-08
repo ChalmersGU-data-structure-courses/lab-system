@@ -22,7 +22,7 @@ logging.getLogger().setLevel(logging.INFO)
 # 2. Run `make problem solution` in the labs repository.
 # 3  Uncomment lab configuration in the config file lp2/config.py
 # 4. Deploy the lab l: l.deploy()
-# 5. To start from scratch: l.gitlab_group.delete().
+# 5. To start from scratch: l.gitlab_group.delete() and l.repo_delete()
 
 # How to interact with the event loop:
 # * Unit files are here:
