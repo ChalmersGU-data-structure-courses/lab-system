@@ -20,7 +20,7 @@ l = c.labs[1]
 # 3  Uncomment lab configuration in the config file lp2/config.py
 # 4. l = course_object.labs[lab_number]
 # 5. l.deploy()
-# If something goes wrong, you can start from scratch by running l.gitlab_group.delete().
+# If something goes wrong, you can start from scratch by running l.gitlab_group.delete() and l.repo_delete()
 
 # How to interact with the event loop:
 # * Unit files are here:
