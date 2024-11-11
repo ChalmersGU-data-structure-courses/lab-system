@@ -415,7 +415,7 @@ def create_tree_from_dir(repo, dir):
             elif path.is_dir():
                 obj = create_tree_from_dir(repo, path)
             else:
-                raise ValueError('not a file or directory: {path_tools.format_path(path)}')
+                raise ValueError(f'not a file or directory: {path_tools.format_path(path)}')
             yield (obj.binsha, obj.mode, path.name)
 
     return create_tree_from_entries(repo, entries())
