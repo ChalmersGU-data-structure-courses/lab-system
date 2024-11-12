@@ -12,7 +12,7 @@ c = course.Course(config, 'lp2')
 
 import lp2.config as config
 c = course.Course(config, 'lp2')
-l = c.labs[1]
+#l = c.labs[1]
 
 # How to deploy a new lab:
 # 1. Make sure repository ~/labs is up to date.
