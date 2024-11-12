@@ -1047,7 +1047,7 @@ class GroupProject:
 
     def ancestral_tag(self, problem):
         return git_tools.normalize_tag(
-            git_tools.refs / "ancestral" / self.remote / branch.name
+            git_tools.refs / "ancestral" / self.remote / problem
         )
 
     def update_problem(
@@ -1078,7 +1078,7 @@ class GroupProject:
                         ref=git_tools.remote_branch(self.remote, problem),
                     )
 
-            problem = git_tools.normalize_branch(self.lab.repo, branch).commit
+            branch = git_tools.normalize_branch(self.lab.repo, problem).commit
             self.repo.remote(self.remote).push(
                 git_tools.refspec(
                     problem.hexsha,
@@ -1095,8 +1095,8 @@ class GroupProject:
             self.repo,
             commit,
             {
-                problem: git_tools.normalize_branch(lab.repo, problem)
-                for problem in heads_problem
+                problem: git_tools.normalize_branch(self.lab.repo, problem)
+                for problem in self.lab.heads_problem
             },
         )
 
@@ -1120,7 +1120,7 @@ class GroupProject:
         return git_tools.find_unique_ancestor(
             self.repo,
             commit,
-            {problem: get_commit(problem) for problem in heads_problem},
+            {problem: get_commit(problem) for problem in self.lab.heads_problem},
         )
 
     # TODO.
