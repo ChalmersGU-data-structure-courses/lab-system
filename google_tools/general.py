@@ -88,8 +88,8 @@ def generate_from_template_document(
     name,
     token,
     id,
-    replacements=dict(),
-    replacements_img=dict(),
+    replacements={},
+    replacements_img={},
     share_dir=None,
     share_url=None,
 ):

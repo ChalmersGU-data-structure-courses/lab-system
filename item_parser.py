@@ -79,7 +79,7 @@ def parse_items(config, parser, parser_name, parse_results, items):
         return heading + (" " if r.splitlines() == 1 else "\n") + r
 
     if isinstance(parse_results, dict):
-        parsed_items = dict()
+        parsed_items = {}
 
     for item in items:
         parse_result = parser(item)

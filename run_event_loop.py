@@ -18,8 +18,8 @@ See https://github.com/kislyuk/argcomplete for more information.
 )
 
 
-def complete_nothing(**kwargs):
-    return list()
+def complete_nothing(**_kwargs):
+    return []
 
 
 g = p.add_argument_group(title="main options")
