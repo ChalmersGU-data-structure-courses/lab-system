@@ -227,7 +227,7 @@ def compile_lib(force=False):
     )
 
 
-def clean_lib(self):
+def clean_lib():
     logger.info("Deleting compiled class files in robograder library.")
     java_tools.clean(dir_lib_src)
 
