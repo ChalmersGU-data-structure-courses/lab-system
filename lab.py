@@ -2,12 +2,10 @@ import abc
 import contextlib
 import dataclasses
 import functools
-import itertools
 import logging
 from pathlib import Path
 import random
 import shutil
-import tempfile
 from typing import Iterable, Optional
 
 import git
@@ -22,7 +20,6 @@ import google_tools.sheets
 import grading_sheet
 import grading_via_merge_request
 import group_project
-import instance_cache
 import live_submissions_table
 import path_tools
 import print_parse

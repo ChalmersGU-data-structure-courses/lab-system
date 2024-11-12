@@ -1,6 +1,7 @@
 import contextlib
 import dataclasses
 import functools
+import hashlib
 import logging
 import operator
 from pathlib import Path, PurePosixPath
@@ -853,7 +854,7 @@ class UsernameCache:
         Create placeholder files as needed for a shared cache with other users.
         Every file needed is created empty, group-writable, owned by the given group.
         """
-        with working_dir(self.path):
+        with path_tools.working_dir(self.path):
             for path_file in self.paths:
                 create_placeholder_file_for_group(path_file, group_id)
 
@@ -866,7 +867,7 @@ class UsernameCache:
 
         Incompatible with 'writing'.
         """
-        with lock_file(self._path_lock, shared=True):
+        with path_tools.lock_file(self._path_lock, shared=True):
             yield
 
     @property
@@ -878,7 +879,7 @@ class UsernameCache:
 
         Incompatible with 'reading'.
         """
-        with lock_file(self._path_lock, shared=False):
+        with path_tools.lock_file(self._path_lock, shared=False):
             yield
 
     @property
@@ -910,7 +911,7 @@ class UsernameCache:
         """
         with self.path_data.open("b") as file:
             hash = hashlib.file_digest(file, hashlib.sha1).digest()
-            changed = hash_differs(hash)
+            changed = self.hash_differs(hash)
             if changed:
                 self._path_hash.write_bytes(hash)
             return changed
@@ -937,5 +938,5 @@ class UsernameCache:
               [write the new data to the cache]
               cache.last_updated.write(date)
         """
-        with lock_file(self._path_lock_update, shared=False):
+        with path_tools.lock_file(self._path_lock_update, shared=False):
             yield

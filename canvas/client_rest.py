@@ -1,17 +1,18 @@
 from datetime import timedelta
 import functools
 import logging
-import http_logging  # noqa F401
 import json
 import os.path
 from pathlib import PurePosixPath, Path
 import re
-import requests
 import shutil
 import subprocess
 import sys
 import types
 import urllib.parse
+
+import http_logging  # noqa F401
+import requests
 
 from general import (
     from_singleton,

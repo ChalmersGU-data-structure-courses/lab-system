@@ -3,18 +3,14 @@ import contextlib
 import datetime
 import functools
 import logging
-import shutil
 import time
 
-import git
-import gitlab
 import more_itertools
 
 import general
 import git_tools
 import gitlab_.tools
 import markdown
-import path_tools
 import print_parse
 
 

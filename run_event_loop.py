@@ -254,9 +254,6 @@ import datetime
 import importlib
 import logging
 import logging.handlers
-import threading
-
-import more_itertools
 
 import course
 import event_loop

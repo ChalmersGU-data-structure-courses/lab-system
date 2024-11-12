@@ -3,7 +3,6 @@ import json
 import http.server
 import logging
 from pathlib import PurePosixPath
-import shlex
 import ssl
 
 import path_tools
