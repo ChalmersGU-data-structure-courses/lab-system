@@ -79,11 +79,11 @@ def from_singleton(xs):
     try:
         r = next(xs)
     except StopIteration:
-        raise UniquenessErrorNone()
+        raise UniquenessErrorNone() from None
     try:
         ensure_empty(xs)
     except EmptynessError as e:
-        raise UniquenessErrorMultiple(r, e.element, e.rest)
+        raise UniquenessErrorMultiple(r, e.element, e.rest) from None
     return r
 
 
@@ -96,7 +96,7 @@ def from_singleton_maybe(xs):
     try:
         ensure_empty(xs)
     except EmptynessError as e:
-        raise UniquenessErrorMultiple(r, e.element, e.rest)
+        raise UniquenessErrorMultiple(r, e.element, e.rest) from None
     return r
 
 
@@ -777,7 +777,7 @@ def next_after(xs, select):
     try:
         next(it)
     except StopIteration:
-        raise KeyError()
+        raise KeyError() from None
     try:
         return next(it)
     except StopIteration:

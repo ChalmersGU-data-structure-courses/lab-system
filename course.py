@@ -257,8 +257,8 @@ class Course:
         try:
             (result,) = results
             return result[1]["uid"][0].decode()
-        except Exception:
-            raise LookupError(f"Could not resolve {name} via LDAP")
+        except Exception as e:
+            raise LookupError(f"Could not resolve {name} via LDAP") from e
 
     def resolve_gu_students(self):
         for canvas_id, student_details in self.canvas_course.student_details.items():

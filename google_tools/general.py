@@ -65,7 +65,7 @@ def get_token_for_scopes(
         with cached_token.open("rb") as file:
             try:
                 token = pickle.load(file)
-            except Exception:
+            except pickle.UnpicklingError:
                 logger.warning("Failed to load cached authentication token")
 
     if token and token.has_scopes(scopes):

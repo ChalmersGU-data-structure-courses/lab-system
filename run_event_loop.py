@@ -309,15 +309,16 @@ def courses():
 
 
 courses = general.sdict(courses())
-course = list(courses.values())[0]
 
 
 def get_value_from_courses(name, selector):
     values = set(map(selector, courses.values()))
     try:
         (value,) = values
-    except ValueError:
-        raise ValueError(f"conflicting configurations of {name} in courses: {values}")
+    except ValueError as e:
+        raise ValueError(
+            f"conflicting configurations of {name} in courses: {values}"
+        ) from e
     return value
 
 

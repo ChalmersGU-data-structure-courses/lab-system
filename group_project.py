@@ -1176,7 +1176,7 @@ class GroupProject:
         if problem is None:
             try:
                 problem = self.detect_ancestor_problem_for_merge(target_ref)
-            except UniquenessError as e:
+            except general.UniquenessError as e:
                 ancestors = list(e.iterator)
                 self.logger.error(
                     f"Hotfixing: could not determine unique ancestor for"
@@ -1184,7 +1184,10 @@ class GroupProject:
                 )
                 if not fail_on_problem:
                     return
-                raise Exception("could not detect ancestor problem", ancestors)
+                raise RuntimeError(
+                    "could not detect ancestor problem",
+                    ancestors,
+                ) from None
 
         problem = git_tools.resolve(self.repo, problem)
 
@@ -1224,7 +1227,7 @@ class GroupProject:
                     )
                     if not fail_on_problem:
                         return
-                    raise Exception("could not perform merge")
+                    raise RuntimeError("could not perform merge")
 
                 try:
                     git_tools.resolve_unmerged_blobs(self.repo, index)
@@ -1239,7 +1242,7 @@ class GroupProject:
                         )
                         if not fail_on_problem:
                             return
-                        raise Exception("could not perform merge")
+                        raise RuntimeError("could not perform merge")
 
             merge = index.write_tree()
             diff = merge.diff(target_ref)

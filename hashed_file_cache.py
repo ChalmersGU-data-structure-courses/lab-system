@@ -34,7 +34,9 @@ def _validate_hash(hash):
     try:
         bytes.fromhex(hash)[0]
     except (ValueError, IndexError):
-        raise CacheError("invalid hash in cache: " + path_tools.format_path(hash))
+        raise CacheError(
+            "invalid hash in cache: " + path_tools.format_path(hash)
+        ) from None
 
 
 def _read_link(dir_fd, read_update_date: bool = False) -> Optional[LinkData]:
