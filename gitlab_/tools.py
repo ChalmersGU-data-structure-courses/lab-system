@@ -452,7 +452,7 @@ def url_tag_name(project, tag_name=None):
     def f():
         yield "-"
         yield "tags"
-        if not tag_name is None:
+        if tag_name is not None:
             yield tag_name
 
     return project_url(project, f())
@@ -592,13 +592,13 @@ def parse_reviewer_intervals(notes):
             if added == removed:
                 continue
 
-            if not reviewer is None:
+            if reviewer is not None:
                 yield (reviewer, (start, change))
 
             reviewer = added
             start = change
 
-    if not reviewer is None:
+    if reviewer is not None:
         yield (reviewer, (start, None))
 
 

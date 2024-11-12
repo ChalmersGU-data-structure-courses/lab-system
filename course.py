@@ -266,7 +266,7 @@ class Course:
                 if not parts[0].startswith("gus"):
                     raise ValueError(f"Not GU: {parts[0]}")
                 gitlab_username = self.cid_from_ldap_name(student_details.name)
-                if not gitlab_username is None:
+                if gitlab_username is not None:
                     print(f"{canvas_id}: {gitlab_username}")
                 else:
                     print(f"Ambiguous results for {student_details.name}")
@@ -312,7 +312,7 @@ class Course:
         Raises a LookupError if the student name (as on Canvas) cannot be uniquely resolved to a CID.
         """
         cid = self.cid_from_canvas_id_via_login_id(user_id)
-        if not cid is None:
+        if cid is not None:
             return cid
 
         user_details = self.canvas_course.user_details[user_id]
@@ -326,7 +326,7 @@ class Course:
         Raises a LookupError if the personnummer cannot be uniquely resolved to a CID.
         """
         cid = self.cid_from_canvas_id_via_login_id(user_id)
-        if not cid is None:
+        if cid is not None:
             return cid
 
         from chalmers_pdb.tools import personnummer_to_cid
@@ -465,7 +465,7 @@ class Course:
                     self,
                     canvas_user.id,
                 )
-                if not gitlab_username is None:
+                if gitlab_username is not None:
                     yield (canvas_user.id, gitlab_username)
 
         return general.sdict(f(), strict=False)
@@ -475,7 +475,7 @@ class Course:
         Prints a warning and returns None if the GitLab username could not be constructed and strict is not set.
         """
         gitlab_username = self.gitlab_username_by_canvas_user_id.get(canvas_user_id)
-        if not gitlab_username is None:
+        if gitlab_username is not None:
             return gitlab_username
 
         canvas_user = self.canvas_course.user_details[canvas_user_id]
@@ -575,7 +575,7 @@ class Course:
                     gitlab_username
                 )
                 if not gitlab_username in members:
-                    if not gitlab_user_id is None:
+                    if gitlab_user_id is not None:
                         self.logger.debug(f"adding {user.name}")
                         with gitlab_.tools.exist_ok():
                             self.graders_group.lazy.members.create(

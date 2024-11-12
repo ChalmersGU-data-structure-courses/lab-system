@@ -259,7 +259,7 @@ class GradingViaMergeRequest:
             user_id = label_event.user["id"]
             action = gitlab_.tools.parse_label_event_action(label_event.action)
             if user_id in self.course.lab_system_users and (
-                outcome is None if action else not outcome is None
+                outcome is None if action else outcome is not None
             ):
                 system = True
             elif user_id in self.course.graders:
@@ -295,23 +295,20 @@ class GradingViaMergeRequest:
         Hacky workaround.
         See gitlab-resource-label-event-url.md for why is this broken.
         """
-        # TODO: we want to write:
-        # i = bisect.bisect_right(self.notes_by_date, date, key = lambda x: x[0]) - 1
-        # But the key argument is only supported from 3.10.
-        i = bisect.bisect_right([date for (date, _) in self.notes_by_date], date) - 1
+        i = bisect.bisect_right(self.notes_by_date, date, key=lambda x: x[0]) - 1
         note = self.notes_by_date[i][1] if i >= 0 else None
         return gitlab_.tools.url_merge_request_note(self.merge_request, note)
 
     def submission_label_events(self, request_from=None, request_to=None):
-        if not request_from is None:
+        if request_from is not None:
             date_from = self.sync_submissions[request_from]
-        if not request_to is None:
+        if request_to is not None:
             date_to = self.sync_submissions[request_to]
 
         def conditions(x):
-            if not request_from is None:
+            if request_from is not None:
                 yield x[0] > date_from
-            if not request_to is None:
+            if request_to is not None:
                 yield x[0] <= date_to
 
         return filter(self.label_events, lambda x: all(conditions(x)))
@@ -367,7 +364,7 @@ class GradingViaMergeRequest:
                 offsets=[0, 1],
                 longest=True,
             ):
-                if not request_name_next is None:
+                if request_name_next is not None:
                     (date_to, _) = self.synced_submissions[request_name_next]
                 (jt, it) = general.before_and_after(
                     lambda x: request_name_next is None or x[0] <= date_to, it
@@ -394,7 +391,7 @@ class GradingViaMergeRequest:
             for request_name in reversed(self.synced_submissions.keys()):
                 if request_name in self.submission_outcomes:
                     request_name_with_outcome = request_name
-                if not request_name_with_outcome is None:
+                if request_name_with_outcome is not None:
                     yield (request_name, request_name_with_outcome)
 
         return dict(f())

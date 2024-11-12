@@ -84,7 +84,7 @@ class StudentConnectorIndividual(StudentConnector):
                     canvas_user.id,
                     strict=False,
                 )
-                if not gitlab_username is None:
+                if gitlab_username is not None:
                     yield self.course.rectify_gitlab_username_to_cid(gitlab_username)
 
         return frozenset(f())
@@ -137,7 +137,7 @@ class StudentConnectorGroupSet(StudentConnector):
                         strict=False,
                     )
                 )
-                if not gitlab_username is None:
+                if gitlab_username is not None:
                     yield gitlab_username
 
         return frozenset(f())
