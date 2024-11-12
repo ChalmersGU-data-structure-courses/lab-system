@@ -1,10 +1,9 @@
 import datetime
-from pathlib import Path, PurePath
 import json
 import logging
+from pathlib import Path, PurePath
 
 import path_tools
-
 
 logger = logging.getLogger(__name__)
 

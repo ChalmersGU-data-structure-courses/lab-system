@@ -1,14 +1,13 @@
 import contextlib
-import json
 import http.server
+import json
 import logging
-from pathlib import PurePosixPath
 import ssl
+from pathlib import PurePosixPath
 
+import openssl_tools
 import path_tools
 import print_parse
-import openssl_tools
-
 
 logger = logging.getLogger(__name__)
 

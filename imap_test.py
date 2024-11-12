@@ -1,10 +1,10 @@
 import code
 import contextlib
-from datetime import datetime, timedelta, timezone
 import email
 import functools
 import re
 import threading
+from datetime import datetime, timedelta, timezone
 
 import imaplib2
 import more_itertools
@@ -12,7 +12,6 @@ import more_itertools
 import general
 import print_parse
 import threading_tools
-
 
 imaplib2.DFLT_DEBUG_BUF_LVL = 10
 

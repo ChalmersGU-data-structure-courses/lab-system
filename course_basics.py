@@ -1,6 +1,6 @@
 import abc
-from collections import namedtuple
 import re
+from collections import namedtuple
 
 import general
 import markdown

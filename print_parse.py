@@ -13,9 +13,9 @@ import re
 import shlex
 import urllib.parse
 
-from escaping_formatter import regex_escaping_formatter
 import general
 import path_tools
+from escaping_formatter import regex_escaping_formatter
 
 PrintParse = collections.namedtuple("PrintParse", ["print", "parse"])
 PrintParse.__doc__ = "Approximations to isomorphisms."

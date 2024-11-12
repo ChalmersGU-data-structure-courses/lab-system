@@ -2,9 +2,9 @@
 # for reduced-privilege processes running in a sandbox.
 import errno
 import fcntl
-from pathlib import PurePath
-import sys
 import os
+import sys
+from pathlib import PurePath
 
 import seccomp
 
@@ -27,7 +27,7 @@ def setup_seccomp(callback=None):
     * x64 Linux 5.15 with glibc 2.33
     * x64 Linux with musl
     """
-    from seccomp import Arg, ALLOW, EQ, MASKED_EQ
+    from seccomp import ALLOW, EQ, MASKED_EQ, Arg
 
     # Make the system call return an error if the policy is violated.
     f = seccomp.SyscallFilter(defaction=seccomp.ERRNO(errno.EPERM))

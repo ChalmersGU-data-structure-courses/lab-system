@@ -7,14 +7,13 @@ import functools
 import itertools
 import json
 import os
-from pathlib import Path, PurePath, PurePosixPath
 import shlex
 import shutil
 import tempfile
 import typing
+from pathlib import Path, PurePath, PurePosixPath
 
 import general
-
 
 # ## Type annotations.
 

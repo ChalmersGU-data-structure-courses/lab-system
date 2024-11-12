@@ -17,7 +17,6 @@ import path_tools
 import print_parse
 import watchdog_tools
 
-
 logger = logging.getLogger(__name__)
 
 

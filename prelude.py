@@ -1,7 +1,7 @@
 import logging
 
-from gitlab_config_personal import *
 import course
+from gitlab_config_personal import *
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)

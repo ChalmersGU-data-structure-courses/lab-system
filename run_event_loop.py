@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # PYTHON_ARGCOMPLETE_OK
 
-import argcomplete
 import argparse
-from pathlib import Path
 import os
+from pathlib import Path
 
+import argcomplete
 
 p = argparse.ArgumentParser(
     add_help=False,

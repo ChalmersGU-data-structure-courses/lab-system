@@ -1,13 +1,14 @@
 import logging
 
+import exam._2021_08_27.dat038.data as exam_config_dat038
+import exam._2021_08_27.dit181.data as exam_config_dit181
+import exam._2021_08_27.dit961.data as exam_config_dit961
+import exam._2021_08_27.let375.data as exam_config_let375
+import exam._2021_08_27.tda417.data as exam_config_tda417
+from exam.canvas import Exam
+
 # from  pathlib import Path
 
-import exam._2021_08_27.dit181.data as exam_config_dit181
-import exam._2021_08_27.let375.data as exam_config_let375
-import exam._2021_08_27.dat038.data as exam_config_dat038
-import exam._2021_08_27.tda417.data as exam_config_tda417
-import exam._2021_08_27.dit961.data as exam_config_dit961
-from exam.canvas import Exam
 
 
 exam_configs = {

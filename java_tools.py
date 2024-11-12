@@ -6,13 +6,12 @@ import itertools
 import json
 import logging
 import os
-from pathlib import Path, PurePath
 import shlex
 import subprocess
+from pathlib import Path, PurePath
 
 import general
 import path_tools
-
 
 logger = logging.getLogger(__name__)
 

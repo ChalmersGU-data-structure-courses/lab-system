@@ -3,9 +3,9 @@ import contextlib
 import dataclasses
 import functools
 import logging
-from pathlib import Path
 import random
 import shutil
+from pathlib import Path
 from typing import Iterable, Optional
 
 import git

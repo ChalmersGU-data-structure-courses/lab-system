@@ -1,8 +1,8 @@
 # Java submission compilation and robograding.
 import functools
 import logging
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
 import general
 import java_tools
@@ -11,7 +11,6 @@ import markdown
 import path_tools
 import submission_java
 from this_dir import this_dir
-
 
 logger = logging.getLogger(__name__)
 

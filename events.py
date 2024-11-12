@@ -1,10 +1,9 @@
 import dataclasses
-from pathlib import Path
 import typing
+from pathlib import Path
 
 import general
 import ordering
-
 
 # ## Interfaces.
 #

@@ -4,7 +4,6 @@ import ldap
 
 import path_tools
 
-
 logger = logging.getLogger(__name__)
 
 

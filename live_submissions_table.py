@@ -1,15 +1,14 @@
 import abc
 import collections
 import logging
-from pathlib import Path
 import types
+from pathlib import Path
 
 import dominate
 
 import general
 import git_tools
 import gitlab_.tools
-
 
 logger = logging.getLogger(__name__)
 

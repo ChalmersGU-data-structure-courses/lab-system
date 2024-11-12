@@ -1,12 +1,11 @@
 import contextlib
 import logging
-from pathlib import Path, PurePath
 import threading
+from pathlib import Path, PurePath
 
 import watchdog
 import watchdog.events
 import watchdog.observers
-
 
 logger = logging.getLogger(__name__)
 
