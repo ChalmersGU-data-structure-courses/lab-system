@@ -228,12 +228,10 @@ class Course:
                 profile_login_id = self.canvas_profile_login_id(user)
                 if not user_login_id == profile_login_id:
                     self.logger.error(
-                        general.join_lines(
-                            [
-                                f"mismatch between login ids for user {user.name}:",
-                                f"* in user object: {user_login_id}",
-                                f"* in profile object: {profile_login_id}",
-                            ]
+                        general.text_from_lines(
+                            f"mismatch between login ids for user {user.name}:",
+                            f"* in user object: {user_login_id}",
+                            f"* in profile object: {profile_login_id}",
                         )
                     )
                     general.print_json(user._dict)

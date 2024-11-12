@@ -44,20 +44,16 @@ In the former case, please tell my designers!
         self.errors = errors
 
     def __str__(self):
-        return general.join_lines(
-            [
-                self.prolog,
-                "",
-                *self.errors.splitlines(),
-            ]
+        return general.text_from_lines(
+            self.prolog,
+            "",
+            *self.errors.splitlines(),
         )
 
     def markdown(self):
-        return general.join_lines(
-            [
-                self.prolog,
-                *markdown.escape_code_block(self.errors).splitlines(),
-            ]
+        return general.text_from_lines(
+            self.prolog,
+            *markdown.escape_code_block(self.errors).splitlines(),
         )
 
 

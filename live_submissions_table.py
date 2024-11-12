@@ -294,11 +294,11 @@ class MembersColumn(Column):
                     format_url(canvas_user.name, canvas_user.enrollments[0].html_url)
                 else:
                     self.logger.warning(
-                        general.join_lines(
-                            [
-                                f"Canvas course student {canvas_user.name} (id {canvas_user.id}) is missing an enrollment.",
-                                "Please inform the script designer that this case is possible.",
-                            ]
+                        general.text_from_lines(
+                            f"Canvas course student {canvas_user.name}"
+                            f" (id {canvas_user.id}) is missing an enrollment.",
+                            "Please inform the script designer"
+                            " that this case is possible.",
                         )
                     )
                     dominate.util.text(canvas_user.name)

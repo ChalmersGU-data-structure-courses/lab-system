@@ -307,6 +307,13 @@ def join_lines(lines, terminator="\n"):
     return "".join(line + terminator for line in lines)
 
 
+def text_from_lines(*lines, terminator: str = "\n") -> str:
+    """
+    Variable-length argument wrapper for join_lines.
+    """
+    return join_lines(lines, terminator=terminator)
+
+
 def doublequote(s):
     return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
