@@ -306,7 +306,7 @@ class Lab:
         """
         Currently only supports a single solution project.
         """
-        assert self.config.has_solution == True
+        assert self.config.has_solution is True
         [solution_name] = self.solutions.keys()
         group = self.group_create("solution")
         if self.config.multi_language:
