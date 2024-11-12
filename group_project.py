@@ -1680,7 +1680,7 @@ class GroupProject:
 
         handler = dict(handlers()).get((project_name, event_type))
 
-        if not handler is None:
+        if handler is not None:
             yield from handler(hook_event, strict)
         else:
             if strict:

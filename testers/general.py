@@ -245,7 +245,7 @@ class LabTester:
                 result = f"timed out (after {timeout} seconds)"
 
         # Truncate output files.
-        if not max_output is None:
+        if max_output is not None:
             for filename in [file_out, file_err]:
                 with (dir_out / filename).open("a") as f:
                     if f.tell() > max_output:
@@ -378,7 +378,7 @@ class LabTester:
                     return f"exited with an error (exit code {exit_code})"
 
         msg = result_msg()
-        if not msg is None:
+        if msg is not None:
             yield general.join_lines([f"The program {msg}."])
 
     def format_tests_output_as_markdown(self, dir_out: Path) -> Iterable[str]:
