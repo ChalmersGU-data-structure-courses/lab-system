@@ -1262,7 +1262,7 @@ class GroupProject:
                 force=False,
             )
         )
-        if not notify_students is None:
+        if notify_students is not None:
             self.project.lazy.commits.get(
                 resolved_commit.hexsha,
                 lazy=True,
