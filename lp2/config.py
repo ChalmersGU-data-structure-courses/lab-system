@@ -212,7 +212,7 @@ _group = SimpleNamespace(
 
     # Full human-readable name.
     # Used in Canvas group set.
-    name=print_parse.regex_int('Lab group {}', flags=re.IGNORECASE),
+    name=print_parse.regex_int('Lab-group {}', flags=re.IGNORECASE),
 
     # Name of Canvas group set where students sign up for lab groups.
     # We recommend to use a zero-based numerical naming scheme:
@@ -224,7 +224,7 @@ _group = SimpleNamespace(
     # Note that many special characters are forbidden in GitLab group names.
     #
     # Needs to be a unique key for this group set configuration.
-    group_set_name='Lab group',
+    group_set_name='Groups',
 
     # Format the id for use in a spreadsheet cell.
     # An integer or a string.
