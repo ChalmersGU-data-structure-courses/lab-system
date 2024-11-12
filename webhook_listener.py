@@ -30,9 +30,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
 
         # Parse data and call callback.
-        self.info = json.loads(data_raw)
-        self.server.logger.debug("received hook callback with data:\n" + str(self.info))
-        self.server.callback(self.info)
+        info = json.loads(data_raw)
+        self.server.logger.debug("received hook callback with data:\n" + str(info))
+        self.server.callback(info)
 
 
 @contextlib.contextmanager
