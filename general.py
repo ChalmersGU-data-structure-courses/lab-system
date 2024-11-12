@@ -8,7 +8,6 @@ import functools
 import itertools
 import json
 import logging
-import more_itertools
 import re
 import time
 from types import SimpleNamespace
@@ -18,6 +17,7 @@ import string
 import subprocess
 import sys
 
+import more_itertools
 import requests
 
 

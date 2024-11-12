@@ -1,5 +1,4 @@
 import base64
-import canvas.client_rest as canvas
 import dataclasses
 import functools
 import itertools
@@ -10,17 +9,16 @@ from typing import Iterable
 import gql
 from gql.transport.requests import RequestsHTTPTransport
 from gql.dsl import (
-    dsl_gql,
     DSLSchema,
     DSLType,
-    DSLQuery,
     DSLInlineFragment,
     DSLSelectable,
 )
 import more_itertools
 
-import graphql.client
-
+import canvas.client_rest as canvas
+import graphql_.client
+import graphql_.tools
 import general
 import print_parse
 
@@ -49,7 +47,7 @@ class QueryNode:
     fields: Iterable[DSLSelectable]
 
 
-class Client(graphql.client.ClientBase):
+class Client(graphql_.client.ClientBase):
     def __init__(self, canvas_client):
         self.canvas = canvas_client
         self.transport = RequestsHTTPTransport(
@@ -80,10 +78,10 @@ class Client(graphql.client.ClientBase):
         return self.session.execute(query)
 
     def execute_query(self, *args, **kwargs):
-        return self.execute(query(*args, **kwargs))
+        return self.execute(graphql_.tools.query(*args, **kwargs))
 
     def execute_query_single(self, field):
-        return self.execute(query(field))[field.name]
+        return self.execute(graphql_.tools.query(field))[field.name]
 
     # def node(self, type, id, fields, alias = None):
     #     x = self.ds.Query.node(id = id_newstyle(type, id))

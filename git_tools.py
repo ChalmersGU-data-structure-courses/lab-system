@@ -5,11 +5,10 @@ from enum import Enum, auto
 import functools
 import logging
 import operator
-from pathlib import PurePosixPath, Path
+from pathlib import PurePosixPath
 import shlex
 import stat
 import subprocess
-import tempfile
 
 import git
 import gitdb

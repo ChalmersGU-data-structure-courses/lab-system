@@ -1,5 +1,4 @@
 import base64
-import canvas.client_rest as canvas
 import dataclasses
 import functools
 import itertools
@@ -19,6 +18,7 @@ from gql.dsl import (
 )
 import more_itertools
 
+import canvas.client_rest as canvas
 import general
 import print_parse
 
