@@ -406,7 +406,7 @@ def overwrite_atomic_text(path, content, **kwargs):
         file.write(content)
 
 
-def overwrite_atomic_bytes(path, content, suffix=".tmp"):
+def overwrite_atomic_bytes(path, content, suffix=".tmp", **kwargs):
     with overwrite_atomic(path, text=False, **kwargs) as file:
         file.write(content)
 
