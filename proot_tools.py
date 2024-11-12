@@ -4,19 +4,22 @@ from pathlib import Path, PurePath
 import path_tools
 
 # Find proot executable at module import to make sure it exists.
-proot = distutils.spawn.find_executable(Path('proot'))
+proot = distutils.spawn.find_executable(Path("proot"))
 if proot is None:
-    raise ValueError('executable proot not found (suggested fix: install system package proot)')
+    raise ValueError(
+        "executable proot not found (suggested fix: install system package proot)"
+    )
 proot = Path(proot)
+
 
 def proot_args(
     args,
     working_directory,
-    bindings = [],
-    root = Path('/root'),
-    proot_executable = proot,
+    bindings=[],
+    root=Path("/root"),
+    proot_executable=proot,
 ):
-    '''Produce argument list for a program call of proot.
+    """Produce argument list for a program call of proot.
 
     Only a minimal use case is supported.
 
@@ -57,17 +60,18 @@ def proot_args(
         For some reason, proot does not seem to provide any option for this common use case.
     * proot_executable:
         The proot executable.
-    '''
+    """
+
     def r():
         # Path to executable, remaining output is program arguments.
         yield proot_executable
 
         # Specify new root.
-        yield '-r'
+        yield "-r"
         yield root
 
         # Specify new working directory.
-        yield '-w'
+        yield "-w"
         yield working_directory
 
         # Specify bindings.
@@ -75,38 +79,42 @@ def proot_args(
             if not isinstance(binding, tuple):
                 binding = (binding, binding)
             (path_host, path_guest) = binding
-            yield '-b'
-            yield str(path_host) + ':' + str(path_guest) + '!'
+            yield "-b"
+            yield str(path_host) + ":" + str(path_guest) + "!"
 
         # Pass argument list to invoke.
         yield from args
 
     return list(r())
 
-root = Path('/')
+
+root = Path("/")
+
 
 def standard_bindings():
-    '''Bindings for binaries and shared libraries for use with proot_args.'''
-    for path in [root, root / 'usr']:
-        for pattern in ['bin', 'lib*']:
+    """Bindings for binaries and shared libraries for use with proot_args."""
+    for path in [root, root / "usr"]:
+        for pattern in ["bin", "lib*"]:
             yield from path.glob(pattern)
 
-guest_dir_main_default = PurePath('/jail/main')
+
+guest_dir_main_default = PurePath("/jail/main")
+
 
 def proot_python_args(
     guest_script,
-    guest_args = [],
+    guest_args=[],
     *,
     host_dir_main,
-    guest_dir_main = guest_dir_main_default,
-    python_executable_name = 'python3',
-    python_args_extra = [],
-    python_path_extra = [],
-    bindings = [],
-    env = None,
+    guest_dir_main=guest_dir_main_default,
+    python_executable_name="python3",
+    python_args_extra=[],
+    python_path_extra=[],
+    bindings=[],
+    env=None,
     **kwargs,
 ):
-    '''
+    """
     Produce argument list for a python script call within a proot.
 
     Adds necessary bindings to run the Python interpreter.
@@ -143,21 +151,22 @@ def proot_python_args(
         Can be None if python_path_extra is empty.
     * kwargs:
         Keyword arguments passed on to proot_args.
-    '''
-    path_tools.search_path_add_env(env, 'PYTHONPATH', python_path_extra)
+    """
+    path_tools.search_path_add_env(env, "PYTHONPATH", python_path_extra)
 
     return proot_args(
-        args = [
-            '/usr/bin/env', python_executable_name,
-            '-B',
-            '-s',
+        args=[
+            "/usr/bin/env",
+            python_executable_name,
+            "-B",
+            "-s",
             *python_args_extra,
-            '--',
+            "--",
             guest_script,
             *guest_args,
         ],
-        working_directory = guest_dir_main,
-        bindings = [
+        working_directory=guest_dir_main,
+        bindings=[
             *standard_bindings(),
             (host_dir_main, guest_dir_main),
             *bindings,
@@ -165,21 +174,23 @@ def proot_python_args(
         **kwargs,
     )
 
-# Default additional module search path.
-guest_python_packages = PurePath('/jail/packages')
 
-sandboxer_default = PurePath(__file__).parent / 'seccomp_tools.py'
+# Default additional module search path.
+guest_python_packages = PurePath("/jail/packages")
+
+sandboxer_default = PurePath(__file__).parent / "seccomp_tools.py"
+
 
 def sandboxed_python_args(
     guest_script,
-    guest_args = [],
+    guest_args=[],
     *,
-    sandboxer = sandboxer_default,
-    sandboxer_args = [],
-    bindings = [],
+    sandboxer=sandboxer_default,
+    sandboxer_args=[],
+    bindings=[],
     **kwargs,
 ):
-    '''
+    """
     Produce argument list for a sandboxed python script call within a proot.
 
     Path arguments may be given as instances of pathlib.PurePath or string.
@@ -212,18 +223,18 @@ def sandboxed_python_args(
     >     env = env,
     > )
     > subprocess.run(cmd, env = env)
-    '''
-    executable = guest_python_packages / '_sandboxer.py'
+    """
+    executable = guest_python_packages / "_sandboxer.py"
 
     return proot_python_args(
-        guest_script = executable,
-        guest_args = [
+        guest_script=executable,
+        guest_args=[
             *sandboxer_args,
             guest_script,
             *guest_args,
         ],
-        python_path_extra = [guest_python_packages],
-        bindings = [
+        python_path_extra=[guest_python_packages],
+        bindings=[
             (sandboxer, executable),
             *bindings,
         ],

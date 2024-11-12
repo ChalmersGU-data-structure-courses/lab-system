@@ -5,11 +5,18 @@ import logging
 logger = logging.getLogger(__name__)
 
 Config = collections.namedtuple(
-    'Config',
-    ['location_name', 'item_name', 'item_formatter', 'logger', 'on_duplicate', 'delete_duplicates'],
-    defaults = [logger, True, None],
+    "Config",
+    [
+        "location_name",
+        "item_name",
+        "item_formatter",
+        "logger",
+        "on_duplicate",
+        "delete_duplicates",
+    ],
+    defaults=[logger, True, None],
 )
-Config.__doc__ = '''
+Config.__doc__ = """
     Configuration for functions in this module.
 
     Fields:
@@ -37,10 +44,11 @@ Config.__doc__ = '''
     * delete_duplicates:
         Only relevant when on_duplicate is True or False.
         In that case, if not None, delete_duplicates(other_item, key, other_value) is called.
-    '''
+    """
+
 
 def parse_items(config, parser, parser_name, parse_results, items):
-    '''
+    """
     Parse items using a given parser.
 
     Arguments:
@@ -64,10 +72,11 @@ def parse_items(config, parser, parser_name, parse_results, items):
     When that happens, a warning is logged.
 
     You may chain calls to parse_items to parse several item types at the same time.
-    '''
+    """
+
     def format(heading, item):
         r = config.item_formatter(item)
-        return heading + (' ' if r.splitlines() == 1 else '\n') + r
+        return heading + (" " if r.splitlines() == 1 else "\n") + r
 
     if isinstance(parse_results, dict):
         parsed_items = dict()
@@ -90,30 +99,31 @@ def parse_items(config, parser, parser_name, parse_results, items):
                 if callable(config.on_duplicate):
                     value = config.on_duplicate(key, value_prev, value)
                 else:
-                    msg = f'Duplicate {parser_name} {config.item_name} with key {key} in {config.location_name}\n'
+                    msg = f"Duplicate {parser_name} {config.item_name} with key {key} in {config.location_name}\n"
                     if config.on_duplicate is None:
                         raise ValueError(msg)
 
-                    msg += format(f'First {config.item_name}:', item_prev)
-                    msg += format(f'Second {config.item_name}:', item)
+                    msg += format(f"First {config.item_name}:", item_prev)
+                    msg += format(f"Second {config.item_name}:", item)
                     (item, value, other_item, other_value, ignore) = {
-                        True: (item_prev, value_prev, item, value, 'second'),
-                        False: (item, value, item_prev, value_prev, 'first'),
+                        True: (item_prev, value_prev, item, value, "second"),
+                        False: (item, value, item_prev, value_prev, "first"),
                     }[config.on_duplicate]
                     if config.delete_duplicates:
-                        msg += f'Deleting {ignore} {config.item_name}.\n'
+                        msg += f"Deleting {ignore} {config.item_name}.\n"
                         config.delete_duplicates(other_item, key, other_value)
                         logger.warning(msg)
                     else:
-                        msg += f'Ignoring {ignore} {config.item_name}.\n'
+                        msg += f"Ignoring {ignore} {config.item_name}.\n"
                         logger.warning(msg)
             parsed_items[key] = item
             parse_results[key] = value
         else:
-            ValueError(f'{parsed_items} is not a list or dictionary')
+            ValueError(f"{parsed_items} is not a list or dictionary")
+
 
 def log_unrecognized_items(config, items):
-    '''
+    """
     Log warnings for remaining items (being seen as unrecognized).
 
     Arguments:
@@ -121,14 +131,16 @@ def log_unrecognized_items(config, items):
     * items:
         Iterable of items to parse.
         This will be exhausted by this method.
-    '''
+    """
     for item in items:
         config.logger.warning(
-            f'Unrecognized {config.item_name} in {config.location_name}:\n' + config.item_formatter(item)
+            f"Unrecognized {config.item_name} in {config.location_name}:\n"
+            + config.item_formatter(item)
         )
 
+
 def parse_all_items(config, parser_data, items):
-    '''
+    """
     Parse all items using specified parsers.
     On each item, we try all specified parsers.
     If none matches, a warning is logged.
@@ -141,7 +153,7 @@ def parse_all_items(config, parser_data, items):
     * items:
         Iterable of items to parse.
         This will be exhausted by this method.
-    '''
-    for (parser, parser_name, parse_results) in parser_data:
+    """
+    for parser, parser_name, parse_results in parser_data:
         items = parse_items(config, parser, parser_name, parse_results, items)
     log_unrecognized_items(config, items)

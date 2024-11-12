@@ -18,9 +18,10 @@ import testers.general
 
 logger = logging.getLogger(__name__)
 
+
 @dataclasses.dataclass  # (kw_only = True) only supported in Python 3.10
 class Test(testers.general.Test):
-    '''
+    """
     A Java test specification.
     A test is an invocation of a Java class with a main method.
     The result of the test consists of:
@@ -42,7 +43,8 @@ class Test(testers.general.Test):
     * perm_read:
         List of files the program may write (defaults to an empty list).
         Interpreted relative to the submission directory.
-    '''
+    """
+
     class_name: str = None  # Default argument for compatibility with Python <3.10
     args: Tuple[str] = ()
     input: Optional[str] = None
@@ -50,8 +52,9 @@ class Test(testers.general.Test):
     perm_read: Tuple[Union[str, os.PathLike]] = ()
     perm_write: Tuple[Union[str, os.PathLike]] = ()
 
+
 class LabTester(testers.general.LabTester):
-    '''
+    """
     A class for lab testers using the Java Virtual Machine.
     Requires Java version at most 17.
     Newer versions remove the security manager used to securily run submissions.
@@ -80,7 +83,8 @@ class LabTester(testers.general.LabTester):
     Make sure not to expose exploitable methods.
 
     TODO: explicitly list classes for which conflicts are allowed.
-    '''
+    """
+
     TestSpec = Test
     needs_writable_sub_dir = True
 
@@ -89,69 +93,76 @@ class LabTester(testers.general.LabTester):
         dir_lab: Path,
         dir_tester: Path,
         dir_submission_src: Path = Path(),
-        dir_problem = Path('problem'),
+        dir_problem=Path("problem"),
         machine_speed: float = 1,
     ):
-        '''
+        """
         Arguments in addition to super class:
         * dir_submission_src:
             Relative path of the source code hierarchy in submissions.
         * dir_problem:
             Relative path to the lab problem.
-        '''
+        """
         super().__init__(dir_lab, dir_tester, machine_speed)
         self.dir_submission_src = dir_submission_src
         self.problem_src = self.dir_lab / dir_problem
 
         if self.has_test_overlay:
-            logger.debug('Compiling test code.')
+            logger.debug("Compiling test code.")
             java_tools.compile(
-                src = self.dir_test / self.dir_submission_src,
-                bin = self.dir_test / self.dir_submission_src,
-                sourcepath = [self.problem_src / self.dir_submission_src],
-                implicit = False,
+                src=self.dir_test / self.dir_submission_src,
+                bin=self.dir_test / self.dir_submission_src,
+                sourcepath=[self.problem_src / self.dir_submission_src],
+                implicit=False,
             )
 
-    def run_test(self, dir_out: Path, dir_src: Path, name: str, test: Test, dir_bin: Path):
-        '''
+    def run_test(
+        self, dir_out: Path, dir_src: Path, name: str, test: Test, dir_bin: Path
+    ):
+        """
         See testers.general.LabTester.run_test.
         We produce the files according to testers.general.LabTester.record.
 
         Takes an additional keyword-argument:
         * dir_bin: Path to the compiled submission.
-        '''
-        logger.debug(f'Running test {name}.')
+        """
+        logger.debug(f"Running test {name}.")
 
         def permissions():
             for filepath in test.perm_read:
-                yield java_tools.permission_file(filepath, file_permissions = [java_tools.FilePermission.read])
+                yield java_tools.permission_file(
+                    filepath, file_permissions=[java_tools.FilePermission.read]
+                )
             for filepath in test.perm_write:
-                yield java_tools.permission_file(filepath, file_permissions = [
-                    java_tools.FilePermission.write,
-                    java_tools.FilePermission.delete,
-                ])
+                yield java_tools.permission_file(
+                    filepath,
+                    file_permissions=[
+                        java_tools.FilePermission.write,
+                        java_tools.FilePermission.delete,
+                    ],
+                )
 
         def test_classpath():
             if self.dir_test:
                 yield self.dir_test / self.dir_submission_src
 
         with submission_java.run_context(
-                submission_dir = dir_src,
-                submission_bin = dir_bin,
-                classpath = test_classpath(),
-                entrypoint = test.class_name,
-                arguments = test.args,
-                permissions = permissions(),
-                check_conflict = False,
+            submission_dir=dir_src,
+            submission_bin=dir_bin,
+            classpath=test_classpath(),
+            entrypoint=test.class_name,
+            arguments=test.args,
+            permissions=permissions(),
+            check_conflict=False,
         ) as cmd:
             self.record_process(
-                dir_out = dir_out,
-                cwd = dir_src,
-                args = cmd,
-                input = test.input,
-                timeout = test.timeout,
-                encoding = 'utf-8',
-                env = testers.general.test_env(test),
+                dir_out=dir_out,
+                cwd=dir_src,
+                args=cmd,
+                input=test.input,
+                timeout=test.timeout,
+                encoding="utf-8",
+                env=testers.general.test_env(test),
             )
 
     def run_tests(
@@ -159,47 +170,53 @@ class LabTester(testers.general.LabTester):
         dir_out: Path,
         dir_src: Path,
         dir_bin: Path = None,
-        file_compile_err = '__compile_err',
-        file_error = 'error.md',
+        file_compile_err="__compile_err",
+        file_error="error.md",
     ) -> None:
-        '''See testers.general.run_tests.'''
+        """See testers.general.run_tests."""
         try:
             stack = contextlib.ExitStack()
             if dir_bin is None:
-                logger.debug('Checking and compiling submission.')
+                logger.debug("Checking and compiling submission.")
                 (dir_bin, compiler_report) = stack.enter_context(
                     submission_java.submission_checked_and_compiled(dir_src)
                 )
                 (dir_out / file_compile_err).write_text(compiler_report)
-            super().run_tests(dir_out, dir_src, dir_bin = dir_bin)
+            super().run_tests(dir_out, dir_src, dir_bin=dir_bin)
         except lab_interfaces.HandlingException as e:
             (dir_out / file_error).write_text(e.markdown())
 
     def filter_errors(self, err: str) -> str:
-        return err.removeprefix(general.join_lines([
-            'WARNING: A command line option has enabled the Security Manager',
-            'WARNING: The Security Manager is deprecated and will be removed in a future release',
-        ]))
+        return err.removeprefix(
+            general.join_lines(
+                [
+                    "WARNING: A command line option has enabled the Security Manager",
+                    "WARNING: The Security Manager is deprecated and will be removed in a future release",
+                ]
+            )
+        )
 
     def format_tests_output_as_markdown(self, dir_out: Path) -> Iterable[str]:
         import inspect
+
         params = inspect.signature(self.run_tests).parameters
+
         def file(arg_name):  # noqa E308
             return dir_out / params[arg_name].default
 
-        file_error = file('file_error')
+        file_error = file("file_error")
         if file_error.exists():
             yield file_error.read_text()  # Not actually a block.
         else:
             # Compilation report does not exist if compilation was not part of the test.
-            if file('file_compile_err').exists():
-                compile_err = file('file_compile_err').read_text()
+            if file("file_compile_err").exists():
+                compile_err = file("file_compile_err").read_text()
                 if compile_err:
-                    yield general.join_lines(['There were some compilation warnings:'])
+                    yield general.join_lines(["There were some compilation warnings:"])
                     yield markdown.escape_code_block(compile_err)
 
             yield from super().format_tests_output_as_markdown(dir_out)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     testers.general.cli(LabTester)

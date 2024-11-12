@@ -4,12 +4,13 @@ import threading
 
 logger = logging.getLogger(__name__)
 
+
 def rebuild_queue(queue_it, item):
-    '''
+    """
     Rebuild a subsuming queue while adding an item to it.
     Takes an iterator for the current queue and the item to add.
     Returns an iterator for the new queue.
-    '''
+    """
     for entry in queue_it:
         # Does entry have priority over us?
         # Is so, leave queue as is.
@@ -35,8 +36,9 @@ def rebuild_queue(queue_it, item):
     # Add it to the end.
     yield item
 
+
 class SubsumingQueue:
-    '''
+    """
     A subsuming queue for elements of a partial order.
     Existing queue entries are replaced by items that have
     priority over them (except if they have the same priority,
@@ -44,14 +46,15 @@ class SubsumingQueue:
 
     Queue invariant:
     No two entries have comparable priority.
-    '''
+    """
+
     def __init__(self):
         self.mutex = threading.Lock()
         self.inhabited = threading.Condition(self.mutex)
         self.queue = iter(list())
 
     def add(self, item):
-        '''
+        """
         Add an item to the queue.
 
         Does not change the queue if it already contains an equivalent element.
@@ -60,17 +63,17 @@ class SubsumingQueue:
 
         Adding is constant time.
         The actual work happens in 'remove' when processing the iterator.
-        '''
+        """
         with self.mutex:
             self.queue = rebuild_queue(iter(self.queue), item)
             self.inhabited.notify()
 
     def remove(self):
-        '''
+        """
         Remove the front entry from the queue and return it.
         No remaining entry has priority comparable to the result.
         Waits until an entry becomes available.
-        '''
+        """
         with self.mutex:
             try:
                 return next(self.queue)

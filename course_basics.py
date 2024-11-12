@@ -7,24 +7,24 @@ import print_parse
 
 
 class SubmissionHandlingException(Exception):
-    '''
+    """
     Interface to use for all errors arising from submissions
     in the handler interfaces defined in this module.
-    '''
+    """
 
     def markdown(self):
-        '''
+        """
         Return a markdown-formatted error message for use within a Chalmers GitLab issue.
         This method should be overwritten in descendant classes.
 
         String formatting via str(exception) continues to be used in other places,
         so should also be supported.
-        '''
+        """
         return markdown.escape_code_block(str(self))
 
 
 class RequestMatcher:
-    '''
+    """
     Interface defining a matcher for request tag names.
 
     Required attributes:
@@ -38,23 +38,23 @@ class RequestMatcher:
         The union of these patterns must cover all strings for which the match method returns True.
 
     TODO once GitLab implements regex patterns for tag protection: replace interface by a single regex.
-    '''
+    """
 
     def parse(self, tag_name):
-        '''
+        """
         Determines whether the given tag name matches this request matcher.
         If it matches, returns an implementation-specific value different from None.
         Otherwise, returns None.
 
         Tags with name containing the path component separator '/' are never considered as requests.
         They are sorted out before this method is called.
-        '''
+        """
         raise NotImplementedError()
 
 
 class RegexRequestMatcher(RequestMatcher):
-    def __init__(self, name, protection_patterns, regex, regex_flags = 0):
-        '''
+    def __init__(self, name, protection_patterns, regex, regex_flags=0):
+        """
         Build a request matcher from a specified regex.
 
         Arguments:
@@ -66,18 +66,18 @@ class RegexRequestMatcher(RequestMatcher):
             Regex with which to match the request tag.
         * regex_flags:
             Flags to use for regex matching.
-        '''
+        """
         self.name = name
         self.protection_patterns = list(protection_patterns)
         self.parse = lambda tag: re.fullmatch(regex, tag, regex_flags)
 
 
 CompilationRequirement = namedtuple(
-    'CompilationRequirement',
-    ['required', 'response_title', 'response_prefix'],
-    defaults = [None, None],
+    "CompilationRequirement",
+    ["required", "response_title", "response_prefix"],
+    defaults=[None, None],
 )
-CompilationRequirement.__doc__ = '''
+CompilationRequirement.__doc__ = """
     Interface defining a compilation requirement specification.
 
     Required attributes:
@@ -92,52 +92,56 @@ CompilationRequirement.__doc__ = '''
         Markdown-formatted prefix for the content of the above response issue.
         Should include terminating linefeed.
         The Markdown-formatted exception is included afterwards.
-    '''
+    """
 
-compilation_requirement_ignore = CompilationRequirement(required = False)
+compilation_requirement_ignore = CompilationRequirement(required=False)
 
 compilation_requirement_warn = CompilationRequirement(
-    required = False,
-    response_title = print_parse.regex_keyed(
-        'Your submission {tag} does not compile',
-        {'tag': '[^: ]*'},
-        flags = re.IGNORECASE,
+    required=False,
+    response_title=print_parse.regex_keyed(
+        "Your submission {tag} does not compile",
+        {"tag": "[^: ]*"},
+        flags=re.IGNORECASE,
     ),
-    response_prefix = general.join_lines([
-        '**Your submission does not compile.**',
-        'For details, see the below error report.',
-        'If you believe this is a mistake, please contact the responsible teacher.'
-        '',
-        'Try to correct these errors and resubmit using a new tag.',
-        'If done in time, we will disregard this submission attempt and grade only the new one.',
-    ]),
+    response_prefix=general.join_lines(
+        [
+            "**Your submission does not compile.**",
+            "For details, see the below error report.",
+            "If you believe this is a mistake, please contact the responsible teacher."
+            "",
+            "Try to correct these errors and resubmit using a new tag.",
+            "If done in time, we will disregard this submission attempt and grade only the new one.",
+        ]
+    ),
 )
 
 compilation_requirement_require = CompilationRequirement(
-    required = True,
-    response_title = print_parse.regex_keyed(
-        'Your submission {tag} does not compile',
-        {'tag': '[^: ]*'},
-        flags = re.IGNORECASE,
+    required=True,
+    response_title=print_parse.regex_keyed(
+        "Your submission {tag} does not compile",
+        {"tag": "[^: ]*"},
+        flags=re.IGNORECASE,
     ),
-    response_prefix = general.join_lines([
-        '**Your submission does not compile and can therefore not be accepted.**',
-        'For details, see the below error report.',
-        'If you believe this is a mistake, please contact the responsible teacher.',
-    ]),
+    response_prefix=general.join_lines(
+        [
+            "**Your submission does not compile and can therefore not be accepted.**",
+            "For details, see the below error report.",
+            "If you believe this is a mistake, please contact the responsible teacher.",
+        ]
+    ),
 )
 
 
 class Compiler:
-    '''
+    """
     Interface defining a submission compiler.
 
     Required attributes:
     * requirement: value of type CompilationRequirement.
-    '''
+    """
 
     def setup(self, lab):
-        '''
+        """
         Setup compiler.
 
         Arguments:
@@ -147,11 +151,11 @@ class Compiler:
             See _lab_config in gitlab_config.py.template for the available fields.
             For example, you may use lab.config.path_source to find the lab source directory.
             This may be used determine the needed compilation pathway automatically.
-        '''
+        """
         pass
 
     def compile(src, bin):
-        '''
+        """
         Compile a submission (problem, solution, or student submission).
 
         Arguments:
@@ -165,15 +169,15 @@ class Compiler:
         TODO: fix this.
 
         Compilation errors should be raised as instances of SubmissionHandlingException.
-        '''
+        """
         raise NotImplementedError()
 
 
 class SubmissionHandler:
-    '''Interface defining a submission handler (after compilation).'''
+    """Interface defining a submission handler (after compilation)."""
 
     def _setup(self, lab, src, bin):
-        '''
+        """
         Setup submission handler.
 
         Arguments:
@@ -193,30 +197,30 @@ class SubmissionHandler:
         How persistent this setup is up to the implementation.
         The minimum is the lifespan of the Tester object.
         This operation should be idempotent.
-        '''
+        """
         pass
 
 
 class Tester(SubmissionHandler):
-    '''
+    """
     Interface defining a tester.
 
     Testers run the submission with predetermined input.
     The test output is recorded in output files.
     The test output of the official solution is taken as gold output.
-    '''
+    """
 
     def tag_component(self):
-        '''
+        """
         Path component to append to a tag to name the test output commit.
 
         For example, for a submission tagged group-3/submission2,
         the test commit might be tagged group-3/submission2/test.
-        '''
-        return 'test'
+        """
+        return "test"
 
     def test(self, src, bin, out):
-        '''
+        """
         Test a submission (problem, solution, or student submission).
 
         Arguments:
@@ -230,20 +234,21 @@ class Tester(SubmissionHandler):
 
         If test outputs cannot be generated because of a problem with the submission,
         raise an instance of SubmissionHandlingException.
-        '''
+        """
         raise NotImplementedError()
 
     def index_div_column_title(self):
-        '''
+        """
         Generate column title in submission index HTML table.
 
         Returns an instance of dominate.tags.div.
-        '''
+        """
         import dominate.tags
-        return dominate.tags.div('Testing')
+
+        return dominate.tags.div("Testing")
 
     def index_div_column_entry(self, gold, test, get_diff_link):
-        '''
+        """
         Summarize test output diff for use in the submission index HTML table.
 
         Arguments:
@@ -258,11 +263,12 @@ class Tester(SubmissionHandler):
         The contents of gold and test are as generated by the test method.
 
         Returns an instance of dominate.tags.div.
-        '''
+        """
         raise NotImplementedError()
 
+
 class Robograder(SubmissionHandler):
-    '''
+    """
     Interface defining a robograder.
 
     Required attributes:
@@ -274,18 +280,20 @@ class Robograder(SubmissionHandler):
     * SubmissionGradingRobograder (submission-grading robograder),
     * StudentCallableRobograder (student-callable robograder).
       Made into direct child of SubmissionHandler for now.
-    '''
+    """
 
     def __init__(self):
-        '''Provides a default implementation of self.response_title.'''
-        self.response_title = print_parse.regex_keyed(
-            'Robograder: reporting for {tag}',
-            {'tag': '[^: ]*'},
-            flags = re.IGNORECASE,
-        ),
+        """Provides a default implementation of self.response_title."""
+        self.response_title = (
+            print_parse.regex_keyed(
+                "Robograder: reporting for {tag}",
+                {"tag": "[^: ]*"},
+                flags=re.IGNORECASE,
+            ),
+        )
 
     def run(self, src, bin):
-        '''
+        """
         Robograde a submission (problem, solution, or student submission).
 
         Arguments:
@@ -299,26 +307,29 @@ class Robograder(SubmissionHandler):
 
         If the robograding cannot be generated because of a problem with the submission,
         raise an instance of SubmissionHandlingException.
-        '''
+        """
         raise NotImplementedError()
 
+
 class SubmissionGradingRobograder(Robograder):
-    '''
+    """
     Interface defining a submission-grading robograder.
 
     This is triggered by a submission.
-    '''
+    """
+
     def index_div_column_title(self):
-        '''
+        """
         Generate column title in submission index HTML table.
 
         Returns an instance of dominate.tags.div.
-        '''
+        """
         import dominate.tags
-        return dominate.tags.div('Robograding')
+
+        return dominate.tags.div("Robograding")
 
     def index_div_column_entry(self, response_issue_link):
-        '''
+        """
         Summarize robograding for use in the submission index HTML table.
 
         Arguments:
@@ -327,10 +338,11 @@ class SubmissionGradingRobograder(Robograder):
         Returns an instance of dominate.tags.div.
 
         The default implementation is usually what you want.
-        '''
+        """
+
 
 class StudentCallableRobograder(SubmissionHandler):
-    '''
+    """
     Interface defining a student-callable robograder.
 
     Required attributes:
@@ -338,22 +350,25 @@ class StudentCallableRobograder(SubmissionHandler):
     * response_title:
         Printer-parser (print_parse.PrintParse) for the robograding response issue title.
         The domain of the printer-parser is a map with a single key 'tag' with value the request tag name.
-    '''
+    """
+
     def __init__(self):
-        '''
+        """
         Provides default implementations of:
         * self.request_matcher
         * self.response_title
-        '''
-        self.request_matcher = RegexRequestMatcher('test', ['test*', 'Test*'], '(?:t|T)est[^: ]*')
+        """
+        self.request_matcher = RegexRequestMatcher(
+            "test", ["test*", "Test*"], "(?:t|T)est[^: ]*"
+        )
         self.response_title = print_parse.regex_keyed(
-            'Robograder: reporting for {tag}',
-            {'tag': '[^: ]*'},
-            flags = re.IGNORECASE,
+            "Robograder: reporting for {tag}",
+            {"tag": "[^: ]*"},
+            flags=re.IGNORECASE,
         )
 
     def _run(self, src, bin):
-        '''
+        """
         Robograde a submission (problem, solution, or student submission).
 
         Arguments:
@@ -367,5 +382,5 @@ class StudentCallableRobograder(SubmissionHandler):
 
         If the robograding cannot be generated because of a problem with the submission,
         raise an instance of SubmissionHandlingException.
-        '''
+        """
         raise NotImplementedError()

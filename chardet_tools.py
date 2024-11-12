@@ -12,7 +12,8 @@ def detect_encoding(files):
             file = Path(file)
         detector.feed(file.read_bytes())
     detector.close()
-    return detector.result['encoding']
+    return detector.result["encoding"]
+
 
 def read_text_detect_encoding(path):
     try:

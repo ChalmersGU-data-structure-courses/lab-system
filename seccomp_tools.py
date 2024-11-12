@@ -9,8 +9,8 @@ import os
 import seccomp
 
 
-def setup_seccomp(callback = None):
-    '''Sandbox the current process using the Kernel mechanism libseccomp.
+def setup_seccomp(callback=None):
+    """Sandbox the current process using the Kernel mechanism libseccomp.
 
     Only minimal permissions are granted by default.
     Filesystem interaction is read-only.
@@ -26,11 +26,11 @@ def setup_seccomp(callback = None):
     Supported configurations (add yours after testing; add calls if needed):
     * x64 Linux 5.15 with glibc 2.33
     * x64 Linux with musl
-    '''
+    """
     from seccomp import Arg, ALLOW, EQ, MASKED_EQ
 
     # Make the system call return an error if the policy is violated.
-    f = seccomp.SyscallFilter(defaction = seccomp.ERRNO(errno.EPERM))
+    f = seccomp.SyscallFilter(defaction=seccomp.ERRNO(errno.EPERM))
 
     # Allow exiting.
     f.add_rule(ALLOW, "exit_group")
@@ -40,8 +40,8 @@ def setup_seccomp(callback = None):
     # In the future, we might discover that more signal syscalls are needed.
     # These seem safe in general.
     # For example, we might add:
-    #f.add_rule(ALLOW, "rt_sigaction")
-    #f.add_rule(ALLOW, "rt_sigprocmask")
+    # f.add_rule(ALLOW, "rt_sigaction")
+    # f.add_rule(ALLOW, "rt_sigprocmask")
 
     # Allow memory-related syscalls.
     f.add_rule(ALLOW, "brk")
@@ -87,7 +87,7 @@ def setup_seccomp(callback = None):
     f.add_rule(ALLOW, "fcntl", Arg(1, EQ, fcntl.F_SETFD))
 
     # RESEARCH NEEDED: Only needed interactively?
-    #f.add_rule(ALLOW, "pselect6")
+    # f.add_rule(ALLOW, "pselect6")
 
     # Allow calls that do not have a documented failure mode.
     # If we forbid them, we should kill the process.
@@ -102,21 +102,24 @@ def setup_seccomp(callback = None):
     # Tell the kernel to enforce the rules on the current process.
     f.load()
 
+
 def path_push(path):
-    '''Push a path to the module search path.'''
+    """Push a path to the module search path."""
     sys.path.insert(0, str(PurePath(path)))
 
+
 def path_pop(path):
-    '''Pop a specified path from the module search path.'''
+    """Pop a specified path from the module search path."""
     path = PurePath(path)
     [x, *xs] = sys.path
     x = PurePath(x)
     if not x == path:
-        raise ValueError(f'head of sys.path is not {x}')
+        raise ValueError(f"head of sys.path is not {x}")
     sys.path = xs
 
+
 def main():
-    '''Run a python script sandboxed using setup_seccomp().
+    """Run a python script sandboxed using setup_seccomp().
 
     The python script and its arguments are given on the command line.
 
@@ -124,19 +127,22 @@ def main():
     * Popping the path of the current script.
       This step is omitted if python is invoced in isolated mode (python -I).
     * Pushing the path of the given script.
-    '''
+    """
     import runpy
 
-    #print('sys.argv', sys.argv)
-    #print('sys.path', sys.path)
-    #print('__file__', __file__)
-    #print('__name__', __name__)
+    # print('sys.argv', sys.argv)
+    # print('sys.path', sys.path)
+    # print('__file__', __file__)
+    # print('__name__', __name__)
 
     try:
         path = PurePath(sys.argv[1])
         del sys.argv[1]
     except Exception:
-        print('Usage: python3 <this script> <script to run> [<arguments>...]', file = sys.stderr)
+        print(
+            "Usage: python3 <this script> <script to run> [<arguments>...]",
+            file=sys.stderr,
+        )
         sys.exit(-1)
 
     # def print_hierarchy(path):
@@ -151,7 +157,8 @@ def main():
     path_push(path.parent)
 
     setup_seccomp()
-    runpy.run_path(path, run_name = '__main__')
+    runpy.run_path(path, run_name="__main__")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

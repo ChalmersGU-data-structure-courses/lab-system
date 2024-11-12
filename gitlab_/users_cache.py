@@ -14,7 +14,7 @@ class UsersCache(hashed_file_cache.HashedFileCacheSerializer):
         username: str
 
     # cached data
-    data: list['User']
+    data: list["User"]
 
     # supplemental data, determined by the cached data.
     username_from_id: dict[int, str]
@@ -37,7 +37,7 @@ class UsersCache(hashed_file_cache.HashedFileCacheSerializer):
     def deserialize(self, bytes):
         super().deserialize(bytes)
         self._supplement_initialize()
-        for (id, username) in self.data:
+        for id, username in self.data:
             self._supplement_add_item(id, username)
 
     def _initialize(self):
@@ -50,23 +50,27 @@ class UsersCache(hashed_file_cache.HashedFileCacheSerializer):
 
     def __init__(self, cache_dir, gitlab_graphql_client):
         super().__init__(
-            path = cache_dir,
-            serializer = print_parse.compose(print_parse.json_coding_nice, print_parse.string_coding),
+            path=cache_dir,
+            serializer=print_parse.compose(
+                print_parse.json_coding_nice, print_parse.string_coding
+            ),
         )
         self.client = gitlab_graphql_client
         self._initialize()
 
     def update(self):
-        '''
+        """
         Returns a list of new pairs (id, username).
-        '''
+        """
         with self.update_manager():
-            new_items = list(self.client.retrieve_all_users_from(
-                last_requested = self.update_date,
-                last_known_id = self.last_known_id,
-            ))
+            new_items = list(
+                self.client.retrieve_all_users_from(
+                    last_requested=self.update_date,
+                    last_known_id=self.last_known_id,
+                )
+            )
             self.data.extend(new_items)
-            for (id, username) in new_items:
+            for id, username in new_items:
                 self._supplement_add_item(id, username)
 
             if not new_items:
