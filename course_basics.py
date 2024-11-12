@@ -1,3 +1,4 @@
+import abc
 from collections import namedtuple
 import re
 
@@ -40,6 +41,7 @@ class RequestMatcher:
     TODO once GitLab implements regex patterns for tag protection: replace interface by a single regex.
     """
 
+    @abc.abstractmethod
     def parse(self, tag_name):
         """
         Determines whether the given tag name matches this request matcher.
@@ -49,7 +51,6 @@ class RequestMatcher:
         Tags with name containing the path component separator '/' are never considered as requests.
         They are sorted out before this method is called.
         """
-        raise NotImplementedError()
 
 
 class RegexRequestMatcher(RequestMatcher):
@@ -152,8 +153,8 @@ class Compiler:
             For example, you may use lab.config.path_source to find the lab source directory.
             This may be used determine the needed compilation pathway automatically.
         """
-        pass
 
+    @abc.abstractmethod
     def compile(src, bin):
         """
         Compile a submission (problem, solution, or student submission).
@@ -170,12 +171,12 @@ class Compiler:
 
         Compilation errors should be raised as instances of SubmissionHandlingException.
         """
-        raise NotImplementedError()
 
 
 class SubmissionHandler:
     """Interface defining a submission handler (after compilation)."""
 
+    @abc.abstractmethod
     def _setup(self, lab, src, bin):
         """
         Setup submission handler.
@@ -198,7 +199,6 @@ class SubmissionHandler:
         The minimum is the lifespan of the Tester object.
         This operation should be idempotent.
         """
-        pass
 
 
 class Tester(SubmissionHandler):
@@ -219,6 +219,7 @@ class Tester(SubmissionHandler):
         """
         return "test"
 
+    @abc.abstractmethod
     def test(self, src, bin, out):
         """
         Test a submission (problem, solution, or student submission).
@@ -235,7 +236,6 @@ class Tester(SubmissionHandler):
         If test outputs cannot be generated because of a problem with the submission,
         raise an instance of SubmissionHandlingException.
         """
-        raise NotImplementedError()
 
     def index_div_column_title(self):
         """
@@ -247,6 +247,7 @@ class Tester(SubmissionHandler):
 
         return dominate.tags.div("Testing")
 
+    @abc.abstractmethod
     def index_div_column_entry(self, gold, test, get_diff_link):
         """
         Summarize test output diff for use in the submission index HTML table.
@@ -264,7 +265,6 @@ class Tester(SubmissionHandler):
 
         Returns an instance of dominate.tags.div.
         """
-        raise NotImplementedError()
 
 
 class Robograder(SubmissionHandler):
@@ -292,6 +292,7 @@ class Robograder(SubmissionHandler):
             ),
         )
 
+    @abc.abstractmethod
     def run(self, src, bin):
         """
         Robograde a submission (problem, solution, or student submission).
@@ -308,7 +309,6 @@ class Robograder(SubmissionHandler):
         If the robograding cannot be generated because of a problem with the submission,
         raise an instance of SubmissionHandlingException.
         """
-        raise NotImplementedError()
 
 
 class SubmissionGradingRobograder(Robograder):
@@ -367,6 +367,7 @@ class StudentCallableRobograder(SubmissionHandler):
             flags=re.IGNORECASE,
         )
 
+    @abc.abstractmethod
     def _run(self, src, bin):
         """
         Robograde a submission (problem, solution, or student submission).
@@ -383,4 +384,3 @@ class StudentCallableRobograder(SubmissionHandler):
         If the robograding cannot be generated because of a problem with the submission,
         raise an instance of SubmissionHandlingException.
         """
-        raise NotImplementedError()

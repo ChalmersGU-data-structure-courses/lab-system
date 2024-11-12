@@ -1,3 +1,4 @@
+import abc
 import re
 
 import markdown
@@ -16,6 +17,7 @@ class RequestMatcher:
     TODO once GitLab implements regex patterns for tag protection: replace interface by a single regex.
     """
 
+    @abc.abstractmethod
     def parse(self, tag_name):
         """
         Determines whether the given tag name matches this request matcher.
@@ -25,7 +27,6 @@ class RequestMatcher:
         Tags with name containing the path component separator '/' are never considered as requests.
         They are sorted out before this method is called.
         """
-        raise NotImplementedError()
 
 
 class RegexRequestMatcher(RequestMatcher):
@@ -81,6 +82,7 @@ class RequestHandler:
         """
         self.lab = lab
 
+    @abc.abstractmethod
     def handle_request(self, request_and_responses):
         """
         Handle a testing request.
@@ -97,7 +99,6 @@ class RequestHandler:
         This method may return a JSON-dumpable value.
         If so, its dump will be stored as the message of the above tag.
         """
-        raise NotImplementedError()
 
 
 class SubmissionHandler(RequestHandler):
