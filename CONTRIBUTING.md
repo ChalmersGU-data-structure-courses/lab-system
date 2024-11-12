@@ -1,5 +1,6 @@
 # Development model
 
+If you have a suggestion for a feature or improvement, create an issue on the [issue tracker](https://github.com/ChalmersGU-data-structure-courses/lab-system/issues) for discussion.
 Develop new features on a feature branch and create a merge request into main.
 
 Fixes can be directly comitted to `main`.
