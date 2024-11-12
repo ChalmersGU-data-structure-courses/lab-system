@@ -690,15 +690,16 @@ class Cache(abc.ABC):
 
     _path: Path
     _needs_save: bool
+    _time: datetime.datetime
 
     def _initialize(self):
         if not self._initialized:
             self._initialized = True
             if self.load():
-                self.needs_save = False
+                self._needs_save = False
             else:
                 self.initialize()
-                self.needs_save = True
+                self._needs_save = True
 
     def __init__(self, path, delay_init=True):
         self._path = path
@@ -717,33 +718,33 @@ class Cache(abc.ABC):
     @functools.cached_property
     def last_modified(self):
         try:
-            return modified_at(self.path)
+            return modified_at(self._path)
         except FileNotFoundError:
             return None
 
     def load(self):
         try:
-            time = modified_at(self.path)
-            with self.path.open() as file:
+            time = modified_at(self._path)
+            with self._path.open() as file:
                 self.load_internal(file)
         except FileNotFoundError:
             return False
-        else:
-            self.time = time
-            return True
+
+        self._time = time
+        return True
 
     def save(self):
-        if self.needs_save:
-            make_parents(self.path)
-            with overwrite_atomic(self.path, time=self.time) as file:
+        if self._needs_save:
+            make_parents(self._path)
+            with overwrite_atomic(self._path, time=self._time) as file:
                 self.save_internal(file)
-            self.needs_save = False
+            self._needs_save = False
 
     @contextlib.contextmanager
     def updating(self):
         yield
-        self.time = time
-        self.needs_save = True
+        self._time = general.now()
+        self._needs_save = True
 
 
 class JSONCache(Cache):
