@@ -33,7 +33,7 @@ def reverse_key(f=lambda x: x):
 
 
 def discrete_order(cls):
-    def __lt__(self, other):
+    def __lt__(_self, _other):
         return False
 
     cls.__lt__ = __lt__
@@ -43,7 +43,7 @@ def discrete_order(cls):
 
     cls.__le__ = __le__
 
-    def __gt__(self, other):
+    def __gt__(_self, _other):
         return False
 
     cls.__gt__ = __gt__

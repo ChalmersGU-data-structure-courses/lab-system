@@ -44,7 +44,7 @@ Use this to clean up after you stop running the event loop (unless you plan to r
 )
 
 
-def complete_local_dir(prefix, action, parser, parsed_args):
+def complete_local_dir(prefix, _action, _parser, _parsed_args):
     path = Path(prefix)
     if not prefix.endswith(os.sep):
         path = path.parent
