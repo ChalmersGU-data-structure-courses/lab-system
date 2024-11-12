@@ -9,6 +9,7 @@ import re
 import requests
 import shutil
 import subprocess
+import sys
 import types
 import urllib.parse
 
@@ -66,7 +67,7 @@ class Canvas:
                         format_path(auth_token)
                     )
                 )
-                exit(1)
+                sys.exit(1)
         else:
             self.auth_token = auth_token
 
