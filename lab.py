@@ -337,12 +337,10 @@ class Lab:
         if self.config.has_solution is True:
             self.solution_create_and_populate()
         self.logger.info(
-            general.join_lines(
-                [
-                    "Next steps:",
-                    "* Restart event loop.",
-                    "* Check robograding/-testing output for solution submissions in live submissions table.",
-                ]
+            general.text_from_lines(
+                "Next steps:",
+                "* Restart event loop.",
+                "* Check robograding/-testing output for solution submissions in live submissions table.",
             )
         )
 

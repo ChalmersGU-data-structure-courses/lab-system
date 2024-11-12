@@ -720,12 +720,10 @@ class Multiplexer:
                     or line == "fatal: Could not read from remote repository.",
                 ):
                     logger.warning(
-                        general.join_lines(
-                            [
-                                "Git command failure assumed to stem from SSH connection failure.",
-                                "Relevant line in stderr output:",
-                                line,
-                            ]
+                        general.text_from_lines(
+                            "Git command failure assumed to stem from SSH connection failure.",
+                            "Relevant line in stderr output:",
+                            line,
                         )
                     )
                     raise Multiplexer.CallbackConnectionFailure()

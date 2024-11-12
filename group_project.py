@@ -131,23 +131,20 @@ class RequestAndResponses:
             super().__init__(self.message)
 
         def report_markdown(self):
-            return markdown.join_blocks(
-                [
-                    general.join_lines(
-                        [
-                            f"I failed to check out your commit `{markdown.escape(self.request_and_responses.request_name)}`.",
-                            "This was the problem:",
-                        ]
-                    ),
-                    markdown.escape_code_block(self.message),
-                    general.join_lines(
-                        [
-                            "Please fix the problem and try again.",
-                            "If you are unable to do so, please contact the person responsible for the labs.",
-                        ]
-                    ),
-                ]
-            )
+            blocks = [
+                general.text_from_lines(
+                    f"I failed to check out your commit "
+                    f"`{markdown.escape(self.request_and_responses.request_name)}`.",
+                    "This was the problem:",
+                ),
+                markdown.escape_code_block(self.message),
+                general.text_from_lines(
+                    "Please fix the problem and try again.",
+                    "If you are unable to do so,"
+                    " please contact the person responsible for the labs.",
+                ),
+            ]
+            return markdown.join_blocks(blocks)
 
     def checkout(self, dir, segments=["tag"]):
         """
@@ -496,13 +493,11 @@ class RequestAndResponses:
             title_data
         )
         self.logger.debug(
-            general.join_lines(
-                [
-                    "Posting response issue:",
-                    f"* title: {title}",
-                    "* description:",
-                    *description.splitlines(),
-                ]
+            general.text_from_lines(
+                "Posting response issue:",
+                f"* title: {title}",
+                "* description:",
+                *description.splitlines(),
             )
         )
         issue_data = {
