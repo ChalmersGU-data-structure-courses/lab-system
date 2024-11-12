@@ -792,15 +792,10 @@ def event_type(event):
     raise ValueError(f"no event type found in event {event}")
 
 
-"""
-Data:
-- last updated
-- 
-"""
-
-
 class UsernameCache:
     """
+    DEPRECATED
+
     A simple directory-based cache for data stored as a single file.
     Suitable for interprocess communication.
 
