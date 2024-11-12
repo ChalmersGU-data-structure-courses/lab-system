@@ -53,7 +53,7 @@ def ensure_empty(it):
         x = next(it)
         raise EmptynessError(x, it)
     except StopIteration:
-        return
+        pass
 
 
 class UniquenessError(ValueError):

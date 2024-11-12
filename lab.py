@@ -36,7 +36,6 @@ class StudentConnector(abc.ABC):
         The set of desired group ids.
         These usually come from the Canvas course.
         """
-        ...
 
     @abc.abstractmethod
     def desired_members(self, id):
@@ -44,17 +43,14 @@ class StudentConnector(abc.ABC):
         The set of CIDs for a given group id.
         These usually come from the Canvas course.
         """
-        ...
 
     @abc.abstractmethod
     def gitlab_group_slug_pp(self):
         """ """
-        ...
 
     @abc.abstractmethod
     def gitlab_group_name(self, id):
         """The corresponding name on Chalmers GitLab a given group id."""
-        ...
 
     @abc.abstractmethod
     def gdpr_coding(self):
@@ -62,7 +58,6 @@ class StudentConnector(abc.ABC):
         GDPR coding for group ids (instance of GDPRCoding).
         Currently only used in the grading spreadsheet.
         """
-        ...
 
     @abc.abstractmethod
     def gdpr_link_problematic(self):
@@ -70,7 +65,6 @@ class StudentConnector(abc.ABC):
         Whether gorup links can be set in non-GDPR-cleared documents.
         Currently only used in the grading spreadsheet.
         """
-        ...
 
 
 class StudentConnectorIndividual(StudentConnector):
