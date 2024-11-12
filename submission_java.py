@@ -184,13 +184,13 @@ def run_context(
 
     # Necessary if we call java_tools.run in a different working directory
     # and the generator resolves paths.
-    policy_entries = list(policy_entries())
+    policy_entries_ = list(policy_entries())
 
     # Run the robograder.
     logger.debug("Running robograder.")
     with java_tools.run_context(
         main=entrypoint,
-        policy_entries=policy_entries,
+        policy_entries=policy_entries_,
         args=arguments,
         classpath=[*classpath, submission_bin],
     ) as cmd:
