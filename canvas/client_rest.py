@@ -60,7 +60,7 @@ class Canvas:
     ):
         if isinstance(auth_token, PurePosixPath):
             try:
-                self.auth_token = Path(auth_token).open().read().strip()
+                self.auth_token = Path(auth_token).read_text().strip()
             except FileNotFoundError:
                 print_error("No Canvas authorization token found.")
                 print_error(
