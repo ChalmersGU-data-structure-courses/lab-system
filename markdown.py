@@ -75,7 +75,7 @@ class Alignment(enum.Enum):
 @dataclasses.dataclass
 class ColumnSpec:
     title: str
-    align: Alignment = None
+    align: Alignment | None = None
 
 
 def table(column_specs: Iterable[ColumnSpec], rows: Iterable[Sequence[str]]):
