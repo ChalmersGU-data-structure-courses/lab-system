@@ -120,7 +120,8 @@ class RequestAndResponses:
         in the commit corresponding to 'segments'.
         """
         return git_tools.read_text_file_from_tree(
-            self.repo_tag(segments).commit.tree, path
+            self.repo_tag(segments).commit.tree,
+            path,
         )
 
     class CheckoutError(Exception):
@@ -154,7 +155,10 @@ class RequestAndResponses:
         """
         try:
             git_tools.checkout(
-                self.lab.repo, dir, self.repo_tag(segments), capture_stderr=True
+                self.lab.repo,
+                dir,
+                self.repo_tag(segments),
+                capture_stderr=True,
             )
         except subprocess.CalledProcessError as e:
             raise RequestAndResponses.CheckoutError(self, e) from e
@@ -392,7 +396,9 @@ class RequestAndResponses:
                 if self.grader_username in self.course.config.gitlab_lab_system_users:
                     return "Lab system"
                 raise ValueError(
-                    f"Unknown GitLab grader username {self.grader_username}. If different from CID, consider adding as override in _cid_to_gitlab_username in course configuration file."
+                    f"Unknown GitLab grader username {self.grader_username}. "
+                    "If different from CID, consider adding as override"
+                    " in _cid_to_gitlab_username in course configuration file."
                 )
             return self.course.canvas_user_informal_name(canvas_user)
 
@@ -499,12 +505,11 @@ class RequestAndResponses:
                 ]
             )
         )
-        issue = self.group.project.lazy.issues.create(
-            {
-                "title": title,
-                "description": self.group.append_mentions(description),
-            }
-        )
+        issue_data = {
+            "title": title,
+            "description": self.group.append_mentions(description),
+        }
+        issue = self.group.project.lazy.issues.create(issue_data)
 
         # Make sure the local response issue caches are up to date.
         issue_data = (issue, title_data)
@@ -669,7 +674,10 @@ class HandlerData:
         result = dict()
         for request_name, tag_data in self.requests.items():
             result[request_name] = RequestAndResponses(
-                self.lab, self, request_name, tag_data
+                self.lab,
+                self,
+                request_name,
+                tag_data,
             )
 
         for response_key, u in self.responses.items():
@@ -738,7 +746,10 @@ class GroupProject:
             self.is_known = self.id in self.lab.group_ids_desired
             self.remote = c.gitlab_group_slug_pp().print(id)
             self.path_name = f"{self.lab.group_prefix}{self.remote}"
-            self.name = f"{self.lab.name_full} — {self.lab.student_connector.gitlab_group_name(id)}"
+            self.name = (
+                f"{self.lab.name_full} "
+                f"— {self.lab.student_connector.gitlab_group_name(id)}"
+            )
 
         self.path = self.lab.path / self.path_name
         # if self.is_known:
@@ -802,25 +813,18 @@ class GroupProject:
             for i in itertools.count(0):
                 try:
                     suffix = "" if i == 0 else " " + str(i + 1)
-                    project = self.lab.primary_project.get.forks.create(
-                        {
-                            "namespace_path": str(r.path.parent),
-                            "path": r.path.name,
-                            "name": r.name + suffix,
-                        }
-                    )
+                    project_data = {
+                        "namespace_path": str(r.path.parent),
+                        "path": r.path.name,
+                        "name": r.name + suffix,
+                    }
+                    project = self.lab.primary_project.get.forks.create(project_data)
                     break
                 except gitlab.exceptions.GitlabCreateError as e:
-                    if all(
-                        [
-                            e.response_code == 409,
-                            e.error_message
-                            == [
-                                "Project namespace name has already been taken",
-                                "Name has already been taken",
-                            ],
-                        ]
-                    ):
+                    if e.response_code == 409 and e.error_message == [
+                        "Project namespace name has already been taken",
+                        "Name has already been taken",
+                    ]:
                         continue
                     raise
             try:
@@ -924,12 +928,11 @@ class GroupProject:
         """
         for gitlab_user in self.members:
             with gitlab_.tools.exist_ok():
-                self.project.lazy.members.create(
-                    {
-                        "user_id": gitlab_user.id,
-                        "access_level": gitlab.const.DEVELOPER_ACCESS,
-                    }
-                )
+                members_data = {
+                    "user_id": gitlab_user.id,
+                    "access_level": gitlab.const.DEVELOPER_ACCESS,
+                }
+                self.project.lazy.members.create(members_data)
 
     def non_empty(self):
         return bool(self.members)
@@ -1076,7 +1079,8 @@ class GroupProject:
                 tag = self.ancestral_tag(problem)
                 if not git_tools.tag_exists(tag):
                     self.repo.create_tag(
-                        tag.name, ref=git_tools.remote_branch(self.remote, problem)
+                        tag.name,
+                        ref=git_tools.remote_branch(self.remote, problem),
                     )
 
             problem = git_tools.normalize_branch(self.lab.repo, branch).commit
@@ -1175,7 +1179,8 @@ class GroupProject:
             except UniquenessError as e:
                 ancestors = list(e.iterator)
                 self.logger.error(
-                    f"Hotfixing: could not determine unique ancestor for {self.name}: detected {ancestors}"
+                    f"Hotfixing: could not determine unique ancestor for"
+                    f" {self.name}: detected {ancestors}"
                 )
                 if not fail_on_problem:
                     return
@@ -1185,7 +1190,8 @@ class GroupProject:
 
         if problem_old is None:
             problem_old = self.repo.merge_base(
-                problem, target_ref
+                problem,
+                target_ref,
             )  # TOOD: handle errors
 
         if problem_old == problem:
@@ -1204,12 +1210,17 @@ class GroupProject:
             resolved_commit = problem
         else:
             index = git.IndexFile.from_tree(
-                self.repo, problem_old, target_ref, problem, i="-i"
+                self.repo,
+                problem_old,
+                target_ref,
+                problem,
+                i="-i",
             )
             if index.unmerged_blobs():
                 if not merge_files:
                     self.logger.error(
-                        f"Hotfixing: merge conflict for {self.name}, refusing to resolve."
+                        f"Hotfixing: merge conflict for {self.name},"
+                        " refusing to resolve."
                     )
                     if not fail_on_problem:
                         return
@@ -1223,7 +1234,8 @@ class GroupProject:
                         raise
                     if exit_code != 0:
                         self.logger.error(
-                            f"Hotfixing: could not resolve merge conflict for {self.name}."
+                            f"Hotfixing: could not resolve merge conflict"
+                            f" for {self.name}."
                         )
                         if not fail_on_problem:
                             return
@@ -1254,7 +1266,8 @@ class GroupProject:
         )
         if not notify_students is None:
             self.project.lazy.commits.get(
-                resolved_commit.hexsha, lazy=True
+                resolved_commit.hexsha,
+                lazy=True,
             ).comments.create({"note": self.append_mentions(notify_students)})
 
     def hook_specs(self, netloc=None) -> Iterable[gitlab_.tools.HookSpec]:
@@ -1276,7 +1289,8 @@ class GroupProject:
     def grading_via_merge_request(self):
         if self.lab.config.multi_language is None:
             return grading_via_merge_request.GradingViaMergeRequest(
-                self.lab.grading_via_merge_request_setup_data, self
+                self.lab.grading_via_merge_request_setup_data,
+                self,
             )
 
         return {
@@ -1327,10 +1341,9 @@ class GroupProject:
             except ValueError:
                 # Take tag out of the parsing stream.
                 self.logger.warning(
-                    "Ignoring tag {} in student group {} not composed "
-                    "of exactly one path part (with respect to separator '/').".format(
-                        shlex.quote(tag_name), self.name
-                    )
+                    f"Ignoring tag {shlex.quote(tag_name)}"
+                    f" in student group {self.name} not composed of"
+                    " exactly one path part (with respect to separator '/')."
                 )
                 return ()
 
@@ -1347,15 +1360,13 @@ class GroupProject:
                 location_name=self.name,
                 item_name="request tag",
                 item_formatter=lambda x: gitlab_.tools.format_tag_metadata(
-                    self.project.lazy, x[0]
+                    self.project.lazy,
+                    x[0],
                 ),
                 logger=self.logger,
             ),
             f(),
-            {
-                True: self.tags_from_gitlab,
-                False: self.tags_from_repo,
-            }[from_gitlab](),
+            (self.tags_from_gitlab if from_gitlab else self.tags_from_repo)(),
         )
 
         # Clear requests and responses cache.
@@ -1595,7 +1606,8 @@ class GroupProject:
         author_id = author_id()
         author_is_grader = author_id in self.course.grader_ids
         self.logger.debug(
-            f"Detected issue author id {author_id}, member of graders: {author_is_grader}"
+            f"Detected issue author id {author_id},"
+            f" member of graders: {author_is_grader}"
         )
 
         def title_change():
@@ -1637,7 +1649,8 @@ class GroupProject:
                     events.GroupProjectGradingMergeRequestEvent()
                 ),
                 lambda: self.lab.refresh_group(
-                    self, refresh_grading_merge_request=True
+                    self,
+                    refresh_grading_merge_request=True,
                 ),
             )
 
@@ -1676,8 +1689,9 @@ class GroupProject:
                 raise ValueError(f"Unknown event {event_type}")
 
             self.logger.warning(
-                f"Received unknown webhook event of type {event_type} "
-                f'for project {hook_event["project"]["path_with_namespace"]} with name {project_name}.'
+                f"Received unknown webhook event of type {event_type}"
+                f" for project {hook_event["project"]["path_with_namespace"]}"
+                f" with name {project_name}."
             )
             self.logger.debug(f"Webhook event:\n{hook_event}")
 

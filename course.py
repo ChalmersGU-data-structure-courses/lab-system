@@ -85,7 +85,12 @@ class Course:
     """
 
     def __init__(
-        self, config, dir=None, *, timeout=30, logger=logging.getLogger(__name__)
+        self,
+        config,
+        dir=None,
+        *,
+        timeout=30,
+        logger=logging.getLogger(__name__),
     ):
         """
         Arguments:
@@ -111,21 +116,16 @@ class Course:
 
         import lab
 
-        self.labs = dict(
-            (
-                lab_id,
-                lab.Lab(
-                    self,
-                    lab_id,
-                    dir=(
-                        None
-                        if self.dir is None
-                        else self.dir / self.config.lab.full_id.print(lab_id)
-                    ),
-                ),
-            )
+        def lab_dir(lab_id):
+            if self.dir is None:
+                return None
+
+            return self.dir / self.config.lab.full_id.print(lab_id)
+
+        self.labs = {
+            lab_id: lab.Lab(self, lab_id, dir=lab_dir(lab_id))
             for lab_id in self.config.labs
-        )
+        }
 
     def format_datetime(self, x):
         return x.astimezone(self.config.time.zone).strftime(self.config.time.format)
@@ -142,12 +142,15 @@ class Course:
     @functools.cached_property
     def canvas(self):
         return canvas.Canvas(
-            self.config.canvas.url, auth_token=self.config.canvas_auth_token
+            self.config.canvas.url,
+            auth_token=self.config.canvas_auth_token,
         )
 
     def canvas_course_get(self, use_cache):
         return canvas.Course(
-            self.canvas, self.config.canvas.course_id, use_cache=use_cache
+            self.canvas,
+            self.config.canvas.course_id,
+            use_cache=use_cache,
         )
 
     @functools.cached_property
@@ -170,7 +173,8 @@ class Course:
             return canvas.user_first_and_last_name(canvas_user)
 
         self.student_name_coding = gdpr_coding.NameCoding(
-            self.dir / "gdpr_coding.json", first_and_last_name
+            self.dir / "gdpr_coding.json",
+            first_and_last_name,
         )
         self.student_name_coding_update()
         return self.student_name_coding
@@ -178,10 +182,8 @@ class Course:
     def student_name_coding_update(self):
         self.logger.debug("Updating student name codings")
         self.student_name_coding.add_ids(
-            map(
-                self.rectify_gitlab_username_to_cid,
-                self.gitlab_username_by_canvas_user_id.values(),
-            )
+            self.rectify_gitlab_username_to_cid(x)
+            for x in self.gitlab_username_by_canvas_user_id.values()
         )
 
     def canvas_user_login_id(self, user):
@@ -237,7 +239,8 @@ class Course:
                     general.print_json(user._dict)
                     general.print_json(
                         self.canvas.get(
-                            ["users", user.id, "profile"], use_cache=True
+                            ["users", user.id, "profile"],
+                            use_cache=True,
                         )._dict
                     )
 
@@ -247,7 +250,9 @@ class Course:
 
     @instance_cache
     def cid_from_ldap_name(self, name):
-        """Raises a LookupError if the given name cannot be uniquely resolved to a CID."""
+        """
+        Raises a LookupError if the given name cannot be uniquely resolved to a CID.
+        """
         results = ldap_tools.search_people_by_name(self.ldap_client, name)
         try:
             (result,) = results
@@ -459,7 +464,8 @@ class Course:
 
             for canvas_user in canvas_users():
                 gitlab_username = self.config.gitlab_username_from_canvas_user_id(
-                    self, canvas_user.id
+                    self,
+                    canvas_user.id,
                 )
                 if not gitlab_username is None:
                     yield (canvas_user.id, gitlab_username)
@@ -475,7 +481,10 @@ class Course:
             return gitlab_username
 
         canvas_user = self.canvas_course.user_details[canvas_user_id]
-        msg = f"No GitLab username constructable for Canvas user {canvas_user_id}: {canvas_user.name}, {canvas_user.login_id}, {canvas_user.sis_user_id}"
+        msg = (
+            f"No GitLab username constructable for Canvas user {canvas_user_id}:"
+            f" {canvas_user.name}, {canvas_user.login_id}, {canvas_user.sis_user_id}"
+        )
         if strict:
             raise LookupError(msg)
 
@@ -535,8 +544,8 @@ class Course:
                 history = json.load(file)
         except FileNotFoundError:
             self.logger.warning(
-                f"Invitation history file {shlex.quote(str(path))} not found; "
-                "a new one while be created."
+                f"Invitation history file {shlex.quote(str(path))} not found;"
+                " a new one will be created."
             )
             history = dict()
         try:
@@ -958,7 +967,8 @@ class Course:
         r = collections.defaultdict(dict)
         for lab in self.labs.values():
             for gitlab_username, score in lab.grading_report(
-                scoring=scoring, strict=strict
+                scoring=scoring,
+                strict=strict,
             ).items():
                 r[gitlab_username][lab.id] = score
         return r
@@ -1056,7 +1066,10 @@ class Course:
                 spreadsheet_id,
                 [
                     google_tools.sheets.request_update_cell_user_entered_value(
-                        google_tools.sheets.cell_value(report), sheet_id, 0, 0
+                        google_tools.sheets.cell_value(report),
+                        sheet_id,
+                        0,
+                        0,
                     )
                 ],
             )
@@ -1120,7 +1133,8 @@ class Course:
                 canvas_user = self.canvas_course.student_details[canvas_user_id]
             except KeyError:
                 self.logger.warning(
-                    f"* Submission user {canvas_user_id} not a Canvas user (probably it is the test student)."
+                    f"* Submission user {canvas_user_id} not a Canvas user"
+                    " (probably it is the test student)."
                 )
                 continue
 
@@ -1136,12 +1150,14 @@ class Course:
                     grade = grades[lab.id].pop(gitlab_username)
                 except KeyError:
                     self.logger.warning(
-                        f"* Canvas user {canvas_user.name} not in {lab.name} on Chalmers GitLab."
+                        f"* Canvas user {canvas_user.name} not"
+                        f" in {lab.name} on Chalmers GitLab."
                     )
                     return None
                 if grade is None:
                     self.logger.warning(
-                        f"* {gitlab_username} ({canvas_user.name}): no graded submission in {lab.name}."
+                        f"* {gitlab_username} ({canvas_user.name}):"
+                        f" no graded submission in {lab.name}."
                     )
                 return grade
 

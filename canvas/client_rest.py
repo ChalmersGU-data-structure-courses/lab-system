@@ -333,14 +333,14 @@ class Canvas:
             cmd = ["curl", r.upload_url]
             for upload_param, value in upload_params.items():
                 assert re.fullmatch("\\w+", upload_param)
-                cmd += [
-                    "-F",
+                value = (
                     upload_param
                     + "="
                     + doublequote(
                         value if isinstance(value, str) else json.dumps(value)
-                    ),
-                ]
+                    )
+                )
+                cmd += ["-F", value]
             cmd += ["-F", "file=@" + doublequote(str(file))]
             process = subprocess.run(
                 cmd, check=True, stdout=subprocess.PIPE, encoding="utf-8"
@@ -682,8 +682,10 @@ class GroupSet:
         )
         self.group_set = from_singleton(
             filter(
-                lambda x: (isinstance(group_set, str) and x.name == group_set)
-                or x.id == group_set,
+                lambda x: (
+                    (isinstance(group_set, str) and x.name == group_set)
+                    or x.id == group_set
+                ),
                 group_sets,
             )
         )
@@ -695,13 +697,15 @@ class GroupSet:
         self.user_to_group = dict()
 
         for group in self.canvas.get_list(
-            ["group_categories", self.group_set.id, "groups"], use_cache=use_cache
+            ["group_categories", self.group_set.id, "groups"],
+            use_cache=use_cache,
         ):
             self.details[group.id] = group
             self.name_to_id[group.name] = group.id
             users = set()
             for user in self.canvas.get_list(
-                ["groups", group.id, "users"], use_cache=use_cache
+                ["groups", group.id, "users"],
+                use_cache=use_cache,
             ):
                 users.add(user.id)
                 self.user_to_group[user.id] = group.id
@@ -832,8 +836,10 @@ class Assignment:
     @staticmethod
     def filter_submissions(raw_submissions):
         return filter(
-            lambda raw_submission: not raw_submission.missing
-            and raw_submission.workflow_state != "unsubmitted",
+            lambda raw_submission: (
+                not raw_submission.missing
+                and raw_submission.workflow_state != "unsubmitted"
+            ),
             raw_submissions,
         )
 

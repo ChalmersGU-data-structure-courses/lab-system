@@ -102,14 +102,13 @@ def delete_protected_branches(project):
 def protect_branch(gl, project, branch, delete_prev=False):
     if delete_prev:
         project.protectedbranches.delete(branch)
-    project.protectedbranches.create(
-        {
-            "name": branch,
-            "merge_access_level": gitlab.const.MAINTAINER_ACCESS,
-            "push_access_level": gitlab.const.MAINTAINER_ACCESS,
-            "allow_force_push": True,
-        }
-    )
+    data = {
+        "name": branch,
+        "merge_access_level": gitlab.const.MAINTAINER_ACCESS,
+        "push_access_level": gitlab.const.MAINTAINER_ACCESS,
+        "allow_force_push": True,
+    }
+    project.protectedbranches.create(data)
 
 
 def members_from_access(entity, levels):
@@ -145,16 +144,14 @@ class CachedGroup:
             self.logger.info(f"Creating group {self.path}")
         if group is None:
             group = self.gl.groups.get(str(self.path.parent))
-        self.get = self.gl.groups.create(
-            {
-                # The GitLab API should permit to give path instead of id.
-                #'parent_path': str(self.path.parent),
-                "parent_id": group.id,
-                "path": self.path.name,
-                "name": self.name,
-            }
-            | kwargs
-        )
+        group_data = {
+            # The GitLab API should permit to give path instead of id.
+            # 'parent_path': str(self.path.parent),
+            "parent_id": group.id,
+            "path": self.path.name,
+            "name": self.name,
+        } | kwargs
+        self.get = self.gl.groups.create(group_data)
         # Creating a group seems to make you a member.
         # This does not seem to be documented in the GitLab API.
         # Working around this issue.
@@ -227,16 +224,14 @@ class CachedProject:
             self.logger.info(f"Creating project {self.path}")
         if group is None:
             group = self.gl.groups.get(str(self.path.parent))
-        self.get = self.gl.projects.create(
-            {
-                # The GitLab API should permit to give path instead of id.
-                #'namespace_path': str(self.path.parent),
-                "namespace_id": group.id,
-                "path": self.path.name,
-                "name": self.name,
-            }
-            | kwargs
-        )
+        project_data = {
+            # The GitLab API should permit to give path instead of id.
+            # 'namespace_path': str(self.path.parent),
+            "namespace_id": group.id,
+            "path": self.path.name,
+            "name": self.name,
+        } | kwargs
+        self.get = self.gl.projects.create(project_data)
         return self.get
 
     def delete(self):
@@ -589,7 +584,8 @@ def parse_reviewer_intervals(notes):
 
             if not removed == reviewer:
                 raise ValueError(
-                    f"Previous reviewer {added} does not match removed reviewer {removed}"
+                    f"Previous reviewer {added} does not match"
+                    f" removed reviewer {removed}"
                 )
 
             # Can this happen?
@@ -701,7 +697,8 @@ def hooks_delete_all(project, hooks=None, except_for=None):
     else:
         netloc_keep = print_parse.netloc_normalize(except_for)
         logger.debug(
-            "Deleting all project hooks but those with net location {print_parse.netloc.print(netloc_keep)}"
+            "Deleting all project hooks but those with"
+            f" net location {print_parse.netloc.print(netloc_keep)}"
         )
 
     if hooks is None:

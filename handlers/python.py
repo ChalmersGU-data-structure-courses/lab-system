@@ -11,7 +11,9 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
             self.testing = None
         else:
             self.testing = handlers.general.SubmissionTesting(
-                tester_factory, tester_is_robograder=True, **tester_args
+                tester_factory,
+                tester_is_robograder=True,
+                **tester_args,
             )
         self.show_solution = show_solution
 

@@ -495,7 +495,11 @@ def merge_blobs(
         file_other.write_bytes(other.data_stream.read())
 
         repo.git.merge_file(
-            *merge_file_options, "--", file_current, file_base, file_other
+            *merge_file_options,
+            "--",
+            file_current,
+            file_base,
+            file_other,
         )
         result = create_blob_from_file(repo, file_current)
         result.path = current.path

@@ -81,7 +81,8 @@ class StudentConnectorIndividual(StudentConnector):
         def f():
             for canvas_user in self.course.canvas_course.students:
                 gitlab_username = self.course.gitlab_username_from_canvas_user_id(
-                    canvas_user.id, strict=False
+                    canvas_user.id,
+                    strict=False,
                 )
                 if not gitlab_username is None:
                     yield self.course.rectify_gitlab_username_to_cid(gitlab_username)
@@ -132,7 +133,8 @@ class StudentConnectorGroupSet(StudentConnector):
             ]:
                 gitlab_username = (
                     self.group_set.course.gitlab_username_from_canvas_user_id(
-                        canvas_user_id, strict=False
+                        canvas_user_id,
+                        strict=False,
                     )
                 )
                 if not gitlab_username is None:
@@ -286,7 +288,8 @@ class Lab:
             else:
                 self.grading_via_merge_request_setup_data = {
                     language: grading_via_merge_request.SetupData(
-                        self, language=language
+                        self,
+                        language=language,
                     )
                     for language in self.config.branch_problem.keys()
                 }
@@ -1024,7 +1027,8 @@ class Lab:
         def f():
             for group in self.groups_known():
                 if group.parse_response_issues(
-                    on_duplicate=on_duplicate, delete_duplicates=delete_duplicates
+                    on_duplicate=on_duplicate,
+                    delete_duplicates=delete_duplicates,
                 ):
                     yield group.id
 
@@ -1149,7 +1153,8 @@ class Lab:
 
     def head_problem(self, language=None):
         return git_tools.normalize_branch(
-            self.repo, self.branch_problem(language=language)
+            self.repo,
+            self.branch_problem(language=language),
         )
 
     @property
@@ -1183,7 +1188,9 @@ class Lab:
                 yield (src, bin)
 
     def groups_with_live_submissions(self, deadline=None):
-        """A generator for groups with live submissions for the given optional deadline."""
+        """
+        A generator for groups with live submissions for the given optional deadline.
+        """
         for group in self.groups_known():
             if group.submission_current(deadline=deadline) is not None:
                 yield group.id
@@ -1215,8 +1222,8 @@ class Lab:
                 missing_ok_b=True,
             ):
                 self.logger.debug(
-                    "Live submissions table has not changed, "
-                    "skipping upload to Canvas."
+                    "Live submissions table has not changed,"
+                    " skipping upload to Canvas."
                 )
                 self.file_live_submissions_table_staging.unlink()
             else:
@@ -1297,12 +1304,10 @@ class Lab:
         if deadline is None:
             deadline = self.deadline
 
-        return any(
-            [
-                list(group.submissions_relevant(deadline)),
-                self.course.config.grading_sheet.include_groups_with_no_submission
-                and group.non_empty(),
-            ]
+        return (
+            list(group.submissions_relevant(deadline))
+            or self.course.config.grading_sheet.include_groups_with_no_submission
+            or group.non_empty()
         )
 
     @functools.cached_property
@@ -1342,15 +1347,8 @@ class Lab:
         )
 
         # Ensure grading sheet has sufficient query group columns.
-        self.grading_sheet.ensure_num_queries(
-            max(
-                (
-                    general.ilen(group.submissions_relevant(deadline))
-                    for group in groups
-                ),
-                default=0,
-            )
-        )
+        it = (general.ilen(group.submissions_relevant(deadline)) for group in groups)
+        self.grading_sheet.ensure_num_queries(max(it, default=0))
 
         request_buffer = self.course.grading_spreadsheet.create_request_buffer()
         for group in groups:
@@ -1375,7 +1373,8 @@ class Lab:
                         submission=google_tools.sheets.cell_link_with_fields(
                             submission.request_name,
                             gitlab_.tools.url_tag_name(
-                                group.project.get, submission.request_name
+                                group.project.get,
+                                submission.request_name,
                             ),
                         ),
                         grader=grader,
@@ -1533,11 +1532,8 @@ class Lab:
         Use this function to more quickly debug issues with contents of the collection repository.
         """
         for path, tag in git_tools.flatten_references_hierarchy(self.tags).items():
-            if any(
-                [
-                    path.name == "handled",
-                    len(path.parents) > 0 and path.parent.name == "after",
-                ]
+            if path.name == "handled" or (
+                len(path.parents) > 0 and path.parent.name == "after"
             ):
                 continue
 
@@ -1627,7 +1623,8 @@ class Lab:
                 canvas_user = self.course.canvas_course.student_details[canvas_user_id]
             except KeyError:
                 self.logger.warning(
-                    f"* Submission user {canvas_user_id} not a Canvas user (probably it is the test student)."
+                    f"* Submission user {canvas_user_id} not a Canvas user"
+                    " (probably it is the test student)."
                 )
                 continue
 
@@ -1776,19 +1773,22 @@ class Lab:
             for email in invitations - invitations_desired:
                 if email:
                     self.logger.warning(
-                        f"deleting invitation of {user_str_from_email(email)} to {entity_name}"
+                        f"deleting invitation of {user_str_from_email(email)}"
+                        f" to {entity_name}"
                     )
                     with gitlab_.tools.exist_ok():
                         gitlab_.tools.invitation_delete(self.gl, entity, email)
                 else:
                     self.logger.warning(
-                        f"extra invitation of {user_str_from_email(email)} to {entity_name}"
+                        f"extra invitation of {user_str_from_email(email)}"
+                        f" to {entity_name}"
                     )
 
             for gitlab_username in members - members_desired:
                 if remove:
                     self.logger.warning(
-                        f"removing {user_str_from_gitlab_username(gitlab_username)} from {entity_name}"
+                        f"removing {user_str_from_gitlab_username(gitlab_username)}"
+                        f" from {entity_name}"
                     )
                     with gitlab_.tools.exist_ok():
                         entity.members.delete(
@@ -1798,7 +1798,8 @@ class Lab:
                         )
                 else:
                     self.logger.warning(
-                        f"extra member {user_str_from_gitlab_username(gitlab_username)} of {entity_name}"
+                        f"extra member {user_str_from_gitlab_username(gitlab_username)}"
+                        f" of {entity_name}"
                     )
 
             for email in invitations_desired - invitations:
@@ -1809,33 +1810,39 @@ class Lab:
                     try:
                         with gitlab_.tools.exist_ok():
                             gitlab_.tools.invitation_create(
-                                self.gl, entity, email, gitlab.const.DEVELOPER_ACCESS
+                                self.gl,
+                                entity,
+                                email,
+                                gitlab.const.DEVELOPER_ACCESS,
                             )
                     except gitlab.exceptions.GitlabCreateError as e:
                         self.logger.error(str(e))
                 else:
                     self.logger.warning(
-                        f"missing invitation of {user_str_from_email(email)} to {entity_name}"
+                        f"missing invitation of {user_str_from_email(email)}"
+                        f" to {entity_name}"
                     )
 
             for gitlab_username in members_desired - members:
                 if add:
                     self.logger.log(
                         25,
-                        f"adding {user_str_from_gitlab_username(gitlab_username)} to {entity_name}",
+                        f"adding {user_str_from_gitlab_username(gitlab_username)}"
+                        f" to {entity_name}",
                     )
                     with gitlab_.tools.exist_ok():
-                        entity.members.create(
-                            {
-                                "user_id": self.course.gitlab_users_cache.id_from_username[
-                                    gitlab_username
-                                ],
-                                "access_level": gitlab.const.DEVELOPER_ACCESS,
-                            }
-                        )
+                        user_id = self.course.gitlab_users_cache.id_from_username[
+                            gitlab_username
+                        ]
+                        u = {
+                            "user_id": user_id,
+                            "access_level": gitlab.const.DEVELOPER_ACCESS,
+                        }
+                        entity.members.create(u)
                 else:
                     self.logger.warning(
-                        f"missing member {user_str_from_gitlab_username(gitlab_username)} of {entity_name}"
+                        f"missing member {user_str_from_gitlab_username(gitlab_username)}"
+                        f" of {entity_name}"
                     )
 
     def sync_projects_and_students_from_canvas(self, synced_group_sets=set()):

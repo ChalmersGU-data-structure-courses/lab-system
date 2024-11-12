@@ -181,7 +181,10 @@ def run(
                         canvas_sync_config.sync_interval,
                         sync_from_canvas,
                         args=[course],
-                        name=f"course-sync-from-canvas-timer<{course.config.path_course}>",
+                        name=(
+                            "course-sync-from-canvas-timer"
+                            f"<{course.config.path_course}>"
+                        ),
                         repeat=True,
                     )
                     thread_managers.append(
