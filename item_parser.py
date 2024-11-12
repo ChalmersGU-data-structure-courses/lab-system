@@ -119,7 +119,7 @@ def parse_items(config, parser, parser_name, parse_results, items):
             parsed_items[key] = item
             parse_results[key] = value
         else:
-            ValueError(f"{parsed_items} is not a list or dictionary")
+            raise ValueError(f"{parsed_items} is not a list or dictionary")
 
 
 def log_unrecognized_items(config, items):

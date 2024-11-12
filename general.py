@@ -68,7 +68,7 @@ class UniquenessErrorNone(UniquenessError):
 
 class UniquenessErrorMultiple(UniquenessError):
     def __init__(self, first, second, rest):
-        super().__init__(itertools.chain((first, second), rest)).__init__
+        super().__init__(itertools.chain((first, second), rest))
         self.first = first
         self.second = second
         self.rest = rest
