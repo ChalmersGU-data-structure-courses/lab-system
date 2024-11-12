@@ -55,7 +55,10 @@ class OverlayTypeFallback(OverlayType):
                 else:
                     (dir, resolve_symlinks) = dir
                 shutil.copytree(
-                    dir, target, symlinks=not resolve_symlinks, dirs_exist_ok=True
+                    dir,
+                    target,
+                    symlinks=not resolve_symlinks,
+                    dirs_exist_ok=True,
                 )
             yield target
 
@@ -76,7 +79,8 @@ class OverlayTypeFuseFS(OverlayType):
         # If on Linux, warn if fuse-overlayfs not installed.
         if platform.system() == "Linux":
             logger.warning(
-                "fuse-overlayfs not installed, falling back to less efficient overlay types."
+                "fuse-overlayfs not installed,"
+                " falling back to less efficient overlay types."
             )
 
         return False

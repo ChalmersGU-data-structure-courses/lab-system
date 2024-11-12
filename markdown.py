@@ -25,15 +25,13 @@ def find_delimiter(s, char, least=0):
     This can then be used as a fencing delimiter.
     The optional argument 'least' specifies the least number of repetitions to use.
     """
-    return char * max(
-        [
-            least,
-            *(
-                len(match.group(0)) + 1
-                for match in re.finditer("{}+".format(re.escape(char)), s)
-            ),
-        ]
-    )
+
+    def values():
+        yield least
+        for match in re.finditer("{}+".format(re.escape(char)), s):
+            yield len(match.group(0)) + 1
+
+    return char * max(values())
 
 
 def heading(s, level=1):

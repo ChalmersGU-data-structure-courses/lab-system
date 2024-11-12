@@ -6,12 +6,16 @@ class Documents:
 
     def __init__(self, token):
         self.docs = googleapiclient.discovery.build(
-            "docs", "v1", credentials=token, cache_discovery=False
+            "docs",
+            "v1",
+            credentials=token,
+            cache_discovery=False,
         )
 
     def batch_update(self, id, requests):
         self.docs.documents().batchUpdate(
-            documentId=id, body={"requests": requests}
+            documentId=id,
+            body={"requests": requests},
         ).execute()
 
     @staticmethod

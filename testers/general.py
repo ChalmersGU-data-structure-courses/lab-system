@@ -191,9 +191,10 @@ class LabTester:
         """
         args = list(args)
 
-        with (dir_out / file_out).open("w") as out, (dir_out / file_err).open(
-            "w"
-        ) as err:
+        with (
+            (dir_out / file_out).open("w") as out,
+            (dir_out / file_err).open("w") as err,
+        ):
             # proot does not use PTRACE_O_EXITKILL on traced processes.
             # So killing proot does not kill the processes it has spawned.
             # To compensate for this, we use the following hack (TODO: improve).
@@ -258,7 +259,12 @@ class LabTester:
 
     @abc.abstractmethod
     def run_test(
-        self, dir_out: Path, dir_src: Path, name: str, test, dir_bin: Path = None
+        self,
+        dir_out: Path,
+        dir_src: Path,
+        name: str,
+        test,
+        dir_bin: Path = None,
     ) -> None:
         """
         Arguments:

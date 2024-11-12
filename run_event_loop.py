@@ -9,9 +9,7 @@ import os
 
 p = argparse.ArgumentParser(
     add_help=False,
-    description="""
-Manage labs for specified courses in an event loop.
-""",
+    description="Manage labs for specified courses in an event loop.",
     epilog="""
 This Python script supports bash completion.
 For this, python-argparse needs to be installed and configured.

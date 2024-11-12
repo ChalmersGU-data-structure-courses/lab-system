@@ -715,11 +715,9 @@ class Multiplexer:
             # HACK.
             # Attempt to detect if failure was due to an SSH connection problem.
             for line in stderr_lines:
-                if any(
-                    [
-                        line.startswith("ssh"),
-                        line == "fatal: Could not read from remote repository.",
-                    ]
+                if (
+                    line.startswith("ssh")
+                    or line == "fatal: Could not read from remote repository.",
                 ):
                     logger.warning(
                         general.join_lines(

@@ -81,7 +81,11 @@ class SimpleCache:
             return temp_file
 
         return self.with_cache_bare(
-            path, file_reader, file_writer, file_constructor, use_cache
+            path,
+            file_reader,
+            file_writer,
+            file_constructor,
+            use_cache,
         )
 
     def with_cache_open(self, path, reader, writer, constructor, use_cache=True):
@@ -95,7 +99,11 @@ class SimpleCache:
             return x
 
         return self.with_cache_bare(
-            path, bare_reader, bare_writer, constructor, use_cache
+            path,
+            bare_reader,
+            bare_writer,
+            constructor,
+            use_cache,
         )
 
     def with_cache_json(self, path, constructor, use_cache=True):

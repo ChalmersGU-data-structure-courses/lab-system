@@ -85,7 +85,10 @@ class LabTester(testers.general.LabTester):
             cmd = list(cmd_create())
             general.log_command(logger, cmd)
             container_id = subprocess.run(
-                cmd, check=True, text=True, stdout=subprocess.PIPE
+                cmd,
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
             ).stdout.strip()
 
             def cmd_remove():
@@ -121,7 +124,10 @@ class LabTester(testers.general.LabTester):
         cmd = list(cmd_create())
         general.log_command(logger, cmd)
         container_id = subprocess.run(
-            cmd, check=True, text=True, stdout=subprocess.PIPE
+            cmd,
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
         ).stdout.strip()
         logger.debug(f"Container id: {container_id}")
 

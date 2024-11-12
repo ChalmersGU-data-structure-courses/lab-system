@@ -77,7 +77,10 @@ def _write_link(dir_fd, link_data: Optional[LinkData]) -> None:
         path_tools.symlink_force(link_data.hash, tmp, dir_fd=dir_fd)
         if link_data.update_date:
             path_tools.set_modification_time(
-                tmp, link_data.update_date, dir_fd=dir_fd, follow_symlinks=False
+                tmp,
+                link_data.update_date,
+                dir_fd=dir_fd,
+                follow_symlinks=False,
             )
         os.replace(tmp, _FILENAME_LINK, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
 

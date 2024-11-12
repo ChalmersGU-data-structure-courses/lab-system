@@ -52,7 +52,8 @@ class UsersCache(hashed_file_cache.HashedFileCacheSerializer):
         super().__init__(
             path=cache_dir,
             serializer=print_parse.compose(
-                print_parse.json_coding_nice, print_parse.string_coding
+                print_parse.json_coding_nice,
+                print_parse.string_coding,
             ),
         )
         self.client = gitlab_graphql_client

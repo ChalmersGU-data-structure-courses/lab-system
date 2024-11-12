@@ -26,7 +26,13 @@ class EscapingFormatter(string.Formatter):
         return result
 
     def _vformat(
-        self, format_string, args, kwargs, used_args, recursion_depth, auto_arg_index=0
+        self,
+        format_string,
+        args,
+        kwargs,
+        used_args,
+        recursion_depth,
+        auto_arg_index=0,
     ):
         """
         The implementation is copied from CPython.

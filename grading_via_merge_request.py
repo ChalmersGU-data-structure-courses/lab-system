@@ -111,12 +111,11 @@ class GradingViaMergeRequest:
         """
         for label_spec in self.lab.config.outcome_labels.values():
             with gitlab_.tools.exist_ok():
-                self.project.labels.create(
-                    {
-                        "name": label_spec.name,
-                        "color": label_spec.color,
-                    }
-                )
+                label_data = {
+                    "name": label_spec.name,
+                    "color": label_spec.color,
+                }
+                self.project.labels.create(label_data)
 
         self.project.branches.create(
             {
@@ -127,14 +126,13 @@ class GradingViaMergeRequest:
         gitlab_.tools.protect_branch(
             self.lab.gl, self.project, self.setup_data.source_branch
         )
-        self.merge_request = self.project.mergerequests.create(
-            {
-                "source_branch": self.setup_data.source_branch,
-                "target_branch": self.setup_data.target_branch,
-                "title": self.setup_data.title,
-                #'description': '',
-            }
-        )
+
+        merge_request_data = {
+            "source_branch": self.setup_data.source_branch,
+            "target_branch": self.setup_data.target_branch,
+            "title": self.setup_data.title,
+        }
+        self.merge_request = self.project.mergerequests.create(merge_request_data)
 
     @functools.cached_property
     def merge_request(self):
@@ -153,7 +151,8 @@ class GradingViaMergeRequest:
             merge_request_maybe = general.from_singleton_maybe(merge_requests)
         except ValueError:
             raise ValueError(
-                f"More than one lab system merge request detected in {self.group.path_name}"
+                "More than one lab system merge request"
+                f" detected in {self.group.path_name}"
             )
 
         return merge_request_maybe
@@ -269,7 +268,8 @@ class GradingViaMergeRequest:
                 self.non_grader_change = True
                 self.logger.warn(
                     self.with_merge_request_url(
-                        f"Grading label changed by non-grader {user_id} in {self.group.name} in {self.lab.name}:",
+                        f"Grading label changed by non-grader {user_id} in"
+                        f" {self.group.name} in {self.lab.name}:",
                     )
                 )
                 continue
@@ -323,13 +323,17 @@ class GradingViaMergeRequest:
                 if action == status:
                     self.logger.warn(
                         self.with_merge_request_url(
-                            f"Duplicate action for label {self.setup_data.label_pp.print(outcome)} at {date}:",
+                            "Duplicate action for label"
+                            f" {self.setup_data.label_pp.print(outcome)} at {date}:",
                         )
                     )
             outcome_status[outcome] = (action, (date, info))
 
     def consolidate_outcome(
-        self, outcome_status, request_name, warn_if_no_outcome=True
+        self,
+        outcome_status,
+        request_name,
+        warn_if_no_outcome=True,
     ):
         outcomes = set(
             outcome for (outcome, (status, _)) in outcome_status.items() if status
@@ -453,7 +457,8 @@ class GradingViaMergeRequest:
         """
         if accumulative:
             request_name = self.next_submission_with_outcome.get(
-                request_name, request_name
+                request_name,
+                request_name,
             )
 
         try:
@@ -514,21 +519,21 @@ class GradingViaMergeRequest:
         return markdown.table(column_specs(), rows())
 
     def merge_request_description(self, for_real=True):
+        def lines(mod):
+            yield f"Your submission {mod} reviewed below."
+            if self.synced_submissions:
+                yield "Feel free to discuss, ask questions, and request clarifications!"
+                yield "**Labels** record your grading status, so do not change them."
+
         def blocks():
             if not for_real:
                 yield general.join_lines(
                     ["Your submission will be reviewed in this merge request."]
                 )
             else:
-                mod = "is" if self.has_outcome() else "will be"
-
-                def lines():
-                    yield f"Your submission {mod} reviewed below."
-                    if self.synced_submissions:
-                        yield "Feel free to discuss, ask questions, and request clarifications!"
-                        yield "**Labels** record your grading status, so do not change them."
-
-                yield general.join_lines(lines())
+                yield general.join_lines(
+                    lines("is" if self.has_outcome() else "will be")
+                )
 
                 if self.non_grader_change:
                     yield self.non_grader_change_message
@@ -578,16 +583,15 @@ class GradingViaMergeRequest:
             block_period = (
                 self.course.config.grading_via_merge_request.maximum_reserve_time
             )
-            if (
-                not block_period
-                or datetime.datetime.now(datetime.timezone.utc)
-                < start_date + block_period
+            if not block_period or (
+                datetime.datetime.now(datetime.timezone.utc) < start_date + block_period
             ):
                 self.logger.warn(
                     self.with_merge_request_url(
-                        f"New submission(s) made in {self.group.name} in {self.lab.name}"
-                        f" while {self.reviewer_current[0]} is reviewer "
-                        f"(blocking push of {submissions[0].request_name} to submission branch):",
+                        f"New submission(s) made in {self.group.name}"
+                        f"in {self.lab.name} while {self.reviewer_current[0]}"
+                        f" is reviewer (blocking push of {submissions[0].request_name}"
+                        " to submission branch):",
                     )
                 )
             return []

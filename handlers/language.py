@@ -233,7 +233,8 @@ class RobogradingHandler(handlers.general.RobogradingHandler):
             sub_handler = self.sub_handlers[language]
         except KeyError:
             self.post_response(
-                request_and_responses, format_errors(True, language, errors)
+                request_and_responses,
+                format_errors(True, language, errors),
             )
             return
 
@@ -244,7 +245,10 @@ class RobogradingHandler(handlers.general.RobogradingHandler):
 
             class Wrapper:
                 def post_response_issue(
-                    self, response_key, title_data=dict(), description=str()
+                    self,
+                    response_key,
+                    title_data=dict(),
+                    description=str(),
                 ):
                     return request_and_responses.post_response_issue(
                         response_key,

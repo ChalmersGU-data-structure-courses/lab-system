@@ -74,7 +74,8 @@ def get_token_for_scopes(
         return token
 
     token = google_auth_oauthlib.flow.InstalledAppFlow.from_client_config(
-        creds, scopes=scopes
+        creds,
+        scopes=scopes,
     ).run_local_server(port=0)
     if cached_token:
         with cached_token.open("wb") as file:
@@ -129,7 +130,8 @@ def generate_from_template_document(
 
                 requests.append(
                     Documents.request_replace_image(
-                        key, share_url + urllib.parse.quote(name)
+                        key,
+                        share_url + urllib.parse.quote(name),
                     )
                 )
 

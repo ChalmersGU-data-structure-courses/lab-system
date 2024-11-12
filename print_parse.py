@@ -439,7 +439,10 @@ def _netloc_print(netloc):
 _safe_regex = "[\\w\\.\\-\\~]*"
 
 _netloc_regex_parser = regex_parser(
-    f"(?:(?P<user>{_safe_regex})(?::(?P<password>{_safe_regex}))?@)?(?P<host>{_safe_regex})(?::(?P<port>\\d+))?",
+    (
+        f"(?:(?P<user>{_safe_regex})(?::(?P<password>{_safe_regex}))?@)?"
+        f"(?P<host>{_safe_regex})(?::(?P<port>\\d+))?"
+    ),
     keyed=True,
     flags=re.ASCII,
 )
