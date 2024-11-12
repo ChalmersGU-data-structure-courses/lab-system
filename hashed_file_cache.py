@@ -397,8 +397,10 @@ class HashedFileCacheSerializer(HashedFileCacheBase):
         self.data = self.serializer.parse(bytes)
 
 
-# Tests.
-if __name__ == "__main__":
+def main():
+    """
+    Tests.
+    """
     with path_tools.dir_fd("cash") as dir_fd:
         print("write: ", write_cache(dir_fd))
         print("read: ", read_cache(dir_fd, read_update_date=True))
@@ -423,3 +425,7 @@ if __name__ == "__main__":
         print("read: ", read_cache(dir_fd, read_update_date=True))
         print("write: ", write_cache(dir_fd))
         print("read: ", read_cache(dir_fd, read_update_date=True))
+
+
+if __name__ == "__main__":
+    main()
