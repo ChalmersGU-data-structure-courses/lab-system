@@ -731,7 +731,7 @@ def flatten_hierarchy_prefix(u, key_combine, prefix):
         else:
             yield (key_combine(prefix), u)
 
-    return dict(f(u, []))
+    return dict(f(u, prefix))
 
 
 def flatten_hierarchy(u, key_combine=tuple):
