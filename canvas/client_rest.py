@@ -119,7 +119,7 @@ class Canvas:
         return response.json()
 
     # internal
-    def get_json(self, endpoint, params=dict()):
+    def get_json(self, endpoint, params={}):
         r = self.session.get(
             self.get_url(Canvas.with_api(endpoint)), params=params, timeout=self.timeout
         )
@@ -128,7 +128,7 @@ class Canvas:
         return result
 
     # internal
-    def get_list_json(self, endpoint, params=dict()):
+    def get_list_json(self, endpoint, params={}):
         p = params.copy()
         p["per_page"] = "100"
         r = self.session.get(
@@ -147,7 +147,7 @@ class Canvas:
 
     # internal
     def json_cacher(self, method):
-        def f(endpoint, params=dict(), use_cache=True):
+        def f(endpoint, params={}, use_cache=True):
             logger.log(
                 logging.INFO,
                 "accessing endpoint " + self.get_url(Canvas.with_api(endpoint)),
@@ -170,13 +170,13 @@ class Canvas:
     # Using GET to retrieve a JSON object.
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
     # The starting elements 'api' and 'v1' are omitted.
-    def get(self, endpoint, params=dict(), use_cache=True):
+    def get(self, endpoint, params={}, use_cache=True):
         return self.json_cacher(self.get_json)(endpoint, params, use_cache)
 
     # Using GET to retrieve a JSON list.
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
     # The starting elements 'api' and 'v1' are omitted.
-    def get_list(self, endpoint, params=dict(), use_cache=True):
+    def get_list(self, endpoint, params={}, use_cache=True):
         return self.json_cacher(self.get_list_json)(endpoint, params, use_cache)
 
     # internal
@@ -232,7 +232,7 @@ class Canvas:
     # Perform a PUT request to the designated endpoint.
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
     # The starting elements 'api' and 'v1' are omitted.
-    def put(self, endpoint, params=dict(), data=None, json=None):
+    def put(self, endpoint, params={}, data=None, json=None):
         logger.log(
             logging.INFO, "PUT with endpoint " + self.get_url(Canvas.with_api(endpoint))
         )
@@ -250,7 +250,7 @@ class Canvas:
     # Perform a POST request to the designated endpoint.
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
     # The starting elements 'api' and 'v1' are omitted.
-    def post(self, endpoint, data=None, json=None, params=dict()):
+    def post(self, endpoint, data=None, json=None, params={}):
         logger.log(
             logging.INFO,
             "POST with endpoint " + self.get_url(Canvas.with_api(endpoint)),
@@ -270,7 +270,7 @@ class Canvas:
     # Perform a DELETE request to the designated endpoint.
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
     # The starting elements 'api' and 'v1' are omitted.
-    def delete(self, endpoint, params=dict()):
+    def delete(self, endpoint, params={}):
         logger.log(
             logging.INFO,
             "DELETE with endpoint " + self.get_url(Canvas.with_api(endpoint)),
@@ -430,11 +430,11 @@ class Course:
 
         self.users = self.get_all_users(use_cache=use_cache)
 
-        self.user_details = dict()
-        self.user_name_to_id = dict()
-        self.user_sortable_name_to_id = dict()
-        self.user_integration_id_to_id = dict()
-        self.user_sis_id_to_id = dict()
+        self.user_details = {}
+        self.user_name_to_id = {}
+        self.user_sortable_name_to_id = {}
+        self.user_integration_id_to_id = {}
+        self.user_sis_id_to_id = {}
         for user in self.users:
             if Course.has_some_role(user, Course.roles_student + Course.roles_teacher):
                 self.user_details[user.id] = user
@@ -450,8 +450,8 @@ class Course:
         self.teacher_details = dict((user.id, user) for user in self.teachers)
 
     def _init_assignments(self, use_cache=True):
-        self.assignments_name_to_id = dict()
-        self.assignment_details = dict()
+        self.assignments_name_to_id = {}
+        self.assignment_details = {}
         for assignment in self.get_assignments(use_cache=use_cache):
             self.assignment_details[assignment.id] = assignment
             self.assignments_name_to_id[assignment.name] = assignment.id
@@ -485,7 +485,7 @@ class Course:
         return self.user_details[id].sortable_name.split(",")[-1].strip()
 
     def get_assignments(self, include=None, use_cache=True):
-        params = dict()
+        params = {}
         if include:
             params = {"include": include}
         return self.canvas.get_list(
@@ -645,7 +645,7 @@ class Course:
         if not isinstance(id, int):
             id = self.get_folder_by_path(id, use_cache=use_cache).id
 
-        params = dict()
+        params = {}
         if name is not None:
             params["name"] = name
         params["unlock_at"] = unlock_at.isoformat() if unlock_at is not None else "null"
@@ -690,11 +690,11 @@ class GroupSet:
             )
         )
 
-        self.details = dict()
-        self.name_to_id = dict()
+        self.details = {}
+        self.name_to_id = {}
 
-        self.group_users = dict()
-        self.user_to_group = dict()
+        self.group_users = {}
+        self.user_to_group = {}
 
         for group in self.canvas.get_list(
             ["group_categories", self.group_set.id, "groups"],
@@ -890,7 +890,7 @@ class Assignment:
             for user_grouped_submission in user_grouped_submissions
         )
 
-        result = dict()
+        result = {}
         for group in self.group_set.details:
             group_users = self.group_set.group_users[group]
             if not group_users:
@@ -1046,9 +1046,9 @@ class Assignment:
     # We do this because students sometimes only resubmit the updated files.
     @staticmethod
     def get_files(submissions, name_handler=None):
-        files = dict()
+        files = {}
         for submission in submissions:
-            submission_files = dict()
+            submission_files = {}
             for attachment in submission.attachments:
                 name = Assignment.get_file_name(attachment)
                 if name_handler:
@@ -1097,7 +1097,7 @@ class Assignment:
 
     @staticmethod
     def format_comments(comments):
-        lines = list()
+        lines = []
         for comment in comments:
             lines.append(comment.author.display_name)
             lines.append(comment.created_at)
@@ -1109,7 +1109,7 @@ class Assignment:
     # Returns a mapping from file ids to paths.
     # def create_submission_dir(self, dir, submission, files, write_ids = False, content_handlers = None):
     #     dir.mkdir(exist_ok = True) # useful if unpacking on top of template files
-    #     file_mapping = dict()
+    #     file_mapping = {}
     #     for filename, attachment in files.items():
     #         path = dir / filename
     #         self.canvas.place_file(path, attachment)
@@ -1137,7 +1137,7 @@ class Assignment:
         dir_files.mkdir(exist_ok=True)
         dir.mkdir(exist_ok=True)
 
-        file_mapping = dict()
+        file_mapping = {}
         for filename, attachment in files.items():
             source = dir_files / str(attachment.id)
             self.canvas.place_file(

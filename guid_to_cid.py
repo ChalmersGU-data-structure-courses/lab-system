@@ -13,7 +13,7 @@ class GUIDtoCID(path_tools.AttributeJSONCache):
     mapping: dict[str, str]
 
     def initialize(self):
-        self.mapping = dict()
+        self.mapping = {}
 
     def __init__(self, cache_dir, client):
         super().__init__(

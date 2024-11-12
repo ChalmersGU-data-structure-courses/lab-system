@@ -670,7 +670,7 @@ class LiveSubmissionsTable:
             column_name: column_type(self)
             for (column_name, column_type) in column_types.items()
         }
-        self.group_rows = dict()
+        self.group_rows = {}
         self.need_push = False
 
     def update_row(self, group_id):

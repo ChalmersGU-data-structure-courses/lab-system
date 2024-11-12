@@ -19,8 +19,8 @@ class RepeatTimer(threading.Timer):
 def Timer(
     interval,
     callback,
-    args=list(),
-    kwargs=dict(),
+    args=[],
+    kwargs={},
     name=None,
     repeat=False,
 ):

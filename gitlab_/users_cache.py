@@ -22,8 +22,8 @@ class UsersCache(hashed_file_cache.HashedFileCacheSerializer):
     last_known_id: Optional[int]
 
     def _supplement_initialize(self):
-        self.username_from_id = dict()
-        self.id_from_username = dict()
+        self.username_from_id = {}
+        self.id_from_username = {}
         self.last_known_id = None
 
     def _supplement_add_item(self, id, username):
@@ -44,7 +44,7 @@ class UsersCache(hashed_file_cache.HashedFileCacheSerializer):
         try:
             self.read()
         except self.CacheEmptyError:
-            self.data = list()
+            self.data = []
             self._supplement_initialize()
             self.update()
 

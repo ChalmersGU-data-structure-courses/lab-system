@@ -164,7 +164,7 @@ def without_adjacent_dups(eq, xs):
 
 
 def unique_by(f, xs):
-    rs = list()
+    rs = []
     for x in xs:
         if not any(f(x, r) for r in rs):
             rs.append(x)
@@ -204,7 +204,7 @@ def starfilter(f, xs):
 
 
 def sdict(xs, strict=True, format_value=None):
-    r = dict()
+    r = {}
     for k, v in xs:
         if strict and k in r:
             msg_value = (
@@ -297,7 +297,7 @@ def get_attr(name):
 
 
 def partition(f, xs):
-    us, vs = list(), list()
+    us, vs = [], []
     for x in xs:
         (us if f(x) else vs).append(x)
     return (us, vs)
@@ -596,7 +596,7 @@ def dict_union(us):
     The union of an iterable of dictionaries.
     Later keys take precedence.
     """
-    r = dict()
+    r = {}
     for u in us:
         r |= u
     return r
@@ -681,8 +681,8 @@ def split_dict(u, f):
     - v contains all keys that satisfy f.
     - w contains the remaining keys.
     """
-    v = dict()
-    w = dict()
+    v = {}
+    w = {}
     for key, value in u.items():
         (v if f(key) else w)[key] = value
     return (v, w)
@@ -701,11 +701,11 @@ def recursive_dict_values(u):
 
 
 def expand_hierarchy(v, key_split, initial_value=None):
-    r = dict() if initial_value is None else initial_value
+    r = {} if initial_value is None else initial_value
     for combined_key, value in v.items():
         last_key = None
         for part in key_split(combined_key):
-            x = r if last_key is None else x.setdefault(last_key, dict())  # noqa: F821
+            x = r if last_key is None else x.setdefault(last_key, {})  # noqa: F821
             last_key = part
         if last_key is None:
             r = value

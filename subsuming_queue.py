@@ -51,7 +51,7 @@ class SubsumingQueue:
     def __init__(self):
         self.mutex = threading.Lock()
         self.inhabited = threading.Condition(self.mutex)
-        self.queue = iter(list())
+        self.queue = iter([])
 
     def add(self, item):
         """
