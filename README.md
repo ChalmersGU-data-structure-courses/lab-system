@@ -436,7 +436,7 @@ lab.deploy()
 
 See the rest of this section for what running this method entails.
 If you need fine-tuning, you can always run each step by itself.
-If you mess up, you can freshen the plate using `lab.gitlab_group.delete()` and `l.repo_delete()`.
+If you mess up, you can freshen the plate using `lab.gitlab_group.delete()` and `lab.repo_delete()`.
 
 ---
 
