@@ -1061,7 +1061,7 @@ class Assignment:
                                 name, submission.id, prev_attachment.id, attachment.id
                             )
                         )
-                        raise Exception()
+                        raise RuntimeError()
                     submission_files[name] = attachment
             files.update(submission_files)
         return files
