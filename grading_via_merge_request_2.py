@@ -3,7 +3,6 @@ import functools
 import gitlab_.tools
 import print_parse
 
-
 sync_message = print_parse.regex_many(
     "Synchronized submission branch with [{}]({}).",
     [r"[^\]]*", r"[^\)]*"],

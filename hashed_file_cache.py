@@ -3,13 +3,12 @@ import contextlib
 import dataclasses
 import datetime
 import hashlib
-from typing import Callable, Optional
 import os
 from pathlib import Path
+from typing import Callable, Optional
 
 import general
 import path_tools
-
 
 _FILENAME_LOCK = "lock"
 _FILENAME_LOCK_UPDATE = "lock_update"

@@ -1,7 +1,6 @@
 import collections
 import logging
 
-
 logger = logging.getLogger(__name__)
 
 Config = collections.namedtuple(

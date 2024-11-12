@@ -5,13 +5,12 @@
 #   while [[ 1 ]]; do ./invite_students.py 2>>invite_students_log; sleep 300; done
 # That way, the log file won't contain repeating redundant entries.
 
-from prelude import *
-
 import importlib
 import logging
 
 from course import Course
-from lab import StudentConnectorIndividual, StudentConnectorGroupSet
+from lab import StudentConnectorGroupSet, StudentConnectorIndividual
+from prelude import *
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)s %(module)s: %(message)s",

@@ -11,7 +11,6 @@ import lab_interfaces
 import markdown
 import path_tools
 
-
 logger = logging.getLogger(__name__)
 
 # ## Checking and compiling submissions.

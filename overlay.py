@@ -2,15 +2,14 @@ import abc
 import contextlib
 import functools
 import logging
-from pathlib import Path
 import platform
 import shutil
 import subprocess
+from pathlib import Path
 from typing import Iterable, Union
 
 import general
 import path_tools
-
 
 logger = logging.getLogger(__name__)
 

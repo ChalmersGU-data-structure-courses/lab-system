@@ -1,40 +1,40 @@
-import atomicwrites
 import collections
 import contextlib
 import datetime
-import dateutil.parser
 import enum
 import functools
-import general
-import gitlab
 import json
-import ldap
 import logging
 import operator
-from pathlib import Path
 import random
 import shlex
 import threading
 import types
+from pathlib import Path
 from typing import Iterable
 
+import atomicwrites
+import dateutil.parser
+import gitlab
+import ldap
 import more_itertools
 
 import canvas.client_rest as canvas
 import events
 import gdpr_coding
+import general
 import gitlab_.graphql
 import gitlab_.tools
 import gitlab_.users_cache
 import grading_sheet
 import group_set
-from instance_cache import instance_cache
 import ip_tools
 import ldap_tools
 import print_parse
 import subsuming_queue
 import threading_tools
 import webhook_listener
+from instance_cache import instance_cache
 
 # ===============================================================================
 # Tools
@@ -1050,6 +1050,7 @@ class Course:
         Use change notifications on Google sheets to get notifications on failure.
         """
         import traceback
+
         import google_tools.sheets
 
         # Shortcut

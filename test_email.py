@@ -1,8 +1,10 @@
 from __future__ import print_function
-from googleapiclient.discovery import build
-from apiclient import errors
-from email.mime.text import MIMEText
+
 import base64
+from email.mime.text import MIMEText
+
+from apiclient import errors
+from googleapiclient.discovery import build
 
 import gitlab_config_personal as config
 import google_tools.general

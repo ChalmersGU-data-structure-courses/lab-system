@@ -1,21 +1,21 @@
-from collections import defaultdict, namedtuple
 import contextlib
 import dataclasses
-from datetime import datetime, timedelta, timezone
 import decimal
 import fcntl
 import functools
 import itertools
 import json
 import logging
-import re
-import time
-from types import SimpleNamespace
 import os
+import re
 import shlex
 import string
 import subprocess
 import sys
+import time
+from collections import defaultdict, namedtuple
+from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 
 import more_itertools
 import requests

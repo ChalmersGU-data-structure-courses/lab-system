@@ -2,13 +2,12 @@
 # PYTHON_ARGCOMPLETE_OK
 
 import argparse
-from pathlib import Path
 import sys
+from pathlib import Path
 
+import path_tools
 import robograder_java
 import submission_java
-import path_tools
-
 
 dir_executable = Path(sys.argv[0]).parent
 

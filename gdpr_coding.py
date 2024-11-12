@@ -1,11 +1,11 @@
 import dataclasses
 import functools
 import itertools
+import json
 import logging
 from typing import Any, Callable
 
 import atomicwrites
-import json
 
 import print_parse
 

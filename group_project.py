@@ -1,12 +1,11 @@
 import contextlib
 import functools
-import general
 import itertools
 import json
 import logging
-from pathlib import PurePosixPath
 import shlex
 import subprocess
+from pathlib import PurePosixPath
 from typing import Iterable
 
 import git
@@ -14,11 +13,12 @@ import gitlab
 import gitlab.v4.objects
 
 import events
-import instance_cache
-import item_parser
+import general
 import git_tools
 import gitlab_.tools
 import grading_via_merge_request
+import instance_cache
+import item_parser
 import markdown
 
 

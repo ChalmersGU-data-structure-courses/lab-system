@@ -6,7 +6,6 @@ import general
 import markdown
 import path_tools
 
-
 logger = logging.getLogger(__name__)
 
 

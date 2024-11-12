@@ -1,14 +1,14 @@
 import contextlib
 import copy
 import datetime
-from enum import Enum, auto
 import functools
 import logging
 import operator
-from pathlib import PurePosixPath
 import shlex
 import stat
 import subprocess
+from enum import Enum, auto
+from pathlib import PurePosixPath
 
 import git
 import gitdb
@@ -16,7 +16,6 @@ import gitdb
 import general
 import path_tools
 import threading_tools
-
 
 logger = logging.getLogger(__name__)
 
