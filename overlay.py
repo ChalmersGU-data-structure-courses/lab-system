@@ -20,7 +20,6 @@ class OverlayType:
     @abc.abstractmethod
     def check(cls) -> bool:
         """Check whether this overlay type is supported in the current environment."""
-        pass
 
     @classmethod
     @abc.abstractmethod
@@ -37,7 +36,6 @@ class OverlayType:
 
         If resolve_symlinks is True, symlinks are replaced by their target.
         """
-        pass
 
 
 class OverlayTypeFallback(OverlayType):

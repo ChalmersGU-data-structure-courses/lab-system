@@ -150,13 +150,9 @@ class SubmissionHandler(RequestHandler):
         of the submission handler, even if 'review_needed' is not True.
     """
 
-    pass
-
 
 class HandlingException(Exception, markdown.Markdown):
     """
     Raised for errors caused by a problems with a submission.
     Should be reportable in issues in student repositories.
     """
-
-    pass

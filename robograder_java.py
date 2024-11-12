@@ -24,8 +24,6 @@ logger = logging.getLogger(__name__)
 class RobograderException(lab_interfaces.HandlingException):
     """Raised for robograding errors caused by a problem with a submission."""
 
-    pass
-
 
 class FileConflict(RobograderException, submission_java.FileConflict):
     pass
