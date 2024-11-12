@@ -1,3 +1,4 @@
+import abc
 import collections
 import logging
 from pathlib import Path
@@ -78,12 +79,12 @@ class ColumnValue:
     This is relative to a column whose get_value method has produced this instance.
     """
 
+    @abc.abstractmethod
     def sort_key(self):
         """
         Return the sort key.
         Only called for sortable columns.
         """
-        raise NotImplementedError()
 
     def has_content(self):
         """
@@ -94,6 +95,7 @@ class ColumnValue:
         """
         return True
 
+    @abc.abstractmethod
     def format_cell(self, cell):
         """
         Fill in content for the given table cell.
@@ -103,7 +105,6 @@ class ColumnValue:
                 dominate.tags.p('a paragraph')
                 dominate.tags.p('another paragraph')
         """
-        raise NotImplementedError()
 
 
 class ColumnValueEmpty:
@@ -482,6 +483,7 @@ class SubmissionDiffColumn(Column):
         super().__init__(config)
         self.title = title
 
+    @abc.abstractmethod
     def base_ref_and_grader(self, group):
         """
         Returns a tuple of:
@@ -491,7 +493,6 @@ class SubmissionDiffColumn(Column):
           - grader name
           - grader link
         """
-        raise NotImplemented()
 
     def format_header_cell(self, cell):
         add_class(cell, "extension-column")
