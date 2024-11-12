@@ -13,28 +13,33 @@ import ordering
 # This attribute defines the priority of an instance.
 # If a._key <= b._key, then a has priority over b.
 
-_dataclass_incomparable = dataclasses.dataclass(eq = False)
+_dataclass_incomparable = dataclasses.dataclass(eq=False)
 
 _decorator = general.compose(
     _dataclass_incomparable,
     ordering.preorder_from_key,
 )
 
+
 @_decorator
 class ProgramEvent:
     pass
+
 
 @_decorator
 class CourseEvent:
     pass
 
+
 @_decorator
 class LabEvent:
     pass
 
+
 @_decorator
 class GroupProjectEvent:
     pass
+
 
 @_decorator
 class GroupProjectResponseEvent:
@@ -43,9 +48,11 @@ class GroupProjectResponseEvent:
 
 # ## Instances of ProgramEvent.
 
+
 @_dataclass_incomparable
 class TerminateProgram(ProgramEvent):
     _key = (0,)
+
 
 @_dataclass_incomparable
 class ProgramEventInCourse(ProgramEvent):
@@ -59,13 +66,16 @@ class ProgramEventInCourse(ProgramEvent):
 
 # ## Instances of CourseEvent.
 
+
 @_dataclass_incomparable
 class ReloadCourse(CourseEvent):
     _key = (0,)
 
+
 @_dataclass_incomparable
 class SyncFromCanvas(CourseEvent):
     _key = (1, ordering.DiscreteOrder(0))
+
 
 @_dataclass_incomparable
 class CourseEventInLab(CourseEvent):
@@ -74,14 +84,21 @@ class CourseEventInLab(CourseEvent):
 
     @property
     def _key(self):
-        return (1, ordering.DiscreteOrder(1), ordering.DiscreteOrder(self.lab_id), self.lab_event)
+        return (
+            1,
+            ordering.DiscreteOrder(1),
+            ordering.DiscreteOrder(self.lab_id),
+            self.lab_event,
+        )
 
 
 # ## Instances of LabEvent.
 
+
 @_dataclass_incomparable
 class RefreshLab(LabEvent):
     _key = (0,)
+
 
 @_dataclass_incomparable
 class LabEventInGroupProject(LabEvent):
@@ -95,21 +112,25 @@ class LabEventInGroupProject(LabEvent):
 
 # ## Instances of GroupProjectEvent.
 
+
 @_dataclass_incomparable
 class GroupProjectWebhookEvent(GroupProjectEvent):
     pass
+
 
 @_dataclass_incomparable
 class GroupProjectTagEvent(GroupProjectWebhookEvent):
     _key = (0,)
 
+
 @_dataclass_incomparable
 class GroupProjectWebhookResponseEvent(GroupProjectWebhookEvent):
-    '''
+    """
     GroupProjectResponseEvent has priority over GroupProjectTagEvent.
     This is because we need to reload requests anyway
     after reloading responses before merging them.
-    '''
+    """
+
     group_project_response_event: GroupProjectResponseEvent
 
     @property
@@ -119,9 +140,11 @@ class GroupProjectWebhookResponseEvent(GroupProjectWebhookEvent):
 
 # ## Instances of GroupProjectResponseEvent
 
+
 @_dataclass_incomparable
 class GroupProjectIssueEvent(GroupProjectResponseEvent):
     _key = ()
+
 
 @_dataclass_incomparable
 class GroupProjectGradingMergeRequestEvent(GroupProjectResponseEvent):

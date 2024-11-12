@@ -13,9 +13,9 @@ logging.getLogger().setLevel(logging.INFO)
 # * If you want to use systemd to run the event loop:
 #   Instantiate systemd_unit_file.service.template as e.g. <course code>/lab-system.service.
 
-#import <course code>.config as config
-#c = course.Course(config, '<course code>')
-#l = c.labs[1]
+# import <course code>.config as config
+# c = course.Course(config, '<course code>')
+# l = c.labs[1]
 
 # How to deploy a new lab:
 # 1. Make sure repository ~/labs is up to date.
@@ -40,11 +40,11 @@ logging.getLogger().setLevel(logging.INFO)
 # 2. Call Lab.merge_groups_problem_into_main to hotfix main branch in student projects.
 
 # Manual syncing of students from Canvas:
-#l.sync_students_to_gitlab(add = True, remove = True)
+# l.sync_students_to_gitlab(add = True, remove = True)
 
 # Manual processing of submissions:
-#l.setup()
-#l.repo_fetch_all()
-#l.parse_request_tags(from_gitlab = False)
-#l.parse_requests_and_responses(from_gitlab = False)
-#l.process_requests()
+# l.setup()
+# l.repo_fetch_all()
+# l.parse_request_tags(from_gitlab = False)
+# l.parse_requests_and_responses(from_gitlab = False)
+# l.process_requests()

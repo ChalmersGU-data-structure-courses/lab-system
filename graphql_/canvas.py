@@ -9,7 +9,14 @@ from typing import Iterable
 
 import gql
 from gql.transport.requests import RequestsHTTPTransport
-from gql.dsl import dsl_gql, DSLSchema, DSLType, DSLQuery, DSLInlineFragment, DSLSelectable
+from gql.dsl import (
+    dsl_gql,
+    DSLSchema,
+    DSLType,
+    DSLQuery,
+    DSLInlineFragment,
+    DSLSelectable,
+)
 import more_itertools
 
 import general
@@ -18,19 +25,24 @@ import print_parse
 
 logger = logging.getLogger(__name__)
 
+
 def query(*args, **kwargs):
     return dsl_gql(DSLQuery(*args, **kwargs))
 
+
 def id_newstyle(type, id):
-    return base64.standard_b64encode(f'{type._type}-{id}'.encode()).decode()
+    return base64.standard_b64encode(f"{type._type}-{id}".encode()).decode()
+
 
 def wrap_query_execution(f, field):
     return lambda *fields: f(field.select(*fields))[field.name]
+
 
 def wrap_query_execution_many(f, field_iter):
     for field in field_iter:
         f = wrap_query_execution(f, field)
     return f
+
 
 @dataclasses.dataclass
 class QueryNode:
@@ -38,18 +50,19 @@ class QueryNode:
     id: int
     fields: Iterable[DSLSelectable]
 
+
 class Client:
     def __init__(self, canvas_client):
         self.canvas = canvas_client
         self.transport = RequestsHTTPTransport(
-            url = f'https://{self.canvas.domain}/api/graphql',
-            verify = True,
-            retries = 0,  # TODO: change to a higher value
-            auth = canvas.BearerAuth(self.canvas.auth_token),
+            url=f"https://{self.canvas.domain}/api/graphql",
+            verify=True,
+            retries=0,  # TODO: change to a higher value
+            auth=canvas.BearerAuth(self.canvas.auth_token),
         )
         self.client = gql.Client(
-            transport = self.transport,
-            schema = (Path(__file__).parent / 'graphql/canvas-schema').read_text(),
+            transport=self.transport,
+            schema=(Path(__file__).parent / "graphql/canvas-schema").read_text(),
         )
         self.ds = DSLSchema(self.client.schema)
 
@@ -61,7 +74,7 @@ class Client:
         return self.client.connect_sync()
 
     def close(self):
-        if 'session' in self.__dict__:
+        if "session" in self.__dict__:
             self.session.close()
             del self.session
 
@@ -82,8 +95,8 @@ class Client:
     #         DSLInlineFragment().on(type).select(*fields),
     #     )
 
-    def node_legacy(self, type, id, alias = None):
-        x = self.ds.Query.legacyNode(_id = id, type = str(type._type))
+    def node_legacy(self, type, id, alias=None):
+        x = self.ds.Query.legacyNode(_id=id, type=str(type._type))
         if alias:
             x = x.alias(alias)
         return lambda *fields: x.select(
@@ -91,46 +104,56 @@ class Client:
         )
 
     def execute_query_node(self, type, id):
-        return lambda *fields: self.execute_query_single(self.node_legacy(type, id)(*fields))
+        return lambda *fields: self.execute_query_single(
+            self.node_legacy(type, id)(*fields)
+        )
 
     def execute_query_nodes(self, queries: Iterable[QueryNode]):
         def name(i):
-            return f'q{i}'
+            return f"q{i}"
 
         queries = more_itertools.countable(queries)
-        result = self.execute_query(**{
-            name(i): self.node_legacy(query.type, query.id)(query.fields)
-            for (i, query) in enumerate(queries)
-        })
+        result = self.execute_query(
+            **{
+                name(i): self.node_legacy(query.type, query.id)(query.fields)
+                for (i, query) in enumerate(queries)
+            }
+        )
         for i in more_itertools.take(queries.items_seen, itertools.count()):
             yield result[name(i)]
 
     def queue_query_node(self, type, id, fields):
         i = len(self.queue_node_queries)
-        self.queue_node_queries.append(QueryNode(type = type, id = id, fields = fields))
+        self.queue_node_queries.append(QueryNode(type=type, id=id, fields=fields))
         results = self.queue_node_results
 
         def access_result():
             return results[i]
+
         return access_result
 
     def flush_queue_node(self):
         if self.queue_node_queries:
-            self.queue_node_results.extend(self.execute_query_nodes(self.queue_node_queries))
+            self.queue_node_results.extend(
+                self.execute_query_nodes(self.queue_node_queries)
+            )
         self.queue_node_queries = []
         self.queue_node_results = []
 
     def course(self, id):
-        return self.ds.Query.course(id = id)
+        return self.ds.Query.course(id=id)
 
     def execute_query_course(self, id):
         return wrap_query_execution(self.execute_query, self.course(id))
 
     def execute_query_course_user_connection(self, id):
-        return wrap_query_execution_many(self.execute_query_course(id), [
-            self.ds.Course.usersConnection,
-            self.ds.UserConnection.nodes,
-        ])
+        return wrap_query_execution_many(
+            self.execute_query_course(id),
+            [
+                self.ds.Course.usersConnection,
+                self.ds.UserConnection.nodes,
+            ],
+        )
 
     def retrieve_course_users(self, id):
         ds = self.ds
@@ -151,7 +174,7 @@ class Client:
                     ds.User.shortName,
                     ds.User.integrationId,
                     ds.User.loginId,
-                    ds.User.enrollments(courseId = id).select(
+                    ds.User.enrollments(courseId=id).select(
                         ds.Enrollment.state,
                         ds.Enrollment.type,
                         ds.Enrollment.section.select(
@@ -167,12 +190,12 @@ class Client:
         def process_enrollment(enrollment):
             # TODO: how to refer to enum values using DSL?
             if enrollment[ds.Enrollment.state.name] in [
-                'active',
-                'inactive',
-                'completed',
+                "active",
+                "inactive",
+                "completed",
             ]:
-                enrollment[ds.Enrollment.section.name] = (
-                    int(enrollment[ds.Enrollment.section.name][ds.Section._id.name])
+                enrollment[ds.Enrollment.section.name] = int(
+                    enrollment[ds.Enrollment.section.name][ds.Section._id.name]
                 )
                 yield enrollment
 
@@ -185,7 +208,7 @@ class Client:
                 for enrollment_new in process_enrollment(enrollment)
             ]
             if entry[ds.User.enrollments.name]:
-                entry['id'] = int(entry.pop(ds.User._id.name))
+                entry["id"] = int(entry.pop(ds.User._id.name))
                 yield entry
 
         return (
@@ -193,26 +216,35 @@ class Client:
                 (
                     int(x[ds.Section._id.name]),
                     x[ds.Section.name.name],
-                ) for x in r[ds.Course.sectionsConnection.name]
-                            [ds.SectionConnection.nodes.name]
-            ], [
+                )
+                for x in r[ds.Course.sectionsConnection.name][
+                    ds.SectionConnection.nodes.name
+                ]
+            ],
+            [
                 entry_new
-                for entry in r[ds.Course.usersConnection.name][ds.UserConnection.nodes.name]
+                for entry in r[ds.Course.usersConnection.name][
+                    ds.UserConnection.nodes.name
+                ]
                 for entry_new in process_entry(entry)
             ],
         )
 
     def retrieve_course_group_sets(self, id):
         ds = self.ds
-        f = wrap_query_execution_many(self.execute_query_course(id), [
-            ds.Course.groupSetsConnection,
-            ds.GroupSetConnection.nodes,
-        ])
+        f = wrap_query_execution_many(
+            self.execute_query_course(id),
+            [
+                ds.Course.groupSetsConnection,
+                ds.GroupSetConnection.nodes,
+            ],
+        )
         return [
             (
                 int(entry[ds.GroupSet._id.name]),
                 entry[ds.GroupSet.name.name],
-            ) for entry in f(
+            )
+            for entry in f(
                 ds.GroupSet._id,
                 ds.GroupSet.name,
             )
@@ -246,28 +278,38 @@ class Client:
                 entry[ds.Group.name.name],
                 frozenset(
                     int(member[ds.GroupMembership.user.name][ds.User._id.name])
-                    for member in entry[ds.Group.membersConnection.name]
-                                       [ds.GroupMembershipConnection.nodes.name]
+                    for member in entry[ds.Group.membersConnection.name][
+                        ds.GroupMembershipConnection.nodes.name
+                    ]
                 ),
-            ) for entry in x[ds.GroupSet.groupsConnection.name]
-                            [ds.GroupConnection.nodes.name]
+            )
+            for entry in x[ds.GroupSet.groupsConnection.name][
+                ds.GroupConnection.nodes.name
+            ]
         )
 
     def retrieve_group_set_groups_and_members(self, id):
-        return self.groups_extract(self.execute_query_group_set(id)(self.groups_specify))
+        return self.groups_extract(
+            self.execute_query_group_set(id)(self.groups_specify)
+        )
 
-    def retrieve_group_set_with_groups_and_members_via_name_in_course(self, id, group_set_name):
-        '''
+    def retrieve_group_set_with_groups_and_members_via_name_in_course(
+        self, id, group_set_name
+    ):
+        """
         Faster than the sequence
         - retrieve_course_group_sets
         - retrieve_group_set_groups_and_members
         if we expect no other group set in the specified course.
-        '''
+        """
         ds = self.ds
-        f = wrap_query_execution_many(self.execute_query_course(id), [
-            ds.Course.groupSetsConnection,
-            ds.GroupSetConnection.nodes,
-        ])
+        f = wrap_query_execution_many(
+            self.execute_query_course(id),
+            [
+                ds.Course.groupSetsConnection,
+                ds.GroupSetConnection.nodes,
+            ],
+        )
 
         def candidates():
             for entry in f(
@@ -277,24 +319,28 @@ class Client:
             ):
                 if entry[ds.GroupSet.name.name] == group_set_name:
                     yield entry
+
         try:
             (group_set,) = candidates()
         except ValueError:
-            raise ValueError(f'no group set named {group_set_name} in course {id}') from None
-        
+            raise ValueError(
+                f"no group set named {group_set_name} in course {id}"
+            ) from None
+
         return (
             group_set[ds.GroupSet._id.name],
             group_set[ds.GroupSet.name.name],
             self.groups_extract(group_set),
         )
 
+
 class CourseUsers:
-    roles_student = ['StudentEnrollment']
-    roles_teacher = ['Examiner', 'TeacherEnrollment', 'TaEnrollment']
+    roles_student = ["StudentEnrollment"]
+    roles_teacher = ["Examiner", "TeacherEnrollment", "TaEnrollment"]
 
     @staticmethod
     def has_some_role(user, roles):
-        return any(enrollment['role'] in roles for enrollment in user['enrollments'])
+        return any(enrollment["role"] in roles for enrollment in user["enrollments"])
 
     @classmethod
     def _is_student(cls, user):
@@ -306,45 +352,46 @@ class CourseUsers:
 
     @classmethod
     def has_short_name(cls, user):
-        return user['shortName'] != user['name']
+        return user["shortName"] != user["name"]
 
     @classmethod
     def informal_name(cls, user):
         if CourseUsers.has_short_name(user):
-            return user['shortName']
-        return user['sortableName'].split(',')[-1].strip()
+            return user["shortName"]
+        return user["sortableName"].split(",")[-1].strip()
 
     @classmethod
     def format_user(
         cls,
         user,
-        primary_name = True,
-        name = True,
-        short_name = True,
-        id = True,
-        login_id = True,
-        email = False,
-        integration_id = False,
-        sis_id = False,
+        primary_name=True,
+        name=True,
+        short_name=True,
+        id=True,
+        login_id=True,
+        email=False,
+        integration_id=False,
+        sis_id=False,
     ):
         def f():
             if name and not primary_name:
-                yield 'name ' + str(user['name'])
+                yield "name " + str(user["name"])
             if short_name and CourseUsers.has_short_name(user):
-                yield 'short name ' + user['shortName']
+                yield "short name " + user["shortName"]
             if id and primary_name:
-                yield 'id ' + str(user['id'])
+                yield "id " + str(user["id"])
             if login_id:
-                yield 'login_id ' + user['login_id']
+                yield "login_id " + user["login_id"]
             if email:
-                yield 'email ' + user['email']
+                yield "email " + user["email"]
             if integration_id:
-                yield 'integration id ' + user['integrationId']
+                yield "integration id " + user["integrationId"]
             if sis_id:
-                yield 'SIS id ' + user['sisId']
+                yield "SIS id " + user["sisId"]
+
         infos = list(f())
-        extra = ' ({})'.format(', '.join(infos)) if infos else ''
-        return user['name' if primary_name else 'id'] + extra
+        extra = " ({})".format(", ".join(infos)) if infos else ""
+        return user["name" if primary_name else "id"] + extra
 
     def __init__(self, data):
         (sections, users) = data
@@ -360,13 +407,13 @@ class CourseUsers:
         self.users_by_sis_id = dict()
 
         for user in users:
-            self.users[user['id']] = user
-            self.users_by_name[user['name']] = user
-            self.users_by_sortable_name[user['sortableName']] = user
-            self.users_by_integration_id[user['integrationId']] = user
-            self.users_by_sis_id[user['sisId']] = user
-            for enrollment in user['enrollments']:
-                self.section_users[enrollment['section']].append(user)
+            self.users[user["id"]] = user
+            self.users_by_name[user["name"]] = user
+            self.users_by_sortable_name[user["sortableName"]] = user
+            self.users_by_integration_id[user["integrationId"]] = user
+            self.users_by_sis_id[user["sisId"]] = user
+            for enrollment in user["enrollments"]:
+                self.section_users[enrollment["section"]].append(user)
 
     def section_id(self, id):
         return id if isinstance(id, int) else self.sections_by_name(id)
@@ -394,6 +441,7 @@ class CourseUsers:
     def section_users(self, section):
         return self.section_users[self.section_id(section)]
 
+
 class GroupSet:
     def __init__(self, data, pp_group_name: print_parse.PrintParse = None):
         self.pp_group_name = pp_group_name
@@ -411,7 +459,7 @@ class GroupSet:
             }
 
         self.group_by_user = dict()
-        for (group, members) in self.groups.items():
+        for group, members in self.groups.items():
             for user_id in members:
                 self.group_by_user[user_id] = group
 

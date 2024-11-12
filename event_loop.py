@@ -16,40 +16,43 @@ import webhook_listener
 
 @dataclasses.dataclass
 class WebhookConfig:
-    '''Configuration for webhooks.'''
+    """Configuration for webhooks."""
 
     netloc_listen: print_parse.NetLoc
-    '''The local net location to listen at for webhook notifications.'''
+    """The local net location to listen at for webhook notifications."""
 
     netloc_specify: print_parse.NetLoc
-    '''The net location to specify in the webhook configuration.'''
+    """The net location to specify in the webhook configuration."""
 
     secret_token: str
-    '''
+    """
     Secret token to use for webhook authentication.
     The value does not matter, but it should not be guessable.
-    '''
+    """
+
 
 @dataclasses.dataclass
 class CanvasSyncConfig:
-    '''Configuration for synchronizing teachers, students, and groups from Canvas to GitLab.'''
+    """Configuration for synchronizing teachers, students, and groups from Canvas to GitLab."""
 
     labs_to_sync: tuple
-    '''Tuple of lab ids to synchronize.'''
+    """Tuple of lab ids to synchronize."""
 
     sync_interval: Optional[datetime.timedelta]
-    '''
+    """
     How often to synchronize.
     If not set, don't synchronize except potentially at the start.
-    '''
+    """
 
     start_with_sync: bool
-    '''
+    """
     Whether to start with a synchronization.
     If false, the first synchronization occurs after sync_interval.
-    '''
+    """
+
 
 logger = logging.getLogger(__name__)
+
 
 def run(
     courses,
@@ -57,7 +60,7 @@ def run(
     webhook_config: Optional[WebhookConfig] = None,
     canvas_sync_config: Optional[CanvasSyncConfig] = None,
 ):
-    '''
+    """
     Run the event loop.
 
     This method only returns after an event of
@@ -80,7 +83,7 @@ def run(
     * canvas_sync_config:
         Configuration for the mechanism synchronizing graders, students, and groups from Canvas to GitLab.
         Set to None to disable.
-    '''
+    """
     # Resource management.
     exit_stack = contextlib.ExitStack()
     with exit_stack:
@@ -101,6 +104,7 @@ def run(
                 multiplexer = ssh_tools.Multiplexer(ssh_netloc)
                 exit_stack.enter_context(contextlib.closing(multiplexer))
                 yield (ssh_netloc, multiplexer)
+
         ssh_multiplexers = dict(f())
         for c in courses:
             c.ssh_multiplexer = ssh_multiplexers[c.config.gitlab_ssh.netloc]
@@ -112,17 +116,18 @@ def run(
         # Configure webhooks.
         if webhook_config is not None:
             for c in courses:
-                c.hooks_ensure(netloc = webhook_config.netloc_specify)
+                c.hooks_ensure(netloc=webhook_config.netloc_specify)
 
             courses_by_groups_path = {c.config.path_course: c for c in courses}
 
             def add_webhook_event(hook_event):
                 for result in webhook_listener.parse_hook_event(
-                    courses_by_groups_path = courses_by_groups_path,
-                    hook_event = hook_event,
-                    strict = False,
+                    courses_by_groups_path=courses_by_groups_path,
+                    hook_event=hook_event,
+                    strict=False,
                 ):
                     event_queue.add(result)
+
             webhook_listener_manager = webhook_listener.server_manager(
                 webhook_config.netloc_listen,
                 webhook_config.secret_token,
@@ -135,30 +140,37 @@ def run(
                     webhook_server.serve_forever()
                 finally:
                     shutdown()
+
             webhook_server_thread = threading.Thread(
-                target = webhook_server_run,
-                name = 'webhook-server-listener',
+                target=webhook_server_run,
+                name="webhook-server-listener",
             )
-            thread_managers.append(general.add_cleanup(
-                threading_tools.thread_manager(webhook_server_thread),
-                webhook_server.shutdown,
-            ))
+            thread_managers.append(
+                general.add_cleanup(
+                    threading_tools.thread_manager(webhook_server_thread),
+                    webhook_server.shutdown,
+                )
+            )
 
         # Set up program termination timer.
         if run_time is not None:
             shutdown_timer = threading_tools.Timer(
                 run_time,
                 shutdown,
-                name = 'shutdown-timer',
+                name="shutdown-timer",
             )
             thread_managers.append(threading_tools.timer_manager(shutdown_timer))
 
         # Set up Canvas sync event timers and add potential initial sync.
         def sync_from_canvas(course):
-            event_queue.add((
-                course.program_event(events.SyncFromCanvas()),
-                lambda: course.sync_teachers_and_lab_projects(canvas_sync_config.labs_to_sync),
-            ))
+            event_queue.add(
+                (
+                    course.program_event(events.SyncFromCanvas()),
+                    lambda: course.sync_teachers_and_lab_projects(
+                        canvas_sync_config.labs_to_sync
+                    ),
+                )
+            )
 
         if canvas_sync_config is not None:
             for course in courses:
@@ -168,18 +180,22 @@ def run(
                     course.sync_timer = threading_tools.Timer(
                         canvas_sync_config.sync_interval,
                         sync_from_canvas,
-                        args = [course],
-                        name = f'course-sync-from-canvas-timer<{course.config.path_course}>',
-                        repeat = True,
+                        args=[course],
+                        name=f"course-sync-from-canvas-timer<{course.config.path_course}>",
+                        repeat=True,
                     )
-                    thread_managers.append(threading_tools.timer_manager(course.sync_timer))
+                    thread_managers.append(
+                        threading_tools.timer_manager(course.sync_timer)
+                    )
 
         # Set up lab refresh event timers and add initial lab refreshes.
         def refresh_lab(lab):
-            event_queue.add((
-                lab.course.program_event(lab.course_event(events.RefreshLab())),
-                lab.refresh_lab,
-            ))
+            event_queue.add(
+                (
+                    lab.course.program_event(lab.course_event(events.RefreshLab())),
+                    lab.refresh_lab,
+                )
+            )
 
         delay = datetime.timedelta()
         for c in courses:
@@ -189,11 +205,13 @@ def run(
                     lab.refresh_timer = threading_tools.Timer(
                         lab.config.refresh_period + delay,
                         refresh_lab,
-                        args = [lab],
-                        name = f'lab-refresh-timer<{c.config.path_course}, {lab.name}>',
-                        repeat = True,
+                        args=[lab],
+                        name=f"lab-refresh-timer<{c.config.path_course}, {lab.name}>",
+                        repeat=True,
                     )
-                    thread_managers.append(threading_tools.timer_manager(lab.refresh_timer))
+                    thread_managers.append(
+                        threading_tools.timer_manager(lab.refresh_timer)
+                    )
                     delay += c.config.webhook.first_lab_refresh_delay
 
         # Start the threads.
@@ -202,11 +220,11 @@ def run(
 
         # The event loop.
         while True:
-            logger.info('Waiting for event.')
+            logger.info("Waiting for event.")
             (event, callback) = event_queue.remove()
             if isinstance(event, events.TerminateProgram):
-                logger.info('Program termination event received, shutting down.')
+                logger.info("Program termination event received, shutting down.")
                 return
 
-            logger.info(f'Handling event {event}')
+            logger.info(f"Handling event {event}")
             callback()

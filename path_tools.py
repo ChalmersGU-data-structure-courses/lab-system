@@ -23,28 +23,32 @@ PathLike = typing.TypeVar("PathLike", str, os.PathLike)
 
 # ## Operations on pure paths.
 
+
 def with_stem(path, stem):
-    '''In Python 3.9, equivalent to path.with_stem(stem).'''
+    """In Python 3.9, equivalent to path.with_stem(stem)."""
     return path.with_name(stem + path.suffix)
+
 
 def add_suffix(path, suffix):
     return path.parent / (path.name + suffix)
 
+
 def format_path(path):
-    '''Quote a path for use in a user message.'''
+    """Quote a path for use in a user message."""
     return shlex.quote(str(PurePosixPath(path)))
 
 
 # ## Operations interacting with the working directory.
 
+
 @contextlib.contextmanager
 def working_dir(path):
-    '''
+    """
     A context manager for the current working directory.
 
     When entered, sets the working directory to the specified path (path-like object).
     When exited, restores the working directory to its previous value.
-    '''
+    """
     old = os.getcwd()
     os.chdir(path)
     try:
@@ -55,6 +59,7 @@ def working_dir(path):
 
 # ## File descriptor resource management.
 
+
 @contextlib.contextmanager
 def closing_fd(fd):
     try:
@@ -62,42 +67,46 @@ def closing_fd(fd):
     finally:
         os.close(fd)
 
+
 @contextlib.contextmanager
 def dir_fd(path, **kwargs):
-    dir_fd = os.open(path, flags = os.O_PATH | os.O_DIRECTORY | os.O_CLOEXEC, **kwargs)
+    dir_fd = os.open(path, flags=os.O_PATH | os.O_DIRECTORY | os.O_CLOEXEC, **kwargs)
     with closing_fd(dir_fd):
         yield dir_fd
 
 
 # ## File locking.
 
+
 @contextlib.contextmanager
-def file_lock(fd, shared = False):
+def file_lock(fd, shared=False):
     try:
         fcntl.flock(fd, fcntl.LOCK_SH if shared else fcntl.LOCK_EX)
         yield
     finally:
         fcntl.flock(fd, fcntl.LOCK_UN)
 
+
 @contextlib.contextmanager
-def lock_file(path, shared = False, mode = 0o666, **kwargs):
+def lock_file(path, shared=False, mode=0o666, **kwargs):
     fd = os.open(
         path,
-        flags = os.O_CREAT | (os.O_RDWR if shared else os.O_RDONLY) | os.O_CLOEXEC,
-        mode = mode,
+        flags=os.O_CREAT | (os.O_RDWR if shared else os.O_RDONLY) | os.O_CLOEXEC,
+        mode=mode,
         **kwargs,
     )
     with closing_fd(fd):
-        with file_lock(fd, shared = shared):
+        with file_lock(fd, shared=shared):
             yield
 
 
 # ## File modification times.
 
+
 # In the symlink case, we also need to check the modification time of each directory in the symlink path.
 # This can give very coarse results.
 def get_content_modification_time(dir_base, path):
-    '''
+    """
     Get an upper bound for the modification time of the content specified by a path.
     The path is interpreted relative to a base directory that is assumed unchanged.
 
@@ -108,7 +117,7 @@ def get_content_modification_time(dir_base, path):
     The returned time (in seconds since epoch) is merely an upper bound.
 
     TODO: implement properly
-    '''
+    """
     path = Path(path)
     t = os.lstat(path).st_mtime
     print(path, t)
@@ -116,17 +125,23 @@ def get_content_modification_time(dir_base, path):
         t = max(t, get_content_modification_time(path.parent / path.readlink()))
     return t
 
+
 def modified_at(path):
-    return datetime.datetime.fromtimestamp(os.path.getmtime(path), tz = datetime.timezone.utc)
+    return datetime.datetime.fromtimestamp(
+        os.path.getmtime(path), tz=datetime.timezone.utc
+    )
+
 
 def get_modification_time(path, **kwargs):
     # We use os.stat over getmtime to support more arguments.
     t = os.stat(path, **kwargs).st_mtime
-    return datetime.datetime.fromtimestamp(t, tz = datetime.timezone.utc)
+    return datetime.datetime.fromtimestamp(t, tz=datetime.timezone.utc)
+
 
 def set_modification_time(path, date, **kwargs):
     t = date.timestamp()
     os.utime(path, (t, t), **kwargs)
+
 
 class OpenWithModificationTime:
     def __init__(self, path, date):
@@ -134,12 +149,13 @@ class OpenWithModificationTime:
         self.date = date
 
     def __enter__(self):
-        self.file = self.path.open('w')
+        self.file = self.path.open("w")
         return self.file.__enter__()
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.file.__exit__(exc_type, exc_value, traceback)
         set_modification_time(self.path, self.date)
+
 
 class OpenWithNoModificationTime(OpenWithModificationTime):
     def __init__(self, path):
@@ -147,18 +163,20 @@ class OpenWithNoModificationTime(OpenWithModificationTime):
 
     def __enter__(self):
         self.time = os.path.getmtime(self.path)
-        self.file = self.path.open('w')
+        self.file = self.path.open("w")
         return self.file.__enter__()
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.file.__exit__(exc_type, exc_value, traceback)
         os.utime(self.path, (self.time, self.time))
 
+
 def modify(path, callback):
     content = path.read_text()
     content = callback(content)
-    with path.open('w') as file:
+    with path.open("w") as file:
         file.write(content)
+
 
 def modify_no_modification_time(path, callback):
     content = path.read_text()
@@ -169,15 +187,17 @@ def modify_no_modification_time(path, callback):
 
 # ## File encodings.
 
+
 def guess_encoding(b):
-    encodings = ['utf-8', 'latin1']
+    encodings = ["utf-8", "latin1"]
     for encoding in encodings:
         try:
-            return b.decode(encoding = encoding)
+            return b.decode(encoding=encoding)
         except UnicodeDecodeError:
             pass
 
     return b.decode()
+
 
 def fix_encoding(path):
     content = guess_encoding(path.read_bytes())
@@ -187,30 +207,35 @@ def fix_encoding(path):
 
 # ## Temporary files and directories.
 
+
 @contextlib.contextmanager
 def temp_dir():
     with tempfile.TemporaryDirectory() as dir:
         yield Path(dir)
 
+
 @contextlib.contextmanager
 def temp_fifo():
     with temp_dir() as dir:
-        fifo = dir / 'fifo'
+        fifo = dir / "fifo"
         os.mkfifo(fifo)
         try:
             yield fifo
         finally:
             fifo.unlink()
 
+
 @contextlib.contextmanager
-def temp_file(name = None):
+def temp_file(name=None):
     if name is None:
-        name = 'file'
+        name = "file"
     with temp_dir() as dir:
         yield dir / name
 
+
 class ScopedFiles:
-    '''A context manager for file paths.'''
+    """A context manager for file paths."""
+
     def __init__(self):
         self.files = []
 
@@ -227,17 +252,27 @@ class ScopedFiles:
 
 # ## Files as lines of text.
 
+
 def read_lines_without_comments(path):
-    return list(filter(lambda s: s and not s.startswith('#'), path.read_text().splitlines()))
+    return list(
+        filter(lambda s: s and not s.startswith("#"), path.read_text().splitlines())
+    )
 
 
 # ## File and directory traversal.
 
-def sorted_directory_list(dir, filter = None):
-    return dict(sorted(((f.name, f) for f in dir.iterdir() if not filter or filter(f)), key = lambda x: x[0]))
 
-def iterdir_recursive(path, include_top_level = True, pre_order = True):
-    '''
+def sorted_directory_list(dir, filter=None):
+    return dict(
+        sorted(
+            ((f.name, f) for f in dir.iterdir() if not filter or filter(f)),
+            key=lambda x: x[0],
+        )
+    )
+
+
+def iterdir_recursive(path, include_top_level=True, pre_order=True):
+    """
     Generator function enumerating all descendants of a path.
     Note that the given path can be a file (in which case it is its only descendant).
     If 'include_top_level' is false, then the path itself is omitted.
@@ -252,7 +287,8 @@ def iterdir_recursive(path, include_top_level = True, pre_order = True):
         Whether to include the given path in the enumeration.
     * pre_order:
         Whether to emit each path before (True) or after (False) its descendants.
-    '''
+    """
+
     def emit_top_level():
         if include_top_level:
             yield path
@@ -262,7 +298,7 @@ def iterdir_recursive(path, include_top_level = True, pre_order = True):
 
     if path.is_dir():
         for child in path.iterdir():
-            yield from iterdir_recursive(child, pre_order = pre_order)
+            yield from iterdir_recursive(child, pre_order=pre_order)
 
     if not pre_order:
         yield from emit_top_level()
@@ -270,45 +306,54 @@ def iterdir_recursive(path, include_top_level = True, pre_order = True):
 
 # ## File and directory creation and deletion.
 
+
 def make_parents(path):
-    path.parent.mkdirs(exists_ok = True)
+    path.parent.mkdirs(exists_ok=True)
+
 
 def mkdir_fresh(path):
     if path.exists():
         shutil.rmtree(path)
     path.mkdir()
 
+
 def file_exists_error(path):
     e = errno.EEXIST
     raise FileExistsError(e, os.strerror(e), str(path))
 
-def safe_symlink(source, target, exists_ok = False):
+
+def safe_symlink(source, target, exists_ok=False):
     if source.exists():
-        if not (exists_ok and source.is_symlink() and Path(os.readlink(source)) == target):
+        if not (
+            exists_ok and source.is_symlink() and Path(os.readlink(source)) == target
+        ):
             file_exists_error(source)
     else:
         source.symlink_to(target, target.is_dir())
 
-def symlink_force(src, dst, target_is_directory = False, *, dir_fd = None):
-    '''
+
+def symlink_force(src, dst, target_is_directory=False, *, dir_fd=None):
+    """
     Force create a symlink.
     Overwrites any existing unlinkable object.
     See os.symlink.
 
     Warning: not atomic, will fail if object is recreated concurrently.
-    '''
+    """
+
     def create():
-        os.symlink(src, dst, target_is_directory, dir_fd = dir_fd)
+        os.symlink(src, dst, target_is_directory, dir_fd=dir_fd)
 
     try:
         create()
     except FileExistsError:
-        os.unlink(dst, dir_fd = dir_fd)
+        os.unlink(dst, dir_fd=dir_fd)
         create()
+
 
 # 'rel' is the path to 'dir_from', taken relative to 'dir_to'.
 # Returns list of newly created files.
-def link_dir_contents(dir_from, dir_to, rel = None, exists_ok = False):
+def link_dir_contents(dir_from, dir_to, rel=None, exists_ok=False):
     if rel is None:
         rel = Path(os.path.relpath(dir_from, dir_to))
 
@@ -317,8 +362,9 @@ def link_dir_contents(dir_from, dir_to, rel = None, exists_ok = False):
         file = dir_to / path.name
         files.append(file)
         target = rel / path.name
-        safe_symlink(file, target, exists_ok = exists_ok)
+        safe_symlink(file, target, exists_ok=exists_ok)
     return files
+
 
 def copy_tree_fresh(source, to, **flags):
     if to.exists():
@@ -328,13 +374,14 @@ def copy_tree_fresh(source, to, **flags):
             to.unlink()
     shutil.copytree(source, to, **flags)
 
+
 def rmdir_safe(path):
-    '''
+    """
     Remove a directory (instance of pathlib.Path), but only if it is non-empty.
     Returns True if the directory has been removed.
 
     Currently only correctly implemented for POSIX.
-    '''
+    """
     try:
         path.rmdir()
         return True
@@ -343,21 +390,24 @@ def rmdir_safe(path):
             return False
         raise
 
+
 @contextlib.contextmanager
-def overwrite_atomic(path, suffix = '.tmp', time = None, text = True):
+def overwrite_atomic(path, suffix=".tmp", time=None, text=True):
     path_tmp = add_suffix(path, suffix)
-    with path_tmp.open('w' if text else 'wb') as file:
+    with path_tmp.open("w" if text else "wb") as file:
         yield file
     if time:
         set_modification_time(path_tmp, time)
     path_tmp.replace(path)
 
+
 def overwrite_atomic_text(path, content, **kwargs):
-    with overwrite_atomic(path, text = True, **kwargs) as file:
+    with overwrite_atomic(path, text=True, **kwargs) as file:
         file.write(content)
 
-def overwrite_atomic_bytes(path, content, suffix = '.tmp'):
-    with overwrite_atomic(path, text = False, **kwargs) as file:
+
+def overwrite_atomic_bytes(path, content, suffix=".tmp"):
+    with overwrite_atomic(path, text=False, **kwargs) as file:
         file.write(content)
 
 
@@ -365,13 +415,14 @@ def overwrite_atomic_bytes(path, content, suffix = '.tmp'):
 
 _file_object_content_eq_bufsize = 8 * 1024
 
+
 def file_object_binary_content_eq(file_object_a, file_object_b):
-    '''
+    """
     Determine whether two binary file objects have the same content.
     Only takes the part of each file after the current position into account.
 
     Ripped from filecmp._do_cmp.
-    '''
+    """
     bufsize = _file_object_content_eq_bufsize
     while True:
         buffer_a = file_object_a.read(bufsize)
@@ -381,8 +432,9 @@ def file_object_binary_content_eq(file_object_a, file_object_b):
         if not buffer_a:
             return True
 
-def file_content_eq(file_a, file_b, missing_ok_a = False, missing_ok_b = False):
-    '''
+
+def file_content_eq(file_a, file_b, missing_ok_a=False, missing_ok_b=False):
+    """
     Determine whether two files have the same content.
 
     Arguments:
@@ -398,12 +450,12 @@ def file_content_eq(file_a, file_b, missing_ok_a = False, missing_ok_b = False):
     a file if you do not set the corresponding missing flag.
     If exactly one of missing_ok_a and missing_ok_b is set,
     the function might not end up opening both files.
-    '''
+    """
     exit_stack = contextlib.ExitStack()
 
     def open(file, missing_ok):
         try:
-            return exit_stack.enter_context(file.open('rb'))
+            return exit_stack.enter_context(file.open("rb"))
         except FileNotFoundError:
             if not missing_ok:
                 raise
@@ -436,8 +488,9 @@ def file_content_eq(file_a, file_b, missing_ok_a = False, missing_ok_b = False):
 
 # ## Working with lists of search paths as typically stored in environment variables.
 
+
 def search_path_split(path_string):
-    '''
+    """
     Split a search path string into a list of paths.
 
     Both None and the empty string denote the empty list of paths.
@@ -451,26 +504,30 @@ def search_path_split(path_string):
         Can be None.
 
     Returns a list of instances of pathlib.PurePath.
-    '''
+    """
     return [PurePath(s) for s in path_string.split(os.pathsep)] if path_string else []
 
+
 def search_path_join(paths):
-    '''
+    """
     Join paths using the platform-specific path separator.
     Useful e.g. for the PATH environment variable.
 
     Arguments:
     * paths: Iterable of instances of string or pathlib.PurePath.
-    '''
+    """
     paths = [str(path) for path in paths]
     for path in paths:
         if os.pathsep in path:
-            raise ValueError(f'path {format_path(path)} contains path separator {os.pathsep}')
+            raise ValueError(
+                f"path {format_path(path)} contains path separator {os.pathsep}"
+            )
 
     return os.pathsep.join(paths)
 
+
 def search_path_add(path_string, paths):
-    '''
+    """
     Add paths to the front of a search string.
 
     Arguments:
@@ -480,11 +537,12 @@ def search_path_add(path_string, paths):
     * paths: Iterable of instances of string or pathlib.PurePath.
 
     Returns the modified search path (string).
-    '''
+    """
     return search_path_join(itertools.chain(paths, search_path_split(path_string)))
 
+
 def search_path_add_env(environment, name, paths):
-    '''
+    """
     Add paths to the front of a search string in an environment dictionary.
     If the dictionary does not contain the given key and
     at least one path is given, an entry is created.
@@ -493,27 +551,30 @@ def search_path_add_env(environment, name, paths):
     * environment: The environment dictionary to update.
     * name: Key of the search path entry to modify.
     * paths: Iterable of instances of string or pathlib.PurePath.
-    '''
+    """
     r = environment.get(name)
     r = search_path_add(r, paths)
     if r:
         environment[name] = r
 
-system_path = 'PATH'
+
+system_path = "PATH"
+
 
 def system_path_add(*paths):
-    '''
+    """
     Add paths to the system search path.
     The given paths must be instances of pathlib.Path.
     They are resolved before being added.
-    '''
+    """
     return search_path_add_env(os.environ, system_path, map(Path.resolve(paths)))
 
 
 # ## File-based caching
 
+
 class Cache(abc.ABC):
-    '''
+    """
     Use case for file-based caches:
     * Persistence of program state over invocations ("quick start").
     * User can edit state manually (while program is down?).
@@ -622,7 +683,7 @@ class Cache(abc.ABC):
     In some cases, we may be interested looking at changes after upstream fetches:
     * lab group membership on Canvas
     * issues in a student project on Chalmers GitLab
-    '''
+    """
 
     # Internal
     _initialized: bool
@@ -639,22 +700,19 @@ class Cache(abc.ABC):
                 self.initialize()
                 self.needs_save = True
 
-    def __init__(self, path, delay_init = True):
+    def __init__(self, path, delay_init=True):
         self._path = path
         if not delay_init:
             self._initialize()
 
     @abc.abstractmethod
-    def load_internal(self, file):
-        ...
+    def load_internal(self, file): ...
 
     @abc.abstractmethod
-    def save_internal(self, file):
-        ...
+    def save_internal(self, file): ...
 
     @abc.abstractmethod
-    def initialize(self):
-        ...
+    def initialize(self): ...
 
     @functools.cached_property
     def last_modified(self):
@@ -677,7 +735,7 @@ class Cache(abc.ABC):
     def save(self):
         if self.needs_save:
             make_parents(self.path)
-            with overwrite_atomic(self.path, time = self.time) as file:
+            with overwrite_atomic(self.path, time=self.time) as file:
                 self.save_internal(file)
             self.needs_save = False
 
@@ -687,8 +745,9 @@ class Cache(abc.ABC):
         self.time = time
         self.needs_save = True
 
+
 class JSONCache(Cache):
-    def __init__(self, path, setter = None, getter = None, nice = True):
+    def __init__(self, path, setter=None, getter=None, nice=True):
         super().__init__(path)
         self.getter = getter
         self.setter = setter
@@ -700,13 +759,14 @@ class JSONCache(Cache):
     def save_internal(self, file):
         def kwargs():
             if self.nice:
-                yield ('indent', 4)
-                yield ('sort_keys', True)
+                yield ("indent", 4)
+                yield ("sort_keys", True)
 
         json.dump(self.getter(), file, **kwargs)
 
+
 class JSONAttributeCache(JSONCache):
-    def __init__(self, path, attribute, nice = True):
+    def __init__(self, path, attribute, nice=True):
         super().__init__(
             path,
             functools.partial(getattr, self, attribute),

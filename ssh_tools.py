@@ -20,28 +20,35 @@ import watchdog_tools
 
 logger = logging.getLogger(__name__)
 
+
 def value_bool(v):
-    return 'Yes' if v else 'No'
+    return "Yes" if v else "No"
+
 
 def arg_option(key, value):
-    yield from ['-o', f'{key}={value}']
+    yield from ["-o", f"{key}={value}"]
+
 
 def value_string(s):
     if not general.has_whitespace(s):
         return s
     if '"' in s:
-        raise ValueError(f'invalid configuration value (OpenSSH bug): {shlex.quote(s)}')
+        raise ValueError(f"invalid configuration value (OpenSSH bug): {shlex.quote(s)}")
     return s
 
-def value_path(path, exclude = []):
+
+def value_path(path, exclude=[]):
     path = str(path)
-    if path.startswith('~') or path in exclude:
-        raise ValueError(f'invalid configuration path (OpenSSH bug): {shlex.quote(path)}')
+    if path.startswith("~") or path in exclude:
+        raise ValueError(
+            f"invalid configuration path (OpenSSH bug): {shlex.quote(path)}"
+        )
     return value_string(general.escape_percent(path))
 
-@dataclasses.dataclass(frozen = True)
+
+@dataclasses.dataclass(frozen=True)
 class Control:
-    '''
+    """
     Parameters for configuring connection multiplexing
     (that is, connection sharing) in an SSH call:
     * master:
@@ -71,7 +78,8 @@ class Control:
     Each parameter may be None (or False in the case of master).
     In that case, we do not specify the corresponding option in the SSH call.
     This causes SSH to take its value from a configuration file or a default.
-    '''
+    """
+
     master: typing.Optional[bool] = False
     path: typing.Optional[path_tools.PathLike] = None
     command: typing.Optional[str] = None
@@ -79,22 +87,22 @@ class Control:
 
     def args(self):
         if self.force:
-            yield from arg_option('ControlMaster', value_bool(self.master))
+            yield from arg_option("ControlMaster", value_bool(self.master))
             yield from arg_option(
-                'ControlPath',
-                'none' if self.path is None else value_path(self.path)
+                "ControlPath", "none" if self.path is None else value_path(self.path)
             )
         else:
             if self.master:
-                yield '-M'
+                yield "-M"
             if self.path is not None:
-                yield from ['-S', value_path(self.path)]
+                yield from ["-S", value_path(self.path)]
         if self.command is not None:
-            yield from ['-O', self.command]
+            yield from ["-O", self.command]
 
-@dataclasses.dataclass(frozen = True)
+
+@dataclasses.dataclass(frozen=True)
 class ServerAlive:
-    '''
+    """
     Parameters for configuring the ServerAlive mechanism in an SSH call:
     * interval:
         The timeout period after which a server alive check is sent.
@@ -106,31 +114,34 @@ class ServerAlive:
     Each parameter may be None.
     In that case, we do not specify the corresponding option in the SSH call.
     This causes SSH to take its value from a configuration file or a default.
-    '''
+    """
+
     interval: typing.Optional[int] = None
     max_count: typing.Optional[int] = None
 
     def args(self):
         if self.interval is not None:
-            yield from arg_option('ServerAliveInterval', self.interval)
+            yield from arg_option("ServerAliveInterval", self.interval)
         if self.max_count is not None:
-            yield from arg_option('ServerAliveMaxCount', self.max_count)
+            yield from arg_option("ServerAliveMaxCount", self.max_count)
 
-_netloc_empty = print_parse.NetLoc(host = '')
+
+_netloc_empty = print_parse.NetLoc(host="")
+
 
 def cmd_ssh(
-    netloc = None,
-    args = None,
+    netloc=None,
+    args=None,
     *,
-    allocate_terminal = True,
-    run_remote_command = True,
-    control = None,
-    server_alive = None,
-    ip4_only = False,
-    ip6_only = False,
-    options = [],
+    allocate_terminal=True,
+    run_remote_command=True,
+    control=None,
+    server_alive=None,
+    ip4_only=False,
+    ip6_only=False,
+    options=[],
 ):
-    '''
+    """
     Arguments:
     * netloc:
         A tuple convertible to print_parse.NetLoc.
@@ -172,8 +183,8 @@ def cmd_ssh(
     To achieve the same thing for an SSH invocation template
     (missing its destination argument),
     include ('Hostname', '::') as option.
-    '''
-    yield 'ssh'
+    """
+    yield "ssh"
 
     # Process net location options.
     if netloc is not None:
@@ -181,15 +192,15 @@ def cmd_ssh(
         if netloc.host is not None:
             yield netloc.host
         if netloc.user is not None:
-            yield from ['-l', netloc.user]
+            yield from ["-l", netloc.user]
         if netloc.port is not None:
-            yield from ['-p', netloc.port]
+            yield from ["-p", netloc.port]
 
     # What should the SSH connection do?
     if not allocate_terminal:
-        yield '-T'
+        yield "-T"
     if not run_remote_command:
-        yield '-N'
+        yield "-N"
 
     # Process connection sharing options.
     if control is not None:
@@ -201,56 +212,61 @@ def cmd_ssh(
 
     # IP address version
     if ip4_only:
-        yield '-4'
+        yield "-4"
     if ip6_only:
-        yield '-6'
+        yield "-6"
 
     # Add options.
-    for (option_name, option_value) in options:
+    for option_name, option_value in options:
         yield from arg_option(option_name, option_value)
 
     # Add remote command line.
     if args is not None:
         yield print_parse.command_line.print(args)
 
+
 def cmd_ssh_master(netloc, control_path, **kwargs):
-    '''
+    """
     SSH command line for a control master.
     Further keyword arguments are passed to cmd_ssh.
-    '''
+    """
     yield from cmd_ssh(
         netloc,
-        allocate_terminal = False,
-        run_remote_command = False,
-        control = Control(master = True, path = control_path, force = True),
+        allocate_terminal=False,
+        run_remote_command=False,
+        control=Control(master=True, path=control_path, force=True),
         **kwargs,
     )
 
+
 def cmd_template_via_control_socket(control_path):
-    '''
+    """
     SSH invocation template (missing destination argument) for
     using the connection of an existing multiplexing master.
     Fallback to a direct connection is disabled.
-    '''
+    """
     return cmd_ssh(
-        control = Control(master = False, path = control_path, force = True),
-        ip4_only = True,
-        options = [('Hostname', '::')]
+        control=Control(master=False, path=control_path, force=True),
+        ip4_only=True,
+        options=[("Hostname", "::")],
     )
+
 
 def take_previous_executable(previous, current):
     return previous
 
+
 def take_current_executable(previous, current):
     return current
 
+
 def merge_command_lines(
-    previous = None,
-    current = None,
-    merge_executables = take_current_executable,
-    prefix_options = True,
+    previous=None,
+    current=None,
+    merge_executables=take_current_executable,
+    prefix_options=True,
 ):
-    '''
+    """
     Merge two command-lines.
 
     Arguments:
@@ -278,10 +294,10 @@ def merge_command_lines(
     Returns an iterator for the merged list of string-convertibles.
 
     TODO: Move to more general module.
-    '''
+    """
     if previous is None:
         if current is None:
-            raise ValueError('no command line given')
+            raise ValueError("no command line given")
         yield from current
         return
 
@@ -289,52 +305,54 @@ def merge_command_lines(
     current = iter(current)
 
     yield merge_executables(next(previous), next(current))
-    yield from itertools.chain(*(
-        (current, previous)
-        if prefix_options else
-        (previous, current)
-    ))
+    yield from itertools.chain(
+        *((current, previous) if prefix_options else (previous, current))
+    )
+
 
 def supplant_ssh_command_line(previous, current):
-    '''
+    """
     Supplant an SSH command line with another SSH command line.
     This takes the previous command line and
     prefixes options from the current command line.
     Operates on iterables of strings.
     If 'previous' is None, we return the current SSH command line.
-    '''
+    """
     return merge_command_lines(
         previous,
         current,
-        merge_executables = take_previous_executable,
-        prefix_options = True,
+        merge_executables=take_previous_executable,
+        prefix_options=True,
     )
 
+
 def update_env_ssh_var(env, name, command_line):
-    '''
+    """
     Update an SSH command line variable in an environment dictionary.
 
     Arguments:
     * env: The environment dictionary to operate on.
     * name: The key in the environment dictionary whose value to update.
     * command_line: The SSH command line with which to supplant the value.
-    '''
+    """
     pp = print_parse.command_line
     previous = general.with_default(pp.parse, env.get(name))
-    msg = ' is missing' if previous is None else f': {previous}'
-    logger.debug(f'previous value for {name}{msg}')
+    msg = " is missing" if previous is None else f": {previous}"
+    logger.debug(f"previous value for {name}{msg}")
     env[name] = pp.print(supplant_ssh_command_line(previous, command_line))
-    logger.debug(f'new value for {name}: {env[name]}')
+    logger.debug(f"new value for {name}: {env[name]}")
+
 
 def update_git_ssh_command(env, command_line):
-    '''
+    """
     Specialization of update_env_ssh_var for the
     environment variable used by git to invoke SSH.
-    '''
-    update_env_ssh_var(env, 'GIT_SSH_COMMAND', command_line)
+    """
+    update_env_ssh_var(env, "GIT_SSH_COMMAND", command_line)
 
-def shutdown_control_master(control_path, check = True, force = False):
-    '''
+
+def shutdown_control_master(control_path, check=True, force=False):
+    """
     Request a SSH connection control master to shutdown.
     This causes it to stop accepting further connections
     and terminate after all current connections are finished.
@@ -350,57 +368,67 @@ def shutdown_control_master(control_path, check = True, force = False):
     Returns an instance of subprocess.CompletedProcess
     for the process sending the SSH connection control command.
     This has exit code zero exactly if it was successful.
-    '''
+    """
     logger.debug(
-        'Shutting down control master with '
-        f'socket {path_tools.format_path(control_path)} '
-        f'(force: {force}).'
+        "Shutting down control master with "
+        f"socket {path_tools.format_path(control_path)} "
+        f"(force: {force})."
     )
-    cmd = list(cmd_ssh(
-        print_parse.NetLoc(host = ''),
-        control = Control(
-            path = control_path,
-            command = 'exit' if force else 'stop',
-        ),
-    ))
+    cmd = list(
+        cmd_ssh(
+            print_parse.NetLoc(host=""),
+            control=Control(
+                path=control_path,
+                command="exit" if force else "stop",
+            ),
+        )
+    )
     general.log_command(logger, cmd)
-    result = subprocess.run(cmd, text = True, capture_output = True)
+    result = subprocess.run(cmd, text=True, capture_output=True)
     if result.stderr and (check or not result.returncode):
         logger.debug(general.join_lines(result.stderr.splitlines()))
     if result.returncode:
         if check:
             result.check_returncode()
-        logger.warning(general.join_lines([
-            'SSH control master commmand failed:',
-            *result.stderr.splitlines(),
-        ]))
+        logger.warning(
+            general.join_lines(
+                [
+                    "SSH control master commmand failed:",
+                    *result.stderr.splitlines(),
+                ]
+            )
+        )
     return result
 
+
 class ConnectionMaster:
-    '''
+    """
     A class encapsulating an SSH connection control master.
     The control master call is managed in a separate thread.
 
     The control socket file path is available as self.socket_file.
-    '''
+    """
 
     class Failure(Exception):
-        '''
+        """
         Exception class used for expected failure modes of the SSH master connection.
         The cause of the connection, such as an instance of subprocess.CalledProcessError,
         can be retrieved from the first entry of self.args.
-        '''
+        """
+
         pass
 
     class StartupFailure(Failure):
-        '''Raised during initialization when SSH master connection cannot be established.'''
+        """Raised during initialization when SSH master connection cannot be established."""
+
         pass
 
     class StartupNoSocketFailure(Failure):
         pass
 
     class LateFailure(Failure):
-        '''Raised during closing when SSH connection cannot be cleanly shut down.'''
+        """Raised during closing when SSH connection cannot be cleanly shut down."""
+
         pass
 
     class MasterFailure(LateFailure):
@@ -410,15 +438,15 @@ class ConnectionMaster:
         pass
 
     def __init__(self, netloc, **kwargs):
-        '''
+        """
         Initialize an SSH connection control master to the given net location.
         Further keyword arguments are passed to cmd_ssh.
-        '''
-        logger.info('Opening SSH connection control master.')
+        """
+        logger.info("Opening SSH connection control master.")
 
         self.exit_stack = contextlib.ExitStack()
         self.socket_dir = self.exit_stack.enter_context(path_tools.temp_dir())
-        self.socket_file = self.socket_dir / 'socket'
+        self.socket_file = self.socket_dir / "socket"
 
         self.control_master_ready = threading.Event()
 
@@ -426,23 +454,27 @@ class ConnectionMaster:
             try:
                 cmd = list(cmd_ssh_master(netloc, self.socket_file))
                 general.log_command(logger, cmd)
-                result = subprocess.run(cmd, text = True, capture_output = True)
+                result = subprocess.run(cmd, text=True, capture_output=True)
                 if result.stderr:
                     logger.debug(general.join_lines(result.stderr.splitlines()))
 
                 # Unfortunately, the SSH control master exits with a non-zero
                 # return code after it receives a stop or exit control comman.
                 if self.stop_requested:
-                    logger.debug('Stop listening request received.')
+                    logger.debug("Stop listening request received.")
                 else:
                     try:
                         result.check_returncode()
                     except Exception as e:
-                        logger.warning(general.join_lines([
-                            'SSH control master failed in monitoring thread:',
-                            str(e),
-                            *result.stderr.splitlines(),
-                        ]))
+                        logger.warning(
+                            general.join_lines(
+                                [
+                                    "SSH control master failed in monitoring thread:",
+                                    str(e),
+                                    *result.stderr.splitlines(),
+                                ]
+                            )
+                        )
                         raise
             except Exception as e:
                 self.ssh_thread_exception = e
@@ -452,16 +484,16 @@ class ConnectionMaster:
             self.stopped = True
             self.control_master_ready.set()
 
-        logger.debug('Starting SSH control master thread.')
+        logger.debug("Starting SSH control master thread.")
         self.ssh_thread = threading.Thread(
-            target = ssh_thread_run,
-            name = 'ssh-control-master',
+            target=ssh_thread_run,
+            name="ssh-control-master",
         )
         self.stop_requested = False
         self.stopped = False
         self.ssh_thread.start()
 
-        logger.debug('Waiting for control socket.')
+        logger.debug("Waiting for control socket.")
         if not watchdog_tools.wait_for_file_created(
             self.socket_file,
             self.control_master_ready,
@@ -470,26 +502,26 @@ class ConnectionMaster:
             if self.ssh_thread_exception is not None:
                 raise ConnectionMaster.StartupFailure(self.ssh_thread_exception)
             raise ConnectionMaster.StartupNoSocketFailure(
-                'SSH connection master process finished '
-                'successfully without creating a control file.'
+                "SSH connection master process finished "
+                "successfully without creating a control file."
             )
-        logger.debug('Control socket is ready.')
+        logger.debug("Control socket is ready.")
 
     def close(self):
-        '''
+        """
         Close the SSH connection control master.
         This requests the control master to shut down
         and joins the thread managing it.
 
         Returns boolean indicating if the shutdown
         and resulting cleanup was graceful.
-        '''
-        logger.info('Closing SSH connection control master.')
+        """
+        logger.info("Closing SSH connection control master.")
 
         calls = []
 
         def shutdown(force):
-            call = shutdown_control_master(self.socket_file, check = False, force = force)
+            call = shutdown_control_master(self.socket_file, check=False, force=force)
             calls.append(call)
             return call
 
@@ -497,18 +529,18 @@ class ConnectionMaster:
             # Ask control master to stop.
             # We assume that no connections are being served.
             self.stop_requested = True
-            call = shutdown(force = False)
+            call = shutdown(force=False)
             calls.append(call)
 
             # If the control command was sent successfully,
             # give the control master a second to terminate.
             if call.returncode == 0:
-                self.ssh_thread.join(timeout = 1)
+                self.ssh_thread.join(timeout=1)
 
             # If the control master is still alive,
             # Request it to exist and wait for it.
             if self.ssh_thread.is_alive():
-                shutdown(force = True)
+                shutdown(force=True)
                 self.ssh_thread.join()
 
         # Cleanup.
@@ -523,28 +555,30 @@ class ConnectionMaster:
             except subprocess.CalledProcessError as e:
                 raise ConnectionMaster.CommandFailure(e) from e
 
+
 class Multiplexer:
-    '''
+    """
     A class for managing use of a shared SSH connection.
 
     Responsible for establishing the connection
     and reestablishing the connection on failure.
-    '''
+    """
 
     class CallbackConnectionFailure(Exception):
-        '''
+        """
         This exception may be raised in the callback function passed to with_connection.
         It signals to the multiplexer that the multiplexed connection failed.
         The multiplexer may then attempt to reestablish the connection and retry the command.
-        '''
+        """
+
         pass
 
     def __init__(self, netloc):
         self.netloc = print_parse.netloc_normalize(netloc)
         self.connection_master = None
 
-        self.startup_failures = collections.deque(maxlen = 50)
-        self.late_failures = collections.deque(maxlen = 50)
+        self.startup_failures = collections.deque(maxlen=50)
+        self.late_failures = collections.deque(maxlen=50)
 
     max_startup_attempts = 2
     max_callback_attempts = 3
@@ -558,13 +592,13 @@ class Multiplexer:
                 self.startup_failures.append((datetime.now(), e))
 
         logger.error(
-            f'SSH connection to {print_parse.netloc.print(self.netloc)} '
-            f'could not be established in {self.max_startup_attempts} attempts.'
+            f"SSH connection to {print_parse.netloc.print(self.netloc)} "
+            f"could not be established in {self.max_startup_attempts} attempts."
         )
-        raise ValueError('No SSH connection to {print_parse.netloc.print(netloc)}')
+        raise ValueError("No SSH connection to {print_parse.netloc.print(netloc)}")
 
     def close(self):
-        '''Swallows any shutdown exceptions of the control master.'''
+        """Swallows any shutdown exceptions of the control master."""
         if self.connection_master is not None:
             try:
                 self.connection_master.close()
@@ -574,7 +608,7 @@ class Multiplexer:
             self.connection_master = None
 
     def with_connection(self, callback):
-        '''
+        """
         Do something under an SSH master connection.
 
         If the connection has not yet been established, it is established first.
@@ -590,7 +624,7 @@ class Multiplexer:
             This happens a maximum of self.max_callback_attempts many times.
 
         Returns the result of the callback function.
-        '''
+        """
         for k in range(self.max_callback_attempts):
             if self.connection_master is None:
                 self._startup()
@@ -601,17 +635,17 @@ class Multiplexer:
                 self.close()
                 if k + 1 == self.max_callback_attempts:
                     logger.error(
-                        f'SSH connection to {print_parse.netloc.print(self.netloc)} '
-                        f'failed {self.max_callback_attempts} times in a row '
-                        'while attempting to execute a command'
+                        f"SSH connection to {print_parse.netloc.print(self.netloc)} "
+                        f"failed {self.max_callback_attempts} times in a row "
+                        "while attempting to execute a command"
                     )
                     raise ValueError(
-                        f'SSH connection to {print_parse.netloc.print(self.netloc)} '
-                        f'failed {self.max_callback_attempts} times in a row '
+                        f"SSH connection to {print_parse.netloc.print(self.netloc)} "
+                        f"failed {self.max_callback_attempts} times in a row "
                     ) from e
 
-    def git_env(self, env = None):
-        '''
+    def git_env(self, env=None):
+        """
         Get an environment suitable for execution of git commands
         using the SSH master connection of this instance.
 
@@ -624,22 +658,26 @@ class Multiplexer:
             If not given, we take os.environ.
 
         Returns a new environment dictionary.
-        '''
+        """
         # Make a fresh copy of env (or os.environ).
         if env is None:
             env = os.environ
         env = dict(env)
 
         # Modify env.
-        cmd = list(cmd_template_via_control_socket(
-            control_path = self.connection_master.socket_file
-        ))
-        logger.debug(f'Updating GIT_SSH_COMMAND with invocation template {shlex.join(cmd)}')
+        cmd = list(
+            cmd_template_via_control_socket(
+                control_path=self.connection_master.socket_file
+            )
+        )
+        logger.debug(
+            f"Updating GIT_SSH_COMMAND with invocation template {shlex.join(cmd)}"
+        )
         update_git_ssh_command(env, cmd)
         return env
 
     def _git_cmd(self, repo, command, **kwargs):
-        '''
+        """
         Execute a git command using the master connection
         for connecting to repositories via SSH.
 
@@ -661,14 +699,14 @@ class Multiplexer:
             - with_extended_output = True,
             - stdout_as_string = True,
             - with_exceptions = False.
-        '''
-        kwargs['env'] = self.git_env(kwargs.get('env'))
+        """
+        kwargs["env"] = self.git_env(kwargs.get("env"))
         (status, stdout, stderr) = repo.git._call_process(
             *command,
-            as_process = False,
-            with_extended_output = True,
-            stdout_as_string = True,
-            with_exceptions = False,
+            as_process=False,
+            with_extended_output=True,
+            stdout_as_string=True,
+            with_exceptions=False,
             **kwargs,
         )
         stderr_lines = stderr.splitlines()
@@ -677,27 +715,33 @@ class Multiplexer:
             # HACK.
             # Attempt to detect if failure was due to an SSH connection problem.
             for line in stderr_lines:
-                if any([
-                    line.startswith('ssh'),
-                    line == 'fatal: Could not read from remote repository.',
-                ]):
-                    logger.warning(general.join_lines([
-                        'Git command failure assumed to stem from SSH connection failure.',
-                        'Relevant line in stderr output:',
-                        line,
-                    ]))
+                if any(
+                    [
+                        line.startswith("ssh"),
+                        line == "fatal: Could not read from remote repository.",
+                    ]
+                ):
+                    logger.warning(
+                        general.join_lines(
+                            [
+                                "Git command failure assumed to stem from SSH connection failure.",
+                                "Relevant line in stderr output:",
+                                line,
+                            ]
+                        )
+                    )
                     raise Multiplexer.CallbackConnectionFailure()
 
             # Failure assumed not due to SSH connection problem.
             raise git.GitCommandError(
-                command = command,
-                status = status,
-                stdout = stdout,
-                stderr = stderr,
+                command=command,
+                status=status,
+                stdout=stdout,
+                stderr=stderr,
             )
 
     def git_cmd(self, repo, command, **kwargs):
-        '''
+        """
         Execute a git command under an SSH master connection
         that is used to connect to repositories via SSH.
 
@@ -706,5 +750,5 @@ class Multiplexer:
 
         This is self._git_cmd wrapped in self.with_connection.
         See self._git_cmd for argument semantics.
-        '''
+        """
         self.with_connection(lambda: self._git_cmd(repo, command, **kwargs))
