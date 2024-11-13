@@ -13,9 +13,16 @@ logging.getLogger().setLevel(logging.INFO)
 # * If you want to use systemd to run the event loop:
 #   Instantiate systemd_unit_file.service.template as e.g. <course code>/lab-system.service.
 
+# ACION: instantiate and uncomment below statements for concrete instance.
 # import <course code>.config as config
+
+# print('Defined variables"')
+
 # c = course.Course(config, '<course code>')
+# print(f"  c: Course <{c.name}>")
+
 # l = c.labs[1]
+# print(f"  l: Lab <{c.name}>")
 
 # How to deploy a new lab:
 # 1. Make sure repository ~/labs is up to date.
