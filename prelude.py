@@ -16,13 +16,13 @@ logging.getLogger().setLevel(logging.INFO)
 # ACION: instantiate and uncomment below statements for concrete instance.
 # import <course code>.config as config
 
-# print('Defined variables"')
+# print('Defined variables:')
 
 # c = course.Course(config, '<course code>')
-# print(f"  c: Course <{c.name}>")
+# print(f"  c: Course <{c.dir}>")
 
 # l = c.labs[1]
-# print(f"  l: Lab <{c.name}>")
+# print(f"  l: Lab <{l.name}>")
 
 # How to deploy a new lab:
 # 1. Make sure repository ~/labs is up to date.
