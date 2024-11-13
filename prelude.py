@@ -13,7 +13,7 @@ c = course.Course(config, 'lp2')
 
 import lp2.config as config
 
-# print('Defined variables:')
+print('Defined variables:')
 
 c = course.Course(config, 'lp2')
 print(f"  c: Course <{c.dir}>")
