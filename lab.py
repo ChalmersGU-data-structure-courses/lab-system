@@ -1907,3 +1907,52 @@ class Lab:
         )
         # Or you could also call sync_students_to_gitlab.
         # But that's dangerous because you can't delete things and start again without creating noise.
+
+    def recover_branches(self):
+        """
+        Recover branches in student projects from the collection project.
+        Useful to resover student projects after accidentally deleting the GitLab lab group.
+
+        WARNING: this force pushes to student projects.
+        """
+        self.logger.info("Restoring student branches from local repository")
+        dir_ref = Path(self.repo.git_dir) / "refs"
+        for dir_remote in (Path(self.repo.git_dir) / "refs" / "remotes").iterdir():
+            remote = dir_remote.name
+
+            def refspecs():
+                for dir_branch in dir_remote.iterdir():
+                    branch = dir_branch.name
+                    if branch.startswith("submission-"):
+                        continue
+
+                    source = str(dir_branch.relative_to(self.repo.git_dir))
+                    target = git_tools.local_ref(False, branch)
+                    refspec = "+" + git_tools.refspec(source, target)
+                    yield refspec
+
+                specs = list(refspecs())
+                self.repo.remote(remote).push(refspec=refspec, force=True)
+
+    def recover_tags(self):
+        """
+        Recover tags in student projects from the collection project.
+        Useful to resover student projects after accidentally deleting the GitLab lab group.
+
+        WARNING: this force pushes to student projects.
+        """
+        self.logger.info("Restoring student tags from local repository")
+        dir_ref = Path(self.repo.git_dir) / "refs"
+        for dir_remote in (Path(self.repo.git_dir) / "refs" / "remote_tags").iterdir():
+            remote = dir_remote.name
+
+            def refspecs():
+                for dir_tag in dir_remote.iterdir():
+                    tag = dir_tag.name
+                    source = str(dir_tag.relative_to(self.repo.git_dir))
+                    target = git_tools.local_ref(True, tag)
+                    refspec = "+" + git_tools.refspec(source, target)
+                    yield refspec
+
+            specs = list(refspecs())
+            self.repo.remote(remote).push(refspec=specs, force=True)
