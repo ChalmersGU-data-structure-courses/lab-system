@@ -317,9 +317,7 @@ class Lab:
 
     def deploy(self):
         """
-        If this method goes wrong:
-        * use self.gitlab_group.delete() to clean up after it,
-        * try again.
+        If this method goes wrong, you can use self.delete() to start from scratch.
         """
         self.gitlab_group.create()
         self.primary_project.create()
@@ -334,6 +332,25 @@ class Lab:
                 "* Check robograding/-testing output for solution submissions in live submissions table.",
             )
         )
+
+    def remove(self, *, force: bool = False):
+        """
+        Deletes lab remotely on GitLab and locally
+        """
+        if not force:
+            self.logger.warn(
+                general.text_from_lines(
+                    f"This will delete all data for {self.name}:",
+                    f"* The GitLab group {self.gitlab_group.path}",
+                    f"* The local directory {self.dir}",
+                    "To confirm, call with force = True.",
+                )
+            )
+            return
+
+        with gitlab_.tools.exist_ok():
+            self.gitlab_group.delete()
+        shutil.rmtree(self.dir, ignore_errors=True)
 
     @property
     def gl(self):
