@@ -5,13 +5,9 @@ from gitlab_config_personal import *
 
 import lp2.config as config
 
+
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
-
-c = course.Course(config, 'lp2')
-
-
-import lp2.config as config
 
 print('Defined variables:')
 
