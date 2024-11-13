@@ -59,28 +59,29 @@ import ldap.filter
 import general
 
 
-def list_all(client, base, scope, filterstr = None, attrlist = None, page_size = 100):
+def list_all(client, base, scope, filterstr=None, attrlist=None, page_size=100):
     # Chalmers LDAP has size limit 300.
     page_control = ldap.controls.SimplePagedResultsControl(
         True,
-        size = page_size,
-        cookie = str(),
+        size=page_size,
+        cookie=str(),
     )
 
     while True:
         response = client.search_ext(
             base,
             scope,
-            filterstr = filterstr,
-            attrlist = attrlist,
-            serverctrls = [page_control],
+            filterstr=filterstr,
+            attrlist=attrlist,
+            serverctrls=[page_control],
         )
 
         (rtype, rdata, rmsgid, serverctrls_response) = client.result3(response)
         yield from rdata
 
         (page_control_response,) = filter(
-            lambda control: control.controlType == ldap.control.SimplePagedResultsControl.controlType,
+            lambda control: control.controlType
+            == ldap.control.SimplePagedResultsControl.controlType,
             serverctrls_response,
         )
         page_control.cookie = page_control_response.cookie
@@ -88,51 +89,62 @@ def list_all(client, base, scope, filterstr = None, attrlist = None, page_size =
             break
 
 
-
 # logging.basicConfig()
 # logging.getLogger().setLevel(logging.INFO)
 
-#client = ldap.initialize('ldap://ldap.chalmers.se')
+# client = ldap.initialize('ldap://ldap.chalmers.se')
 
 # #ldapsearch -x -H ldap://ldap.chalmers.se '(cn=Bbbbbb Aaaaaa)'
 
 # import java_test.gitlab_config as config  # noqa: E402
 
 # c = Course(config)
-#a = c._gitlab_users
+# a = c._gitlab_users
+
 
 def is_bot_user(user):
-    return any([
-        re.fullmatch('project_\\d+_bot\\d*', user.username),
-        user.username in ['alert-bot', 'support-bot'],
-    ])
+    return any(
+        [
+            re.fullmatch("project_\\d+_bot\\d*", user.username),
+            user.username in ["alert-bot", "support-bot"],
+        ]
+    )
+
 
 # Chalmers LDAP has size limit 300.
-page_control = ldap.controls.SimplePagedResultsControl(True, size = 300, cookie = '')
+page_control = ldap.controls.SimplePagedResultsControl(True, size=300, cookie="")
+
 
 def search_people(client, filter):
     return client.search_ext_s(
-        'ou=people,dc=chalmers,dc=se',
+        "ou=people,dc=chalmers,dc=se",
         ldap.SCOPE_ONELEVEL,
         filter,
-        serverctrls = [page_control],
+        serverctrls=[page_control],
     )
 
+
 def search_people_by_cid(client, uid):
-    return search_people(client, ldap.filter.filter_format('(uid=%s)', [uid]))
+    return search_people(client, ldap.filter.filter_format("(uid=%s)", [uid]))
+
 
 def search_people_by_name(client, cn):
-    return search_people(client, ldap.filter.filter_format('(cn=%s)', [cn]))
+    return search_people(client, ldap.filter.filter_format("(cn=%s)", [cn]))
+
 
 def search_people_by_email_localpart(client, email_localpart):
-    return search_people(client, ldap.filter.filter_format('(mail=%s@*)', [email_localpart]))
+    return search_people(
+        client, ldap.filter.filter_format("(mail=%s@*)", [email_localpart])
+    )
+
 
 def print_record(record):
     (dn, attrs) = record
     print(dn)
-    for (key, value) in attrs.items():
-        print(key + ': ' + str(value))
+    for key, value in attrs.items():
+        print(key + ": " + str(value))
     print()
+
 
 # with general.timing('test'):
 #     #r = search_people(client, ldap.filter.filter_format('(&(department=Data- och informationsteknik))', []))
@@ -148,9 +160,9 @@ def print_record(record):
 # CID to email addresses
 # Names to CID
 
-#ldap_details = dict()
+# ldap_details = dict()
 
-#ldap_details_by_email_localpart = dict()
+# ldap_details_by_email_localpart = dict()
 
 # not_found = set()
 # for user in c._gitlab_users.values():
@@ -171,7 +183,6 @@ def print_record(record):
 #                 else:
 #                     print(f'Nothing found for {user.username}')
 #                     not_found.add(user.username)
-
 
 
 # def g():
@@ -212,10 +223,10 @@ def print_record(record):
 #                 print('no record')
 #             else:
 #                 raise ValueError()
-    #         print(group_id)
-    #         if group_id != None:
-    #             print(c.canvas_group_set.details[group_id].name)
-    #         for record in records:
-    #             print(record)
+#         print(group_id)
+#         if group_id != None:
+#             print(c.canvas_group_set.details[group_id].name)
+#         for record in records:
+#             print(record)
 
-#r = x.search_st('ou=people,dc=chalmers,dc=se', ldap.SCOPE_SUBTREE, '(cn=Bbbbbb Aaaaaa)')
+# r = x.search_st('ou=people,dc=chalmers,dc=se', ldap.SCOPE_SUBTREE, '(cn=Bbbbbb Aaaaaa)')

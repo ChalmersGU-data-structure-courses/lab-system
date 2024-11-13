@@ -1,10 +1,11 @@
+import abc
 import re
 
 import markdown
 
 
 class RequestMatcher:
-    '''
+    """
     Interface defining a matcher for request tag names.
 
     Required attributes:
@@ -14,23 +15,23 @@ class RequestMatcher:
         The union of these patterns must cover all strings for which the match method returns True.
 
     TODO once GitLab implements regex patterns for tag protection: replace interface by a single regex.
-    '''
+    """
 
+    @abc.abstractmethod
     def parse(self, tag_name):
-        '''
+        """
         Determines whether the given tag name matches this request matcher.
         If it matches, returns an implementation-specific value different from None.
         Otherwise, returns None.
 
         Tags with name containing the path component separator '/' are never considered as requests.
         They are sorted out before this method is called.
-        '''
-        raise NotImplementedError()
+        """
 
 
 class RegexRequestMatcher(RequestMatcher):
-    def __init__(self, protection_patterns, regex, regex_flags = 0):
-        '''
+    def __init__(self, protection_patterns, regex, regex_flags=0):
+        """
         Build a request matcher from a specified regex.
 
         Arguments:
@@ -41,13 +42,13 @@ class RegexRequestMatcher(RequestMatcher):
             Regex with which to match the request tag.
         * regex_flags:
             Flags to use for regex matching.
-        '''
+        """
         self.protection_patterns = list(protection_patterns)
         self.parse = lambda tag: re.fullmatch(regex, tag, regex_flags)
 
 
 class RequestHandler:
-    '''
+    """
     This interface specifies a request handler.
     A request handler matches some requests (tags in lab group repository)
     as specified by its associated request matcher.
@@ -72,17 +73,18 @@ class RequestHandler:
 
         The domains of the printer-parsers are string-valued dictionaries
         that must include the key 'tag' for the name of the associated request.
-    '''
+    """
 
     def setup(self, lab):
-        '''
+        """
         Setup this testing handler.
         Called by the Lab class before any other method is called.
-        '''
+        """
         self.lab = lab
 
+    @abc.abstractmethod
     def handle_request(self, request_and_responses):
-        '''
+        """
         Handle a testing request.
         Takes an instance of group_project.request_and_responses as argument.
 
@@ -96,12 +98,11 @@ class RequestHandler:
         a tag <group-id>/<tag_name>/handled to mark the request as handled.
         This method may return a JSON-dumpable value.
         If so, its dump will be stored as the message of the above tag.
-        '''
-        raise NotImplementedError()
+        """
 
 
 class SubmissionHandler(RequestHandler):
-    '''
+    """
     This interface specifies a request handler for handling submissions.
 
     Required attributes (in addition to the ones of RequestHandler):
@@ -147,12 +148,11 @@ class SubmissionHandler(RequestHandler):
         a dictionary with an 'outcome' entry as for a submission review issue.
         Existing review issues always override the submission outcome
         of the submission handler, even if 'review_needed' is not True.
-    '''
-    pass
+    """
+
 
 class HandlingException(Exception, markdown.Markdown):
-    '''
+    """
     Raised for errors caused by a problems with a submission.
     Should be reportable in issues in student repositories.
-    '''
-    pass
+    """

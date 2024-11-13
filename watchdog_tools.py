@@ -1,17 +1,17 @@
 import contextlib
 import logging
-from pathlib import Path, PurePath
 import threading
+from pathlib import Path, PurePath
 
 import watchdog
 import watchdog.events
 import watchdog.observers
 
-
 logger = logging.getLogger(__name__)
 
+
 @contextlib.contextmanager
-def observing_path(path, handler, recursive = False):
+def observing_path(path, handler, recursive=False):
     observer = watchdog.observers.Observer()
     observer.schedule(handler, path, recursive)
     observer.start()
@@ -24,7 +24,8 @@ def observing_path(path, handler, recursive = False):
 
         # This is  slow (~1s) before watchdog-2.1.7.
         # Comment out for now.
-        #observer.join()
+        # observer.join()
+
 
 class NotifyOnFileCreated(watchdog.events.FileSystemEventHandler):
     def __init__(self, path, event_object):
@@ -33,22 +34,21 @@ class NotifyOnFileCreated(watchdog.events.FileSystemEventHandler):
 
     def on_created(self, event):
         if PurePath(event.src_path) == self.path:
-            logger.debug(f'received event {event}, triggering event object')
+            logger.debug(f"received event {event}, triggering event object")
             self.event_object.set()
 
+
 def notify_on_file_created(file, event_object):
-    '''
+    """
     Return a context manager within which the given event object
     is triggered if the given filename is created.
-    '''
+    """
     file = Path(file)
-    return observing_path(
-        file.parent,
-        NotifyOnFileCreated(file, event_object)
-    )
+    return observing_path(file.parent, NotifyOnFileCreated(file, event_object))
 
-def wait_for_file_created(file, event_object = None, initial_check = True):
-    '''
+
+def wait_for_file_created(file, event_object=None, initial_check=True):
+    """
     Wait until a file is created.
 
     Arguments:
@@ -65,7 +65,7 @@ def wait_for_file_created(file, event_object = None, initial_check = True):
         to short-cut the notification machinery.
 
     Returns a boolean indicating if the file has been created.
-    '''
+    """
     # Initial check (to avoid unnecessary creation of notification machinery).
     file = Path(file)
     if initial_check:

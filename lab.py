@@ -2,12 +2,10 @@ import abc
 import contextlib
 import dataclasses
 import functools
-import itertools
 import logging
-from pathlib import Path
 import random
 import shutil
-import tempfile
+from pathlib import Path
 from typing import Iterable, Optional
 
 import git
@@ -22,7 +20,6 @@ import google_tools.sheets
 import grading_sheet
 import grading_via_merge_request
 import group_project
-import instance_cache
 import live_submissions_table
 import path_tools
 import print_parse
@@ -32,46 +29,40 @@ import webhook_listener
 class StudentConnector(abc.ABC):
     @abc.abstractmethod
     def desired_groups(self):
-        '''
+        """
         The set of desired group ids.
         These usually come from the Canvas course.
-        '''
-        ...
+        """
 
     @abc.abstractmethod
     def desired_members(self, id):
-        '''
+        """
         The set of CIDs for a given group id.
         These usually come from the Canvas course.
-        '''
-        ...
+        """
 
     @abc.abstractmethod
     def gitlab_group_slug_pp(self):
-        '''
-        '''
-        ...
+        """ """
 
     @abc.abstractmethod
     def gitlab_group_name(self, id):
-        '''The corresponding name on Chalmers GitLab a given group id.'''
-        ...
+        """The corresponding name on Chalmers GitLab a given group id."""
 
     @abc.abstractmethod
     def gdpr_coding(self):
-        '''
+        """
         GDPR coding for group ids (instance of GDPRCoding).
         Currently only used in the grading spreadsheet.
-        '''
-        ...
+        """
 
     @abc.abstractmethod
     def gdpr_link_problematic(self):
-        '''
+        """
         Whether gorup links can be set in non-GDPR-cleared documents.
         Currently only used in the grading spreadsheet.
-        '''
-        ...
+        """
+
 
 class StudentConnectorIndividual(StudentConnector):
     def __init__(self, course):
@@ -80,8 +71,11 @@ class StudentConnectorIndividual(StudentConnector):
     def desired_groups(self):
         def f():
             for canvas_user in self.course.canvas_course.students:
-                gitlab_username = self.course.gitlab_username_from_canvas_user_id(canvas_user.id, strict = False)
-                if not gitlab_username is None:
+                gitlab_username = self.course.gitlab_username_from_canvas_user_id(
+                    canvas_user.id,
+                    strict=False,
+                )
+                if gitlab_username is not None:
                     yield self.course.rectify_gitlab_username_to_cid(gitlab_username)
 
         return frozenset(f())
@@ -90,12 +84,14 @@ class StudentConnectorIndividual(StudentConnector):
         return print_parse.identity
 
     def gitlab_group_name(self, id):
-        if id == 'test':
-            return 'Test Student'
+        if id == "test":
+            return "Test Student"
 
-        canvas_user = self.course.canvas_user_by_gitlab_username.get(self.course.rectify_cid_to_gitlab_username(id))
+        canvas_user = self.course.canvas_user_by_gitlab_username.get(
+            self.course.rectify_cid_to_gitlab_username(id)
+        )
         if canvas_user is None:
-            return f'{id} — not on Canvas'
+            return f"{id} — not on Canvas"
 
         return canvas_user.name
 
@@ -107,6 +103,7 @@ class StudentConnectorIndividual(StudentConnector):
 
     def gdpr_link_problematic(self):
         return False
+
 
 class StudentConnectorGroupSet(StudentConnector):
     def __init__(self, group_set):
@@ -122,9 +119,16 @@ class StudentConnectorGroupSet(StudentConnector):
         def f():
             canvas_name = self.group_set.config.name.print(id)
             canvas_id = self.group_set.canvas_group_set.name_to_id[canvas_name]
-            for canvas_user_id in self.group_set.canvas_group_set.group_users[canvas_id]:
-                gitlab_username = self.group_set.course.gitlab_username_from_canvas_user_id(canvas_user_id, strict = False)
-                if not gitlab_username is None:
+            for canvas_user_id in self.group_set.canvas_group_set.group_users[
+                canvas_id
+            ]:
+                gitlab_username = (
+                    self.group_set.course.gitlab_username_from_canvas_user_id(
+                        canvas_user_id,
+                        strict=False,
+                    )
+                )
+                if gitlab_username is not None:
                     yield gitlab_username
 
         return frozenset(f())
@@ -141,8 +145,9 @@ class StudentConnectorGroupSet(StudentConnector):
     def gdpr_link_problematic(self):
         return True
 
+
 class Lab:
-    '''
+    """
     This class abstracts over a single lab in a course.
     Each instance is managed by an instance of course.Course.
     In turn, it manages instances of group_project.GroupProject in `groups`.
@@ -196,9 +201,18 @@ class Lab:
 
     This class is configured by the config argument to its constructor.
     The format of this argument is documented in gitlab.config.py.template under _lab_config.
-    '''
-    def __init__(self, course, id, config = None, dir = None, deadline = None, logger = logging.getLogger(__name__)):
-        '''
+    """
+
+    def __init__(
+        self,
+        course,
+        id,
+        config=None,
+        dir=None,
+        deadline=None,
+        logger=logging.getLogger(__name__),
+    ):
+        """
         Initialize lab manager.
         Arguments:
         * course: course manager.
@@ -216,7 +230,7 @@ class Lab:
             It is up to lab handlers how they want to treat late submissions.
             At the moment, all lab handler implementations
             do not inspect the lab deadline.
-        '''
+        """
         self.logger = logger
         self.course = course
         self.id = id
@@ -224,15 +238,15 @@ class Lab:
 
         self.dir = None if dir is None else Path(dir)
         if self.dir:
-            self.dir.mkdir(exist_ok = True)
+            self.dir.mkdir(exist_ok=True)
 
         self.config = self.course.config.labs[id] if config is None else config
 
         # Naming config
         self.id_str = self.course.config.lab.id.print(self.id)
         self.name = self.course.config.lab.name.print(self.id)
-        self.name_semantic = (self.config.path_source / 'name').read_text().strip()
-        self.name_full = '{} — {}'.format(self.name, self.name_semantic)
+        self.name_semantic = (self.config.path_source / "name").read_text().strip()
+        self.name_full = "{} — {}".format(self.name, self.name_semantic)
         self.group_prefix = self.course.config.lab.prefix.print(self.id)
 
         # Student connector
@@ -246,56 +260,64 @@ class Lab:
         self.path = self.course.path / self.course.config.lab.full_id.print(self.id)
 
         # Local collection repository config.
-        self.dir_repo = None if self.dir is None else self.dir / 'repo'
+        self.dir_repo = None if self.dir is None else self.dir / "repo"
         # Whether we have updated the repository and it needs to be pushed.
         self.repo_updated = False
 
         # Other local data.
-        self.file_live_submissions_table = self.dir / 'live-submissions-table.html'
+        self.file_live_submissions_table = self.dir / "live-submissions-table.html"
         self.file_live_submissions_table_staging = path_tools.add_suffix(
             self.file_live_submissions_table,
-            '.staging',
+            ".staging",
         )
 
         if self.config.grading_via_merge_request:
             if self.config.multi_language is None:
-                self.grading_via_merge_request_setup_data = grading_via_merge_request.SetupData(self)
+                self.grading_via_merge_request_setup_data = (
+                    grading_via_merge_request.SetupData(self)
+                )
             else:
                 self.grading_via_merge_request_setup_data = {
-                    language : grading_via_merge_request.SetupData(self, language = language)
+                    language: grading_via_merge_request.SetupData(
+                        self,
+                        language=language,
+                    )
                     for language in self.config.branch_problem.keys()
                 }
 
-            self.dir_status_repos = None if self.dir is None else self.dir / 'status-repos'
+            self.dir_status_repos = (
+                None if self.dir is None else self.dir / "status-repos"
+            )
             if self.dir_status_repos:
-                self.dir_status_repos.mkdir(exist_ok = True)
+                self.dir_status_repos.mkdir(exist_ok=True)
 
         # Qualify a request by the full group id.
         # Used as tag names in the collection repository of each lab.
         # TODO: unused?
         self.qualify_request = print_parse.compose(
-            print_parse.on(general.component_tuple(0), self.student_connector.gitlab_group_slug_pp()),
-            print_parse.qualify_with_slash
+            print_parse.on(
+                general.component_tuple(0),
+                self.student_connector.gitlab_group_slug_pp(),
+            ),
+            print_parse.qualify_with_slash,
         )
 
     def solution_create_and_populate(self):
         """
         Currently only supports a single solution project.
         """
-        assert self.config.has_solution == True
+        assert self.config.has_solution is True
         [solution_name] = self.solutions.keys()
-        group = self.group_create('solution')
+        group = self.group_create("solution")
         if self.config.multi_language:
             for language in self.config.branch_problem.keys():
-                group.upload_solution(language = language)
+                group.upload_solution(language=language)
         else:
             group.upload_solution()
 
     def deploy(self):
         """
-        If this method goes wrong:
-        * use self.gitlab_group.delete() to clean up after it,
-        * try again.
+        If this method goes wrong, you can use self.delete() to start from scratch.
         """
         self.gitlab_group.create()
         self.primary_project.create()
@@ -303,11 +325,32 @@ class Lab:
         self.collection_project.create()
         if self.config.has_solution is True:
             self.solution_create_and_populate()
-        self.logger.info(general.join_lines([
-            'Next steps:',
-            '* Restart event loop.',
-            '* Check robograding/-testing output for solution submissions in live submissions table.',
-        ]))
+        self.logger.info(
+            general.text_from_lines(
+                "Next steps:",
+                "* Restart event loop.",
+                "* Check robograding/-testing output for solution submissions in live submissions table.",
+            )
+        )
+
+    def remove(self, *, force: bool = False):
+        """
+        Deletes lab remotely on GitLab and locally
+        """
+        if not force:
+            self.logger.warn(
+                general.text_from_lines(
+                    f"This will delete all data for {self.name}:",
+                    f"* The GitLab group {self.gitlab_group.path}",
+                    f"* The local directory {self.dir}",
+                    "To confirm, call with force = True.",
+                )
+            )
+            return
+
+        with gitlab_.tools.exist_ok():
+            self.gitlab_group.delete()
+        shutil.rmtree(self.dir, ignore_errors=True)
 
     @property
     def gl(self):
@@ -315,29 +358,30 @@ class Lab:
 
     @functools.cached_property
     def gitlab_group(self):
-        '''
+        """
         The group for this lab on Chalmers GitLab.
-        '''
+        """
         r = gitlab_.tools.CachedGroup(
-            gl = self.gl,
-            logger = self.logger,
-            path = self.path,
-            name = self.name,
+            gl=self.gl,
+            logger=self.logger,
+            path=self.path,
+            name=self.name,
         )
 
         def create():
             gitlab_.tools.CachedGroup.create(
                 r,
                 self.course.course_group.get,
-                description = self.name_semantic,
+                description=self.name_semantic,
             )
+
         r.create = create
 
         return r
 
     @functools.cached_property
     def primary_project(self):
-        '''
+        """
         The primary lab project on Chalmers GitLab.
         The student lab projects are forked from this.
 
@@ -355,12 +399,12 @@ class Lab:
 
         It is a good idea to check the contents of this project before forking any student projects.
         For example you may want to disable features that are distracting to students.
-        '''
+        """
         r = gitlab_.tools.CachedProject(
-            gl = self.gl,
-            logger = self.logger,
-            path = self.path / self.course.config.path_lab.primary,
-            name = 'Primary repository',
+            gl=self.gl,
+            logger=self.logger,
+            path=self.path / self.course.config.path_lab.primary,
+            name="Primary repository",
         )
 
         def create():
@@ -383,22 +427,23 @@ class Lab:
                 project.requirements_enabled = False
                 project.security_and_compliance_enabled = False
                 project.request_access_enabled = False
-                project.analytics_access_level = 'disabled'
-                project.operations_access_level = 'disabled'
-                project.releases_access_level = 'disabled'
-                project.pages_access_level = 'disabled'
-                project.security_and_compliance_access_level = 'disabled'
-                project.environments_access_level = 'disabled'
-                project.feature_flags_access_level = 'disabled'
-                project.infrastructure_access_level = 'disabled'
-                project.monitor_access_level = 'disabled'
+                project.analytics_access_level = "disabled"
+                project.operations_access_level = "disabled"
+                project.releases_access_level = "disabled"
+                project.pages_access_level = "disabled"
+                project.security_and_compliance_access_level = "disabled"
+                project.environments_access_level = "disabled"
+                project.feature_flags_access_level = "disabled"
+                project.infrastructure_access_level = "disabled"
+                project.monitor_access_level = "disabled"
                 project.emails_disabled = False
-                project.permissions = {'project_access': None, 'group_access': None}
+                project.permissions = {"project_access": None, "group_access": None}
                 project.save()
 
             except:  # noqa: E722
                 r.delete()
                 raise
+
         r.create = create
 
         return r
@@ -408,16 +453,16 @@ class Lab:
         source,
         branches,
         message,
-        delete_protected_main = True,
+        delete_protected_main=True,
     ):
-        '''
+        """
         Creates branch(es) with an initial commit based on a given source folder.
 
         Arguments:
         * source: Directory path of the sources.
         * branch: String or iterable of strings of branch names to push to.
         * message: commit message to use.
-        '''
+        """
         if isinstance(branches, str):
             branches = [branches]
         branches = list(branches)
@@ -425,14 +470,14 @@ class Lab:
         with path_tools.temp_dir() as dir:
             repo = git.Repo.init(dir.__fspath__())
 
-            shutil.copytree(source, dir, symlinks = True, dirs_exist_ok = True)
-            repo.git.add('--all', '--force')
-            repo.git.commit('--allow-empty', message = message)
+            shutil.copytree(source, dir, symlinks=True, dirs_exist_ok=True)
+            repo.git.add("--all", "--force")
+            repo.git.commit("--allow-empty", message=message)
 
             for branch in branches:
                 repo.git.push(
                     self.primary_project.get.ssh_url_to_repo,
-                    git_tools.refspec(git_tools.head, branch, force = True),
+                    git_tools.refspec(git_tools.head, branch, force=True),
                 )
 
         if delete_protected_main and self.course.config.branch.master in branches:
@@ -443,8 +488,8 @@ class Lab:
         path_source: Optional[Path] = None
         message: Optional[str] = None
 
-    def primary_project_problem_branches_create(self, branch_specs = None, default = None):
-        '''
+    def primary_project_problem_branches_create(self, branch_specs=None, default=None):
+        """
         Use this to create the needed branches in the primary project.
 
         Arguments:
@@ -459,28 +504,28 @@ class Lab:
         * default specified the language that should be used for the main branch.
           Only used for multi-language labs.
           Defaults to the first key of self.config.branch_problem.
-        '''
+        """
         if self.config.multi_language is None:
             if branch_specs is None:
                 branch_specs = Lab.ProblemSpecification()
 
             path_source = branch_specs.path_source
             if path_source is None:
-                path_source = self.config.path_source / 'problem'
+                path_source = self.config.path_source / "problem"
 
             message = branch_specs.message
             if message is None:
-                message = 'Initial version.'
+                message = "Initial version."
 
             self.primary_project_branch_create(
-                source = path_source,
-                branches = [self.course.config.branch.master, 'problem'],
-                message = message,
+                source=path_source,
+                branches=[self.course.config.branch.master, "problem"],
+                message=message,
             )
         else:
             if branch_specs is None:
                 branch_specs = {
-                    language: Lab.ProblemSpecification(path_source = None, message = None)
+                    language: Lab.ProblemSpecification(path_source=None, message=None)
                     for language in self.config.branch_problem.keys()
                 }
 
@@ -499,16 +544,16 @@ class Lab:
 
                 source = spec.path_source
                 if source is None:
-                    source = self.config.path_source / 'problem' / language
+                    source = self.config.path_source / "problem" / language
 
                 message = spec.message
                 if message is None:
-                    message = f'Initial {language.capitalize()} version.'
+                    message = f"Initial {language.capitalize()} version."
 
                 self.primary_project_branch_create(
-                    source = source,
-                    branches = branches(),
-                    message = message,
+                    source=source,
+                    branches=branches(),
+                    message=message,
                 )
 
             process_language(default, True)
@@ -518,19 +563,20 @@ class Lab:
 
     @functools.cached_property
     def collection_project(self):
-        '''
+        """
         The collection project on Chalmers GitLab.
         When created, it is empty.
-        '''
+        """
         r = gitlab_.tools.CachedProject(
-            gl = self.gl,
-            logger = self.logger,
-            path = self.path / self.course.config.path_lab.collection,
-            name = 'Collection repository',
+            gl=self.gl,
+            logger=self.logger,
+            path=self.path / self.course.config.path_lab.collection,
+            name="Collection repository",
         )
 
         def create():
             gitlab_.tools.CachedProject.create(r, self.gitlab_group.get)
+
         r.create = create
 
         return r
@@ -539,10 +585,11 @@ class Lab:
     def solutions(self):
         def f():
             if self.config.has_solution is True:
-                yield ('solution', 'Official solution')
+                yield ("solution", "Official solution")
             elif isinstance(self.config.has_solution, tuple):
                 for solution in self.config.has_solution:
-                    yield (solution, f'Official solution — {solution}')
+                    yield (solution, f"Official solution — {solution}")
+
         return dict(f())
 
     def group_id_is_solution(self, id):
@@ -579,9 +626,13 @@ class Lab:
             # if group.is_known:
             yield group
 
-    def groups_delete_all(self, keep_student_groups = True, keep_solution_groups = True):
-        for (id, group) in tuple(self.groups.items()):
-            if not (keep_solution_groups if self.group_id_is_solution(id) else keep_student_groups):
+    def groups_delete_all(self, keep_student_groups=True, keep_solution_groups=True):
+        for id, group in tuple(self.groups.items()):
+            if not (
+                keep_solution_groups
+                if self.group_id_is_solution(id)
+                else keep_student_groups
+            ):
                 group.project.delete()
 
         with contextlib.suppress(AttributeError):
@@ -593,7 +644,7 @@ class Lab:
         self.groups[id] = group
         return group
 
-    def groups_create_desired(self, keep_existing = True, refresh = True):
+    def groups_create_desired(self, keep_existing=True, refresh=True):
         if keep_existing:
             ids_old = self.groups.keys()
         else:
@@ -610,11 +661,11 @@ class Lab:
 
     @functools.cached_property
     def repo(self):
-        '''
+        """
         Local collection repository.
         This is used as staging for (pushes to) the collection project on Chalmers GitLab.
         It fetches from the primary lab repository and student group repositories.
-        '''
+        """
         try:
             return git.Repo(self.dir_repo)
         except git.NoSuchPathError:
@@ -626,49 +677,49 @@ class Lab:
             self.repo,
             name,
             project.ssh_url_to_repo,
-            no_tags = True,
-            overwrite = True,
+            no_tags=True,
+            overwrite=True,
             **kwargs,
         )
 
     def repo_add_groups_remotes(self, **kwargs):
-        '''
+        """
         Configure fetching remotes in local collection repository for all groups on GitLab.
         This overwrites any existing configuration for such remotes, except for groups no longer existing.
-        '''
+        """
         for group in self.groups_known():
             group.repo_add_remote(**kwargs)
 
-    def repo_delete(self, force = False):
-        '''
+    def repo_delete(self, force=False):
+        """
         Delete the repository directory.
         Warning: Make sure that self.dir is correctly configured before calling.
-        '''
+        """
         try:
             shutil.rmtree(self.dir_repo)
         except FileNotFoundError:
             if not force:
                 raise
 
-    def repo_init(self, bare = False):
-        '''
+    def repo_init(self, bare=False):
+        """
         Initialize the local collection repository.
         If the directory exists, we assume that all remotes are set up.
         Otherwise, we create the directory and populate it with remotes on Chalmers GitLab as follows.
         Fetching remotes are given by the primary repository and student group repositories.
         Pushing remotes are just the collection repository.
-        '''
-        self.logger.info('Initializing local collection repository.')
+        """
+        self.logger.info("Initializing local collection repository.")
         try:
-            repo = git.Repo.init(str(self.dir_repo), bare = bare)
+            repo = git.Repo.init(str(self.dir_repo), bare=bare)
             with repo.config_writer() as c:
-                c.add_value('advice', 'detachedHead', 'false')
+                c.add_value("advice", "detachedHead", "false")
 
             # Configure and fetch primary repository.
             # TODO: add language problem branches.
             def fetch_branches():
                 if self.config.multi_language is None:
-                    yield self.course.config.branch.master
+                    yield "problem"  # self.course.config.branch.master  # TODO: fix in config.
                 else:
                     for branch in self.config.branch_problem.values():
                         yield branch
@@ -676,20 +727,22 @@ class Lab:
             self.repo_add_remote(
                 self.course.config.path_lab.primary,
                 self.primary_project.get,
-                fetch_branches = [(git_tools.Namespacing.local, branch) for branch in fetch_branches()],
-                fetch_tags = [(git_tools.Namespacing.local, git_tools.wildcard)],
+                fetch_branches=[
+                    (git_tools.Namespacing.local, branch) for branch in fetch_branches()
+                ],
+                fetch_tags=[(git_tools.Namespacing.local, git_tools.wildcard)],
             )
             self.repo_fetch_primary()
 
             self.repo_add_remote(
                 self.course.config.path_lab.collection,
                 self.collection_project.get,
-                push_branches = fetch_branches(),
-                push_tags = [git_tools.wildcard],
+                push_branches=fetch_branches(),
+                push_tags=[git_tools.wildcard],
             )
-            self.repo_add_groups_remotes(ignore_missing = True)
+            self.repo_add_groups_remotes(ignore_missing=True)
         except:  # noqa: E722
-            shutil.rmtree(self.dir_repo, ignore_errors = True)
+            shutil.rmtree(self.dir_repo, ignore_errors=True)
             raise
 
         self.repo = repo
@@ -702,13 +755,14 @@ class Lab:
 
     def repo_command_fetch(self, repo, remotes):
         remotes = list(remotes)
-        self.logger.debug(f'Fetching from remotes: {remotes}.')
+        self.logger.debug(f"Fetching from remotes: {remotes}.")
 
         def command():
-            yield 'fetch'
-            yield '--update-head-ok'
-            yield from ['--jobs', str(self.course.config.gitlab_ssh.max_sessions)]
-            yield from ['--multiple', *remotes]
+            yield "fetch"
+            yield "--update-head-ok"
+            yield from ["--jobs", str(self.course.config.gitlab_ssh.max_sessions)]
+            yield from ["--multiple", *remotes]
+
         self.repo_remote_command(repo, list(command()))
 
         # Update caching mechanisms.
@@ -717,39 +771,40 @@ class Lab:
             del self.remote_tags
 
     def repo_command_push(self, repo, remote):
-        self.logger.debug(f'Pushing to remote: {remote}.')
+        self.logger.debug(f"Pushing to remote: {remote}.")
 
         def command():
-            yield 'push'
+            yield "push"
             yield remote
+
         self.repo_remote_command(repo, list(command()))
 
     def repo_fetch_primary(self):
-        '''
+        """
         Fetch main branch from the offical repository on Chalmers GitLab to the local collection repository.
-        '''
-        self.logger.info('Fetching from primary repository.')
+        """
+        self.logger.info("Fetching from primary repository.")
         self.repo_command_fetch(self.repo, [self.course.config.path_lab.primary])
 
-    def repo_push(self, force = False):
-        '''
+    def repo_push(self, force=False):
+        """
         Push the local collection repository to the collection repository on Chalmers GitLab.
         Only push if changes have been recorded.
-        '''
+        """
         if self.repo_updated or force:
-            self.logger.info('Pushing to collection repository.')
+            self.logger.info("Pushing to collection repository.")
             self.repo_command_push(self.repo, self.course.config.path_lab.collection)
             self.repo_updated = False
 
     def configure_student_project(self, project, is_solution):
-        '''
+        """
         BUG.
         Gitlab seems to suffer from a race condition.
         Sometimes, the deletion of the protected branches is not honored.
         Adding a time delay after waiting for forking completion seems to avoid this.
         TODO: add (configurable) time delay.
-        '''
-        self.logger.debug(f'Configuring student project {project.path_with_namespace}')
+        """
+        self.logger.debug(f"Configuring student project {project.path_with_namespace}")
 
         def patterns():
             if not is_solution:
@@ -759,10 +814,12 @@ class Lab:
 
         # Should only be needed for solution projects.
         # Protected tags are inherited from primary project by forking.
-        self.logger.debug('Protecting tags')
-        gitlab_.tools.protect_tags(self.gl, project.id, patterns(), delete_existing = is_solution)
+        self.logger.debug("Protecting tags")
+        gitlab_.tools.protect_tags(
+            self.gl, project.id, patterns(), delete_existing=is_solution
+        )
 
-        self.logger.debug('Setting up protected branches')
+        self.logger.debug("Setting up protected branches")
         gitlab_.tools.delete_protected_branches(project)
         for problem in self.heads_problem:
             gitlab_.tools.protect_branch(self.gl, project, problem)
@@ -770,10 +827,10 @@ class Lab:
     def unprotect_main_branches(self):
         for g in self.groups.values():
             with gitlab_.tools.exist_ok():
-                g.project.lazy.protectedbranches.delete('main')
-                self.logger.info(f'WARNING: unprotected branch main for group {g.name}')
+                g.project.lazy.protectedbranches.delete("main")
+                self.logger.info(f"WARNING: unprotected branch main for group {g.name}")
 
-    def create_group_projects(self, exist_ok = False):
+    def create_group_projects(self, exist_ok=False):
         for group in self.groups_known():
             x = group.project
             if exist_ok:
@@ -787,11 +844,11 @@ class Lab:
 
     def update_groups_problem(
         self,
-        group_ids = None,
-        force = False,
+        group_ids=None,
+        force=False,
         notify_students: Optional[str] = None,
     ):
-        '''
+        """
         Update the (protected) problem branches in student projects.
         This calls GroupProject.update_problem for each selected group.
 
@@ -804,22 +861,22 @@ class Lab:
             Defaults to all groups.
         * force: whether to force push.
         * notify_students: unimplemented [TODO]
-        '''
+        """
         for group_id in self.normalize_group_ids(group_ids):
             self.groups[group_id].hotfix_problem(
-                force = force,
-                notify_students = notify_students,
+                force=force,
+                notify_students=notify_students,
             )
 
     def merge_groups_problem_into_main(
         self,
-        group_ids = None,
-        target_branch = 'main',
-        merge_files = False,
-        fail_on_problem = True,
+        group_ids=None,
+        target_branch="main",
+        merge_files=False,
+        fail_on_problem=True,
         notify_students: str = None,
     ):
-        '''
+        """
         Hotfix the main 'target_branch' in student projects group project.
         This calls GroupProject.merge_problem_into_branch for the main branch in each selected group.
 
@@ -828,35 +885,36 @@ class Lab:
             Iterable for group_ids to hotfix.
             Defaults to all groups.
         * other arguments: see GroupProject.merge_problem_into_branch.
-        '''
+        """
         for group_id in self.normalize_group_ids(group_ids):
             self.groups[group_id].merge_problem_into_branch(
-                merge_files = merge_files,
-                fail_on_problem = fail_on_problem,
-                notify_students = notify_students,
+                merge_files=merge_files,
+                fail_on_problem=fail_on_problem,
+                notify_students=notify_students,
             )
 
     def repo_fetch_all(self):
-        '''
+        """
         Fetch from the primary repository and all student repositories.
-        '''
-        self.logger.info('Fetching from primary project and student projects.')
+        """
+        self.logger.info("Fetching from primary project and student projects.")
 
         def remotes():
             yield self.course.config.path_lab.primary
             for group in self.groups_known():
                 yield group.remote
+
         self.repo_command_fetch(self.repo, remotes())
 
     @functools.cached_property
     def remote_tags(self):
-        '''
+        """
         A dictionary mapping each group id to a dictionary of key-value pairs (path, ref) where:
         - path is the tag name in the remote repository (converted to pathlib.PurePosixPath).
         - ref is an instance of git.Reference for the reference in refs/remote_tags/<full group id>.
 
         Clear this cached property after fetching.
-        '''
+        """
         refs = git_tools.references_hierarchy(self.repo)
         remote_tags = refs[git_tools.refs.name][git_tools.remote_tags.name]
 
@@ -864,20 +922,21 @@ class Lab:
             for group in self.groups_known():
                 value = remote_tags.get(group.remote, dict())
                 yield (group.id, git_tools.flatten_references_hierarchy(value))
+
         return dict(f())
 
     @functools.cached_property
     def tags(self):
-        '''
+        """
         A dictionary hierarchy of tag path name segments
         with values in tags in the local collection repository.
 
         Clear this cached property after constructing tags.
-        '''
+        """
         refs = git_tools.references_hierarchy(self.repo)
         return refs[git_tools.refs.name][git_tools.tags.name]
 
-    def hook_specs(self, netloc = None) -> Iterable[gitlab_.tools.HookSpec]:
+    def hook_specs(self, netloc=None) -> Iterable[gitlab_.tools.HookSpec]:
         for group in self.groups_known():
             yield from group.hook_specs(netloc)
 
@@ -891,33 +950,33 @@ class Lab:
     #         self.hooks_delete(hooks)
 
     def setup_request_handlers(self):
-        '''
+        """
         Setup the configured request handlers.
         This method must be called before requests can be processed.
-        '''
-        self.logger.info('Setting up request handlers')
+        """
+        self.logger.info("Setting up request handlers")
         for handler in self.config.request_handlers.values():
             handler.setup(self)
 
-    def setup_live_submissions_table(self, deadline = None):
-        '''
+    def setup_live_submissions_table(self, deadline=None):
+        """
         Setup the live submissions table.
         Takes an optional deadline parameter for limiting submissions to include.
         If not set, we use self.deadline.
         Request handlers should be set up before calling this method.
-        '''
+        """
         if deadline is None:
             deadline = self.deadline
-        config = live_submissions_table.Config(deadline = deadline)
+        config = live_submissions_table.Config(deadline=deadline)
 
         self.live_submissions_table = live_submissions_table.LiveSubmissionsTable(
             self,
-            config = config,
-            column_types = self.submission_handler.grading_columns,
+            config=config,
+            column_types=self.submission_handler.grading_columns,
         )
 
-    def setup(self, deadline = None, use_live_submissions_table = True):
-        '''
+    def setup(self, deadline=None, use_live_submissions_table=True):
+        """
         General setup method.
         Call before any request processing is started.
 
@@ -928,16 +987,16 @@ class Lab:
         * use_live_submissions_table:
             Whether to build and update a live submissions table
             of submissions needing reviews (by graders).
-        '''
+        """
         if deadline is None:
             deadline = self.deadline
 
         self.setup_request_handlers()
         if use_live_submissions_table:
-            self.setup_live_submissions_table(deadline = self.deadline)
+            self.setup_live_submissions_table(deadline=self.deadline)
 
-    def parse_request_tags(self, from_gitlab = True):
-        '''
+    def parse_request_tags(self, from_gitlab=True):
+        """
         Parse request tags for group projects in this lab.
         This calls parse_request_tags in each contained group project.
         The boolean parameter from_gitlab determines if:
@@ -946,13 +1005,13 @@ class Lab:
 
         This method needs to be called before requests_and_responses
         in each contained handler data instance can be accessed.
-        '''
-        self.logger.info('Parsing request tags.')
+        """
+        self.logger.info("Parsing request tags.")
         for group in self.groups_known():
-            group.parse_request_tags(from_gitlab = from_gitlab)
+            group.parse_request_tags(from_gitlab=from_gitlab)
 
-    def parse_response_issues(self, on_duplicate = True, delete_duplicates = False):
-        '''
+    def parse_response_issues(self, on_duplicate=True, delete_duplicates=False):
+        """
         Parse response issues for group projects on in this lab.
         This calls parse_response_issues in each contained group project.
         Cost: one HTTP call per group.
@@ -968,18 +1027,22 @@ class Lab:
         * delete_duplicates: if true, delete duplicate issues.
 
         Returns the frozen set of group ids with changes in review issues (if configured).
-        '''
-        self.logger.info('Parsing response issues.')
+        """
+        self.logger.info("Parsing response issues.")
 
         def f():
             for group in self.groups_known():
-                if group.parse_response_issues(on_duplicate = on_duplicate, delete_duplicates = delete_duplicates):
+                if group.parse_response_issues(
+                    on_duplicate=on_duplicate,
+                    delete_duplicates=delete_duplicates,
+                ):
                     yield group.id
+
         return frozenset(f())
 
     @contextlib.contextmanager
     def parse_grading_merge_request_responses(self):
-        '''
+        """
         This method assumes self.config.grading_via_merge_request is true.
         Parse grading merge request responses for group projects on in this lab.
         This calls parse_grading_merge_request_responses in each contained group project.
@@ -994,48 +1057,52 @@ class Lab:
         Inside the context, grading merge requests have notes cache clear suppressed.
         process_requests benefits from being executed inside its scope.
         This is because processing requests may run GradingViaMergeRequest.sync_submissions.
-        '''
-        self.logger.info('Parsing grading merge request responses.')
+        """
+        self.logger.info("Parsing grading merge request responses.")
 
         with contextlib.ExitStack() as stack:
+
             def f():
                 for group in self.groups_known():
                     if group.parse_grading_merge_request_responses():
                         yield group.id
                     if self.config.multi_language is None:
-                        stack.enter_context(group.grading_via_merge_request.notes_suppress_cache_clear())
+                        stack.enter_context(
+                            group.grading_via_merge_request.notes_suppress_cache_clear()
+                        )
                     else:
                         for m in group.grading_via_merge_request.values():
                             stack.enter_context(m.notes_suppress_cache_clear())
+
             yield frozenset(f())
 
-    def parse_requests_and_responses(self, from_gitlab = True):
-        '''
+    def parse_requests_and_responses(self, from_gitlab=True):
+        """
         Calls:
         * parse_response_issues
         * parse_grading_merge_request_responses (if configured)
         * parse_request_tags
 
         Does more HTTP requests for Chalmers GitLab than needed.
-        '''
+        """
         self.parse_response_issues()
         if self.config.grading_via_merge_request:
             with self.parse_grading_merge_request_responses():
                 pass
-        self.parse_request_tags(from_gitlab = from_gitlab)
+        self.parse_request_tags(from_gitlab=from_gitlab)
 
     def process_group_request(self, group):
-        '''
+        """
         Process a request in a group.
         See GroupProject.process_request.
 
         Returns a boolean indicating if a submission was newly processed.
-        '''
+        """
         requests_new = group.process_requests()
         return requests_new[self.config.submission_handler_key]
 
     def process_requests(self):
-        '''
+        """
         Process requests in group projects in this lab.
         This skips requests already marked as handled in the local collection repository.
         Before calling this method, the following setups steps need to have been executed:
@@ -1048,49 +1115,53 @@ class Lab:
         If grading via merge request has been configured,
         benefits from being executed within the scope of parse_grading_merge_request_responses.
         This is because processing requests may run GradingViaMergeRequest.sync_submissions.
-        '''
-        self.logger.info('Processing requests.')
+        """
+        self.logger.info("Processing requests.")
 
         def f():
             for group in self.groups_known():
                 requests_new = group.process_requests()
                 if requests_new[self.config.submission_handler_key]:
                     yield group.id
+
         return frozenset(f())
 
     @functools.cached_property
     def submission_handler(self):
-        '''The submission handler specified by the lab configuration.'''
+        """The submission handler specified by the lab configuration."""
         return self.config.request_handlers[self.config.submission_handler_key]
 
     @functools.cached_property
     def have_reviews(self):
-        '''Whether review response issues are configured.'''
+        """Whether review response issues are configured."""
         return self.submission_handler.review_response_key is not None
 
     def handle_requests(self):
-        self.logger.info('Handling request tags.')
+        self.logger.info("Handling request tags.")
         for group in self.groups_known():
             group.handle_requests()
 
     @contextlib.contextmanager
     def checkout_with_empty_bin_manager(self, commit):
-        '''
+        """
         Context manager for a checked out commit and an empty directory
         that is used for transient results such as compilation products.
-        '''
+        """
         with git_tools.checkout_manager(self.repo, commit) as src:
             with path_tools.temp_dir() as bin:
                 yield (src, bin)
 
-    def branch_problem(self, language = None):
+    def branch_problem(self, language=None):
         if language is None:
             return self.config.branch_problem
 
         return self.config.branch_problem[language]
 
-    def head_problem(self, language = None):
-        return git_tools.normalize_branch(self.repo, self.branch_problem(language = language))
+    def head_problem(self, language=None):
+        return git_tools.normalize_branch(
+            self.repo,
+            self.branch_problem(language=language),
+        )
 
     @property
     def heads_problem(self):
@@ -1106,22 +1177,28 @@ class Lab:
         return self.config.compiler
 
     # TODO: unused?
-    def checkout_problem(self, language = None):
-        '''A context manager for the checked out problem head (path.Path).'''
-        return git_tools.checkout_manager(self.repo, self.head_problem(language = language))
+    def checkout_problem(self, language=None):
+        """A context manager for the checked out problem head (path.Path)."""
+        return git_tools.checkout_manager(
+            self.repo, self.head_problem(language=language)
+        )
 
     # TODO: unused?
     @contextlib.contextmanager
-    def checkout_and_compile_problem(self, language = None):
-        with self.checkout_with_empty_bin_manager(self.head_problem(language = language)) as (src, bin):
+    def checkout_and_compile_problem(self, language=None):
+        with self.checkout_with_empty_bin_manager(
+            self.head_problem(language=language)
+        ) as (src, bin):
             if self.compiler is not None:
                 self.compiler.compile(src, bin)
                 yield (src, bin)
 
-    def groups_with_live_submissions(self, deadline = None):
-        '''A generator for groups with live submissions for the given optional deadline.'''
+    def groups_with_live_submissions(self, deadline=None):
+        """
+        A generator for groups with live submissions for the given optional deadline.
+        """
         for group in self.groups_known():
-            if group.submission_current(deadline = deadline) is not None:
+            if group.submission_current(deadline=deadline) is not None:
                 yield group.id
 
     @contextlib.contextmanager
@@ -1129,30 +1206,30 @@ class Lab:
         try:
             yield
         finally:
-            self.file_live_submissions_table_staging.unlink(missing_ok = True)
+            self.file_live_submissions_table_staging.unlink(missing_ok=True)
 
-    def update_live_submissions_table(self, group_ids = None):
-        '''
+    def update_live_submissions_table(self, group_ids=None):
+        """
         Updates the live submissions table on Canvas.
         Before calling this method, all group rows in the
         live submissions table need to have been updated.
 
         See LiveSubmissionsTable.build for argument descriptions.
-        '''
-        self.logger.info('Updating live submissions table')
+        """
+        self.logger.info("Updating live submissions table")
         with self.live_submissions_table_staging_manager():
             self.live_submissions_table.build(
                 self.file_live_submissions_table_staging,
-                group_ids = group_ids,
+                group_ids=group_ids,
             )
             if path_tools.file_content_eq(
                 self.file_live_submissions_table_staging,
                 self.file_live_submissions_table,
-                missing_ok_b = True,
+                missing_ok_b=True,
             ):
                 self.logger.debug(
-                    'Live submissions table has not changed, '
-                    'skipping upload to Canvas.'
+                    "Live submissions table has not changed,"
+                    " skipping upload to Canvas."
                 )
                 self.file_live_submissions_table_staging.unlink()
             else:
@@ -1172,9 +1249,11 @@ class Lab:
                 #     self.repo.create_head(self.head_live_submissions_table, commit, force = True)
                 #     self.repo_updated = True
                 #     self.repo_push()
-                self.logger.info('Posting live submissions table to Canvas')
+                self.logger.info("Posting live submissions table to Canvas")
                 target = self.config.canvas_path_awaiting_grading
-                folder_id = self.course.canvas_course.get_folder_by_path(target.parent).id
+                folder_id = self.course.canvas_course.get_folder_by_path(
+                    target.parent
+                ).id
                 # self.course.canvas_course.post_file(
                 #     self.file_live_submissions_table_staging,
                 #     folder_id,
@@ -1183,7 +1262,7 @@ class Lab:
                 # Workaround for https://github.com/instructure/canvas-lms/issues/2309:
                 with path_tools.temp_file() as path:
                     data = self.file_live_submissions_table_staging.read_text()
-                    data = data + '<!-- ' + str(random.randbytes(16)) + ' -->'
+                    data = data + "<!-- " + str(random.randbytes(16)) + " -->"
                     path.write_text(data)
                     self.course.canvas_course.post_file(path, folder_id, target.name)
                 self.file_live_submissions_table_staging.replace(
@@ -1192,8 +1271,8 @@ class Lab:
 
     def parse_issue(self, issue):
         request_types = self.config.request.__dict__
-        for (request_type, spec) in request_types.items():
-            for (response_type, pp) in spec.issue.__dict__.items():
+        for request_type, spec in request_types.items():
+            for response_type, pp in spec.issue.__dict__.items():
                 try:
                     return (request_type, response_type, pp.parse(issue.title))
                 except Exception:
@@ -1204,7 +1283,7 @@ class Lab:
             group.grading_issues = dict()
 
         r = self.course.parse_response_issues(self.collection_project)
-        for ((request, response_type), value) in r.items():
+        for (request, response_type), value in r.items():
             (id, request) = self.course.qualify_with_slash.parse(request)
             self.groups[id].grading_issues[(request, response_type)] = value
 
@@ -1212,33 +1291,38 @@ class Lab:
     def grading_sheet(self):
         return self.course.grading_spreadsheet.ensure_grading_sheet(self)
 
-    def normalize_group_ids(self, group_ids = None):
-        return {group.id for group in self.groups_known()} if group_ids is None else group_ids
+    def normalize_group_ids(self, group_ids=None):
+        return (
+            {group.id for group in self.groups_known()}
+            if group_ids is None
+            else group_ids
+        )
 
-    def include_group_in_grading_sheet(self, group, deadline = None):
-        '''
+    def include_group_in_grading_sheet(self, group, deadline=None):
+        """
         We include a group in the grading sheet if it is a student group with a submission.
         Extra groups to include can be configured in the grading sheet config using:
         * include_groups_with_no_submission
-        '''
+        """
         if not group.is_known or group.is_solution:
             return False
 
         if deadline is None:
             deadline = self.deadline
 
-        return any([
-            list(group.submissions_relevant(deadline)),
-            self.course.config.grading_sheet.include_groups_with_no_submission and group.non_empty(),
-        ])
+        return (
+            list(group.submissions_relevant(deadline))
+            or self.course.config.grading_sheet.include_groups_with_no_submission
+            or group.non_empty()
+        )
 
     @functools.cached_property
     def grading_sheet_group_link(self):
         if not self.student_connector.gdpr_link_problematic:
             return lambda group_id: self.groups[group_id].project.get.web_url
 
-    def update_grading_sheet(self, group_ids = None, deadline = None):
-        '''
+    def update_grading_sheet(self, group_ids=None, deadline=None):
+        """
         Update the grading sheet.
 
         Arguments:
@@ -1247,7 +1331,7 @@ class Lab:
         * deadline:
             Deadline to use for submissions.
             If not set, we use self.deadline.
-        '''
+        """
         if deadline is None:
             deadline = self.deadline
 
@@ -1264,24 +1348,24 @@ class Lab:
 
         # Ensure grading sheet has rows for all required groups.
         self.grading_sheet.setup_groups(
-            groups = [group.id for group in groups],
-            group_link = self.grading_sheet_group_link,
+            groups=[group.id for group in groups],
+            group_link=self.grading_sheet_group_link,
         )
 
         # Ensure grading sheet has sufficient query group columns.
-        self.grading_sheet.ensure_num_queries(max(
-            (general.ilen(group.submissions_relevant(deadline)) for group in groups),
-            default = 0,
-        ))
+        it = (general.ilen(group.submissions_relevant(deadline)) for group in groups)
+        self.grading_sheet.ensure_num_queries(max(it, default=0))
 
         request_buffer = self.course.grading_spreadsheet.create_request_buffer()
         for group in groups:
-            for (query, submission) in enumerate(group.submissions_relevant(deadline)):
+            for query, submission in enumerate(group.submissions_relevant(deadline)):
                 if submission.outcome is None:
                     grader = None
                     outcome = None
                 else:
-                    grader = google_tools.sheets.cell_value(submission.grader_informal_name)
+                    grader = google_tools.sheets.cell_value(
+                        submission.grader_informal_name
+                    )
                     outcome = google_tools.sheets.cell_link_with_fields(
                         self.course.config.outcome.as_cell.print(submission.outcome),
                         submission.link,
@@ -1292,18 +1376,21 @@ class Lab:
                     group.id,
                     query,
                     grading_sheet.Query(
-                        submission = google_tools.sheets.cell_link_with_fields(
+                        submission=google_tools.sheets.cell_link_with_fields(
                             submission.request_name,
-                            gitlab_.tools.url_tag_name(group.project.get, submission.request_name),
+                            gitlab_.tools.url_tag_name(
+                                group.project.get,
+                                submission.request_name,
+                            ),
                         ),
-                        grader = grader,
-                        score = outcome,
+                        grader=grader,
+                        score=outcome,
                     ),
                 )
         request_buffer.flush()
 
-    def update_submission_systems(self, group_ids = None, deadline = None):
-        '''
+    def update_submission_systems(self, group_ids=None, deadline=None):
+        """
         Update the submission systems for specified groups.
         The submission systems are:
         - collection project on Chalmers GitLab,
@@ -1317,7 +1404,7 @@ class Lab:
         * deadline:
             Passed to update_grading_sheet.
             If set, overrides self.deadline.
-        '''
+        """
         if group_ids is None:
             group_ids = self.groups.keys()
         group_ids = tuple(group_ids)
@@ -1327,16 +1414,16 @@ class Lab:
             self.groups[id].members_clear()
 
         # Update submission systems.
-        if hasattr(self, 'live_submissions_table'):
-            self.live_submissions_table.update_rows(group_ids = group_ids)
+        if hasattr(self, "live_submissions_table"):
+            self.live_submissions_table.update_rows(group_ids=group_ids)
         self.repo_push()
         if group_ids:
-            if hasattr(self, 'live_submissions_table'):
+            if hasattr(self, "live_submissions_table"):
                 self.update_live_submissions_table()
-            self.update_grading_sheet(group_ids = group_ids)
+            self.update_grading_sheet(group_ids=group_ids)
 
-    def initial_run(self, deadline = None):
-        '''
+    def initial_run(self, deadline=None):
+        """
         Does an initial run of processing everything.
         Assumes that setup has already occurred.
 
@@ -1344,7 +1431,7 @@ class Lab:
         * deadline:
             Passed to update_grading_sheet.
             If set, overrides self.deadline.
-        '''
+        """
         with contextlib.ExitStack() as stack:
             self.parse_response_issues()
             if self.config.grading_via_merge_request:
@@ -1352,54 +1439,66 @@ class Lab:
             self.repo_fetch_all()
             self.parse_request_tags(False)
             self.process_requests()
-        self.update_submission_systems(deadline = deadline)
+        self.update_submission_systems(deadline=deadline)
 
     def refresh_lab(self):
-        '''
+        """
         Refresh group project requests and responses.
         Should be called regularly even if webhooks are in place.
         This is because webhooks can fail to trigger or the network connection may be down.
-        '''
-        self.logger.info('Refreshing lab.')
+        """
+        self.logger.info("Refreshing lab.")
         with contextlib.ExitStack() as stack:
             review_updates = self.parse_response_issues()
             if self.config.grading_via_merge_request:
-                review_updates = review_updates | stack.enter_context(self.parse_grading_merge_request_responses())
+                review_updates = review_updates | stack.enter_context(
+                    self.parse_grading_merge_request_responses()
+                )
 
             self.repo_fetch_all()
-            self.parse_request_tags(from_gitlab = False)
+            self.parse_request_tags(from_gitlab=False)
             new_submissions = frozenset(self.process_requests())
 
         # Update submission system.
-        self.logger.info(f'Groups with new submissions: {new_submissions}')
-        self.logger.info(f'Groups with review updates: {review_updates}')
-        self.update_submission_systems(group_ids = review_updates | new_submissions)
+        self.logger.info(f"Groups with new submissions: {new_submissions}")
+        self.logger.info(f"Groups with review updates: {review_updates}")
+        self.update_submission_systems(group_ids=review_updates | new_submissions)
 
-    def refresh_group(self, group, refresh_issue_responses = False, refresh_grading_merge_request = False):
-        '''
+    def refresh_group(
+        self, group, refresh_issue_responses=False, refresh_grading_merge_request=False
+    ):
+        """
         Refresh requests and responses in a single group in this lab.
         Typically called after notification by a webhook.
 
         Arguments:
         * group_id: The id of the group to refresh.
         * refresh_responses: If set to False, responses will not be updated.
-        '''
-        refresh_some_responses = refresh_issue_responses or refresh_grading_merge_request
-        suffix = '' if refresh_some_responses else ' (requests only)'
-        self.logger.info(f'Refreshing {group.name}{suffix}.')
+        """
+        refresh_some_responses = (
+            refresh_issue_responses or refresh_grading_merge_request
+        )
+        suffix = "" if refresh_some_responses else " (requests only)"
+        self.logger.info(f"Refreshing {group.name}{suffix}.")
 
         with contextlib.ExitStack() as stack:
+
             def f():
                 x = refresh_issue_responses and group.parse_response_issues()
                 if x:
-                    self.logger.info('found response issue update')
+                    self.logger.info("found response issue update")
                     yield x
                 if self.config.grading_via_merge_request:
-                    x = refresh_grading_merge_request and group.parse_grading_merge_request_responses()
+                    x = (
+                        refresh_grading_merge_request
+                        and group.parse_grading_merge_request_responses()
+                    )
                     if x:
-                        self.logger.info('found merge request update')
+                        self.logger.info("found merge request update")
                         if self.config.multi_language is None:
-                            stack.enter_context(group.grading_via_merge_request.notes_suppress_cache_clear())
+                            stack.enter_context(
+                                group.grading_via_merge_request.notes_suppress_cache_clear()
+                            )
                         else:
                             for m in group.grading_via_merge_request.values():
                                 stack.enter_context(m.notes_suppress_cache_clear())
@@ -1409,25 +1508,25 @@ class Lab:
             group.repo_fetch()
             # Setting from_gitlab = True results in a single HTTP call.
             # It might be faster if we have a large number of remote tags.
-            group.parse_request_tags(from_gitlab = False)
+            group.parse_request_tags(from_gitlab=False)
             new_submissions = self.process_group_request(group)
 
         # Update submission system.
         if new_submissions:
-            self.logger.info('New submissions received.')
+            self.logger.info("New submissions received.")
         if grading_updates:
-            self.logger.info('Grading updates received.')
-        self.update_submission_systems(group_ids = filter(
-            lambda _: grading_updates or new_submissions, [group.id]
-        ))
+            self.logger.info("Grading updates received.")
+        self.update_submission_systems(
+            group_ids=filter(lambda _: grading_updates or new_submissions, [group.id])
+        )
 
-    def update_grading_sheet_and_live_submissions_table(self, deadline = None):
-        '''Does what it says.'''
-        self.setup(deadline = deadline)
-        self.initial_run(deadline = deadline)
+    def update_grading_sheet_and_live_submissions_table(self, deadline=None):
+        """Does what it says."""
+        self.setup(deadline=deadline)
+        self.initial_run(deadline=deadline)
 
     def checkout_tag_hierarchy(self, dir):
-        '''
+        """
         Check out all tags in the collection repository in a hierarchy based at dir.
         The directory dir and its parents are created if they do not exist.
         To save space, tags are omitted if they satisfy one of the following conditions:
@@ -1437,16 +1536,15 @@ class Lab:
         # is identical to that the respective parent tag.
 
         Use this function to more quickly debug issues with contents of the collection repository.
-        '''
-        for (path, tag) in git_tools.flatten_references_hierarchy(self.tags).items():
-            if any([
-                path.name == 'handled',
-                len(path.parents) > 0 and path.parent.name == 'after',
-            ]):
+        """
+        for path, tag in git_tools.flatten_references_hierarchy(self.tags).items():
+            if path.name == "handled" or (
+                len(path.parents) > 0 and path.parent.name == "after"
+            ):
                 continue
 
             out = dir / path
-            out.mkdir(parents = True)
+            out.mkdir(parents=True)
             git_tools.checkout(self.repo, out, tag)
 
     @functools.cached_property
@@ -1455,14 +1553,15 @@ class Lab:
             for group in self.groups_known():
                 for gitlab_user in group.members:
                     yield (gitlab_user.username, group)
-        return general.sdict(f(), format_value = lambda group: group.name)
+
+        return general.sdict(f(), format_value=lambda group: group.name)
 
     def group_by_gitlab_username_clear(self):
         with contextlib.suppress(AttributeError):
             del self.group_by_gitlab_username
 
-    def grading_report(self, scoring = None, strict = True):
-        '''
+    def grading_report(self, scoring=None, strict=True):
+        """
         Prepare a grading report for this lab.
         This returns a map sending usernames on Chalmers GitLab to scores.
         Scores are user-defined.
@@ -1473,14 +1572,14 @@ class Lab:
             Defaults to None for no submissions and the maximum function otherwise.
         * strict:
             Refuse to compute score if there is an ungraded submission.
-        '''
+        """
         return {
-            gitlab_username: group.get_score(scoring = scoring, strict = strict)
+            gitlab_username: group.get_score(scoring=scoring, strict=strict)
             for (gitlab_username, group) in self.group_by_gitlab_username.items()
         }
 
-    def parse_hook_event(self, hook_event, project_slug, strict = False):
-        '''
+    def parse_hook_event(self, hook_event, project_slug, strict=False):
+        """
         Arguments:
         * hook_event:
             Dictionary (decoded JSON).
@@ -1494,75 +1593,87 @@ class Lab:
         - an instance of events.LabEvent,
         - a callback function to handle the event.
         These are the lab events triggered by the webhook event.
-        '''
+        """
         id = self.group_slug_to_id(project_slug)
         if id is None:
-            raise Exception(f'Unexpected project slug in hook event: {project_slug}')
+            raise Exception(f"Unexpected project slug in hook event: {project_slug}")
 
         try:
             group = self.groups[id]
         except LookupError:
-            self.logger.warning(f'Received webhook event for unknown group id {id}.')
-            self.logger.debug(f'Webhook event:\n{hook_event}')
+            self.logger.warning(f"Received webhook event for unknown group id {id}.")
+            self.logger.debug(f"Webhook event:\n{hook_event}")
             if strict:
-                raise ValueError(f'Unknown group id {id}')
+                raise ValueError(f"Unknown group id {id}")
             return
 
         yield from webhook_listener.map_with_callback(
             group.lab_event,
-            group.parse_hook_event(hook_event, strict = strict),
+            group.parse_hook_event(hook_event, strict=strict),
         )
 
     def course_event(self, lab_event):
         return events.CourseEventInLab(
-            lab_id = self.id,
-            lab_event = lab_event,
+            lab_id=self.id,
+            lab_event=lab_event,
         )
 
-    def report_assignment_populate(self, scoring = None, strict = True):
-        grades = self.grading_report(scoring = scoring, strict = strict)
+    def report_assignment_populate(self, scoring=None, strict=True):
+        grades = self.grading_report(scoring=scoring, strict=strict)
 
         id = self.report_assignment_get().id
-        submissions = self.course.canvas_course.get_submissions(id, use_cache = False)
+        submissions = self.course.canvas_course.get_submissions(id, use_cache=False)
         for submission in submissions:
             canvas_user_id = submission.user_id
             try:
                 canvas_user = self.course.canvas_course.student_details[canvas_user_id]
             except KeyError:
-                self.logger.warning(f'* Submission user {canvas_user_id} not a Canvas user (probably it is the test student).')
+                self.logger.warning(
+                    f"* Submission user {canvas_user_id} not a Canvas user"
+                    " (probably it is the test student)."
+                )
                 continue
 
             gitlab_username = self.course.gitlab_username_by_canvas_id(canvas_user_id)
             if gitlab_username is None:
-                self.logger.warning(f'* Canvas user {canvas_user.name} not on Chalmers GitLab.')
+                self.logger.warning(
+                    f"* Canvas user {canvas_user.name} not on Chalmers GitLab."
+                )
                 continue
 
             try:
                 grade = grades.pop(gitlab_username)
             except KeyError:
-                self.logger.warning(f'* Canvas user {canvas_user.name} not in lab on Chalmers GitLab.')
+                self.logger.warning(
+                    f"* Canvas user {canvas_user.name} not in lab on Chalmers GitLab."
+                )
                 continue
             if grade is None:
-                self.logger.warning(f'* {gitlab_username} ({canvas_user.name}): no graded submission')
+                self.logger.warning(
+                    f"* {gitlab_username} ({canvas_user.name}): no graded submission"
+                )
                 continue
 
-            self.logger.info(f'* {canvas_user.name}: {grade}')
+            self.logger.info(f"* {canvas_user.name}: {grade}")
             canvas_grade = {
-                0: 'incomplete',
-                1: 'complete',
+                0: "incomplete",
+                1: "complete",
             }[grade]
-            endpoint = self.course.canvas_course.endpoint + ['assignments', id, 'submissions', canvas_user_id]
-            self.course.canvas.put(endpoint, {
-                'submission[posted_grade]': canvas_grade
-            })
+            endpoint = self.course.canvas_course.endpoint + [
+                "assignments",
+                id,
+                "submissions",
+                canvas_user_id,
+            ]
+            self.course.canvas.put(endpoint, {"submission[posted_grade]": canvas_grade})
 
         if grades:
-            self.logger.warning('Chalmers GitLab users with unreported grades:')
-            for (gitlab_username, grade) in grades.items():
-                self.logger.warning(f'* {gitlab_username}: {grade}')
+            self.logger.warning("Chalmers GitLab users with unreported grades:")
+            for gitlab_username, grade in grades.items():
+                self.logger.warning(f"* {gitlab_username}: {grade}")
 
-    def sync_students_to_gitlab(self, *, add = True, remove = True, restrict_to_known = True):
-        '''
+    def sync_students_to_gitlab(self, *, add=True, remove=True, restrict_to_known=True):
+        """
         Synchronize Chalmers GitLab student group membership according to the group membership on Canvas.
 
         If add is True, this adds missing members of groups on GitLab.
@@ -1587,26 +1698,28 @@ class Lab:
 
         Call sync_students_to_gitlab(add = False, remove = False, restrict_to_known = False)
         to obtain (via logged warnings) a report of group membership deviations.
-        '''
-        self.logger.info('synchronizing students from Canvas groups to GitLab group')
+        """
+        self.logger.info("synchronizing students from Canvas groups to GitLab group")
 
         # We use @student.chalmers.se.
         # TODO: use info from LDAP
-        suffix = '@student.chalmers.se'
+        suffix = "@student.chalmers.se"
         pp_email = print_parse.PrintParse(
-            print = lambda x: x + suffix,
-            parse = lambda x: general.remove_suffix(x, suffix),
+            print=lambda x: x + suffix,
+            parse=lambda x: general.remove_suffix(x, suffix),
         )
 
         def canvas_name(gitlab_username):
             try:
-                canvas_user = self.course.canvas_user_by_gitlab_username[gitlab_username]
+                canvas_user = self.course.canvas_user_by_gitlab_username[
+                    gitlab_username
+                ]
             except KeyError:
-                return 'unknown Canvas student'
+                return "unknown Canvas student"
             return canvas_user.name
 
         def str_with_user_details(identifier, gitlab_username):
-            return f'{identifier} ({canvas_name(gitlab_username)})'
+            return f"{identifier} ({canvas_name(gitlab_username)})"
 
         def known_gitlab_username_from_email(email):
             try:
@@ -1624,68 +1737,105 @@ class Lab:
             return str_with_user_details(gitlab_username, gitlab_username)
 
         for group_id in self.student_connector.desired_groups():
-            entity_name = f'{self.student_connector.gitlab_group_name(group_id)} on GitLab'
+            entity_name = (
+                f"{self.student_connector.gitlab_group_name(group_id)} on GitLab"
+            )
             entity = self.groups[group_id].project.lazy
 
             # Current members and invitations.
             # If restrict_to_known holds, restricts to gitlab users and email addresses
             # recognized as belonging to Canvas students.
-            self.logger.debug(f'checking {entity_name}')
+            self.logger.debug(f"checking {entity_name}")
             members = {
                 gitlab_user.username
                 for gitlab_user in gitlab_.tools.members_dict(entity).values()
-                if general.when(restrict_to_known, gitlab_user.username in self.course.canvas_user_by_gitlab_username)
+                if general.when(
+                    restrict_to_known,
+                    gitlab_user.username in self.course.canvas_user_by_gitlab_username,
+                )
             }
 
             def invitations():
                 for email in gitlab_.tools.invitation_dict(self.gl, entity):
-                    if restrict_to_known and not known_gitlab_username_from_email(email):
+                    if restrict_to_known and not known_gitlab_username_from_email(
+                        email
+                    ):
                         continue
                     yield email
+
             invitations = frozenset(invitations())
 
             members_desired = set()
             invitations_desired = set()
             for gitlab_username in self.student_connector.desired_members(group_id):
-                if gitlab_username in self.course.gitlab_users_cache.id_from_username.keys():
+                if (
+                    gitlab_username
+                    in self.course.gitlab_users_cache.id_from_username.keys()
+                ):
                     members_desired.add(gitlab_username)
                 else:
                     invitations_desired.add(pp_email.print(gitlab_username))
 
             for email in invitations - invitations_desired:
                 if email:
-                    self.logger.warning(f'deleting invitation of {user_str_from_email(email)} to {entity_name}')
+                    self.logger.warning(
+                        f"deleting invitation of {user_str_from_email(email)}"
+                        f" to {entity_name}"
+                    )
                     with gitlab_.tools.exist_ok():
                         gitlab_.tools.invitation_delete(self.gl, entity, email)
                 else:
-                    self.logger.warning(f'extra invitation of {user_str_from_email(email)} to {entity_name}')
+                    self.logger.warning(
+                        f"extra invitation of {user_str_from_email(email)}"
+                        f" to {entity_name}"
+                    )
 
             for gitlab_username in members - members_desired:
                 if remove:
                     self.logger.warning(
-                        f'removing {user_str_from_gitlab_username(gitlab_username)} from {entity_name}'
+                        f"removing {user_str_from_gitlab_username(gitlab_username)}"
+                        f" from {entity_name}"
                     )
                     with gitlab_.tools.exist_ok():
-                        entity.members.delete(self.course.gitlab_users_cache.id_from_username[gitlab_username])
+                        entity.members.delete(
+                            self.course.gitlab_users_cache.id_from_username[
+                                gitlab_username
+                            ]
+                        )
                 else:
                     self.logger.warning(
-                        f'extra member {user_str_from_gitlab_username(gitlab_username)} of {entity_name}'
+                        f"extra member {user_str_from_gitlab_username(gitlab_username)}"
+                        f" of {entity_name}"
                     )
 
             for email in invitations_desired - invitations:
                 if add:
-                    self.logger.log(25, f'inviting {user_str_from_email(email)} to {entity_name}')
+                    self.logger.log(
+                        25, f"inviting {user_str_from_email(email)} to {entity_name}"
+                    )
                     try:
                         with gitlab_.tools.exist_ok():
-                            gitlab_.tools.invitation_create(self.gl, entity, email, gitlab.const.DEVELOPER_ACCESS)
+                            gitlab_.tools.invitation_create(
+                                self.gl,
+                                entity,
+                                email,
+                                gitlab.const.DEVELOPER_ACCESS,
+                            )
                     except gitlab.exceptions.GitlabCreateError as e:
                         self.logger.error(str(e))
                 else:
-                    self.logger.warning(f'missing invitation of {user_str_from_email(email)} to {entity_name}')
+                    self.logger.warning(
+                        f"missing invitation of {user_str_from_email(email)}"
+                        f" to {entity_name}"
+                    )
 
             for gitlab_username in members_desired - members:
                 if add:
-                    self.logger.log(25, f'adding {user_str_from_gitlab_username(gitlab_username)} to {entity_name}')
+                    self.logger.log(
+                        25,
+                        f"adding {user_str_from_gitlab_username(gitlab_username)}"
+                        f" to {entity_name}",
+                    )
                     with gitlab_.tools.exist_ok():
                         if user_str_from_gitlab_username(gitlab_username) not in ["hazemto (Hazem Torfah)", "Peter.Ljunglof (Peter Ljunglöf)"]:
                             entity.members.create({
@@ -1694,19 +1844,20 @@ class Lab:
                             })
                 else:
                     self.logger.warning(
-                        f'missing member {user_str_from_gitlab_username(gitlab_username)} of {entity_name}'
+                        f"missing member {user_str_from_gitlab_username(gitlab_username)}"
+                        f" of {entity_name}"
                     )
 
-    def sync_projects_and_students_from_canvas(self, synced_group_sets = set()):
-        '''
+    def sync_projects_and_students_from_canvas(self, synced_group_sets=set()):
+        """
         Create lab projects and sync their membership according to the information on Canvas.
         Currently does not delete any groups that were deleted on Canvas (for safety).
 
         The parameter is set of group set names that are considered to been synced recently.
         If this lab is a group lab and the name of the corresponding Canvas group set is not in set,
         the group set will be refreshed and its name added to the given set.
-        '''
-        self.logger.info('synchronizing lab projects and their members from Canvas')
+        """
+        self.logger.info("synchronizing lab projects and their members from Canvas")
 
         student_connector = self.student_connector
         if isinstance(student_connector, StudentConnectorGroupSet):
@@ -1719,7 +1870,7 @@ class Lab:
         self.sync_students_to_gitlab()
 
     def deploy_via_lab_sources_and_canvas(self):
-        '''
+        """
         Perform all steps to deploy a lab in sequence.
 
         Steps:
@@ -1736,36 +1887,86 @@ class Lab:
         To undo, call:
         - gitlab_group.delete()
         - repo_delete()
-        '''
+        """
         self.logger.info(
-            '''
+            """
             Deploying lab
             -------------
 
             Note: requires lab sources to be deployed and test runner image built.
 
-            '''
+            """
         )
 
-        self.logger.info('=== Creating project root for lab ===')
+        self.logger.info("=== Creating project root for lab ===")
         self.gitlab_group.create()
 
         self.logger.info('=== Creating (empty) "primary" project for lab ===')
         self.primary_project.create()
 
-        self.logger.info('=== Uploading problem branch ===')
+        self.logger.info("=== Uploading problem branch ===")
         self.primary_project_problem_branches_create()
 
         self.logger.info('=== Creating "collection" project for lab ===')
         self.collection_project.create()
 
-        self.logger.info('=== Forking student projects from primary project ===')
+        self.logger.info("=== Forking student projects from primary project ===")
         self.groups_create_desired()
 
         self.logger.info(
-            '''
+            """
             Note: students are not yet added/invited to lab projects.
             Run 'sync_students_to_gitlab()' when ready.
-            ''')
+            """
+        )
         # Or you could also call sync_students_to_gitlab.
         # But that's dangerous because you can't delete things and start again without creating noise.
+
+    def recover_branches(self):
+        """
+        Recover branches in student projects from the collection project.
+        Useful to resover student projects after accidentally deleting the GitLab lab group.
+
+        WARNING: this force pushes to student projects.
+        """
+        self.logger.info("Restoring student branches from local repository")
+        dir_ref = Path(self.repo.git_dir) / "refs"
+        for dir_remote in (Path(self.repo.git_dir) / "refs" / "remotes").iterdir():
+            remote = dir_remote.name
+
+            def refspecs():
+                for dir_branch in dir_remote.iterdir():
+                    branch = dir_branch.name
+                    if branch.startswith("submission-"):
+                        continue
+
+                    source = str(dir_branch.relative_to(self.repo.git_dir))
+                    target = git_tools.local_ref(False, branch)
+                    refspec = "+" + git_tools.refspec(source, target)
+                    yield refspec
+
+                specs = list(refspecs())
+                self.repo.remote(remote).push(refspec=refspec, force=True)
+
+    def recover_tags(self):
+        """
+        Recover tags in student projects from the collection project.
+        Useful to resover student projects after accidentally deleting the GitLab lab group.
+
+        WARNING: this force pushes to student projects.
+        """
+        self.logger.info("Restoring student tags from local repository")
+        dir_ref = Path(self.repo.git_dir) / "refs"
+        for dir_remote in (Path(self.repo.git_dir) / "refs" / "remote_tags").iterdir():
+            remote = dir_remote.name
+
+            def refspecs():
+                for dir_tag in dir_remote.iterdir():
+                    tag = dir_tag.name
+                    source = str(dir_tag.relative_to(self.repo.git_dir))
+                    target = git_tools.local_ref(True, tag)
+                    refspec = "+" + git_tools.refspec(source, target)
+                    yield refspec
+
+            specs = list(refspecs())
+            self.repo.remote(remote).push(refspec=specs, force=True)
