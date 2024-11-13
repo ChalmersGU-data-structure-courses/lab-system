@@ -112,8 +112,6 @@ class Course:
         # Map from group set names on Canvas to instances of group_set.GroupSet.
         self.group_sets = dict()
 
-        self.gitlab_users_cache
-
         import lab
 
         def lab_dir(lab_id):
