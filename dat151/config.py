@@ -479,6 +479,7 @@ _cid_to_gitlab_username = print_parse.from_dict([
 # Return None if not possible.
 # Takes the course object and the Canvas user object as arguments.
 _canvas_id_to_gitlab_username_override = {
+    122370000000244304: 'ekavol',
 }
 
 
