@@ -319,6 +319,11 @@ _lab_config = SimpleNamespace(
 # Root of the lab repository.
 _lab_repo = this_dir.parent / 'lab-sources'
 
+_pp_language = print_parse.from_dict([
+    ('haskell', 'Haskell'),
+    ('java', 'Java'),
+])
+
 class _LabConfig:
     def __init__(self, k, refresh_period, has_tester):
         self.path_source = _lab_repo / str(k)
@@ -328,8 +333,25 @@ class _LabConfig:
         self.group_set = _group
         self.has_solution = True
 
-        self.multi_language = None
-        self.branch_problem = 'problem'
+        if k == 1:
+            # Deployment needs {problem,solution}.
+            self.multi_language = None
+            self.branch_problem = "problem"
+            self.merge_request_title = print_parse.with_none(
+                print_parse.singleton,
+                'Grading for submission',
+            )
+        else:
+            # Deployment needs {problem,solution}/{haskell,java}.
+            self.multi_language = True
+            self.branch_problem = {
+                "haskell": "stub-haskell",
+                "java": "stub-java",
+            }
+            self.merge_request_title = print_parse.compose(
+                _pp_language,
+                print_parse.regex('Grading for {} submission', regex='[a-zA-Z]*'),
+            )
 
         def f():
             yield ('submission', lab_handlers_dat151.SubmissionHandler(testers.podman.LabTester.factory))
@@ -340,6 +362,8 @@ class _LabConfig:
         self.refresh_period = refresh_period
 
         self.grading_via_merge_request = True
+
+
         self.merge_request_title = print_parse.with_none(print_parse.singleton, 'Grading for submission')
         self.outcome_labels = {
             None: gitlab_.tools.LabelSpec(name = 'waiting-for-grading', color = 'yellow'),
@@ -353,10 +377,6 @@ class _LabConfig:
 
 
 
-# _pp_language = print_parse.from_dict([
-#     ('java', 'Java'),
-#     ('python', 'Python'),
-# ])
 
 
 # # ACTION: configure this to your liking.
