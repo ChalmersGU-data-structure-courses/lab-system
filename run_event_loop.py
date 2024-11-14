@@ -306,7 +306,7 @@ def courses():
 
 
 courses = general.sdict(courses())
-
+course_ = list(courses.values())[0]
 
 def get_value_from_courses(name, selector):
     values = set(map(selector, courses.values()))
@@ -354,7 +354,7 @@ else:
     # We assume all courses share the same labs.
     # TODO: if we want to continue supporting multiple courses in this script, find way of passing lab-specific config.
     canvas_sync_config = event_loop.CanvasSyncConfig(
-        labs_to_sync=tuple(map(course.config.lab.id.parse, args.sync_from_canvas)),
+        labs_to_sync=tuple(map(course_.config.lab.id.parse, args.sync_from_canvas)),
         sync_interval=(
             None
             if args.sync_period is None
