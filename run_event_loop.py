@@ -306,7 +306,7 @@ def courses():
 
 
 courses = general.sdict(courses())
-
+course = list(courses.values())[0]
 
 def get_value_from_courses(name, selector):
     values = set(map(selector, courses.values()))
