@@ -304,8 +304,8 @@ class Lab:
         else:
             self.primary_project_problem_branches_create()
         self.collection_project.create()
-        if self.config.has_solution is True:
-            self.solution_create_and_populate()
+        #if self.config.has_solution is True:
+        #    self.solution_create_and_populate()
         self.logger.info(general.join_lines([
             'Next steps:',
             '* Restart event loop.',
