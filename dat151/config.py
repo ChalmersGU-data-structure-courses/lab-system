@@ -345,8 +345,8 @@ class _LabConfig:
             # Deployment needs {problem,solution}/{haskell,java}.
             self.multi_language = True
             self.branch_problem = {
-                "haskell": "stub-haskell",
-                "java": "stub-java",
+                "haskell": "start-haskell",
+                "java": "start-java",
             }
             self.merge_request_title = print_parse.compose(
                 _pp_language,
@@ -470,7 +470,7 @@ def _lab_item(k, *args):
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict([
     _lab_item(1, datetime.timedelta(minutes = 15), True),
-#    _lab_item(2, datetime.timedelta(minutes = 15), True),
+    _lab_item(2, datetime.timedelta(minutes = 15), True),
 #    _lab_item(3, datetime.timedelta(minutes = 15), True),
 #    _lab_item(4, datetime.timedelta(minutes = 15), True),
 ])
