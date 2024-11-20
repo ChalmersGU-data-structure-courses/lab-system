@@ -439,6 +439,8 @@ class Lab:
                 project.feature_flags_access_level = "disabled"
                 project.infrastructure_access_level = "disabled"
                 project.monitor_access_level = "disabled"
+                project.model_experiments_access_level = "disabled"
+                project.model_registry_access_level = "disabled"
                 project.emails_disabled = False
                 project.permissions = {"project_access": None, "group_access": None}
                 project.save()
