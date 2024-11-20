@@ -4,13 +4,17 @@ import handlers.general
 
 
 class SubmissionHandler(handlers.general.SubmissionHandler):
-    '''A submission handler for Python labs.'''
+    """A submission handler for Python labs."""
 
-    def __init__(self, tester_factory = None, show_solution = True, **tester_args):
+    def __init__(self, tester_factory=None, show_solution=True, **tester_args):
         if tester_factory is None:
             self.testing = None
         else:
-            self.testing = handlers.general.SubmissionTesting(tester_factory, tester_is_robograder = True, **tester_args)
+            self.testing = handlers.general.SubmissionTesting(
+                tester_factory,
+                tester_is_robograder=True,
+                **tester_args,
+            )
         self.show_solution = show_solution
 
     def setup(self, lab):
@@ -24,15 +28,15 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
 
         self.grading_columns = live_submissions_table.with_standard_columns(
             dict(columns()),
-            with_solution = self.show_solution,
+            with_solution=self.show_solution,
         )
 
     def _handle_request(self, request_and_responses, src):
         if self.testing is not None:
             self.testing.test_submission(request_and_responses, src)
         return {
-            'accepted': True,
-            'review_needed': True,
+            "accepted": True,
+            "review_needed": True,
         }
 
     def handle_request(self, request_and_responses):

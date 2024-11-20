@@ -9,53 +9,59 @@ from gql.transport.requests import RequestsHTTPTransport
 import general
 import print_parse
 import graphql_.client
-from graphql_.tools import (
-    query, distribute, tupling, lift, over_list
-)
+from graphql_.tools import query, distribute, tupling, lift, over_list
 from this_dir import this_dir
 
 
 logger = logging.getLogger(__name__)
 
+
 @functools.cache
 def pp_id(scope):
-    return print_parse.regex_int(f'gid://gitlab/{scope}/{{}}')
+    return print_parse.regex_int(f"gid://gitlab/{scope}/{{}}")
 
-pp_date = print_parse.datetime('%Y-%m-%d %H:%M:%S.%f000 %z')
+
+pp_date = print_parse.datetime("%Y-%m-%d %H:%M:%S.%f000 %z")
+
 
 def cursor(cls):
     cls = dataclasses.dataclass(cls)
     cls = print_parse.dataclass_json(cls)
-    cls.pp_cursor = print_parse.maybe(print_parse.compose(
-        cls.pp_json,
-        print_parse.base64_standard_str,
-    ))
+    cls.pp_cursor = print_parse.maybe(
+        print_parse.compose(
+            cls.pp_json,
+            print_parse.base64_standard_str,
+        )
+    )
     return cls
+
 
 @cursor
 class CreatedCursor:
     id: int
     created_at: datetime.datetime = print_parse.dataclass_field(pp_date)
 
+
 @cursor
 class GroupCursor:
     id: int
     name: str
 
+
 class Client(graphql_.client.ClientBase):
-    def __init__(self, domain, token, schema_full = False):
-        '''
+    def __init__(self, domain, token, schema_full=False):
+        """
         Loading the full schema 'gitlab_schema.graphql' takes 2s on my laptop.
         Therefore, we maintain an extract 'gitlab_schema_extract.graphql' for the queries this class supports.
-        '''
+        """
         transport = RequestsHTTPTransport(
-            url = f'https://{domain}/api/graphql',
-            verify = True,
-            retries = 0,  # TODO: change to a higher value
-            auth = general.BearerAuth(token),
+            url=f"https://{domain}/api/graphql",
+            verify=True,
+            retries=0,  # TODO: change to a higher value
+            auth=general.BearerAuth(token),
         )
-        filename = 'gitlab_schema{}.graphql'.format('' if schema_full else '_extract')
-        path_schema = this_dir / 'graphql_' / filename
+        filename = "gitlab_schema{}.graphql".format("" if schema_full else "_extract")
+        path_schema = this_dir / "graphql_" / filename
         super().__init__(transport, path_schema)
 
     def query_complexity(self):
@@ -66,7 +72,7 @@ class Client(graphql_.client.ClientBase):
 
     @functools.cached_property
     def user_core_id(self):
-        return (self.ds.UserCore.id, pp_id('User').parse)
+        return (self.ds.UserCore.id, pp_id("User").parse)
 
     @functools.cached_property
     def user_core_created_at(self):
@@ -74,28 +80,34 @@ class Client(graphql_.client.ClientBase):
 
     def retrieve_all_users_page(self, cursor: Optional[CreatedCursor] = None):
         ds = self.ds
-        return self.execute(lift(query)(
-            tupling(ds.Query.users(
-                sort = 'CREATED_ASC',
-                after = CreatedCursor.pp_cursor.print(cursor),  # type: ignore[attr-defined]
-            ).select)(
-                over_list(tupling(ds.UserCoreConnection.nodes.select)(
-                    self.user_core_id,
-                    ds.UserCore.username,
-                )),
-                lift(ds.UserCoreConnection.pageInfo.select)(
-                    (ds.PageInfo.endCursor, CreatedCursor.pp_cursor.parse),  # type: ignore[attr-defined]
+        return self.execute(
+            lift(query)(
+                tupling(
+                    ds.Query.users(
+                        sort="CREATED_ASC",
+                        after=CreatedCursor.pp_cursor.print(cursor),  # type: ignore[attr-defined]
+                    ).select
+                )(
+                    over_list(
+                        tupling(ds.UserCoreConnection.nodes.select)(
+                            self.user_core_id,
+                            ds.UserCore.username,
+                        )
+                    ),
+                    lift(ds.UserCoreConnection.pageInfo.select)(
+                        (ds.PageInfo.endCursor, CreatedCursor.pp_cursor.parse),  # type: ignore[attr-defined]
+                    ),
                 ),
-            ),
-        ))
+            )
+        )
 
     def retrieve_all_users_from(
         self,
         last_requested: Optional[datetime.datetime] = None,
-        safety_interval: datetime.timedelta = datetime.timedelta(minutes = 10),
+        safety_interval: datetime.timedelta = datetime.timedelta(minutes=10),
         last_known_id: Optional[int] = None,
     ) -> Iterable[Tuple[int, str]]:
-        '''
+        """
         Retrieve all users, optionally starting from last_requested.
 
         Other arguments:
@@ -114,19 +126,22 @@ class Client(graphql_.client.ClientBase):
         (I assume that ids are guaranteed to be monotone.)
         And the provided order on created_at does not correspond to a public user_core attribute.
         This is the reason for this complicated setup.
-        '''
+        """
         cursor = None
         if last_requested is not None:
-            cursor = CreatedCursor(created_at = last_requested - safety_interval, id = 0)  # type: ignore
+            cursor = CreatedCursor(created_at=last_requested - safety_interval, id=0)  # type: ignore
 
         def f(item):
             (id, username) = item
             return last_known_id is None or id > last_known_id
 
-        yield from filter(f, graphql_.client.retrieve_all_from_cursor(
-            self.retrieve_all_users_page,
-            cursor,
-        ))
+        yield from filter(
+            f,
+            graphql_.client.retrieve_all_from_cursor(
+                self.retrieve_all_users_page,
+                cursor,
+            ),
+        )
 
     # @functools.cached_property
     # def project_members_direct(self):

@@ -1,7 +1,7 @@
 import logging
 
-from gitlab_config_personal import *
 import course
+from gitlab_config_personal import *
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
@@ -41,11 +41,11 @@ l = c.labs[2]
 # 2. Call Lab.merge_groups_problem_into_main to hotfix main branch in student projects.
 
 # Manual syncing of students from Canvas:
-#l.sync_students_to_gitlab(add = True, remove = True)
+# l.sync_students_to_gitlab(add = True, remove = True)
 
 # Manual processing of submissions:
-#l.setup()
-#l.repo_fetch_all()
-#l.parse_request_tags(from_gitlab = False)
-#l.parse_requests_and_responses(from_gitlab = False)
-#l.process_requests()
+# l.setup()
+# l.repo_fetch_all()
+# l.parse_request_tags(from_gitlab = False)
+# l.parse_requests_and_responses(from_gitlab = False)
+# l.process_requests()

@@ -1,42 +1,45 @@
 import contextlib
-import json
 import http.server
+import json
 import logging
-from pathlib import PurePosixPath
-import shlex
 import ssl
+from pathlib import PurePosixPath
 
+import openssl_tools
 import path_tools
 import print_parse
-import openssl_tools
-
 
 logger = logging.getLogger(__name__)
 
+
 class Handler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
+        logger.debug('do_POST: start')
+
         token = self.headers.get('X-Gitlab-Token')
         if token != self.server.secret_token:
             self.server.logger.warning(
-                f'Given secret token {token} does not match '
-                f'stored secret token {self.server.secret_token}. '
-                'Ignoring request.'
+                f"Given secret token {token} does not match "
+                f"stored secret token {self.server.secret_token}. "
+                "Ignoring request."
             )
             return
 
         # Read data and conclude request.
-        data_raw = self.rfile.read(int(self.headers['Content-Length']))
+        data_raw = self.rfile.read(int(self.headers["Content-Length"]))
         self.send_response(200)
         self.end_headers()
 
         # Parse data and call callback.
-        self.info = json.loads(data_raw)
-        self.server.logger.debug('received hook callback with data:\n' + str(self.info))
-        self.server.callback(self.info)
+        info = json.loads(data_raw)
+        self.server.logger.debug("received hook callback with data:\n" + str(info))
+        self.server.callback(info)
+
+        logger.debug('do_POST: end')
 
 @contextlib.contextmanager
-def server_manager(netloc, secret_token, callback, logger = logger):
-    '''
+def server_manager(netloc, secret_token, callback, logger=logger):
+    """
     Context manager for an HTTP server that processes webhook notifications from GitLab.
     Only notifications with the correct secret token are considered.
 
@@ -55,7 +58,7 @@ def server_manager(netloc, secret_token, callback, logger = logger):
         Logger to use in the handler.
 
     This method does not return.
-    '''
+    """
     netloc = print_parse.netloc_normalize(netloc)
     address = (netloc.host, netloc.port)
 
@@ -63,8 +66,8 @@ def server_manager(netloc, secret_token, callback, logger = logger):
         # Generate an SSL certificate.
         # This is needed for GitLab to connect to our webhook listener.
         # (Only HTTPS listener addresses are allowed, not HTTP.).
-        file_cert = dir / 'cert.pem'
-        file_key = dir / 'key.pem'
+        file_cert = dir / "cert.pem"
+        file_key = dir / "key.pem"
         openssl_tools.generate_cert(file_cert, file_key)
 
         # Create the server.
@@ -73,7 +76,7 @@ def server_manager(netloc, secret_token, callback, logger = logger):
             context.load_cert_chain(file_cert, file_key)
             server.socket = context.wrap_socket(
                 server.socket,
-                server_side = True,
+                server_side=True,
             )
 
             # Set the server attributes used by the handler.
@@ -83,27 +86,31 @@ def server_manager(netloc, secret_token, callback, logger = logger):
 
             yield server
 
+
 class ParsingError(Exception):
     def __init__(self, msg, event):
         self.msg = msg
         self.event = event
 
     def __str__(self):
-        return f'{self.msg}\nevent: {self.event}'
+        return f"{self.msg}\nevent: {self.event}"
+
 
 @contextlib.contextmanager
 def parsing_error_manager(event):
     try:
         yield
     except Exception as e:
-        raise ParsingError(msg = str(e), event = event) from e
+        raise ParsingError(msg=str(e), event=event) from e
+
 
 def map_with_callback(f, xs):
-    for (e, callback) in xs:
+    for e, callback in xs:
         yield (f(e), callback)
 
-def parse_hook_event(courses_by_groups_path, hook_event, strict = False):
-    '''
+
+def parse_hook_event(courses_by_groups_path, hook_event, strict=False):
+    """
     Parses an event received from a webhook.
 
     This function completes fast.
@@ -138,11 +145,13 @@ def parse_hook_event(courses_by_groups_path, hook_event, strict = False):
 
     Uses Course.graders for each supplied course.
     See Course.parse_hook_event for a note on precaching.
-    '''
+    """
     with parsing_error_manager(hook_event):
         # Find the relevant lab and group project.
-        project_path = PurePosixPath(hook_event['project']['path_with_namespace'])
-        (project_slug, lab_full_id, *path_groups_parts_rev) = reversed(project_path.parts)
+        project_path = PurePosixPath(hook_event["project"]["path_with_namespace"])
+        (project_slug, lab_full_id, *path_groups_parts_rev) = reversed(
+            project_path.parts
+        )
         path_groups = PurePosixPath(*reversed(path_groups_parts_rev))
 
         course = courses_by_groups_path.get(path_groups)
@@ -150,16 +159,19 @@ def parse_hook_event(courses_by_groups_path, hook_event, strict = False):
             yield from map_with_callback(
                 course.program_event,
                 course.parse_hook_event(
-                    hook_event = hook_event,
-                    lab_full_id = lab_full_id,
-                    project_slug = project_slug,
-                    strict = strict,
+                    hook_event=hook_event,
+                    lab_full_id=lab_full_id,
+                    project_slug=project_slug,
+                    strict=strict,
                 ),
             )
         else:
-            msg = f'unknown course with student groups path groups path {shlex.quote(str(path_groups))}'
+            msg = (
+                "unknown course with student"
+                "groups path {shlex.quote(str(path_groups))}"
+            )
             if strict:
                 raise ValueError(msg)
 
-            logger.warning(f'Received webhook event for {msg}')
-            logger.debug(f'Webhook event:\n{hook_event}')
+            logger.warning(f"Received webhook event for {msg}")
+            logger.debug(f"Webhook event:\n{hook_event}")
