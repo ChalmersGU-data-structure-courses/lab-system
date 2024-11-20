@@ -14,7 +14,9 @@ logger = logging.getLogger(__name__)
 
 class Handler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
-        token = self.headers.get("X-Gitlab-Token")
+        logger.debug('do_POST: start')
+
+        token = self.headers.get('X-Gitlab-Token')
         if token != self.server.secret_token:
             self.server.logger.warning(
                 f"Given secret token {token} does not match "
@@ -33,6 +35,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.server.logger.debug("received hook callback with data:\n" + str(info))
         self.server.callback(info)
 
+        logger.debug('do_POST: end')
 
 @contextlib.contextmanager
 def server_manager(netloc, secret_token, callback, logger=logger):
