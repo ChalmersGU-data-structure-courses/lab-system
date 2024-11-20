@@ -137,9 +137,16 @@ def run(
 
             def webhook_server_run():
                 try:
+                    logger.debug('pre: webhook_server.serve_forever()')
                     webhook_server.serve_forever()
+                    logger.debug('post: webhook_server.serve_forever()')
                 finally:
                     shutdown()
+
+            def webhook_server_shutdown():
+                logger.debug('pre: webhook_server.shutdown()')
+                webhook_server.shutdown()
+                logger.debug('post: webhook_server.shutdown()')
 
             webhook_server_thread = threading.Thread(
                 target=webhook_server_run,
@@ -148,7 +155,7 @@ def run(
             thread_managers.append(
                 general.add_cleanup(
                     threading_tools.thread_manager(webhook_server_thread),
-                    webhook_server.shutdown,
+                    webhook_server_shutdown,
                 )
             )
 
