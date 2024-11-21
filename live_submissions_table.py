@@ -442,11 +442,9 @@ class SubmissionFilesColumn(Column):
                     ),
                 )
 
+        url = gitlab_.tools.url_tree(group.project.get, submission.request_name, True)
         return SubmissionFilesColumn.Value(
-            (
-                submission.request_name,
-                gitlab_.tools.url_tree(group.project.get, submission.request_name),
-            ),
+            (submission.request_name, url),
             linked_grading_response,
         )
 
