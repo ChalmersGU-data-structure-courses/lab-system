@@ -45,7 +45,10 @@ def exist_ok():
     try:
         yield
     except gitlab.exceptions.GitlabCreateError as e:
-        if not e.response_code in [304, 409]:
+        if not (
+            e.response_code in [304, 409]
+            or (e.response_code == 400 and e.error_message == "Branch already exists")
+        ):
             raise
     except gitlab.exceptions.GitlabDeleteError as e:
         if not e.response_code in [304, 404]:
