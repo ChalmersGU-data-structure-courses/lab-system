@@ -426,12 +426,12 @@ def project_url(project, path_segments=[], query_params=dict()):
 # Then these two methods become callable on them.
 
 
-# BUG:
-# GitLab does not provide any way to disambiguate between a branch and a tag.
-# Currently, these links seem to prefer tags over branches.
-# How to make sure (otherwise, exploitable by students)?
-def url_tree(project, ref):
-    return project_url(project, ["-", "tree", str(ref)])
+def url_tree(project, ref, is_tag: bool = False):
+    return project_url(
+        project,
+        ["-", "tree", str(ref)],
+        query_params={"ref_type": "tags" if is_tag else "heads"},
+    )
 
 
 def url_blob(project, ref, path):
