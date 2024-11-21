@@ -332,6 +332,14 @@ class _LabConfig:
         self.canvas_path_awaiting_grading = PurePosixPath(canvas.grading_path) / '{}-to-be-graded.html'.format(lab.full_id.print(k))
         self.group_set = _group
         self.has_solution = True
+        self.refresh_period = refresh_period
+
+        self.grading_via_merge_request = True
+        self.outcome_labels = {
+            None: gitlab_.tools.LabelSpec(name = 'waiting-for-grading', color = 'yellow'),
+            0: gitlab_.tools.LabelSpec(name = 'incomplete', color = 'red'),
+            1: gitlab_.tools.LabelSpec(name = 'pass', color = 'green'),
+        }
 
         if k == 1:
             # Deployment needs {problem,solution}.
@@ -358,18 +366,6 @@ class _LabConfig:
             if has_tester:
                 yield ('test', handlers.general.GenericTestingHandler(testers.podman.LabTester.factory))
         self.request_handlers = dict(f())
-
-        self.refresh_period = refresh_period
-
-        self.grading_via_merge_request = True
-
-
-        self.merge_request_title = print_parse.with_none(print_parse.singleton, 'Grading for submission')
-        self.outcome_labels = {
-            None: gitlab_.tools.LabelSpec(name = 'waiting-for-grading', color = 'yellow'),
-            0: gitlab_.tools.LabelSpec(name = 'incomplete', color = 'red'),
-            1: gitlab_.tools.LabelSpec(name = 'pass', color = 'green'),
-        }
 
     # Key of submission handler in the dictionary of request handlers.
     # Its value must be an instance of SubmissionHandler.
