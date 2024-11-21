@@ -39,6 +39,10 @@ class RequestAndResponses:
     They are reconstructed every time request tags or response issues are refreshed.
     """
 
+    language: str | None
+    languages: list[str] | None
+    request_name: str
+
     def __init__(self, lab, handler_data, request_name, tag_data):
         self.lab = lab
         self.handler_data = handler_data
@@ -301,13 +305,6 @@ class RequestAndResponses:
         return issue
 
     @functools.cached_property
-    def language(self):
-        if self.lab.config.multi_language is None:
-            return None
-
-        return self.handled_result["language"]
-
-    @functools.cached_property
     def grading_merge_request(self):
         if not self.lab.config.grading_via_merge_request:
             return None
@@ -533,6 +530,21 @@ class RequestAndResponses:
             force=True,
         )
 
+        # Detect language.
+        # Currently, submission handlers need to check self.languages before self.language.
+        # They then need to handle submission failure in their own way (usually by posting a response issue).
+        #
+        # TODO:
+        # It would better if we did that here.
+        # But where would the configuration for that go?
+        # It would be strange to push it to the submission handler as we do with grading issues.
+        try:
+            self.language = self.group.detect_language(self.repo_remote_commit)
+            self.languages = None
+        except general.UniquenessError as e:
+            self.language = None
+            self.languages = list(e.iterator)
+
         # Call handler with this object as argment.
         self.logger.debug(
             f"Handling request {self.request_name} {where} "
@@ -550,11 +562,18 @@ class RequestAndResponses:
             yield result["review_needed"]
 
         if all(checks()):
-            if self.lab.config.multi_language is None:
-                self.group.grading_via_merge_request.sync_submission(self)
-            else:
-                language = result["language"]
-                self.group.grading_via_merge_request[language].sync_submission(self)
+            if self.lab.config.multi_language is not None and self.language is None:
+                raise ValueError(
+                    general.text_from_lines(
+                        f"Language detection failure: ({self.languages}).",
+                        "But submission handler succeeded.",
+                        f"* {self.lab.name}",
+                        f"* {self.group.name}",
+                        f"* {self.request_name}",
+                    )
+                )
+
+            self.grading_merge_request.sync_submission(self)
 
         # Create tag <full-group-id>/<request_name>/handled
         # and store handler's result JSON-encoded as its message.
