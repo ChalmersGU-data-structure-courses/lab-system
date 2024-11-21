@@ -44,7 +44,11 @@ class RegexRequestMatcher(RequestMatcher):
             Flags to use for regex matching.
         """
         self.protection_patterns = list(protection_patterns)
-        self.parse = lambda tag: re.fullmatch(regex, tag, regex_flags)
+        self._regex = regex
+        self._regex_flags = regex_flags
+
+    def parse(self, tag):
+        return re.fullmatch(self._regex, tag, self._regex_flags)
 
 
 class RequestHandler:
