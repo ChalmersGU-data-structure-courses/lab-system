@@ -39,6 +39,10 @@ class RequestAndResponses:
     They are reconstructed every time request tags or response issues are refreshed.
     """
 
+    language: str | None
+    languages: list[str] | None
+    request_name: str
+
     def __init__(self, lab, handler_data, request_name, tag_data):
         self.lab = lab
         self.handler_data = handler_data
@@ -301,13 +305,6 @@ class RequestAndResponses:
         return issue
 
     @functools.cached_property
-    def language(self):
-        if self.lab.config.multi_language is None:
-            return None
-
-        return self.handled_result["language"]
-
-    @functools.cached_property
     def grading_merge_request(self):
         if not self.lab.config.grading_via_merge_request:
             return None
@@ -511,18 +508,45 @@ class RequestAndResponses:
         self.responses[response_key] = issue_data
         self.handler_data.responses[response_key][self.request_name] = issue_data
 
-    def process_request(self):
-        """
-        Process request.
-        This only proceeds if the request is not already
-        marked handled in the local collection repository.
+    def post_language_failure_issue(self, response_key, title_data=dict()):
+        assert self.languages is not None
 
-        Returns a boolean indicating if the request was not handled before.
-        """
-        # Skip processing if we already handled this request.
-        if self.get_handled():
-            return False
+        # TODO: change get to lazy once web_url is confirmed to exist there.
+        project = self.group.project.get
 
+        def problems():
+            for language in self.languages:
+                yield self.lab.language_problem_names[language]
+
+        url = gitlab_.tools.url_tag_name(project, self.request_name)
+        ref = f"[{self.request_name}]({url})"
+        if not self.languages:
+            reason = "does not have a problem stub"
+        else:
+            reason = "has multiple problem stubs ({", ".join(problems())})"
+
+        history = gitlab_.tools.url_history(project, self.request_name, True)
+        msg = (
+            f"The lab system is confused because your tag {ref}"
+            f" {reason} in its [commit history]({history})."
+        )
+
+        def all_problems():
+            for problem in self.lab.language_problem_names.values():
+                url = gitlab_.tools.url_tree(project, problem, False)
+                yield f"* [{problem}]({url})"
+
+        description = general.text_from_lines(
+            msg,
+            "The following problem stubs were searched for:",
+            *all_problems(),
+            "",
+            "Please create another tag that fixes this problem.",
+            "If you are unsure how to do this, please seek help.",
+        )
+        self.post_response_issue(response_key, title_data, description)
+
+    def process_request_inner(self):
         where = "" if self.group is None else f" in {self.group.name}"
         self.logger.info(f"Processing request {self.request_name}{where}.")
 
@@ -532,6 +556,40 @@ class RequestAndResponses:
             message=git_tools.tag_message(self.repo_remote_tag),
             force=True,
         )
+
+        # If a submission failure already exists, we are happy.
+        language_failure_key = None
+        with contextlib.suppress(AttributeError):
+            language_failure_key = self.handler_data.handler.language_failure_key
+        if language_failure_key in self.responses:
+            return {"accepted": False}
+
+        # Attempt to detect language.
+        self.language = None
+        self.languages = None
+        try:
+            self.language = self.group.detect_language(self.repo_remote_commit)
+        except general.UniquenessError as e:
+            self.languages = list(e.iterator)
+            self.logger.warn(
+                general.text_from_lines(
+                    f"Language detection failure: (candidates {self.languages}).",
+                    f"* {self.lab.name}",
+                    f"* {self.group.name}",
+                    f"* {self.request_name}",
+                )
+            )
+
+            # Language detection failure for official solution is not allowed.
+            if self.group.is_solution:
+                raise ValueError("Language detection failure in official solution.")
+
+            if (
+                language_failure_key is not None
+                and self.lab.config.multi_language is not None
+            ):
+                self.post_language_failure_issue(language_failure_key, {})
+                return {"accepted": False}
 
         # Call handler with this object as argment.
         self.logger.debug(
@@ -550,11 +608,26 @@ class RequestAndResponses:
             yield result["review_needed"]
 
         if all(checks()):
-            if self.lab.config.multi_language is None:
-                self.group.grading_via_merge_request.sync_submission(self)
-            else:
-                language = result["language"]
-                self.group.grading_via_merge_request[language].sync_submission(self)
+            if self.lab.config.multi_language is not None and self.language is None:
+                msg = "Language detection failed, but submission handler successed."
+                self.logger.error(msg)
+                raise ValueError(msg)
+
+            self.grading_merge_request.sync_submission(self)
+
+    def process_request(self):
+        """
+        Process request.
+        This only proceeds if the request is not already
+        marked handled in the local collection repository.
+
+        Returns a boolean indicating if the request was not handled before.
+        """
+        # Skip processing if we already handled this request.
+        if self.get_handled():
+            return False
+
+        result = self.process_request_inner()
 
         # Create tag <full-group-id>/<request_name>/handled
         # and store handler's result JSON-encoded as its message.
@@ -1087,29 +1160,32 @@ class GroupProject:
                 )
             )
 
-    def detect_ancestor_problem(self, commit):
+    def detect_language(self, commit):
         """
-        Find out which problem a commit derives from.
+        Find out which language problem a commit derives from.
+        The language will be None for labs that are not multi-language.
         """
         return git_tools.find_unique_ancestor(
             self.repo,
             commit,
             {
-                problem: git_tools.normalize_branch(self.lab.repo, problem)
-                for problem in self.lab.heads_problem
+                language: git_tools.normalize_branch(self.lab.repo, problem)
+                for (language, problem) in self.lab.language_problem_names.items()
             },
         )
 
-    def detect_ancestor_problem_for_merge(self, commit, ancestor_override=dict()):
+    def detect_ancestor_problem_for_merge(self, commit, ancestor_override=None):
         """
-        Find out which problem a commit derives from in the situation of a hotfix.
+        Find out which language problem a commit derives from in the situation of a hotfix.
         There, the problem branches in the student project have already been updated.
 
         Arguments:
         * ancestors_override:
-            Map of optional entries from problem names to commits.
+            Optional map of optional entries from problem branch names to commits.
             For missing entries, we use the ancestral tag ancestral/<group remote>/<problem>.
         """
+        if ancestor_override is None:
+            ancestor_override = {}
 
         def get_commit(problem):
             try:

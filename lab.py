@@ -5,6 +5,7 @@ import functools
 import logging
 import random
 import shutil
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Iterable, Optional
 
@@ -1153,11 +1154,19 @@ class Lab:
             with path_tools.temp_dir() as bin:
                 yield (src, bin)
 
-    def branch_problem(self, language=None):
-        if language is None:
-            return self.config.branch_problem
+    @functools.cached_property
+    def language_problem_names(self) -> Mapping[str | None, str]:
+        """
+        The mapping from language names to problem branch names.
+        If not a multi-language lab, uses None as unique language name.
+        """
+        if self.config.multi_language is None:
+            return {None: self.config.branch_problem}
 
-        return self.config.branch_problem[language]
+        return self.config.branch_problem
+
+    def branch_problem(self, language=None):
+        return self.language_problem_names[language]
 
     def head_problem(self, language=None):
         return git_tools.normalize_branch(
