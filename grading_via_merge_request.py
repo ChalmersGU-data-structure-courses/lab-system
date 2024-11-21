@@ -113,12 +113,13 @@ class GradingViaMergeRequest:
                 }
                 self.project.labels.create(label_data)
 
-        self.project.branches.create(
-            {
-                "branch": self.setup_data.source_branch,
-                "ref": self.setup_data.target_branch,
-            }
-        )
+        with gitlab_.tools.exist_ok():
+            self.project.branches.create(
+                {
+                    "branch": self.setup_data.source_branch,
+                    "ref": self.setup_data.target_branch,
+                }
+            )
         gitlab_.tools.protect_branch(
             self.lab.gl, self.project, self.setup_data.source_branch
         )
