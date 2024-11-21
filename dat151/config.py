@@ -12,19 +12,16 @@ The default lab configuration is as needed for the data structures course cluste
 
 import datetime
 import dateutil
-from pathlib import PurePosixPath, Path
+from pathlib import PurePosixPath
 import re
 from types import SimpleNamespace
 
 import gdpr_coding
 import gitlab_.tools
 import handlers.general
-import handlers.java
-import handlers.python
 import handlers.language
-import lab_handlers_dat151
+import live_submissions_table
 import print_parse
-import robograder_java
 import testers.podman
 import testers.java
 from this_dir import this_dir
@@ -36,10 +33,9 @@ _ACTION_REPLACE_THIS = None
 # Time printing configuration.
 time = SimpleNamespace(
     # Timezone to use.
-    zone=dateutil.tz.gettz('Europe/Stockholm'),
-
+    zone=dateutil.tz.gettz("Europe/Stockholm"),
     # Format string to use.
-    format='%b %d %H:%M %Z',
+    format="%b %d %H:%M %Z",
 )
 
 # Canvas config
@@ -47,35 +43,32 @@ canvas = SimpleNamespace(
     # Standard values:
     # * 'canvas.gu.se' for GU courses
     # * 'chalmers.instructure.com' for Chalmers courses
-    url='chalmers.instructure.com',
-
+    url="chalmers.instructure.com",
     # Integer id found in Canvas course URL.
     course_id=31854,
-
     # Path to (unpublished!) folder in Canvas course files.
     # This is where the script will upload submission reports.
     # This folder needs to exist.
     #
     # ACTION: create this folder and make sure it is unpublished.
-    grading_path='open-submissions',
+    grading_path="open-submissions",
 )
 
 # URL for Chalmers GitLab.
-gitlab_url = 'https://git.chalmers.se'
+gitlab_url = "https://git.chalmers.se"
 
 # SSH configuration for Chalmers GitLab.
 gitlab_ssh = SimpleNamespace(
     # Instance of print_parse.NetLoc.
     # Usually, the host is as in gitlab_url and the user is 'git'.
-    netloc=print_parse.NetLoc(host='git.chalmers.se', user='git'),
-
+    netloc=print_parse.NetLoc(host="git.chalmers.se", user="git"),
     # Maximum number of parallel jobs to use for git fetches and pushes.
     # The sshd config for Chalmers GitLab seems to have MaxSessions=5 (checked 2021-12).
     max_sessions=5,
 )
 
 # Usernames on GitLab that are recognized as acting as the lab system.
-gitlab_lab_system_users = ['lab-system']
+gitlab_lab_system_users = ["lab-system"]
 
 # Regarding group and project names on GitLab, we are constrained by the following.
 # (This has been last checked at version 14.4).
@@ -84,29 +77,28 @@ gitlab_lab_system_users = ['lab-system']
 # This also applies to the content of the name file for each lab.
 # This is because it is used to form the full name of a lab on Chalmers Gitlab.
 
-path_course = PurePosixPath() / 'courses' / 'dat151' / '2024'
+path_course = PurePosixPath() / "courses" / "dat151" / "2024"
 
 # ACTION: if you have multiple instances using the same graders group, specify it here.
-path_graders = path_course / 'graders'
+path_graders = path_course / "graders"
 
 # Relative paths to the repositories in each lab as described above.
 path_lab = SimpleNamespace(
-    primary='primary',
-    collection='collection',
+    primary="primary",
+    collection="collection",
 )
 
 # Branch names
 branch = SimpleNamespace(
     # Default branch name to use.
-    master='main',
-
-    solution='solution',
-    submission='submission',
+    master="main",
+    solution="solution",
+    submission="submission",
 )
 
 _outcomes = {
-    0: 'incomplete',
-    1: 'pass',
+    0: "incomplete",
+    1: "pass",
 }
 
 # Parsing and printing of outcomes.
@@ -129,16 +121,12 @@ outcome.as_cell = print_parse.compose(outcome.name, print_parse.invert(outcome.n
 lab = SimpleNamespace(
     # Human-readable id.
     id=print_parse.int_str(),
-
     # Used as relative path on Chalmers GitLab.
-    full_id=print_parse.regex_int('lab-{}'),
-
+    full_id=print_parse.regex_int("lab-{}"),
     # Used as prefix for projects on Chalmers GitLab.
-    prefix=print_parse.regex_int('lab{}-'),
-
+    prefix=print_parse.regex_int("lab{}-"),
     # Actual name.
-    name=print_parse.regex_int('Lab {}', flags=re.IGNORECASE),
-
+    name=print_parse.regex_int("Lab {}", flags=re.IGNORECASE),
     # May be used for sorting in the future.
     sort_key=lambda id: id,
 )
@@ -151,42 +139,37 @@ lab = SimpleNamespace(
 # This is usually fine, except if:
 # * a grader wants to go by a different informal name,
 # * there are two graders with the same first name.
-names_informal = print_parse.from_dict([
-])
+names_informal = print_parse.from_dict([])
 
 # Configuration exclusively related to grading sheets.
 grading_sheet = SimpleNamespace(
     # Headers in sheet keeping track of which groups have been or are to be graded.
     # They must be used in the first row of the worksheet.
     header=SimpleNamespace(
-        group='Group',
+        group="Group",
         query=print_parse.compose(
             print_parse.from_one,  # 1-based numbering
-            print_parse.regex_int('Query #{}', regex='\\d{1,2}'),
+            print_parse.regex_int("Query #{}", regex="\\d{1,2}"),
         ),
-        grader='Grader',
-        score='0/1',
+        grader="Grader",
+        score="0/1",
     ),
-
     # Rows to ignore in grading sheets.
     # This does not include the above header row.
     # Bottom rows can be specified in Python style (negative integers, -1 for last row).
     # This can be used to embed grading-related information in the sheets.
     ignore_rows=[],
-
     # Key of grading spreadsheet on Google Sheets.
     # The grading spreadsheet keeps track of grading outcomes.
     # This is created by the user, but maintained by the lab script.
     # The key (a base64 string) can be found in the URL of the spreadsheet.
     # Individual grading sheets for each lab are worksheets in this spreadsheet.
-    spreadsheet='152uCn7_X7bSnbsppXotSi8xwfdYqrRkxXiFqwtQ8jHA',
-
+    spreadsheet="152uCn7_X7bSnbsppXotSi8xwfdYqrRkxXiFqwtQ8jHA",
     # Template grading sheet on Google Sheets.
     # If the lab script has access to this, it can create initial grading worksheets.
     # Pair of a spreadsheet key and worksheet identifier.
     # The worksheet identifier is formatted as for 'grading_sheet' in lab configuration.
-    template=('152uCn7_X7bSnbsppXotSi8xwfdYqrRkxXiFqwtQ8jHA', 'Template'),
-
+    template=("152uCn7_X7bSnbsppXotSi8xwfdYqrRkxXiFqwtQ8jHA", "Template"),
     # Have rows for non-empty groups that have not yet submitted?
     include_groups_with_no_submission=True,
 )
@@ -200,7 +183,7 @@ grading_via_merge_request = SimpleNamespace(
 )
 
 # Root of the lab repository.
-_lab_repo = this_dir.parent / 'labs'
+_lab_repo = this_dir.parent / "labs"
 
 # Parsing and printing of references to a lab group.
 _group = SimpleNamespace(
@@ -208,15 +191,12 @@ _group = SimpleNamespace(
     # Typical use case: values in a column of group identifiers.
     # Used in the grading sheet and the Canvas submission table.
     id=print_parse.int_str(),
-
     # Used for group project paths.
     # Used as part of tag names in collection repository.
-    full_id=print_parse.regex_int('group-{}'),
-
+    full_id=print_parse.regex_int("group-{}"),
     # Full human-readable name.
     # Used in Canvas group set.
-    name=print_parse.regex_int('Lab group {}', flags=re.IGNORECASE),
-
+    name=print_parse.regex_int("Lab group {}", flags=re.IGNORECASE),
     # Name of Canvas group set where students sign up for lab groups.
     # We recommend to use a zero-based numerical naming scheme:
     # * Lab group 0,
@@ -227,19 +207,19 @@ _group = SimpleNamespace(
     # Note that many special characters are forbidden in GitLab group names.
     #
     # Needs to be a unique key for this group set configuration.
-    group_set_name='Lab group',
-
+    group_set_name="Lab group",
     # Format the id for use in a spreadsheet cell.
     # An integer or a string.
     # The below definition is the identity on integers.
-
     # Instance of GDPRCoding.
     # For use in the grading spreadsheet.
     # Must raise an exception on cell items not belonging to the group range.
-    gdpr_coding=gdpr_coding.GDPRCoding(identifier=print_parse.compose(
-        print_parse.int_str(),
-        print_parse.invert(print_parse.int_str()),
-    )),
+    gdpr_coding=gdpr_coding.GDPRCoding(
+        identifier=print_parse.compose(
+            print_parse.int_str(),
+            print_parse.invert(print_parse.int_str()),
+        )
+    ),
 )
 
 # For tuning of timing tests.
@@ -249,36 +229,29 @@ _machine_speed = 0.5
 _lab_config = SimpleNamespace(
     # Filesystem path to the lab source.
     # Initial lab skeleton is in subfolder 'problem'.
-    path_source=_lab_repo / 'labs' / 'goose-recognizer' / 'java',
-
+    path_source=_lab_repo / "labs" / "goose-recognizer" / "java",
     # Whether the lab has a solution, in subfolder 'solution'.
     has_solution=True,
-
     # An optional group set to use.
     # If None, the lab is individual.
     group_set=_group,
-
     # Worksheet identifier of the grading sheet for the lab.
     # This can be of the following types:
     # * int: worksheet id,
     # * string: worksheet title.
     # * tuple of a single int: worksheet index (zero-based).
-    grading_sheet='Lab N',
-
+    grading_sheet="Lab N",
     # Path in Canvas course where the live submissions table should be uploaded.
-    canvas_path_awaiting_grading=PurePosixPath('temp') / 'lab-N-awaiting-grading.html',
-
+    canvas_path_awaiting_grading=PurePosixPath("temp") / "lab-N-awaiting-grading.html",
     # Dictionary of request handlers.
     # Its keys should be string-convertible.
     # Its values are instances of the RequestHandler interface.
     # The order of the dictionary determines the order in which the request matchers
     # of the request handlers are tested on a student repository tag.
     request_handlers={},
-
     # Key of submission handler in the dictionary of request handlers.
     # Its value must be an instance of SubmissionHandler.
     submission_handler_key=None,
-
     # Lab refresh period if the script is run in an event loop.
     # The webhooks on GitLab may fail to trigger in some cases:
     # * too many tags pushed at the same time,
@@ -302,174 +275,122 @@ _lab_config = SimpleNamespace(
     # * Values of several hours are acceptable
     #   if the webhook notifications work reliably.
     refresh_period=datetime.timedelta(minutes=15),
-
     # Whether new-style grading via merge requests should be used.
     grading_via_merge_request=True,
-
     # Only used in new-style grading via merge requests.
     # The label spec for key None corresponds to the waiting-for-grading state.
     outcome_labels={
-        None: gitlab_.tools.LabelSpec(name='waiting-for-grading', color='yellow'),
-        0: gitlab_.tools.LabelSpec(name='incomplete', color='red'),
-        1: gitlab_.tools.LabelSpec(name='pass', color='green'),
+        None: gitlab_.tools.LabelSpec(name="waiting-for-grading", color="yellow"),
+        0: gitlab_.tools.LabelSpec(name="incomplete", color="red"),
+        1: gitlab_.tools.LabelSpec(name="pass", color="green"),
     },
 )
 
 
 # Root of the lab repository.
-_lab_repo = this_dir.parent / 'lab-sources'
+_lab_repo = this_dir.parent / "lab-sources"
 
-_pp_language = print_parse.from_dict([
-    ('haskell', 'Haskell'),
-    ('java', 'Java'),
-])
+_pp_language = print_parse.from_dict(
+    [
+        ("haskell", "Haskell"),
+        ("java", "Java"),
+    ]
+)
+
+_tester_factory = testers.podman.LabTester.factory
+
+
+class _SubmissionHandler(handlers.general.SubmissionHandlerWithCheckout):
+    def __init__(self, tester_factory):
+        self.testing = handlers.general.SubmissionTesting(tester_factory)
+
+    def setup(self, lab):
+        super().setup(lab)
+        self.testing.setup(lab)
+
+        self.grading_columns = live_submissions_table.with_standard_columns(
+            dict(self.testing.grading_columns()),
+            with_solution=False,
+        )
+
+    def handle_request_with_src(self, request_and_responses, src):
+        self.testing.test_submission(request_and_responses, src)
+        return super().handle_request_with_src(request_and_responses, src)
+
 
 class _LabConfig:
     def __init__(self, k, refresh_period, has_tester):
         self.path_source = _lab_repo / str(k)
         self.path_gitignore = None
         self.grading_sheet = lab.name.print(k)
-        self.canvas_path_awaiting_grading = PurePosixPath(canvas.grading_path) / '{}-to-be-graded.html'.format(lab.full_id.print(k))
+        self.canvas_path_awaiting_grading = PurePosixPath(
+            canvas.grading_path
+        ) / "{}-to-be-graded.html".format(lab.full_id.print(k))
         self.group_set = _group
         self.has_solution = True
         self.refresh_period = refresh_period
 
         self.grading_via_merge_request = True
         self.outcome_labels = {
-            None: gitlab_.tools.LabelSpec(name = 'waiting-for-grading', color = 'yellow'),
-            0: gitlab_.tools.LabelSpec(name = 'incomplete', color = 'red'),
-            1: gitlab_.tools.LabelSpec(name = 'pass', color = 'green'),
+            None: gitlab_.tools.LabelSpec(name="waiting-for-grading", color="yellow"),
+            0: gitlab_.tools.LabelSpec(name="incomplete", color="red"),
+            1: gitlab_.tools.LabelSpec(name="pass", color="green"),
         }
 
-        if k == 1:
+        _submission_handler = _SubmissionHandler()
+
+        self.multi_language = None if k == 1 else True
+        if self.multi_language is None:
             # Deployment needs {problem,solution}.
-            self.multi_language = None
             self.branch_problem = "problem"
             self.merge_request_title = print_parse.with_none(
                 print_parse.singleton,
-                'Grading for submission',
+                "Grading for submission",
             )
         else:
             # Deployment needs {problem,solution}/{haskell,java}.
-            self.multi_language = True
             self.branch_problem = {
                 "haskell": "start-haskell",
                 "java": "start-java",
             }
             self.merge_request_title = print_parse.compose(
                 _pp_language,
-                print_parse.regex('Grading for {} submission', regex='[a-zA-Z]*'),
+                print_parse.regex("Grading for {} submission", regex="[a-zA-Z]*"),
+            )
+            _submission_handler = handlers.language.SubmissionHandler(
+                sub_handlers={
+                    language: _submission_handler
+                    for language in self.branch_problem.keys()
+                },
+                shared_columns=["robograding"],
+                show_solution=False,
             )
 
         def f():
-            yield ('submission', lab_handlers_dat151.SubmissionHandler(testers.podman.LabTester.factory))
+            yield ("submission", _submission_handler)
             if has_tester:
-                yield ('test', handlers.general.GenericTestingHandler(testers.podman.LabTester.factory))
+                yield ("test", handlers.general.GenericTestingHandler(_tester_factory))
+
         self.request_handlers = dict(f())
 
     # Key of submission handler in the dictionary of request handlers.
     # Its value must be an instance of SubmissionHandler.
-    submission_handler_key = 'submission'
-
-
-
-
-
-# # ACTION: configure this to your liking.
-# class _LabConfig:
-#     def __init__(
-#         self,
-#         lab_number,
-#         lab_folder,
-#         refresh_period,
-#         group_set=None,
-#         robotester=False,
-#         use_robograder_instead=False,
-#     ):
-#         self.path_source = _lab_repo / 'labs' / lab_folder
-#         self.has_solution = True
-#         self.group_set = group_set
-#         self.grading_sheet = lab.name.print(lab_number)
-#         self.canvas_path_awaiting_grading = (
-#             PurePosixPath() / 'temp' / '{}-to-be-graded.html'.format(
-#                 lab.full_id.print(lab_number)
-#             )
-#         )
-
-#         def java_params():
-#             yield ('dir_problem', Path() / 'problem' / 'java')
-#             if robotester:
-#                 yield ('machine_speed', _machine_speed)
-#                 if use_robograder_instead:
-#                     yield ('robograder_factory', robograder_java.factory)
-#                     yield ('dir_robograder', Path() / 'robograder' / 'java')
-#                 else:
-#                     yield ('tester_factory', testers.java.LabTester.factory)
-#                     yield ('dir_tester', Path() / 'robotester' / 'java')
-
-#         def python_params():
-#             if robotester:
-#                 yield ('tester_factory', testers.podman.LabTester.factory)
-#                 yield ('dir_tester', Path() / 'robotester' / 'python')
-#                 yield ('machine_speed', _machine_speed)
-
-#         def request_handlers():
-#             def shared_columns():
-#                 if robotester:
-#                     yield 'robograding'
-
-#             yield ('submission', handlers.language.SubmissionHandler(sub_handlers={
-#                 'java': handlers.java.SubmissionHandler(**dict(java_params())),
-#                 'python': handlers.python.SubmissionHandler(**dict(python_params())),
-#             }, shared_columns=list(shared_columns()), show_solution=True))
-
-#             if robotester:
-#                 yield ('robograding', handlers.language.RobogradingHandler(
-#                     sub_handlers={
-#                         'java': (
-#                             handlers.java.RobogradingHandler
-#                             if use_robograder_instead else
-#                             handlers.general.GenericTestingHandler
-#                         )(**dict(java_params())),
-#                         'python': handlers.general.GenericTestingHandler(
-#                             **dict(python_params())
-#                         ),
-#                     }
-#                 ))
-
-#         self.request_handlers = dict(request_handlers())
-#         self.refresh_period = refresh_period
-#         self.multi_language = True
-#         self.grading_via_merge_request = True
-#         self.outcome_labels = {
-#             None: gitlab_.tools.LabelSpec(name='waiting-for-grading', color='yellow'),
-#             0: gitlab_.tools.LabelSpec(name='incomplete', color='red'),
-#             1: gitlab_.tools.LabelSpec(name='pass', color='green'),
-#         }
-#         self.merge_request_title = print_parse.compose(
-#             _pp_language,
-#             print_parse.regex('Grading for {} submission', regex='[a-zA-Z]*'),
-#         )
-#         self.branch_problem = {
-#             'java': 'java',
-#             'python': 'python',
-#         }
-
-#     # Key of submission handler in the dictionary of request handlers.
-#     # Its value must be an instance of SubmissionHandler.
-#     submission_handler_key = 'submission'
+    submission_handler_key = "submission"
 
 
 def _lab_item(k, *args):
     return (k, _LabConfig(k, *args))
 
+
 # Dictionary sending lab identifiers to lab configurations.
-labs = dict([
-    _lab_item(1, datetime.timedelta(minutes = 15), True),
-    _lab_item(2, datetime.timedelta(minutes = 15), True),
-#    _lab_item(3, datetime.timedelta(minutes = 15), True),
-#    _lab_item(4, datetime.timedelta(minutes = 15), True),
-])
+labs = dict(
+    [
+        _lab_item(1, datetime.timedelta(minutes=15), True),
+        _lab_item(2, datetime.timedelta(minutes=15), True),
+        #    _lab_item(3, datetime.timedelta(minutes = 15), True),
+        #    _lab_item(4, datetime.timedelta(minutes = 15), True),
+    ]
+)
 
 
 # Students taking part in labs who are not registered on Canvas.
@@ -484,9 +405,11 @@ outside_canvas = []
 # Giving a value of 'None' means that the student should be ignored.
 name_corrections = {}
 
-_cid_to_gitlab_username = print_parse.from_dict([
-    ('abela', 'andreas.abel'),
-])
+_cid_to_gitlab_username = print_parse.from_dict(
+    [
+        ("abela", "andreas.abel"),
+    ]
+)
 
 # Retrieve the Chalmers GitLab username for a user id on Chalmers/GU Canvas.
 # This is needed to:
@@ -495,7 +418,7 @@ _cid_to_gitlab_username = print_parse.from_dict([
 # Return None if not possible.
 # Takes the course object and the Canvas user object as arguments.
 _canvas_id_to_gitlab_username_override = {
-    122370000000244304: 'ekavol',
+    122370000000244304: "ekavol",
 }
 
 
@@ -535,8 +458,7 @@ def gitlab_username_from_canvas_user_id(course, user_id):
 #   while binding locally to (localhost, <local port>).
 webhook = SimpleNamespace(
     # Value doesn't matter, but should not be guessable.
-    secret_token='a not-so-well-chosen secret',
-
+    secret_token="a not-so-well-chosen secret",
     # Artificial delay to between the first scheduling of
     # lab refresh events for successive labs with lab refreshes.
     # The k-th lab with lab refreshed is scheduled for a refresh after:
