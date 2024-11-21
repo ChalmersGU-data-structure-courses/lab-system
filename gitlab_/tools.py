@@ -441,8 +441,12 @@ def url_tree(project, ref, is_tag: bool | None = None, path=PurePosixPath()):
     )
 
 
-def url_blob(project, ref, path):
-    return project_url(project, ["-", "tree", str(ref), *PurePosixPath(path).parts])
+def url_history(project, ref, is_tag: bool | None = None):
+    return project_url(
+        project,
+        ["-", "history", str(ref)],
+        query_params=url_params_ref_type(is_tag),
+    )
 
 
 # BUG:
