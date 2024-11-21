@@ -608,10 +608,6 @@ class RequestAndResponses:
         )
         result = self.handler_data.handler.handle_request(self)
 
-        # Hacky workaround to an issue in redesign of language handling.
-        if isinstance(result, dict) and self._language is not None:
-            result["language"] = self._language
-
         if result is not None:
             self.logger.debug(general.join_lines(["Handler result:", str(result)]))
 
@@ -623,10 +619,18 @@ class RequestAndResponses:
             yield result["review_needed"]
 
         if all(checks()):
-            if self.lab.config.multi_language is not None and self.language is None:
-                msg = "Language detection failed, but submission handler successed."
-                self.logger.error(msg)
-                raise ValueError(msg)
+            if self.lab.config.multi_language is not None:
+                if self._language is None:
+                    msg = "Language detection failed, but submission handler successed."
+                    self.logger.error(msg)
+                    raise ValueError(msg)
+
+                # Hacky workaround to an issue in redesign of language handling.
+                if result is None:
+                    result = {}
+
+                assert isinstance(result, dict)
+                result["language"] = self._language
 
             self.grading_merge_request.sync_submission(self)
 
