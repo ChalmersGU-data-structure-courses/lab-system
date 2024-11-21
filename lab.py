@@ -1840,27 +1840,39 @@ class Lab:
                         f" to {entity_name}"
                     )
 
-            for gitlab_username in members_desired - members:
-                if add:
-                    self.logger.log(
-                        25,
-                        f"adding {user_str_from_gitlab_username(gitlab_username)}"
-                        f" to {entity_name}",
-                    )
-                    with gitlab_.tools.exist_ok():
+            users_to_add = members_desired - members
+            if users_to_add:
+                inherited_access = dict(
+                    (user.id, user.access_level)
+                    for user in gitlab_.tools.list_all(entity.members_all)
+                )
+                for gitlab_username in users_to_add:
+                    if add:
+                        self.logger.log(
+                            25,
+                            f"adding {user_str_from_gitlab_username(gitlab_username)}"
+                            f" to {entity_name}",
+                        )
                         user_id = self.course.gitlab_users_cache.id_from_username[
                             gitlab_username
                         ]
-                        u = {
-                            "user_id": user_id,
-                            "access_level": gitlab.const.DEVELOPER_ACCESS,
-                        }
-                        entity.members.create(u)
-                else:
-                    self.logger.warning(
-                        f"missing member {user_str_from_gitlab_username(gitlab_username)}"
-                        f" of {entity_name}"
-                    )
+                        access_level = (
+                            inherited_access[user_id]
+                            if user_id in inherited_access
+                            else gitlab.const.DEVELOPER_ACCESS
+                        )
+                        with gitlab_.tools.exist_ok():
+                            entity.members.create(
+                                {
+                                    "user_id": user_id,
+                                    "access_level": access_level,
+                                }
+                            )
+                    else:
+                        self.logger.warning(
+                            f"missing member {user_str_from_gitlab_username(gitlab_username)}"
+                            f" of {entity_name}"
+                        )
 
     def sync_projects_and_students_from_canvas(self, synced_group_sets=set()):
         """
