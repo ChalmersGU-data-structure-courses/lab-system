@@ -1072,7 +1072,7 @@ class GroupProject:
         for problem in self.lab.heads_problem:
             if ensure_ancestral:
                 tag = self.ancestral_tag(problem)
-                if not git_tools.tag_exists(tag):
+                if not git_tools.tag_exist(tag):
                     self.repo.create_tag(
                         tag.name,
                         ref=git_tools.remote_branch(self.remote, problem),
@@ -1135,7 +1135,7 @@ class GroupProject:
         target_branch="main",
         merge_files=False,
         fail_on_problem=True,
-        notify_students: str = None,
+        notify_students: str | None = None,
     ):
         """
         Hotfix the branch 'target_branch' of the group project.
@@ -1279,7 +1279,7 @@ class GroupProject:
         yield gitlab_.tools.HookSpec(
             project=self.project.lazy,
             netloc=netloc,
-            events=list(events_gen()),
+            events=tuple(events_gen()),
             secret_token=self.course.config.webhook.secret_token,
         )
 
@@ -1618,8 +1618,8 @@ class GroupProject:
 
             return title_changes["current"] != title_changes["previous"]
 
-        title_change = title_change()
-        self.logger.debug(f"Detected title change: {title_change}")
+        title_change_ = title_change()
+        self.logger.debug(f"Detected title change: {title_change_}")
 
         # TODO.
         # We could go further and only queue an event
@@ -1628,7 +1628,7 @@ class GroupProject:
         # We don't do much work in handling GroupProjectIssueEvent for non-review issues anyway.
         # And it might be beneficial to be up-to-date also with non-review response issues.
         # So keeping this as is for now.
-        if author_is_grader and title_change:
+        if author_is_grader and title_change_:
             yield (
                 events.GroupProjectWebhookResponseEvent(
                     events.GroupProjectIssueEvent()
