@@ -514,23 +514,21 @@ class RequestAndResponses:
         # TODO: change get to lazy once web_url is confirmed to exist there.
         project = self.group.project.get
 
-        url = gitlab_.tools.url_tag_name(self.request_name)
-        ref = f"({self.request_name})[{url}]"
+        def problems():
+            for language in self.languages:
+                yield self.lab.language_problem_names[language]
+
+        url = gitlab_.tools.url_tag_name(project, self.request_name)
+        ref = f"[{self.request_name}]({url})"
         if not self.languages:
-            reason = "it could not find a problem stub"
-            suffix = ""
+            reason = "does not have a problem stub"
         else:
-            reason = "there are multiple problem stubs"
+            reason = "has multiple problem stubs ({", ".join(problems())})"
 
-            def problems():
-                for language in self.languages:
-                    yield self.lab.language_problem_names[language]
-
-            suffix = ": " + ", ".join(problems())
-
+        history = gitlab_.tools.url_history(project, self.request_name, True)
         msg = (
-            f"The lab system is confused because {reason}"
-            f" from which your tag {ref} originates{suffix}."
+            f"The lab system is confused because your tag {ref}"
+            f" {reason} in its [commit history]({history})."
         )
 
         def all_problems():
@@ -538,17 +536,15 @@ class RequestAndResponses:
                 url = gitlab_.tools.url_tree(project, problem, False)
                 yield f"* [{problem}]({url})"
 
-        history = gitlab_.tools.url_history(project, self.request_name, True)
         description = general.text_from_lines(
             msg,
-            f"Please consult the [commit history]({history}) of your tag.",
-            "The problem stubs were searched for:",
+            "The following problem stubs were searched for:",
             *all_problems(),
             "",
             "Please create another tag that fixes this problem.",
             "If you are unsure how to do this, please seek help.",
         )
-        self.post_response_issue(response_key, response_key, description)
+        self.post_response_issue(response_key, title_data, description)
 
     def process_request_inner(self):
         where = "" if self.group is None else f" in {self.group.name}"
@@ -565,7 +561,7 @@ class RequestAndResponses:
         language_failure_key = None
         with contextlib.suppress(AttributeError):
             language_failure_key = self.handler_data.handler.language_failure_key
-        if self.submission_failure_key in self.responses:
+        if language_failure_key in self.responses:
             return {"accepted": False}
 
         # Attempt to detect language.
@@ -577,7 +573,7 @@ class RequestAndResponses:
             self.languages = list(e.iterator)
             self.logger.warn(
                 general.text_from_lines(
-                    f"Language detection failure: ({self.languages}).",
+                    f"Language detection failure: (candidates {self.languages}).",
                     f"* {self.lab.name}",
                     f"* {self.group.name}",
                     f"* {self.request_name}",
@@ -631,7 +627,7 @@ class RequestAndResponses:
         if self.get_handled():
             return False
 
-        result = self.process_request()
+        result = self.process_request_inner()
 
         # Create tag <full-group-id>/<request_name>/handled
         # and store handler's result JSON-encoded as its message.

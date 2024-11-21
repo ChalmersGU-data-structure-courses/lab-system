@@ -426,7 +426,7 @@ def project_url(project, path_segments=[], query_params=dict()):
 # Then these two methods become callable on them.
 
 
-def url_params_ref_type(is_tag: False | None):
+def url_params_ref_type(is_tag: bool | None):
     if is_tag is None:
         return {}
 
@@ -436,7 +436,7 @@ def url_params_ref_type(is_tag: False | None):
 def url_tree(project, ref, is_tag: bool | None = None, path=PurePosixPath()):
     return project_url(
         project,
-        ["-", "tree", str(ref), *PurePosixPath(path).parts()],
+        ["-", "tree", str(ref), *PurePosixPath(path).parts],
         query_params=url_params_ref_type(is_tag),
     )
 
