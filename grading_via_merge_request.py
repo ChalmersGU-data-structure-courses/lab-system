@@ -484,7 +484,11 @@ class GradingViaMergeRequest:
                 def col_request_name():
                     return markdown.link(
                         request_name,
-                        gitlab_.tools.url_tree(self.group.project.lazy, request_name),
+                        gitlab_.tools.url_tree(
+                            self.group.project.lazy,
+                            request_name,
+                            True,
+                        ),
                     )
 
                 def col_sync():
@@ -504,7 +508,8 @@ class GradingViaMergeRequest:
                 def col_grader():
                     if has_outcome:
                         return markdown.link(
-                            grader, gitlab_.tools.url_username(self.gl, grader)
+                            grader,
+                            gitlab_.tools.url_username(self.gl, grader),
                         )
 
                 yield (col_request_name(), col_sync(), col_outcome(), col_grader())
@@ -605,7 +610,9 @@ class GradingViaMergeRequest:
 
             def body():
                 link = gitlab_.tools.url_tree(
-                    self.group.project.get, submission.request_name
+                    self.group.project.get,
+                    submission.request_name,
+                    True,
                 )
                 yield general.join_lines(
                     [self.sync_message.print((submission.request_name, link))]
