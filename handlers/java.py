@@ -29,9 +29,10 @@ class CompilationColumn(live_submissions_table.Column):
         submission_current = group.submission_current(deadline=self.config.deadline)
 
         report = submission_current.repo_tag(report_segments)
-        url = gitlab_.tools.url_blob(
+        url = gitlab_.tools.url_tree(
             self.lab.collection_project.get,
             report.name,
+            True,
             report_compilation,
         )
 
@@ -72,9 +73,10 @@ class RobogradingColumn(live_submissions_table.Column):
             return live_submissions_table.CallbackColumnValue(has_content=False)
 
         report = submission_current.repo_tag(report_segments)
-        url = gitlab_.tools.url_blob(
+        url = gitlab_.tools.url_tree(
             self.lab.collection_project.get,
             report.name,
+            True,
             report_robograding,
         )
 
@@ -103,9 +105,10 @@ class CompilationAndRobogradingColumn(live_submissions_table.Column):
         def link_for(name, path):
             a = live_submissions_table.format_url(
                 name,
-                gitlab_.tools.url_blob(
+                gitlab_.tools.url_tree(
                     self.lab.collection_project.get,
                     report.name,
+                    True,
                     path,
                 ),
             )

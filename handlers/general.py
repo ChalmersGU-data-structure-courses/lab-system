@@ -324,6 +324,7 @@ class SubmissionTesting:
                                         submission_current.repo_tag(
                                             self_outer.segments_test
                                         ),
+                                        True,
                                     ),
                                 )
                             else:
@@ -333,9 +334,10 @@ class SubmissionTesting:
                                 }[self_outer.has_markdown_report]
                                 live_submissions_table.format_url(
                                     "report",
-                                    gitlab_.tools.url_blob(
+                                    gitlab_.tools.url_tree(
                                         self.lab.collection_project.get,
                                         submission_current.repo_tag(segments),
+                                        True,
                                         self_outer.report_path,
                                     ),
                                 )
