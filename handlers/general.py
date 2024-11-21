@@ -29,6 +29,9 @@ submission_request = lab_interfaces.RegexRequestMatcher(
 review_response_key = "grading"
 """The standard response key for a submission review."""
 
+language_failure_key = "grading"
+"""The standard response key for a language detection failure."""
+
 
 def grading_response_for_outcome(outcome_name):
     """The standard grading response printer-parser for a given outcome name printer-parser."""
@@ -47,6 +50,12 @@ submission_failure_response_key = "submission_failure"
 submission_failure_title = print_parse.regex_non_canonical_keyed(
     "Your submission {tag} was not accepted",
     "Your submission (?P<tag>[^: ]*) was not accepted",
+    flags=re.IGNORECASE,
+)
+
+language_failure_title = print_parse.regex_non_canonical_keyed(
+    "Your submission {tag} was not accepted: language detection failure",
+    "Your submission (?P<tag>[^: ]*) was not accepted: language detection failure",
     flags=re.IGNORECASE,
 )
 
@@ -92,6 +101,7 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
     review_response_key = review_response_key
     grading_response_for_outcome = grading_response_for_outcome
     submission_failure = (submission_failure_response_key, submission_failure_title)
+    language_failure = (language_failure_key, language_failure_title)
 
     @functools.cached_property
     def response_titles(self):
@@ -106,6 +116,8 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
             )
             if self.submission_failure is not None:
                 yield self.submission_failure
+            if self.language_failure is not None:
+                yield self.language_failure
 
         return dict(f())
 
@@ -193,11 +205,17 @@ class RobogradingHandler(lab_interfaces.RequestHandler):
     request_matcher = testing_request
     response_key = generic_response_key
     response_title = robograder_response_title
+    language_failure = (language_failure_key, language_failure_title)
     format_count = None
 
-    @property
+    @functools.cached_property
     def response_titles(self):
-        return {self.response_key: self.response_title}
+        def f():
+            yield {self.response_key: self.response_title}
+            if self.language_failure is not None:
+                yield self.language_failure
+
+        return dict(f())
 
     def counts_so_far(self, request_and_responses):
         handler_data = request_and_responses.handler_data
