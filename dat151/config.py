@@ -301,8 +301,8 @@ _tester_factory = testers.podman.LabTester.factory
 
 
 class _SubmissionHandler(handlers.general.SubmissionHandlerWithCheckout):
-    def __init__(self, tester_factory):
-        self.testing = handlers.general.SubmissionTesting(tester_factory)
+    def __init__(self):
+        self.testing = handlers.general.SubmissionTesting(_tester_factory)
 
     def setup(self, lab):
         super().setup(lab)
@@ -362,7 +362,7 @@ class _LabConfig:
                     language: _submission_handler
                     for language in self.branch_problem.keys()
                 },
-                shared_columns=["robograding"],
+                shared_columns=["testing"],
                 show_solution=False,
             )
 
@@ -385,10 +385,10 @@ def _lab_item(k, *args):
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict(
     [
-        _lab_item(1, datetime.timedelta(minutes=15), True),
+        #_lab_item(1, datetime.timedelta(minutes=15), True),
         _lab_item(2, datetime.timedelta(minutes=15), True),
-        #    _lab_item(3, datetime.timedelta(minutes = 15), True),
-        #    _lab_item(4, datetime.timedelta(minutes = 15), True),
+        #_lab_item(3, datetime.timedelta(minutes = 15), True),
+        #_lab_item(4, datetime.timedelta(minutes = 15), True),
     ]
 )
 
