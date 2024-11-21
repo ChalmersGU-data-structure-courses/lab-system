@@ -91,8 +91,12 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
     In addition to those of the base class:
     * grading_response_for_outcome (replacing response_titles):
         Function taking an outcome printer-parser and returning the grading response printer-parser.
+    * language_failure_title:
+        Response title printer-parser for language detection failure.
+        Used if language_failure_key is set.
     * submission_failure:
         Optional Key-value pair for response_titles for submissions that fail to be accepted.
+
     By default, this attribute and the remaining ones of
     the base class take their values from this module.
     """
@@ -100,8 +104,9 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
     request_matcher = submission_request
     review_response_key = review_response_key
     grading_response_for_outcome = grading_response_for_outcome
+    language_failure_key = language_failure_key
+    language_failure_title = language_failure_title
     submission_failure = (submission_failure_response_key, submission_failure_title)
-    language_failure = (language_failure_key, language_failure_title)
 
     @functools.cached_property
     def response_titles(self):
@@ -116,8 +121,8 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
             )
             if self.submission_failure is not None:
                 yield self.submission_failure
-            if self.language_failure is not None:
-                yield self.language_failure
+            if self.language_failure_key is not None:
+                yield (self.language_failure_key, self.language_failure_title)
 
         return dict(f())
 
@@ -191,6 +196,9 @@ class RobogradingHandler(lab_interfaces.RequestHandler):
     In addition to those of the base class:
     * response_key: The robograding response key (only used internally).
     * response_title: The robograding response printer-parser.
+    * language_failure_title:
+        Response title printer-parser for language detection failure.
+        Used if language_failure_key is set.
     * format_count:
         An optional function taking a natural number.
         Returns an optional Markdown message on the number of previous attempts.
@@ -205,15 +213,16 @@ class RobogradingHandler(lab_interfaces.RequestHandler):
     request_matcher = testing_request
     response_key = generic_response_key
     response_title = robograder_response_title
-    language_failure = (language_failure_key, language_failure_title)
+    language_failure_key = language_failure_key
+    language_failure_title = language_failure_title
     format_count = None
 
     @functools.cached_property
     def response_titles(self):
         def f():
-            yield {self.response_key: self.response_title}
-            if self.language_failure is not None:
-                yield self.language_failure
+            yield (self.response_key, self.response_title)
+            if self.language_failure_key is not None:
+                yield (self.language_failure_key, self.language_failure_title)
 
         return dict(f())
 
