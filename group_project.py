@@ -1072,7 +1072,7 @@ class GroupProject:
         for problem in self.lab.heads_problem:
             if ensure_ancestral:
                 tag = self.ancestral_tag(problem)
-                if not git_tools.tag_exists(tag):
+                if not git_tools.tag_exist(tag):
                     self.repo.create_tag(
                         tag.name,
                         ref=git_tools.remote_branch(self.remote, problem),
