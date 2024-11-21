@@ -120,9 +120,12 @@ class GradingViaMergeRequest:
                     "ref": self.setup_data.target_branch,
                 }
             )
-        gitlab_.tools.protect_branch(
-            self.lab.gl, self.project, self.setup_data.source_branch
-        )
+        with gitlab_.tools.exist_ok():
+            gitlab_.tools.protect_branch(
+                self.lab.gl,
+                self.project,
+                self.setup_data.source_branch,
+            )
 
         merge_request_data = {
             "source_branch": self.setup_data.source_branch,
