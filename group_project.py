@@ -1135,7 +1135,7 @@ class GroupProject:
         target_branch="main",
         merge_files=False,
         fail_on_problem=True,
-        notify_students: str = None,
+        notify_students: str | None = None,
     ):
         """
         Hotfix the branch 'target_branch' of the group project.
@@ -1279,7 +1279,7 @@ class GroupProject:
         yield gitlab_.tools.HookSpec(
             project=self.project.lazy,
             netloc=netloc,
-            events=list(events_gen()),
+            events=tuple(events_gen()),
             secret_token=self.course.config.webhook.secret_token,
         )
 
