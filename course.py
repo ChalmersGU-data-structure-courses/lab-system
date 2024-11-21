@@ -640,7 +640,11 @@ class Course:
         """
         return gitlab_.tools.members_from_access(
             cached_entity.lazy,
-            [gitlab.const.DEVELOPER_ACCESS, gitlab.const.MAINTAINER_ACCESS],
+            [
+                gitlab.const.DEVELOPER_ACCESS,
+                gitlab.const.MAINTAINER_ACCESS,
+                gitlab.const.OWNER_ACCESS,
+            ],
         )
 
     # def empty_groups(self):
