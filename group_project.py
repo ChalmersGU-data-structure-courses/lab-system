@@ -39,7 +39,7 @@ class RequestAndResponses:
     They are reconstructed every time request tags or response issues are refreshed.
     """
 
-    language: str | None
+    _language: str | None
     languages: list[str] | None
     request_name: str
 
@@ -305,6 +305,16 @@ class RequestAndResponses:
         return issue
 
     @functools.cached_property
+    def language(self):
+        with contextlib.suppress(AttributeError):
+            return self._language
+
+        if self.lab.config.multi_language is None:
+            return None
+
+        return self.handled_result["language"]
+
+    @functools.cached_property
     def grading_merge_request(self):
         if not self.lab.config.grading_via_merge_request:
             return None
@@ -565,10 +575,10 @@ class RequestAndResponses:
             return {"accepted": False}
 
         # Attempt to detect language.
-        self.language = None
+        self._language = None
         self.languages = None
         try:
-            self.language = self.group.detect_language(self.repo_remote_commit)
+            self._language = self.group.detect_language(self.repo_remote_commit)
         except general.UniquenessError as e:
             self.languages = list(e.iterator)
             self.logger.warn(
@@ -597,6 +607,11 @@ class RequestAndResponses:
             f"using handler {self.handler_data.handler_key}"
         )
         result = self.handler_data.handler.handle_request(self)
+
+        # Hacky workaround to an issue in redesign of language handling.
+        if isinstance(result, dict) and self._language is not None:
+            result["language"] = self._language
+
         if result is not None:
             self.logger.debug(general.join_lines(["Handler result:", str(result)]))
 
@@ -614,6 +629,8 @@ class RequestAndResponses:
                 raise ValueError(msg)
 
             self.grading_merge_request.sync_submission(self)
+
+        return result
 
     def process_request(self):
         """
