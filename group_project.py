@@ -1087,29 +1087,32 @@ class GroupProject:
                 )
             )
 
-    def detect_ancestor_problem(self, commit):
+    def detect_language(self, commit):
         """
-        Find out which problem a commit derives from.
+        Find out which language problem a commit derives from.
+        The language will be None for labs that are not multi-language.
         """
         return git_tools.find_unique_ancestor(
             self.repo,
             commit,
             {
-                problem: git_tools.normalize_branch(self.lab.repo, problem)
-                for problem in self.lab.heads_problem
+                language: git_tools.normalize_branch(self.lab.repo, problem)
+                for (language, problem) in self.lab.language_problem_names.items()
             },
         )
 
-    def detect_ancestor_problem_for_merge(self, commit, ancestor_override=dict()):
+    def detect_ancestor_problem_for_merge(self, commit, ancestor_override=None):
         """
-        Find out which problem a commit derives from in the situation of a hotfix.
+        Find out which language problem a commit derives from in the situation of a hotfix.
         There, the problem branches in the student project have already been updated.
 
         Arguments:
         * ancestors_override:
-            Map of optional entries from problem names to commits.
+            Optional map of optional entries from problem branch names to commits.
             For missing entries, we use the ancestral tag ancestral/<group remote>/<problem>.
         """
+        if ancestor_override is None:
+            ancestor_override = {}
 
         def get_commit(problem):
             try:
