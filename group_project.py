@@ -1618,8 +1618,8 @@ class GroupProject:
 
             return title_changes["current"] != title_changes["previous"]
 
-        title_change = title_change()
-        self.logger.debug(f"Detected title change: {title_change}")
+        title_change_ = title_change()
+        self.logger.debug(f"Detected title change: {title_change_}")
 
         # TODO.
         # We could go further and only queue an event
@@ -1628,7 +1628,7 @@ class GroupProject:
         # We don't do much work in handling GroupProjectIssueEvent for non-review issues anyway.
         # And it might be beneficial to be up-to-date also with non-review response issues.
         # So keeping this as is for now.
-        if author_is_grader and title_change:
+        if author_is_grader and title_change_:
             yield (
                 events.GroupProjectWebhookResponseEvent(
                     events.GroupProjectIssueEvent()
