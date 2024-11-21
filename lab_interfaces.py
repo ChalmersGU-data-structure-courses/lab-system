@@ -67,16 +67,26 @@ class RequestHandler:
         The request matcher to be used for this type of request.
     * response_titles:
         Return a dictionary whose values are printer-parsers for issue titles.
-        Its keys should be string-convertible.
+        Its values should be string-convertible.
         The request handler may only produce response issues by calling
         a method in the lab instance that produces it via a key
         to the dictionary of issue title printer-parsers.
-        If this attribute is provided dynamically,
-        its keys must be stable.
+        If this attribute is provided dynamically, its keys must be stable.
         The attribute must be stable after setup has been called.
 
         The domains of the printer-parsers are string-valued dictionaries
         that must include the key 'tag' for the name of the associated request.
+
+    Required for multi-language labs:
+    * language_failure_key:
+        Key in self.response_titles identifying language detection failure issues.
+        If there is not a unique problem commit ancestor, the lab system rejects the submission with such an issue.
+        This happens before the request handler handles the request.
+
+        Its associated issue-title printer-parser must have printer-parser with domain ditionaries containing no extra keys.
+
+        If this attribute does not exist or is None, it is up to the request handler to deal with language detection failure.
+        For this, use the list request_and_responses.languages of detected language candidates.
     """
 
     def setup(self, lab):

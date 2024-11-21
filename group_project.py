@@ -508,18 +508,49 @@ class RequestAndResponses:
         self.responses[response_key] = issue_data
         self.handler_data.responses[response_key][self.request_name] = issue_data
 
-    def process_request(self):
-        """
-        Process request.
-        This only proceeds if the request is not already
-        marked handled in the local collection repository.
+    def post_language_failure_issue(self, response_key, title_data=dict()):
+        assert self.languages is not None
 
-        Returns a boolean indicating if the request was not handled before.
-        """
-        # Skip processing if we already handled this request.
-        if self.get_handled():
-            return False
+        # TODO: change get to lazy once web_url is confirmed to exist there.
+        project = self.group.project.get
 
+        url = gitlab_.tools.url_tag_name(self.request_name)
+        ref = f"({self.request_name})[{url}]"
+        if not self.languages:
+            reason = "it could not find a problem stub"
+            suffix = ""
+        else:
+            reason = "there are multiple problem stubs"
+
+            def problems():
+                for language in self.languages:
+                    yield self.lab.language_problem_names[language]
+
+            suffix = ": " + ", ".join(problems())
+
+        msg = (
+            f"The lab system is confused because {reason}"
+            f" from which your tag {ref} originates{suffix}."
+        )
+
+        def all_problems():
+            for problem in self.lab.language_problem_names.values():
+                url = gitlab_.tools.url_tree(project, problem, False)
+                yield f"* [{problem}]({url})"
+
+        history = gitlab_.tools.url_history(project, self.request_name, True)
+        description = general.text_from_lines(
+            msg,
+            f"Please consult the [commit history]({history}) of your tag.",
+            "The problem stubs were searched for:",
+            *all_problems(),
+            "",
+            "Please create another tag that fixes this problem.",
+            "If you are unsure how to do this, please seek help.",
+        )
+        self.post_response_issue(response_key, response_key, description)
+
+    def process_request_inner(self):
         where = "" if self.group is None else f" in {self.group.name}"
         self.logger.info(f"Processing request {self.request_name}{where}.")
 
@@ -530,20 +561,39 @@ class RequestAndResponses:
             force=True,
         )
 
-        # Detect language.
-        # Currently, submission handlers need to check self.languages before self.language.
-        # They then need to handle submission failure in their own way (usually by posting a response issue).
-        #
-        # TODO:
-        # It would better if we did that here.
-        # But where would the configuration for that go?
-        # It would be strange to push it to the submission handler as we do with grading issues.
+        # If a submission failure already exists, we are happy.
+        language_failure_key = None
+        with contextlib.suppress(AttributeError):
+            language_failure_key = self.handler_data.handler.language_failure_key
+        if self.submission_failure_key in self.responses:
+            return {"accepted": False}
+
+        # Attempt to detect language.
+        self.language = None
+        self.languages = None
         try:
             self.language = self.group.detect_language(self.repo_remote_commit)
-            self.languages = None
         except general.UniquenessError as e:
-            self.language = None
             self.languages = list(e.iterator)
+            self.logger.warn(
+                general.text_from_lines(
+                    f"Language detection failure: ({self.languages}).",
+                    f"* {self.lab.name}",
+                    f"* {self.group.name}",
+                    f"* {self.request_name}",
+                )
+            )
+
+            # Language detection failure for official solution is not allowed.
+            if self.group.is_solution:
+                raise ValueError("Language detection failure in official solution.")
+
+            if (
+                language_failure_key is not None
+                and self.lab.config.multi_language is not None
+            ):
+                self.post_language_failure_issue(language_failure_key, {})
+                return {"accepted": False}
 
         # Call handler with this object as argment.
         self.logger.debug(
@@ -563,17 +613,25 @@ class RequestAndResponses:
 
         if all(checks()):
             if self.lab.config.multi_language is not None and self.language is None:
-                raise ValueError(
-                    general.text_from_lines(
-                        f"Language detection failure: ({self.languages}).",
-                        "But submission handler succeeded.",
-                        f"* {self.lab.name}",
-                        f"* {self.group.name}",
-                        f"* {self.request_name}",
-                    )
-                )
+                msg = "Language detection failed, but submission handler successed."
+                self.logger.error(msg)
+                raise ValueError(msg)
 
             self.grading_merge_request.sync_submission(self)
+
+    def process_request(self):
+        """
+        Process request.
+        This only proceeds if the request is not already
+        marked handled in the local collection repository.
+
+        Returns a boolean indicating if the request was not handled before.
+        """
+        # Skip processing if we already handled this request.
+        if self.get_handled():
+            return False
+
+        result = self.process_request()
 
         # Create tag <full-group-id>/<request_name>/handled
         # and store handler's result JSON-encoded as its message.
