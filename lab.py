@@ -1856,11 +1856,9 @@ class Lab:
                         user_id = self.course.gitlab_users_cache.id_from_username[
                             gitlab_username
                         ]
-                        access_level = (
-                            inherited_access[user_id]
-                            if user_id in inherited_access
-                            else gitlab.const.DEVELOPER_ACCESS
-                        )
+                        access_level = gitlab.const.DEVELOPER_ACCESS
+                        if user_id in inherited_access:
+                            access_level = max(access_level, inherited_access[user_id])
                         with gitlab_.tools.exist_ok():
                             entity.members.create(
                                 {
