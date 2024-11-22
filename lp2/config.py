@@ -182,7 +182,7 @@ grading_sheet = SimpleNamespace(
     # If the lab script has access to this, it can create initial grading worksheets.
     # Pair of a spreadsheet key and worksheet identifier.
     # The worksheet identifier is formatted as for 'grading_sheet' in lab configuration.
-    template=('1phOUdj_IynVKPiEU6KtNqI3hOXwNgIycc-bLwgChmUs', 'Template'),
+    template=('11D2ZQ5YOjlcMYm3emwFY_1mJZxmuxUjXYK257pYcWNQ', 'Template'),
 
     # Have rows for non-empty groups that have not yet submitted?
     include_groups_with_no_submission=True,
