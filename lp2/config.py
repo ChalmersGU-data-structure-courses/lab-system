@@ -418,7 +418,7 @@ def _lab_item(k, *args, **kwargs):
 labs = dict([
     _lab_item(1, 'binary-search'       , timedelta(minutes=15), group_set=None  , robotester=True , use_robograder_instead=True ),
     _lab_item(2, 'indexing'            , timedelta(minutes=15), group_set=_group, robotester=True , use_robograder_instead=False),
-#   _lab_item(3, 'plagiarism-detection', timedelta(minutes=15), group_set=_group, robotester=True , use_robograder_instead=False),
+    _lab_item(3, 'plagiarism-detection', timedelta(minutes=15), group_set=_group, robotester=True , use_robograder_instead=False),
 #   _lab_item(4, 'path-finder'         , timedelta(minutes=15), group_set=_group, robotester=True , use_robograder_instead=True ),
 ])
 
