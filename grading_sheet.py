@@ -161,20 +161,31 @@ def parse(config, gdpr_coding, sheet_data):
 
     Exceptions encountered are raised as instances of SheetParseException.
     """
-    (group_column, query_column_groups) = parse_grading_columns(
-        config,
-        (
-            (column, sheet_data.value(0, column))
-            for column in range(sheet_data.num_columns)
-        ),
-    )
+    ignore = {
+        general.normalize_list_index(sheet_data.num_rows, i)
+        for i in config.grading_sheet.ignore_rows
+    }
 
-    def ignore():
-        yield 0
-        for i in config.grading_sheet.ignore_rows:
-            general.normalize_list_index(sheet_data.num_rows, i)
+    header_row = None
+    search_value = config.grading_sheet.header.group
+    for row in range(sheet_data.num_rows):
+        value = sheet_data.value(row, 0)
+        value = value.get("userEnteredValue")
+        if value is None:
+            continue
+        value = value.get("stringValue")
+        if value == search_value:
+            if header_row is not None:
+                raise SheetParseException(f'multiple header rows starting with "{search_value}"')
+            ignore.add(row)
+            header_row = [
+                (column, sheet_data.value(row, column))
+                for column in range(sheet_data.num_columns)
+            ]
+    if header_row is None:
+        raise SheetParseException(f'unable to locate header row starting with "{search_value}"')
 
-    ignore = set(ignore())
+    (group_column, query_column_groups) = parse_grading_columns(config, iter(header_row))
 
     return GradingSheetData(
         sheet_data=sheet_data,
