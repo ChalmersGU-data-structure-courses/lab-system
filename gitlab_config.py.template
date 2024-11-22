@@ -156,7 +156,7 @@ names_informal = print_parse.from_dict([
 # Configuration exclusively related to grading sheets.
 grading_sheet = SimpleNamespace(
     # Headers in sheet keeping track of which groups have been or are to be graded.
-    # They must be used in the first row of the worksheet.
+    # A header is the unique row where the first cell is equal to `header.group`.
     header=SimpleNamespace(
         group='Group',
         query=print_parse.compose(
