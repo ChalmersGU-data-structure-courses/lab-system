@@ -167,22 +167,25 @@ def parse(config, gdpr_coding, sheet_data):
     }
 
     header_row = None
+    search_value = config.grading_sheet.header.group
     for row in range(sheet_data.num_rows):
         value = sheet_data.value(row, 0)
-        value = value["userEnteredValue"]
+        value = value.get("userEnteredValue")
+        if value is None:
+            continue
         value = value.get("stringValue")
-        if value == config.grading_sheet.header.group:
+        if value == search_value:
             if header_row is not None:
-                raise SheetParseException("multiple header rows")
+                raise SheetParseException(f'multiple header rows starting with "{search_value}"')
             ignore.add(row)
-            header_row = (
+            header_row = [
                 (column, sheet_data.value(row, column))
                 for column in range(sheet_data.num_columns)
-            )
+            ]
     if header_row is None:
-        raise SheetParseException("unable to locate header row")
+        raise SheetParseException(f'unable to locate header row starting with "{search_value}"')
 
-    (group_column, query_column_groups) = parse_grading_columns(config, header_row)
+    (group_column, query_column_groups) = parse_grading_columns(config, iter(header_row))
 
     return GradingSheetData(
         sheet_data=sheet_data,
