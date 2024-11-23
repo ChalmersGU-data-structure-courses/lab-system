@@ -2,6 +2,7 @@ import bisect
 import collections
 import contextlib
 import functools
+import itertools
 import logging
 
 import gspread
@@ -40,13 +41,14 @@ Query.__doc__ = """
 
 GradingSheetData = collections.namedtuple(
     "GradingSheetData",
-    ["sheet_data", "group_column", "group_rows", "query_column_groups"],
+    ["sheet_data", "group_column", "header_row", "group_rows", "query_column_groups"],
 )
 GradingSheetData.__doc__ = """
     A parsed grading sheet.
 
     Arguments:
     * sheet_data: A value of type google_tools.sheets.SheetData.
+    * header_row: The header row index.
     * group_rows: A dictionary mapping group ids to row indices.
     * group_column: The index of the group column (zero-based).
     * query_column_groups:
@@ -161,23 +163,43 @@ def parse(config, gdpr_coding, sheet_data):
 
     Exceptions encountered are raised as instances of SheetParseException.
     """
+    ignore = {
+        general.normalize_list_index(sheet_data.num_rows, i)
+        for i in config.grading_sheet.ignore_rows
+    }
+
+    header_row = None
+    search_value = config.grading_sheet.header.group
+    for row in range(sheet_data.num_rows):
+        value = sheet_data.value(row, 0)
+        try:
+            value = value["userEnteredValue"]
+            value = value["stringValue"]
+        except KeyError:
+            continue
+        if value == search_value:
+            if header_row is not None:
+                raise SheetParseException(
+                    f'multiple header rows starting with "{search_value}"'
+                )
+            ignore.add(row)
+            header_row = row
+    if header_row is None:
+        raise SheetParseException(
+            f'unable to locate header row starting with "{search_value}"'
+        )
+
     (group_column, query_column_groups) = parse_grading_columns(
         config,
         (
-            (column, sheet_data.value(0, column))
+            (column, sheet_data.value(header_row, column))
             for column in range(sheet_data.num_columns)
         ),
     )
 
-    def ignore():
-        yield 0
-        for i in config.grading_sheet.ignore_rows:
-            general.normalize_list_index(sheet_data.num_rows, i)
-
-    ignore = set(ignore())
-
     return GradingSheetData(
         sheet_data=sheet_data,
+        header_row=header_row,
         group_rows=parse_group_rows(
             config,
             gdpr_coding,
@@ -567,7 +589,10 @@ class GradingSheet:
                     column_new,
                 )
                 yield google_tools.sheets.request_update_cells_user_entered_value(
-                    [[google_tools.sheets.extended_value_string(header)]],
+                    [
+                        *itertools.repeat([], self.sheet_parsed.header_row),
+                        [google_tools.sheets.extended_value_string(header)],
+                    ],
                     range=google_tools.sheets.grid_range(
                         self.sheet_properties.sheetId,
                         (
