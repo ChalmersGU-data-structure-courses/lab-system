@@ -9,6 +9,20 @@ Use a merge request instead when you want to have feedback.
 If you are looking for issues to start with, search for the label [*good first issue*](https://github.com/ChalmersGU-data-structure-courses/lab-system/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22+).
 Note that the codebase still has lots of TODOs that have not been converted to issues.
 
+# Personal information
+
+We aim to comply with GDPR.
+Personal information may only be committed if you are cleared to do so (for example, because it only relates to yourself).
+
+This also includes the deployment branches.
+If your configuration needs to refer to individual students or teaching assistants, follow the model of `gitlab_config_personal.py`:
+* Create an untracked file with the sensitive part of the configuration.
+* Add that file to .gitignore for your config directory.
+* Include or import the file in your tracked configuration.
+
+Beware that comitting a file deletion does not remove the file from the repository.
+If you realize that personal information has unintended ended up in a commit, please contact the team members.
+
 # Deployment
 
 Each instances of the lab server uses its own deployment branch, for example `2024-lp2`.
