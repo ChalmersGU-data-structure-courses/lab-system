@@ -551,7 +551,7 @@ class RequestAndResponses:
             "The following problem stubs were searched for:",
             *all_problems(),
             "",
-            "Please create another tag that fixes this problem.",
+            "Please create another tag for a commit that has exactly one of the above commits as an ancestor.",
             "If you are unsure how to do this, please seek help.",
         )
         self.post_response_issue(response_key, title_data, description)
