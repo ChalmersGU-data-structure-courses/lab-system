@@ -533,7 +533,7 @@ class RequestAndResponses:
         if not self.languages:
             reason = "does not have a problem stub"
         else:
-            reason = "has multiple problem stubs ({", ".join(problems())})"
+            reason = f"has multiple problem stubs ({", ".join(problems())})"
 
         history = gitlab_.tools.url_history(project, self.request_name, True)
         msg = (

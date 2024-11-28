@@ -1,19 +1,12 @@
 # Python scripts for course administration
 
-This directory contains (among others) scripts to help with the following tasks:
-
-* handling student lab group work via Chalmers GitLab,
-* handling individualized online exams.
-
-The second point is hopefully obsolete now, so this documentation focusses only on the first point.
-
-If some parts of a script require fine-tuning for a specific course (e.g. because it contains multiple sub-courses running different labs), create a new branch for that course and make the necessary edits there.
+This directory contains scripts to help with running student labs on Canvas and GitLab instances.
 
 ## Requirements and access configuration
 
 ### Python
 
-We require Python version at least 3.9.
+We require Python version at least 3.12.
 
 Unless mentioned otherwise, the working directory is the folder of this file.
 
@@ -341,7 +334,7 @@ By default, personal configuration (as opposed to simply course-specific configu
 We have filled out the access key options above.
 Fill out the remaining options according to their documentation.
 
-## Running
+## Performing tasks
 
 We describe here common workflows occuring throughout a course.
 We will do so at the level of an interactive Python environment.
@@ -538,3 +531,10 @@ The lab system will only be able to hotfix groups where no merge conflicts arise
 For other groups, you have to merge your fixes into their work branch manually.
 Note also that not all students are working on the main branch.
 You can use `group.merge_problem_into_branch` for group-specific merges.
+
+## Running the event loop
+
+See `./run_event_loop -h` for now.
+
+You may want to run this as a systemd service.
+See `systemd_unit_file.service.template`.
