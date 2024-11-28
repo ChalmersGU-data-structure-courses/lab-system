@@ -447,7 +447,7 @@ def url_tree(project, ref, is_tag: bool | None = None, path=PurePosixPath()):
 def url_history(project, ref, is_tag: bool | None = None):
     return project_url(
         project,
-        ["-", "history", str(ref)],
+        ["-", "commits", str(ref)],
         query_params=url_params_ref_type(is_tag),
     )
 
