@@ -3,6 +3,7 @@ import http.server
 import json
 import logging
 import ssl
+import traceback
 from pathlib import PurePosixPath
 
 import openssl_tools
@@ -13,16 +14,23 @@ logger = logging.getLogger(__name__)
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
-    def do_POST(self):
-        logger.debug('do_POST: start')
+    def send_response(self, code, message=None):
+        logger.info(f"send_response: start, code {code}, message {message}")
+        logger.info(traceback.print_stack())
+        super().send_response(code, message=message)
+        logger.info("send_response: end")
 
-        token = self.headers.get('X-Gitlab-Token')
+    def do_POST(self):
+        logger.info("do_POST: start")
+
+        token = self.headers.get("X-Gitlab-Token")
         if token != self.server.secret_token:
             self.server.logger.warning(
                 f"Given secret token {token} does not match "
                 f"stored secret token {self.server.secret_token}. "
                 "Ignoring request."
             )
+            self.send_error(403)
             return
 
         # Read data and conclude request.
@@ -35,7 +43,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.server.logger.debug("received hook callback with data:\n" + str(info))
         self.server.callback(info)
 
-        logger.debug('do_POST: end')
+        logger.info("do_POST: end")
+
 
 @contextlib.contextmanager
 def server_manager(netloc, secret_token, callback, logger=logger):
