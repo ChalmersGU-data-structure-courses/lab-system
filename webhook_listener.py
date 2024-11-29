@@ -3,6 +3,7 @@ import http.server
 import json
 import logging
 import ssl
+import threading
 import traceback
 from pathlib import PurePosixPath
 
@@ -15,7 +16,9 @@ logger = logging.getLogger(__name__)
 
 class Handler(http.server.BaseHTTPRequestHandler):
     def send_response(self, code, message=None):
-        logger.info(f"send_response: start, code {code}, message {message}")
+        logger.info(
+            f"send_response: start, code {code}, message {message}, thread {threading.get_ident()}"
+        )
         logger.info(traceback.print_stack())
         super().send_response(code, message=message)
         logger.info("send_response: end")
