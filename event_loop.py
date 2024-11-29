@@ -1,6 +1,7 @@
 import contextlib
 import dataclasses
 import datetime
+import faulthandler
 import logging
 import threading
 from typing import Optional
@@ -144,9 +145,10 @@ def run(
                     shutdown()
 
             def webhook_server_shutdown():
-                logger.debug('pre: webhook_server.shutdown()')
+                logger.info('pre: webhook_server.shutdown()')
+                faulthandler.dump_traceback()
                 webhook_server.shutdown()
-                logger.debug('post: webhook_server.shutdown()')
+                logger.info('post: webhook_server.shutdown()')
 
             webhook_server_thread = threading.Thread(
                 target=webhook_server_run,
