@@ -10,14 +10,14 @@ Type=simple
 Restart=always
 RestartSec=900s
 KillSignal=SIGINT
-# ACTION: fix lab system directory 
+# ACTION: fix lab system directory
 WorkingDirectory=%h/lab-system
 # ACTION: replace as follows:
 # * fix path to event loop script
 # * replace COURSE_CODE by lower case course code,
 # * replace PORT by some unique port number of the form 42XX,
 # * specify labs to sync with Canvas (initially just -s 1).
-ExecStart=%h/lab-system/run_event_loop.py -d dat151 -p 4253 -s 2 --start-with-sync --sync-period 900 -e 1vlasVmvtmrvae8Owq8P1VpHayrVrG20akmQD1YCzHd0 -l dat151/log -v run
+ExecStart=%h/lab-system/run_event_loop.py -d dat151 -p 4253 -s 3 --start-with-sync --sync-period 900 -e 1vlasVmvtmrvae8Owq8P1VpHayrVrG20akmQD1YCzHd0 -l dat151/log -v run
 
 # Use this for debugging to disable student sync and error notification spam
 #ExecStart=%h/lab-system/run_event_loop.py -d dat151 -p 4253 -l dat151/log -v run
