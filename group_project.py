@@ -1398,22 +1398,21 @@ class GroupProject:
 
     def tags_from_gitlab(self):
         self.logger.debug(f"Parsing request tags in {self.name} from Chalmers GitLab.")
-        return [
+        x = [
             (tag.name, tag)
             for tag in gitlab_.tools.get_tags_sorted_by_date(self.project.lazy)
         ]
+        return sorted(x, key=lambda x: (x[1].date, x[0]))
 
     def tags_from_repo(self):
         self.logger.debug(
             f"Parsing request tags in {self.name} from local collection repository."
         )
-        return sorted(
-            (
-                (str(key), (tag, git_tools.tag_commit(tag)))
-                for (key, tag) in self.lab.remote_tags[self.id].items()
-            ),
-            key=lambda x: git_tools.commit_date(x[1][1]),
+        xs = (
+            (str(key), (tag, git_tools.tag_commit(tag)))
+            for (key, tag) in self.lab.remote_tags[self.id].items()
         )
+        return sorted(xs, key=lambda x: (git_tools.commit_date(x[1][1]), x[0]))
 
     def parse_request_tags(self, from_gitlab=True):
         """
