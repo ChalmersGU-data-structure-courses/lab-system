@@ -16,7 +16,7 @@ logging.getLogger().setLevel(logging.INFO)
 import dat151.config as config
 
 c = course.Course(config, 'dat151')
-l = c.labs[3]
+l = c.labs[4]
 
 # How to deploy a new lab:
 # 1. Make sure repository ~/labs is up to date.
