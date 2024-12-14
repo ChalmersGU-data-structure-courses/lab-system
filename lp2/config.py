@@ -193,7 +193,7 @@ grading_via_merge_request = SimpleNamespace(
     # For how long does assigning a reviewer block synchronization of new submissions?
     # If set to None, no limit applies.
     # Warnings will be generated if a submission synchronization is blocked.
-    maximum_reserve_time=timedelta(hours=4),
+    maximum_reserve_time=timedelta(hours=-1),
 )
 
 # Root of the lab repository.
