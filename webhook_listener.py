@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 class Handler(http.server.BaseHTTPRequestHandler):
     def handle(self):
         self.connection.settimeout(15)
+        self.connection.do_handshake()
         super().handle()
 
     def do_POST(self):
@@ -83,6 +84,7 @@ def server_manager(netloc, secret_token, callback, logger=logger):
             server.socket = context.wrap_socket(
                 server.socket,
                 server_side=True,
+                do_handshake_on_connect=False,
             )
 
             # Set the server attributes used by the handler.
