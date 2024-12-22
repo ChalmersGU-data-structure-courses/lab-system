@@ -138,17 +138,12 @@ def run(
 
             def webhook_server_run():
                 try:
-                    logger.debug('pre: webhook_server.serve_forever()')
                     webhook_server.serve_forever()
-                    logger.debug('post: webhook_server.serve_forever()')
                 finally:
                     shutdown()
 
             def webhook_server_shutdown():
-                logger.info('pre: webhook_server.shutdown()')
-                faulthandler.dump_traceback()
                 webhook_server.shutdown()
-                logger.info('post: webhook_server.shutdown()')
 
             webhook_server_thread = threading.Thread(
                 target=webhook_server_run,

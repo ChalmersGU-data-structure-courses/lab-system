@@ -3,8 +3,6 @@ import http.server
 import json
 import logging
 import ssl
-import threading
-import traceback
 from pathlib import PurePosixPath
 
 import openssl_tools
@@ -18,14 +16,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def handle(self):
         self.connection.settimeout(15)
         super().handle()
-
-    def send_response(self, code, message=None):
-        logger.info(
-            f"send_response: start, code {code}, message {message}, thread {threading.get_ident()}"
-        )
-        logger.info(traceback.print_stack())
-        super().send_response(code, message=message)
-        logger.info("send_response: end")
 
     def do_POST(self):
         logger.info("do_POST: start")
