@@ -225,6 +225,16 @@ def run(
         for manager in thread_managers:
             exit_stack.enter_context(manager)
 
+        @contextlib.contextmanager
+        def print_stacks():
+            try:
+                yield
+            finally:
+                faulthandler.dump_traceback()
+
+        # Print stacks before cleanup to help debug stalling.
+        exit_stack.enter_context(print_stacks())
+
         # The event loop.
         while True:
             logger.info("Waiting for event.")
