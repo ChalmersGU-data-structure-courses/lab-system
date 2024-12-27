@@ -1,7 +1,7 @@
 import abc
 import re
 
-import markdown
+import util.markdown
 
 
 class RequestMatcher:
@@ -165,7 +165,7 @@ class SubmissionHandler(RequestHandler):
     """
 
 
-class HandlingException(Exception, markdown.Markdown):
+class HandlingException(Exception, util.markdown.Markdown):
     """
     Raised for errors caused by a problems with a submission.
     Should be reportable in issues in student repositories.

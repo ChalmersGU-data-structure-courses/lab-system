@@ -10,7 +10,7 @@ import events
 import util.general
 import util.print_parse
 import util.ssh
-import subsuming_queue
+import util.subsuming_queue
 import util.threading
 import webhook_listener
 
@@ -19,10 +19,10 @@ import webhook_listener
 class WebhookConfig:
     """Configuration for webhooks."""
 
-    netloc_listen: print_parse.NetLoc
+    netloc_listen: util.print_parse.NetLoc
     """The local net location to listen at for webhook notifications."""
 
-    netloc_specify: print_parse.NetLoc
+    netloc_specify: util.print_parse.NetLoc
     """The net location to specify in the webhook configuration."""
 
     secret_token: str
@@ -90,7 +90,7 @@ def run(
     with exit_stack:
 
         # The event queue.
-        event_queue = subsuming_queue.SubsumingQueue()
+        event_queue = util.subsuming_queue.SubsumingQueue()
 
         def shutdown():
             event_queue.add((events.TerminateProgram(), None))

@@ -1,13 +1,13 @@
 import dataclasses
 from typing import Optional
 
-import hashed_file_cache
-import print_parse
+import util.hashed_file_cache
+import util.print_parse
 
 
-class UsersCache(hashed_file_cache.HashedFileCacheSerializer):
+class UsersCache(util.hashed_file_cache.HashedFileCacheSerializer):
     # TODO: use this.
-    @print_parse.dataclass_dict
+    @util.print_parse.dataclass_dict
     @dataclasses.dataclass
     class User:
         id: int
@@ -51,9 +51,9 @@ class UsersCache(hashed_file_cache.HashedFileCacheSerializer):
     def __init__(self, cache_dir, gitlab_graphql_client):
         super().__init__(
             path=cache_dir,
-            serializer=print_parse.compose(
-                print_parse.json_coding_nice,
-                print_parse.string_coding,
+            serializer=util.print_parse.compose(
+                util.print_parse.json_coding_nice,
+                util.print_parse.string_coding,
             ),
         )
         self.client = gitlab_graphql_client

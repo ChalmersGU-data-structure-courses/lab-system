@@ -15,7 +15,7 @@ import canvas.client_rest as canvas
 import graph_ql.canvas
 import util.general
 import graph_ql.gitlab
-import print_parse
+import util.print_parse
 
 
 #logging.basicConfig()
@@ -122,7 +122,7 @@ with util.general.timing('issues'):
 #     a = canvas_gql.GroupSet((group_set_id, group_set_name, client.retrieve_group_set_groups_and_members(group_set_id)))
 
 # with util.general.timing('retrieve_course_group_sets'):
-#     group_sets = print_parse.from_dict(client.retrieve_course_group_sets(course_id))
+#     group_sets = util.print_parse.from_dict(client.retrieve_course_group_sets(course_id))
 #     group_set_id = group_sets.parse(group_set_name)
 
 # with util.general.timing('retrieve_group_set_with_groups_and_members_via_name_in_course'):

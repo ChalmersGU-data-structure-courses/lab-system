@@ -335,7 +335,7 @@ else:
         port=args.port,
     )
     netloc_specify = (
-        netloc_listen if args.netloc is None else print_parse.netloc.parse(args.netloc)
+        netloc_listen if args.netloc is None else util.print_parse.netloc.parse(args.netloc)
     )
     if netloc_specify is None:
         netloc_specify = netloc_specify._replace(port=netloc_listen.port)

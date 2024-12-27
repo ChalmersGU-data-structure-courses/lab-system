@@ -7,7 +7,7 @@ from typing import Any, Callable
 
 import atomicwrites
 
-import print_parse
+import util.print_parse
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class GDPRCoding:
     # Printer-parser that encodes identifiers for use in non-GDPR-cleared documents.
     # The most common example is Google Sheets.
-    identifier: print_parse.PrintParse
+    identifier: util.print_parse.PrintParse
 
     # Sort key to use for the encoded identifiers.
     sort_key: Callable[Any, Any] = lambda x: x
@@ -46,7 +46,7 @@ class NameCoding:
     @functools.cached_property
     def gdpr_coding(self):
         return GDPRCoding(
-            identifier=print_parse.PrintParse(
+            identifier=util.print_parse.PrintParse(
                 print=self.encode.__getitem__,
                 parse=self.decode.__getitem__,
             ),

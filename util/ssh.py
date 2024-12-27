@@ -125,7 +125,7 @@ class ServerAlive:
             yield from arg_option("ServerAliveMaxCount", self.max_count)
 
 
-_netloc_empty = print_parse.NetLoc(host="")
+_netloc_empty = util.print_parse.NetLoc(host="")
 
 
 def cmd_ssh(
@@ -143,7 +143,7 @@ def cmd_ssh(
     """
     Arguments:
     * netloc:
-        A tuple convertible to print_parse.NetLoc.
+        A tuple convertible to util.print_parse.NetLoc.
         Network location to connect to.
         If None or netloc.host is None,
         the produced SSH call misses its destination argument.
@@ -187,7 +187,7 @@ def cmd_ssh(
 
     # Process net location options.
     if netloc is not None:
-        netloc = print_parse.netloc_normalize(netloc)
+        netloc = util.print_parse.netloc_normalize(netloc)
         if netloc.host is not None:
             yield netloc.host
         if netloc.user is not None:
@@ -221,7 +221,7 @@ def cmd_ssh(
 
     # Add remote command line.
     if args is not None:
-        yield print_parse.command_line.print(args)
+        yield util.print_parse.command_line.print(args)
 
 
 def cmd_ssh_master(netloc, control_path, **kwargs):
@@ -334,7 +334,7 @@ def update_env_ssh_var(env, name, command_line):
     * name: The key in the environment dictionary whose value to update.
     * command_line: The SSH command line with which to supplant the value.
     """
-    pp = print_parse.command_line
+    pp = util.print_parse.command_line
     previous = util.general.with_default(pp.parse, env.get(name))
     msg = " is missing" if previous is None else f": {previous}"
     logger.debug(f"previous value for {name}{msg}")
@@ -375,7 +375,7 @@ def shutdown_control_master(control_path, check=True, force=False):
     )
     cmd = list(
         cmd_ssh(
-            print_parse.NetLoc(host=""),
+            util.print_parse.NetLoc(host=""),
             control=Control(
                 path=control_path,
                 command="exit" if force else "stop",
@@ -573,7 +573,7 @@ class Multiplexer:
         pass
 
     def __init__(self, netloc):
-        self.netloc = print_parse.netloc_normalize(netloc)
+        self.netloc = util.print_parse.netloc_normalize(netloc)
         self.connection_master = None
 
         self.startup_failures = collections.deque(maxlen=50)
@@ -591,10 +591,10 @@ class Multiplexer:
                 self.startup_failures.append((datetime.now(), e))
 
         logger.error(
-            f"SSH connection to {print_parse.netloc.print(self.netloc)} "
+            f"SSH connection to {util.print_parse.netloc.print(self.netloc)} "
             f"could not be established in {self.max_startup_attempts} attempts."
         )
-        raise ValueError("No SSH connection to {print_parse.netloc.print(netloc)}")
+        raise ValueError("No SSH connection to {util.print_parse.netloc.print(netloc)}")
 
     def close(self):
         """Swallows any shutdown exceptions of the control master."""
@@ -634,12 +634,12 @@ class Multiplexer:
                 self.close()
                 if k + 1 == self.max_callback_attempts:
                     logger.error(
-                        f"SSH connection to {print_parse.netloc.print(self.netloc)} "
+                        f"SSH connection to {util.print_parse.netloc.print(self.netloc)} "
                         f"failed {self.max_callback_attempts} times in a row "
                         "while attempting to execute a command"
                     )
                     raise ValueError(
-                        f"SSH connection to {print_parse.netloc.print(self.netloc)} "
+                        f"SSH connection to {util.print_parse.netloc.print(self.netloc)} "
                         f"failed {self.max_callback_attempts} times in a row "
                     ) from e
 

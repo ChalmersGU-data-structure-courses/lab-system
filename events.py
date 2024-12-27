@@ -3,7 +3,7 @@ import typing
 from pathlib import Path
 
 import util.general
-import ordering
+import util.ordering
 
 # ## Interfaces.
 #
@@ -16,7 +16,7 @@ _dataclass_incomparable = dataclasses.dataclass(eq=False)
 
 _decorator = util.general.compose(
     _dataclass_incomparable,
-    ordering.preorder_from_key,
+    util.ordering.preorder_from_key,
 )
 
 
@@ -60,7 +60,7 @@ class ProgramEventInCourse(ProgramEvent):
 
     @property
     def _key(self):
-        return (1, ordering.DiscreteOrder(self.course_dir), self.course_event)
+        return (1, util.ordering.DiscreteOrder(self.course_dir), self.course_event)
 
 
 # ## Instances of CourseEvent.
@@ -73,7 +73,7 @@ class ReloadCourse(CourseEvent):
 
 @_dataclass_incomparable
 class SyncFromCanvas(CourseEvent):
-    _key = (1, ordering.DiscreteOrder(0))
+    _key = (1, util.ordering.DiscreteOrder(0))
 
 
 @_dataclass_incomparable
@@ -85,8 +85,8 @@ class CourseEventInLab(CourseEvent):
     def _key(self):
         return (
             1,
-            ordering.DiscreteOrder(1),
-            ordering.DiscreteOrder(self.lab_id),
+            util.ordering.DiscreteOrder(1),
+            util.ordering.DiscreteOrder(self.lab_id),
             self.lab_event,
         )
 
@@ -106,7 +106,7 @@ class LabEventInGroupProject(LabEvent):
 
     @property
     def _key(self):
-        return (1, ordering.DiscreteOrder(self.group_id), self.group_project_event)
+        return (1, util.ordering.DiscreteOrder(self.group_id), self.group_project_event)
 
 
 # ## Instances of GroupProjectEvent.

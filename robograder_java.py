@@ -7,10 +7,10 @@ from pathlib import Path
 import util.general
 import util.java
 import lab_interfaces
-import markdown
+import util.markdown
 import util.path
 import submission_java
-from this_dir import this_dir
+from util.this_dir import this_dir
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ In the former case, please tell my designers!
     def markdown(self):
         return util.general.text_from_lines(
             self.prolog,
-            *markdown.escape_code_block(self.errors).splitlines(),
+            *util.markdown.escape_code_block(self.errors).splitlines(),
         )
 
 

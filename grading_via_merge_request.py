@@ -10,8 +10,8 @@ import more_itertools
 import util.general
 import util.git
 import gitlab_.tools
-import markdown
-import print_parse
+import util.markdown
+import util.print_parse
 
 
 class SetupData:
@@ -21,7 +21,7 @@ class SetupData:
 
     @functools.cached_property
     def label_pp(self):
-        return print_parse.from_dict(
+        return util.print_parse.from_dict(
             (outcome, label_spec.name)
             for (outcome, label_spec) in self.lab.config.outcome_labels.items()
         )
@@ -48,9 +48,9 @@ class SetupData:
 
 
 class GradingViaMergeRequest:
-    sync_message = print_parse.compose(
-        print_parse.combine((print_parse.escape_brackets, print_parse.escape_parens)),
-        print_parse.regex_many(
+    sync_message = util.print_parse.compose(
+        util.print_parse.combine((util.print_parse.escape_brackets, util.print_parse.escape_parens)),
+        util.print_parse.regex_many(
             "Synchronized submission branch with [{}]({}).",
             [r"(?:[^\[\]\\]|\\[\[\]\\])*", r"(?:[^\(\)\\]|\\[\(\)\\])*"],
         ),
@@ -469,15 +469,15 @@ class GradingViaMergeRequest:
 
     def summary_table(self):
         def column_specs():
-            yield markdown.ColumnSpec(
-                title=markdown.link(
+            yield util.markdown.ColumnSpec(
+                title=util.markdown.link(
                     "Submission tag",
                     gitlab_.tools.url_tag_name(self.group.project.lazy),
                 )
             )
-            yield markdown.ColumnSpec(title="Synchronized")
-            yield markdown.ColumnSpec(title="Outcome", align=markdown.Alignment.CENTER)
-            yield markdown.ColumnSpec(title="Grader", align=markdown.Alignment.CENTER)
+            yield util.markdown.ColumnSpec(title="Synchronized")
+            yield util.markdown.ColumnSpec(title="Outcome", align=util.markdown.Alignment.CENTER)
+            yield util.markdown.ColumnSpec(title="Grader", align=util.markdown.Alignment.CENTER)
 
         def rows():
             for request_name, (date, note) in self.synced_submissions.items():
@@ -486,7 +486,7 @@ class GradingViaMergeRequest:
                     (outcome, link, grader) = has_outcome
 
                 def col_request_name():
-                    return markdown.link(
+                    return util.markdown.link(
                         request_name,
                         gitlab_.tools.url_tree(
                             self.group.project.lazy,
@@ -496,7 +496,7 @@ class GradingViaMergeRequest:
                     )
 
                 def col_sync():
-                    return markdown.link(
+                    return util.markdown.link(
                         self.course.format_datetime(
                             gitlab_.tools.parse_date(note.created_at)
                         ),
@@ -505,20 +505,20 @@ class GradingViaMergeRequest:
 
                 def col_outcome():
                     if has_outcome:
-                        return markdown.link(
+                        return util.markdown.link(
                             self.course.config.outcome.name.print(outcome), link
                         )
 
                 def col_grader():
                     if has_outcome:
-                        return markdown.link(
+                        return util.markdown.link(
                             grader,
                             gitlab_.tools.url_username(self.gl, grader),
                         )
 
                 yield (col_request_name(), col_sync(), col_outcome(), col_grader())
 
-        return markdown.table(column_specs(), rows())
+        return util.markdown.table(column_specs(), rows())
 
     def merge_request_description(self, for_real=True):
         def lines(mod):
@@ -541,10 +541,10 @@ class GradingViaMergeRequest:
                     yield self.non_grader_change_message
 
                 if self.synced_submissions:
-                    yield markdown.heading("Status", 1)
+                    yield util.markdown.heading("Status", 1)
                     yield self.summary_table()
 
-        result = markdown.join_blocks(blocks())
+        result = util.markdown.join_blocks(blocks())
         if for_real and self.synced_submissions:
             result = self.group.append_mentions(result)
         return result.strip()
@@ -626,9 +626,9 @@ class GradingViaMergeRequest:
                     default_to_commit_message=False,
                 )
                 if submission_message:
-                    yield markdown.quote(submission_message)
+                    yield util.markdown.quote(submission_message)
 
-            self.merge_request.notes.create({"body": markdown.join_blocks(body())})
+            self.merge_request.notes.create({"body": util.markdown.join_blocks(body())})
 
         self.set_labels(None)
 

@@ -66,7 +66,7 @@ def server_manager(netloc, secret_token, callback, logger=logger):
 
     This method does not return.
     """
-    netloc = print_parse.netloc_normalize(netloc)
+    netloc = util.print_parse.netloc_normalize(netloc)
     address = (netloc.host, netloc.port)
 
     with util.path.temp_dir() as dir:

@@ -7,10 +7,10 @@ from typing import Optional, Iterable, Tuple
 from gql.transport.requests import RequestsHTTPTransport
 
 import util.general
-import print_parse
+import util.print_parse
 import graphql_.client
 from graphql_.tools import query, distribute, tupling, lift, over_list
-from this_dir import this_dir
+from util.this_dir import this_dir
 
 
 logger = logging.getLogger(__name__)
@@ -18,19 +18,19 @@ logger = logging.getLogger(__name__)
 
 @functools.cache
 def pp_id(scope):
-    return print_parse.regex_int(f"gid://gitlab/{scope}/{{}}")
+    return util.print_parse.regex_int(f"gid://gitlab/{scope}/{{}}")
 
 
-pp_date = print_parse.datetime("%Y-%m-%d %H:%M:%S.%f000 %z")
+pp_date = util.print_parse.datetime("%Y-%m-%d %H:%M:%S.%f000 %z")
 
 
 def cursor(cls):
     cls = dataclasses.dataclass(cls)
-    cls = print_parse.dataclass_json(cls)
-    cls.pp_cursor = print_parse.maybe(
-        print_parse.compose(
+    cls = util.print_parse.dataclass_json(cls)
+    cls.pp_cursor = util.print_parse.maybe(
+        util.print_parse.compose(
             cls.pp_json,
-            print_parse.base64_standard_str,
+            util.print_parse.base64_standard_str,
         )
     )
     return cls
@@ -39,7 +39,7 @@ def cursor(cls):
 @cursor
 class CreatedCursor:
     id: int
-    created_at: datetime.datetime = print_parse.dataclass_field(pp_date)
+    created_at: datetime.datetime = util.print_parse.dataclass_field(pp_date)
 
 
 @cursor

@@ -20,7 +20,7 @@ import canvas.client_rest as canvas
 import graphql_.client
 import graphql_.tools
 import util.general
-import print_parse
+import util.print_parse
 
 
 logger = logging.getLogger(__name__)
@@ -439,7 +439,7 @@ class CourseUsers:
 
 
 class GroupSet:
-    def __init__(self, data, pp_group_name: print_parse.PrintParse = None):
+    def __init__(self, data, pp_group_name: util.print_parse.PrintParse = None):
         self.pp_group_name = pp_group_name
         (id, name, groups) = data
 

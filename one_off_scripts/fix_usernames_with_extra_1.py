@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 import course
 import gitlab_.tools  # noqa: E402
 import lp3.config as config
-import this_dir
+from util.this_dir import this_dir
 
-c = course.Course(config, this_dir.this_dir / "lp3")
+c = course.Course(config, this_dir / "lp3")
 
 for user in c._gitlab_users.values():
     username = user.username
