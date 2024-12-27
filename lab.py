@@ -82,7 +82,7 @@ class StudentConnectorIndividual(StudentConnector):
         return frozenset(f())
 
     def gitlab_group_slug_pp(self):
-        return print_parse.identity
+        return util.print_parse.identity
 
     def gitlab_group_name(self, id):
         if id == "test":
@@ -295,12 +295,12 @@ class Lab:
         # Qualify a request by the full group id.
         # Used as tag names in the collection repository of each lab.
         # TODO: unused?
-        self.qualify_request = print_parse.compose(
-            print_parse.on(
+        self.qualify_request = util.print_parse.compose(
+            util.print_parse.on(
                 util.general.component_tuple(0),
                 self.student_connector.gitlab_group_slug_pp(),
             ),
-            print_parse.qualify_with_slash,
+            util.print_parse.qualify_with_slash,
         )
 
     def solution_create_and_populate(self):
@@ -1715,7 +1715,7 @@ class Lab:
         # We use @student.chalmers.se.
         # TODO: use info from LDAP
         suffix = "@student.chalmers.se"
-        pp_email = print_parse.PrintParse(
+        pp_email = util.print_parse.PrintParse(
             print=lambda x: x + suffix,
             parse=lambda x: util.general.remove_suffix(x, suffix),
         )

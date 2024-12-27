@@ -481,7 +481,7 @@ class GroupProject:
         #         self.submission_check_symlinks(dir)
         #         self.submission_compile(dir)
         #         response = self.submission_robograde(dir)
-        #     except check_symlinks.SymlinkException as e:
+        #     except util.check_symlinks.SymlinkException as e:
         #         record_error('There is a problem with symbolic links in your submission.', e.text, True)
         #     except java.CompileError as e:
         #         record_error('I could not compile your Java files:', e.compile_errors, True)

@@ -4,11 +4,11 @@ import logging
 from pathlib import Path
 from typing import Any, Iterable
 
-import check_symlinks
+import util.check_symlinks
 import util.general
 import util.java
 import lab_interfaces
-import markdown
+import util.markdown
 import util.path
 
 logger = logging.getLogger(__name__)
@@ -44,8 +44,8 @@ class SymlinkException(lab_interfaces.HandlingException):
 
 def submission_check_symlinks(src, strict=False):
     try:
-        return check_symlinks.check(src, strict=strict)
-    except check_symlinks.SymlinkException as e:
+        return util.check_symlinks.check(src, strict=strict)
+    except util.check_symlinks.SymlinkException as e:
         raise SymlinkException(e) from None
 
 
@@ -64,7 +64,7 @@ class CompileException(util.java.CompileError, lab_interfaces.HandlingException)
         return util.general.join_lines(
             [
                 self.prefix,
-                *markdown.escape_code_block(self.compile_errors).splitlines(),
+                *util.markdown.escape_code_block(self.compile_errors).splitlines(),
             ]
         )
 
@@ -118,7 +118,7 @@ class FileConflict(lab_interfaces.HandlingException):
         return util.general.join_lines(
             [
                 self.prefix,
-                *markdown.escape_code_block(self.file).splitlines(),
+                *util.markdown.escape_code_block(self.file).splitlines(),
                 self.suffix,
             ]
         )

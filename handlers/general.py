@@ -9,7 +9,7 @@ import util.general
 import gitlab_.tools
 import lab_interfaces
 import live_submissions_table
-import markdown
+import util.markdown
 import util.path
 import util.print_parse
 
@@ -35,9 +35,9 @@ language_failure_key = "grading"
 
 def grading_response_for_outcome(outcome_name):
     """The standard grading response printer-parser for a given outcome name printer-parser."""
-    return print_parse.compose(
-        print_parse.on(util.general.component("outcome"), outcome_name),
-        print_parse.regex_non_canonical_keyed(
+    return util.print_parse.compose(
+        util.print_parse.on(util.general.component("outcome"), outcome_name),
+        util.print_parse.regex_non_canonical_keyed(
             "Grading for {tag}: {outcome}",
             "grading\\s+(?:for|of)\\s+(?P<tag>[^: ]*)\\s*:\\s*(?P<outcome>[^:\\.!]*)[\\.!]*",
             flags=re.IGNORECASE,
@@ -47,13 +47,13 @@ def grading_response_for_outcome(outcome_name):
 
 submission_failure_response_key = "submission_failure"
 
-submission_failure_title = print_parse.regex_non_canonical_keyed(
+submission_failure_title = util.print_parse.regex_non_canonical_keyed(
     "Your submission {tag} was not accepted",
     "Your submission (?P<tag>[^: ]*) was not accepted",
     flags=re.IGNORECASE,
 )
 
-language_failure_title = print_parse.regex_non_canonical_keyed(
+language_failure_title = util.print_parse.regex_non_canonical_keyed(
     "Your submission {tag} was not accepted: language detection failure",
     "Your submission (?P<tag>[^: ]*) was not accepted: language detection failure",
     flags=re.IGNORECASE,
@@ -68,14 +68,14 @@ testing_request = lab_interfaces.RegexRequestMatcher(
 generic_response_key = "response"
 """The standard response key for a handler with only one kind of response."""
 
-robograder_response_title = print_parse.regex_keyed(
+robograder_response_title = util.print_parse.regex_keyed(
     "Robograder: reporting for {tag}",
     {"tag": "[^: ]*"},
     flags=re.IGNORECASE,
 )
 """The standard robograding response printer-parser."""
 
-tester_response_title = print_parse.regex_keyed(
+tester_response_title = util.print_parse.regex_keyed(
     "Tester: reporting for {tag}",
     {"tag": "[^: ]*"},
     flags=re.IGNORECASE,
@@ -236,7 +236,7 @@ class RobogradingHandler(lab_interfaces.RequestHandler):
             n = self.counts_so_far(request_and_responses)
             msg = self.format_count(n)
             if msg is not None:
-                report = markdown.join_blocks([msg, report])
+                report = util.markdown.join_blocks([msg, report])
 
         request_and_responses.post_response_issue(
             response_key=self.response_key,
@@ -263,7 +263,7 @@ class GenericTestingHandler(TestingHandler):
         self.tester = self.tester_factory(dir_lab=lab.config.path_source, **self.kwargs)
 
     def get_test_report(self, dir_out):
-        return markdown.join_blocks(
+        return util.markdown.join_blocks(
             self.tester.format_tests_output_as_markdown(dir_out)
         )
 
@@ -403,7 +403,7 @@ class SubmissionTesting:
             )
 
     def test_report(self, test):
-        return markdown.join_blocks(self.tester.format_tests_output_as_markdown(test))
+        return util.markdown.join_blocks(self.tester.format_tests_output_as_markdown(test))
 
     # The suppress option is useful if the submission did not compile.
     # In that case, we want to skip testing.
@@ -423,7 +423,7 @@ class SubmissionTesting:
             if self.has_markdown_report:
                 with util.path.temp_dir() as test_report:
                     (test_report / self.report_path).write_text(
-                        markdown.join_blocks(
+                        util.markdown.join_blocks(
                             self.tester.format_tests_output_as_markdown(test)
                         )
                     )

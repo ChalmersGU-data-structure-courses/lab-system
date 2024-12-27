@@ -11,7 +11,7 @@ import sys
 import types
 import urllib.parse
 
-import http_logging  # noqa F401
+import util.http_logging  # noqa F401
 import requests
 
 from util.general import (
@@ -35,7 +35,7 @@ from util.path import (
     modify_no_modification_time,
     fix_encoding,
 )
-import simple_cache
+import util.simple_cache
 
 from _2020_lp2.submission_fix_lib import HandlerException
 
@@ -73,7 +73,7 @@ class Canvas:
             self.auth_token = auth_token
 
         self.domain = domain
-        self.cache = simple_cache.SimpleCache(cache_dir)
+        self.cache = util.simple_cache.SimpleCache(cache_dir)
 
         self.base_url = "https://" + self.domain
         self.base_url_api = self.base_url + "/api/v1"

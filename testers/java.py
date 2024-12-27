@@ -10,7 +10,7 @@ from typing import Iterable, Optional, Tuple, Union
 import util.general
 import util.java
 import lab_interfaces
-import markdown
+import util.markdown
 import submission_java
 
 import testers.general
@@ -213,7 +213,7 @@ class LabTester(testers.general.LabTester):
                 compile_err = file("file_compile_err").read_text()
                 if compile_err:
                     yield util.general.join_lines(["There were some compilation warnings:"])
-                    yield markdown.escape_code_block(compile_err)
+                    yield util.markdown.escape_code_block(compile_err)
 
             yield from super().format_tests_output_as_markdown(dir_out)
 

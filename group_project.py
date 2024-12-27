@@ -17,9 +17,9 @@ import util.general
 import util.git
 import gitlab_.tools
 import grading_via_merge_request
-import instance_cache
-import item_parser
-import markdown
+import util.instance_cache
+import util.item_parser
+import util.markdown
 
 
 class RequestAndResponses:
@@ -138,17 +138,17 @@ class RequestAndResponses:
             blocks = [
                 util.general.text_from_lines(
                     f"I failed to check out your commit "
-                    f"`{markdown.escape(self.request_and_responses.request_name)}`.",
+                    f"`{util.markdown.escape(self.request_and_responses.request_name)}`.",
                     "This was the problem:",
                 ),
-                markdown.escape_code_block(self.message),
+                util.markdown.escape_code_block(self.message),
                 util.general.text_from_lines(
                     "Please fix the problem and try again.",
                     "If you are unable to do so,"
                     " please contact the person responsible for the labs.",
                 ),
             ]
-            return markdown.join_blocks(blocks)
+            return util.markdown.join_blocks(blocks)
 
     def checkout(self, dir, segments=["tag"]):
         """
@@ -448,7 +448,7 @@ class RequestAndResponses:
     def _repo_tag_after_segments(self, prev_name, segments=[]):
         return [*segments, "after", prev_name]
 
-    @instance_cache.instance_cache
+    @util.instance_cache.instance_cache
     def repo_tag_after(self, prev_name, segments=[]):
         """
         Returns an instance of git.TagReference for the tag with name
@@ -714,7 +714,7 @@ class HandlerData:
 
     def request_tag_parser_data(self):
         """
-        Prepare parser_data entries for a request tag parsing call to item_parser.parse_all_items.
+        Prepare parser_data entries for a request tag parsing call to util.item_parser.parse_all_items.
         Initializes the requests map.
         Returns an entry for use in the parser_data iterable.
         """
@@ -731,7 +731,7 @@ class HandlerData:
 
     def response_issue_parser_data(self):
         """
-        Prepare parser_data entries for a response issue parsing call to item_parser.parse_all_items.
+        Prepare parser_data entries for a response issue parsing call to util.item_parser.parse_all_items.
         Initializes the responses map.
         Returns iterable of parser_data entries.
         """
@@ -1449,8 +1449,8 @@ class GroupProject:
             for handler_data in self.handler_data.values():
                 yield handler_data.request_tag_parser_data()
 
-        item_parser.parse_all_items(
-            item_parser.Config(
+        util.item_parser.parse_all_items(
+            util.item_parser.Config(
                 location_name=self.name,
                 item_name="request tag",
                 item_formatter=lambda x: gitlab_.tools.format_tag_metadata(
@@ -1561,8 +1561,8 @@ class GroupProject:
         else:
             delete_duplicates = None
 
-        item_parser.parse_all_items(
-            item_parser.Config(
+        util.item_parser.parse_all_items(
+            util.item_parser.Config(
                 location_name=self.name,
                 item_name="response issue",
                 item_formatter=gitlab_.tools.format_issue_metadata,

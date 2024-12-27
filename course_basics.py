@@ -3,8 +3,8 @@ import re
 from collections import namedtuple
 
 import util.general
-import markdown
-import print_parse
+import util.markdown
+import util.print_parse
 
 
 class SubmissionHandlingException(Exception):
@@ -21,7 +21,7 @@ class SubmissionHandlingException(Exception):
         String formatting via str(exception) continues to be used in other places,
         so should also be supported.
         """
-        return markdown.escape_code_block(str(self))
+        return util.markdown.escape_code_block(str(self))
 
 
 class RequestMatcher:
@@ -85,7 +85,7 @@ CompilationRequirement.__doc__ = """
     * required:
         Booleain indicating whether successful compilation is required for the submission to be accepted.
     * response_title:
-        Printer-parser (print_parse.PrintParse) for a response issue notifying students of compilation failure.
+        Printer-parser (util.print_parse.PrintParse) for a response issue notifying students of compilation failure.
         The domain of the printer-parser is a map with a single key 'tag' with value the request tag name.
         If None, then no notification is given.
     * response_prefix:
@@ -99,7 +99,7 @@ compilation_requirement_ignore = CompilationRequirement(required=False)
 
 compilation_requirement_warn = CompilationRequirement(
     required=False,
-    response_title=print_parse.regex_keyed(
+    response_title=util.print_parse.regex_keyed(
         "Your submission {tag} does not compile",
         {"tag": "[^: ]*"},
         flags=re.IGNORECASE,
@@ -118,7 +118,7 @@ compilation_requirement_warn = CompilationRequirement(
 
 compilation_requirement_require = CompilationRequirement(
     required=True,
-    response_title=print_parse.regex_keyed(
+    response_title=util.print_parse.regex_keyed(
         "Your submission {tag} does not compile",
         {"tag": "[^: ]*"},
         flags=re.IGNORECASE,
@@ -273,7 +273,7 @@ class Robograder(SubmissionHandler):
 
     Required attributes:
     * response_title:
-        Printer-parser (print_parse.PrintParse) for the robograding response issue title.
+        Printer-parser (util.print_parse.PrintParse) for the robograding response issue title.
         The domain of the printer-parser is a map with a single key 'tag' with value the request tag name.
 
     Only implementations of the following subinterfaces are supported for now:
@@ -285,7 +285,7 @@ class Robograder(SubmissionHandler):
     def __init__(self):
         """Provides a default implementation of self.response_title."""
         self.response_title = (
-            print_parse.regex_keyed(
+            util.print_parse.regex_keyed(
                 "Robograder: reporting for {tag}",
                 {"tag": "[^: ]*"},
                 flags=re.IGNORECASE,
@@ -348,7 +348,7 @@ class StudentCallableRobograder(SubmissionHandler):
     Required attributes:
     * request_matcher: Request matcher for student robograding requests.
     * response_title:
-        Printer-parser (print_parse.PrintParse) for the robograding response issue title.
+        Printer-parser (util.print_parse.PrintParse) for the robograding response issue title.
         The domain of the printer-parser is a map with a single key 'tag' with value the request tag name.
     """
 
@@ -361,7 +361,7 @@ class StudentCallableRobograder(SubmissionHandler):
         self.request_matcher = RegexRequestMatcher(
             "test", ["test*", "Test*"], "(?:t|T)est[^: ]*"
         )
-        self.response_title = print_parse.regex_keyed(
+        self.response_title = util.print_parse.regex_keyed(
             "Robograder: reporting for {tag}",
             {"tag": "[^: ]*"},
             flags=re.IGNORECASE,

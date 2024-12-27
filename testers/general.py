@@ -10,8 +10,8 @@ import subprocess
 from typing import Iterable, Optional
 
 import util.general
-import markdown
-import overlay
+import util.markdown
+import util.overlay
 import util.path
 
 
@@ -311,7 +311,7 @@ class LabTester:
                     yield dir_src
 
                 dir_test = stack.enter_context(
-                    overlay.overlay(dirs(), writable=self.needs_writable_sub_dir)
+                    util.overlay.overlay(dirs(), writable=self.needs_writable_sub_dir)
                 )
             else:
                 dir_test = dir_src
@@ -360,12 +360,12 @@ class LabTester:
                 # Make sure that the output ends with exactly one blank line
                 yield out.strip("\n") + "\n"
             else:
-                yield markdown.escape_code_block(out)
+                yield util.markdown.escape_code_block(out)
 
         err = self.filter_errors(read_file("file_err"))
         if err:
             yield util.general.join_lines(["Errors:"])
-            yield markdown.escape_code_block(err)
+            yield util.markdown.escape_code_block(err)
 
         def result_msg():
             result = read_file("file_result")
@@ -392,7 +392,7 @@ class LabTester:
         for name, test in self.tests.items():
             dir_out_test = dir_out / name
             yield util.general.join_lines(
-                [f"## {markdown.escape(get_description(name, test))}"]
+                [f"## {util.markdown.escape(get_description(name, test))}"]
             )
             yield from self.format_test_output_as_markdown(test, dir_out_test)
 
@@ -565,4 +565,4 @@ Print INFO level (once specified) or DEBUG level (twice specified) logging.
         tester = Tester(**dict(params()))
         tester.run_tests(dir_out, args.submission)
         if args.markdown:
-            print(markdown.join_blocks(tester.format_tests_output_as_markdown(dir_out)))
+            print(util.markdown.join_blocks(tester.format_tests_output_as_markdown(dir_out)))

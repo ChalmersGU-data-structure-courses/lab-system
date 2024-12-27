@@ -21,7 +21,7 @@ import more_itertools
 
 import canvas.client_rest as canvas
 import events
-import gdpr_coding
+import util.gdpr_coding
 import util.general
 import gitlab_.graphql
 import gitlab_.tools
@@ -31,10 +31,10 @@ import group_set
 import util.ip
 import util.ldap
 import util.print_parse
-import subsuming_queue
+import util.subsuming_queue
 import util.threading
 import webhook_listener
-from instance_cache import instance_cache
+import util.instance_cache
 
 # ===============================================================================
 # Tools
@@ -170,7 +170,7 @@ class Course:
             canvas_user = self.canvas_user_by_gitlab_username[gitlab_username]
             return canvas.user_first_and_last_name(canvas_user)
 
-        self.student_name_coding = gdpr_coding.NameCoding(
+        self.student_name_coding = util.gdpr_coding.NameCoding(
             self.dir / "gdpr_coding.json",
             first_and_last_name,
         )
@@ -244,7 +244,7 @@ class Course:
     def ldap_client(self):
         return ldap.initialize("ldap://ldap.chalmers.se")
 
-    @instance_cache
+    @util.instance_cache.instance_cache
     def cid_from_ldap_name(self, name):
         """
         Raises a LookupError if the given name cannot be uniquely resolved to a CID.
@@ -302,7 +302,7 @@ class Course:
         if is_cid():
             return parts[0]
 
-    @instance_cache
+    @util.instance_cache.instance_cache
     def cid_from_canvas_id_via_login_id_or_ldap_name(self, user_id):
         """
         For login IDs that look like Chalmers login IDs, return the CID directly.
@@ -316,7 +316,7 @@ class Course:
         user_details = self.canvas_course.user_details[user_id]
         return self.cid_from_ldap_name(user_details.name)
 
-    @instance_cache
+    @util.instance_cache.instance_cache
     def cid_from_canvas_id_via_login_id_or_pdb(self, user_id):
         """
         For login IDs that look like Chalmers login IDs, return the CID directly.
@@ -334,8 +334,8 @@ class Course:
 
     @property
     def gitlab_netloc(self):
-        return print_parse.NetLoc(
-            host=print_parse.url.parse(self.config.gitlab_url).netloc.host,
+        return util.print_parse.NetLoc(
+            host=util.print_parse.url.parse(self.config.gitlab_url).netloc.host,
             # TODO: determine port from self.config.gitlab_url.
             port=443,
         )
@@ -676,7 +676,7 @@ class Course:
         """
         if netloc is None:
             netloc = self.hook_netloc_default
-        return print_parse.netloc_normalize(netloc)
+        return util.print_parse.netloc_normalize(netloc)
 
     def hook_specs(self, netloc=None) -> Iterable[gitlab_.tools.HookSpec]:
         for lab in self.labs.values():
@@ -855,7 +855,7 @@ class Course:
         thread_managers = []
 
         # The event queue.
-        self.event_queue = subsuming_queue.SubsumingQueue()
+        self.event_queue = util.subsuming_queue.SubsumingQueue()
 
         def shutdown():
             self.event_queue.add((events.TerminateProgram(), None))

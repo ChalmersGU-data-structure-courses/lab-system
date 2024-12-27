@@ -10,7 +10,7 @@ import types
 import googleapiclient.discovery
 
 import util.general
-import print_parse as pp
+import util.print_parse as pp
 
 
 logger = logging.getLogger(__name__)
