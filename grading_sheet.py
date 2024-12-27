@@ -10,7 +10,7 @@ import gspread
 import util.general
 import google_tools.general
 import google_tools.sheets
-import gspread_tools
+import util.gspread
 
 logger = logging.getLogger(__name__)
 
@@ -496,7 +496,9 @@ class GradingSheet:
                         self.sheet_properties.sheetId,
                         (
                             range,
-                            util.general.range_singleton(self.sheet_parsed.group_column),
+                            util.general.range_singleton(
+                                self.sheet_parsed.group_column
+                            ),
                         ),
                     ),
                 ),
@@ -842,7 +844,7 @@ class GradingSpreadsheet:
     def template_grading_sheet_qualified_id(self):
         """Takes config.grading_sheet.template and resolves the worksheet identifier to an id."""
         (template_id, template_worksheet) = self.config.grading_sheet.template
-        template_worksheet_id = gspread_tools.resolve_worksheet_id(
+        template_worksheet_id = util.gspread.resolve_worksheet_id(
             self.gspread_client, template_id, template_worksheet
         )
         return (template_id, template_worksheet_id)

@@ -5,7 +5,7 @@ import argparse
 import sys
 from pathlib import Path
 
-import path_tools
+import util.path
 import robograder_java
 import submission_java
 
@@ -42,7 +42,7 @@ p.add_argument(
     action="store_true",
     help=f"""
 Compile the robograder before executing.
-For convenience, this also compiles the robograding library in {path_tools.format_path(robograder_java.dir_lib)}.
+For convenience, this also compiles the robograding library in {util.path.format_path(robograder_java.dir_lib)}.
 """,
 )
 p.add_argument(
@@ -75,7 +75,7 @@ p.add_argument(
     default=robograder_java.rel_dir_robograder,
     help=f"""
 Path to the robograder relative to the lab directory.
-Defaults to {path_tools.format_path(robograder_java.rel_dir_robograder)}.
+Defaults to {util.path.format_path(robograder_java.rel_dir_robograder)}.
 """,
 )
 p.add_argument(
@@ -146,20 +146,20 @@ logging.basicConfig(level=logging_level)
 
 logger = logging.getLogger()
 
-logger.debug(f"Submission directory: {path_tools.format_path(args.submission)}")
+logger.debug(f"Submission directory: {util.path.format_path(args.submission)}")
 
 
 def params():
-    logger.debug(f"Lab directory: {path_tools.format_path(args.lab)}")
+    logger.debug(f"Lab directory: {util.path.format_path(args.lab)}")
     yield ("dir_lab", args.lab)
 
     logger.debug(
-        f"Robograder directory (relative to lab directory): {path_tools.format_path(args.robograder)}"
+        f"Robograder directory (relative to lab directory): {util.path.format_path(args.robograder)}"
     )
     yield ("dir_robograder", args.robograder)
 
     logger.debug(
-        f"Problem directory (relative to lab directory): {path_tools.format_path(args.problem)}"
+        f"Problem directory (relative to lab directory): {util.path.format_path(args.problem)}"
     )
     yield ("dir_problem", args.problem)
 
@@ -168,7 +168,7 @@ def params():
 
     if args.submission_src is not None:
         logger.debug(
-            f"Submission source subdirectory: {path_tools.format_path(args.submission_src)}"
+            f"Submission source subdirectory: {util.path.format_path(args.submission_src)}"
         )
         yield ("dir_submission_src", Path(args.submission_src))
 

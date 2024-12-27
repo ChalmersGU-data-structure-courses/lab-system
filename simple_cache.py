@@ -3,7 +3,7 @@ import json
 import logging
 from pathlib import Path, PurePath
 
-import path_tools
+import util.path
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ class SimpleCache:
 
         if isinstance(use_cache, datetime.datetime):
             really_use_cache = (
-                real_path.exists() and path_tools.modified_at(real_path) >= use_cache
+                real_path.exists() and util.path.modified_at(real_path) >= use_cache
             )
         else:
             really_use_cache = bool(use_cache) and real_path.exists()

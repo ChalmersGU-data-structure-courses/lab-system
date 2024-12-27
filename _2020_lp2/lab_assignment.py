@@ -24,7 +24,7 @@ from util.general import (
     format_with_rel_prec, format_timespan,
 )
 from canvas import Assignment
-from path_tools import (
+from util.path import (
     add_suffix,
     modify, get_modification_time,
     sorted_directory_list,

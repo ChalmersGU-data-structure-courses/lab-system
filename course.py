@@ -28,11 +28,11 @@ import gitlab_.tools
 import gitlab_.users_cache
 import grading_sheet
 import group_set
-import ip_tools
-import ldap_tools
-import print_parse
+import util.ip
+import util.ldap
+import util.print_parse
 import subsuming_queue
-import threading_tools
+import util.threading
 import webhook_listener
 from instance_cache import instance_cache
 
@@ -80,7 +80,7 @@ class Course:
 
     Settable attributes:
     * ssh_multiplexer:
-        An optional instance of ssh_tools.Multiplexer.
+        An optional instance of util.ssh.Multiplexer.
         Used for executing git commands for Chalmers GitLab over SSH.
     """
 
@@ -249,7 +249,7 @@ class Course:
         """
         Raises a LookupError if the given name cannot be uniquely resolved to a CID.
         """
-        results = ldap_tools.search_people_by_name(self.ldap_client, name)
+        results = util.ldap.search_people_by_name(self.ldap_client, name)
         try:
             (result,) = results
             return result[1]["uid"][0].decode()
@@ -661,8 +661,8 @@ class Course:
 
     @functools.cached_property
     def hook_netloc_default(self):
-        return print_parse.NetLoc(
-            host=ip_tools.get_local_ip_routing_to(self.gitlab_netloc),
+        return util.print_parse.NetLoc(
+            host=util.ip.get_local_ip_routing_to(self.gitlab_netloc),
             port=self.config.webhook.local_port,
         )
 
@@ -889,20 +889,20 @@ class Course:
             )
             thread_managers.append(
                 util.general.add_cleanup(
-                    threading_tools.thread_manager(self.webhook_server_thread),
+                    util.threading.thread_manager(self.webhook_server_thread),
                     self.webhook_server.shutdown,
                 )
             )
 
             # Set up program termination timer.
             if self.config.webhook.event_loop_runtime is not None:
-                self.shutdown_timer = threading_tools.Timer(
+                self.shutdown_timer = util.threading.Timer(
                     self.config.webhook.event_loop_runtime,
                     shutdown,
                     name="shutdown-timer",
                 )
                 thread_managers.append(
-                    threading_tools.timer_manager(self.shutdown_timer)
+                    util.threading.timer_manager(self.shutdown_timer)
                 )
 
             # Set up lab refresh event timers and add initial lab refreshes.
@@ -921,7 +921,7 @@ class Course:
             for lab in self.labs.values():
                 if lab.config.refresh_period is not None:
                     refresh_lab(lab)
-                    lab.refresh_timer = threading_tools.Timer(
+                    lab.refresh_timer = util.threading.Timer(
                         lab.config.refresh_period + next(delays),
                         refresh_lab,
                         args=[lab],
@@ -929,7 +929,7 @@ class Course:
                         repeat=True,
                     )
                     thread_managers.append(
-                        threading_tools.timer_manager(lab.refresh_timer)
+                        util.threading.timer_manager(lab.refresh_timer)
                     )
 
             # Start the threads.

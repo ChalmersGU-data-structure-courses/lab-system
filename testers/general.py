@@ -12,7 +12,7 @@ from typing import Iterable, Optional
 import util.general
 import markdown
 import overlay
-import path_tools
+import util.path
 
 
 logger = logging.getLogger(__name__)
@@ -147,10 +147,10 @@ class LabTester:
         file_tests = self.dir_tester / "tests.py"
         if not file_tests.exists():
             raise TesterMissingException(
-                f"No test specifications file tests.py found in {path_tools.format_path(self.dir_tester)}"
+                f"No test specifications file tests.py found in {util.path.format_path(self.dir_tester)}"
             )
 
-        logger.debug(f"Detected tester in {path_tools.format_path(self.dir_tester)}.")
+        logger.debug(f"Detected tester in {util.path.format_path(self.dir_tester)}.")
         self.tests = parse_tests(self.TestSpec, file_tests)
 
         self.dir_test = self.dir_tester / "test"
@@ -297,8 +297,8 @@ class LabTester:
         if they need the submission directory to be writable for tests.
         """
         logger.info(
-            f"Running tester for {path_tools.format_path(self.dir_tester)} "
-            f"on {path_tools.format_path(dir_src)}."
+            f"Running tester for {util.path.format_path(self.dir_tester)} "
+            f"on {util.path.format_path(dir_src)}."
         )
 
         with contextlib.ExitStack() as stack:
@@ -530,32 +530,32 @@ Print INFO level (once specified) or DEBUG level (twice specified) logging.
 
     with contextlib.ExitStack() as stack:
         if args.output is None:
-            dir_out = stack.enter_context(path_tools.temp_dir())
+            dir_out = stack.enter_context(util.path.temp_dir())
         else:
             dir_out = args.output
             args.output.mkdir(exist_ok=True)
 
-        logger.debug(f"Submission directory: {path_tools.format_path(args.submission)}")
-        logger.debug(f"Output directory: {path_tools.format_path(dir_out)}")
+        logger.debug(f"Submission directory: {util.path.format_path(args.submission)}")
+        logger.debug(f"Output directory: {util.path.format_path(dir_out)}")
 
         def params():
-            logger.debug(f"Lab directory: {path_tools.format_path(args.lab)}")
+            logger.debug(f"Lab directory: {util.path.format_path(args.lab)}")
             yield ("dir_lab", args.lab)
 
             logger.debug(
-                f"Tester directory (relative to lab directory): {path_tools.format_path(args.tester)}"
+                f"Tester directory (relative to lab directory): {util.path.format_path(args.tester)}"
             )
             yield ("dir_tester", args.tester)
 
             if args.problem is not None:
                 logger.debug(
-                    f"Problem directory (relative to lab directory): {path_tools.format_path(args.problem)}"
+                    f"Problem directory (relative to lab directory): {util.path.format_path(args.problem)}"
                 )
                 yield ("dir_problem", Path(args.problem))
 
             if args.submission_src is not None:
                 logger.debug(
-                    f"Submission source subdirectory: {path_tools.format_path(args.submission_src)}"
+                    f"Submission source subdirectory: {util.path.format_path(args.submission_src)}"
                 )
                 yield ("dir_submission_src", Path(args.submission_src))
 

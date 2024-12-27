@@ -11,7 +11,7 @@ from typing import Optional, Tuple, Union
 # We import it to make sure that all dependencies of the sandboxing script are satisfies.
 import seccomp  # noqa: F401
 
-import proot_tools
+import util.proot
 
 import testers.general
 
@@ -83,7 +83,7 @@ class LabTester(testers.general.LabTester):
         env = {
             "PYTHONHASHSEED": "0",
         }
-        cmd = proot_tools.sandboxed_python_args(
+        cmd = util.proot.sandboxed_python_args(
             test.script,
             guest_args=test.args,
             host_dir_main=dir_src,

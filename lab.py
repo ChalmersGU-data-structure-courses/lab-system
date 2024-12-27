@@ -15,15 +15,15 @@ import gitlab.v4.objects.tags
 
 import events
 import util.general
-import git_tools
+import util.git
 import gitlab_.tools
 import google_tools.sheets
 import grading_sheet
 import grading_via_merge_request
 import group_project
 import live_submissions_table
-import path_tools
-import print_parse
+import util.path
+import util.print_parse
 import webhook_listener
 
 
@@ -267,7 +267,7 @@ class Lab:
 
         # Other local data.
         self.file_live_submissions_table = self.dir / "live-submissions-table.html"
-        self.file_live_submissions_table_staging = path_tools.add_suffix(
+        self.file_live_submissions_table_staging = util.path.add_suffix(
             self.file_live_submissions_table,
             ".staging",
         )
@@ -470,7 +470,7 @@ class Lab:
             branches = [branches]
         branches = list(branches)
 
-        with path_tools.temp_dir() as dir:
+        with util.path.temp_dir() as dir:
             repo = git.Repo.init(dir.__fspath__())
 
             shutil.copytree(source, dir, symlinks=True, dirs_exist_ok=True)
@@ -480,7 +480,7 @@ class Lab:
             for branch in branches:
                 repo.git.push(
                     self.primary_project.get.ssh_url_to_repo,
-                    git_tools.refspec(git_tools.head, branch, force=True),
+                    util.git.refspec(util.git.head, branch, force=True),
                 )
 
         if delete_protected_main and self.course.config.branch.master in branches:
@@ -676,7 +676,7 @@ class Lab:
             return self.repo
 
     def repo_add_remote(self, name, project, **kwargs):
-        git_tools.add_tracking_remote(
+        util.git.add_tracking_remote(
             self.repo,
             name,
             project.ssh_url_to_repo,
@@ -731,9 +731,9 @@ class Lab:
                 self.course.config.path_lab.primary,
                 self.primary_project.get,
                 fetch_branches=[
-                    (git_tools.Namespacing.local, branch) for branch in fetch_branches()
+                    (util.git.Namespacing.local, branch) for branch in fetch_branches()
                 ],
-                fetch_tags=[(git_tools.Namespacing.local, git_tools.wildcard)],
+                fetch_tags=[(util.git.Namespacing.local, util.git.wildcard)],
             )
             self.repo_fetch_primary()
 
@@ -741,7 +741,7 @@ class Lab:
                 self.course.config.path_lab.collection,
                 self.collection_project.get,
                 push_branches=fetch_branches(),
-                push_tags=[git_tools.wildcard],
+                push_tags=[util.git.wildcard],
             )
             self.repo_add_groups_remotes(ignore_missing=True)
         except:  # noqa: E722
@@ -918,13 +918,13 @@ class Lab:
 
         Clear this cached property after fetching.
         """
-        refs = git_tools.references_hierarchy(self.repo)
-        remote_tags = refs[git_tools.refs.name][git_tools.remote_tags.name]
+        refs = util.git.references_hierarchy(self.repo)
+        remote_tags = refs[util.git.refs.name][util.git.remote_tags.name]
 
         def f():
             for group in self.groups_known():
                 value = remote_tags.get(group.remote, dict())
-                yield (group.id, git_tools.flatten_references_hierarchy(value))
+                yield (group.id, util.git.flatten_references_hierarchy(value))
 
         return dict(f())
 
@@ -936,8 +936,8 @@ class Lab:
 
         Clear this cached property after constructing tags.
         """
-        refs = git_tools.references_hierarchy(self.repo)
-        return refs[git_tools.refs.name][git_tools.tags.name]
+        refs = util.git.references_hierarchy(self.repo)
+        return refs[util.git.refs.name][util.git.tags.name]
 
     def hook_specs(self, netloc=None) -> Iterable[gitlab_.tools.HookSpec]:
         for group in self.groups_known():
@@ -1150,8 +1150,8 @@ class Lab:
         Context manager for a checked out commit and an empty directory
         that is used for transient results such as compilation products.
         """
-        with git_tools.checkout_manager(self.repo, commit) as src:
-            with path_tools.temp_dir() as bin:
+        with util.git.checkout_manager(self.repo, commit) as src:
+            with util.path.temp_dir() as bin:
                 yield (src, bin)
 
     @functools.cached_property
@@ -1169,7 +1169,7 @@ class Lab:
         return self.language_problem_names[language]
 
     def head_problem(self, language=None):
-        return git_tools.normalize_branch(
+        return util.git.normalize_branch(
             self.repo,
             self.branch_problem(language=language),
         )
@@ -1190,7 +1190,7 @@ class Lab:
     # TODO: unused?
     def checkout_problem(self, language=None):
         """A context manager for the checked out problem head (path.Path)."""
-        return git_tools.checkout_manager(
+        return util.git.checkout_manager(
             self.repo, self.head_problem(language=language)
         )
 
@@ -1233,7 +1233,7 @@ class Lab:
                 self.file_live_submissions_table_staging,
                 group_ids=group_ids,
             )
-            if path_tools.file_content_eq(
+            if util.path.file_content_eq(
                 self.file_live_submissions_table_staging,
                 self.file_live_submissions_table,
                 missing_ok_b=True,
@@ -1244,9 +1244,9 @@ class Lab:
                 )
                 self.file_live_submissions_table_staging.unlink()
             else:
-                # with path_tools.temp_dir() as dir:
+                # with util.path.temp_dir() as dir:
                 #     shutil.copyfile(self.file_live_submissions_table_staging, 'index.html')
-                #     tree = git_tools.create_tree_from_dir(dir)
+                #     tree = util.git.create_tree_from_dir(dir)
                 #     try:
                 #         parents = [self.repo.heads[self.head_live_submissions_table].commit]
                 #     except IndexError:
@@ -1271,7 +1271,7 @@ class Lab:
                 #     target.name,
                 # )
                 # Workaround for https://github.com/instructure/canvas-lms/issues/2309:
-                with path_tools.temp_file() as path:
+                with util.path.temp_file() as path:
                     data = self.file_live_submissions_table_staging.read_text()
                     data = data + "<!-- " + str(random.randbytes(16)) + " -->"
                     path.write_text(data)
@@ -1548,7 +1548,7 @@ class Lab:
 
         Use this function to more quickly debug issues with contents of the collection repository.
         """
-        for path, tag in git_tools.flatten_references_hierarchy(self.tags).items():
+        for path, tag in util.git.flatten_references_hierarchy(self.tags).items():
             if path.name == "handled" or (
                 len(path.parents) > 0 and path.parent.name == "after"
             ):
@@ -1556,7 +1556,7 @@ class Lab:
 
             out = dir / path
             out.mkdir(parents=True)
-            git_tools.checkout(self.repo, out, tag)
+            util.git.checkout(self.repo, out, tag)
 
     @functools.cached_property
     def group_by_gitlab_username(self):
@@ -1965,8 +1965,8 @@ class Lab:
                         continue
 
                     source = str(dir_branch.relative_to(self.repo.git_dir))
-                    target = git_tools.local_ref(False, branch)
-                    refspec = "+" + git_tools.refspec(source, target)
+                    target = util.git.local_ref(False, branch)
+                    refspec = "+" + util.git.refspec(source, target)
                     yield refspec
 
                 specs = list(refspecs())
@@ -1988,8 +1988,8 @@ class Lab:
                 for dir_tag in dir_remote.iterdir():
                     tag = dir_tag.name
                     source = str(dir_tag.relative_to(self.repo.git_dir))
-                    target = git_tools.local_ref(True, tag)
-                    refspec = "+" + git_tools.refspec(source, target)
+                    target = util.git.local_ref(True, tag)
+                    refspec = "+" + util.git.refspec(source, target)
                     yield refspec
 
             specs = list(refspecs())

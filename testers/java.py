@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Iterable, Optional, Tuple, Union
 
 import util.general
-import java_tools
+import util.java
 import lab_interfaces
 import markdown
 import submission_java
@@ -109,7 +109,7 @@ class LabTester(testers.general.LabTester):
 
         if self.has_test_overlay:
             logger.debug("Compiling test code.")
-            java_tools.compile(
+            util.java.compile(
                 src=self.dir_test / self.dir_submission_src,
                 bin=self.dir_test / self.dir_submission_src,
                 sourcepath=[self.problem_src / self.dir_submission_src],
@@ -130,15 +130,15 @@ class LabTester(testers.general.LabTester):
 
         def permissions():
             for filepath in test.perm_read:
-                yield java_tools.permission_file(
-                    filepath, file_permissions=[java_tools.FilePermission.read]
+                yield util.java.permission_file(
+                    filepath, file_permissions=[util.java.FilePermission.read]
                 )
             for filepath in test.perm_write:
-                yield java_tools.permission_file(
+                yield util.java.permission_file(
                     filepath,
                     file_permissions=[
-                        java_tools.FilePermission.write,
-                        java_tools.FilePermission.delete,
+                        util.java.FilePermission.write,
+                        util.java.FilePermission.delete,
                     ],
                 )
 

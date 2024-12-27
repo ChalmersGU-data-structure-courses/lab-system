@@ -14,7 +14,7 @@ import shlex
 import urllib.parse
 
 import util.general
-import path_tools
+import util.path
 from escaping_formatter import regex_escaping_formatter
 
 PrintParse = collections.namedtuple("PrintParse", ["print", "parse"])
@@ -409,8 +409,8 @@ path = PrintParse(
 )
 
 search_path = PrintParse(
-    print=path_tools.search_path_join,
-    parse=path_tools.search_path_split,
+    print=util.path.search_path_join,
+    parse=util.path.search_path_split,
 )
 
 # A network location.

@@ -1,7 +1,7 @@
 import distutils.spawn
 from pathlib import Path, PurePath
 
-import path_tools
+import util.path
 
 # Find proot executable at module import to make sure it exists.
 proot = distutils.spawn.find_executable(Path("proot"))
@@ -152,7 +152,7 @@ def proot_python_args(
     * kwargs:
         Keyword arguments passed on to proot_args.
     """
-    path_tools.search_path_add_env(env, "PYTHONPATH", python_path_extra)
+    util.path.search_path_add_env(env, "PYTHONPATH", python_path_extra)
 
     return proot_args(
         args=[
@@ -178,7 +178,7 @@ def proot_python_args(
 # Default additional module search path.
 guest_python_packages = PurePath("/jail/packages")
 
-sandboxer_default = PurePath(__file__).parent / "seccomp_tools.py"
+sandboxer_default = PurePath(__file__).parent / "seccomp.py"
 
 
 def sandboxed_python_args(
@@ -202,7 +202,7 @@ def sandboxed_python_args(
         guest_dir_main as received by proot_python_args.
     * guest_args:
         Iterable of arguments to pass to the guest script.
-    * sandboxer_script:
+    * sandboxer:
         Executable path to the sandboxer (sandboxing Python script).
         A sandboxer first takes some sandboxer-specific argument.
         This is followed by the command line of the guest script to execute (path to script followed by arguments).

@@ -7,7 +7,7 @@ from pathlib import Path
 import dominate
 
 import util.general
-import git_tools
+import util.git
 import gitlab_.tools
 
 logger = logging.getLogger(__name__)
@@ -370,7 +370,7 @@ class MessageColumn(Column):
 
     def get_value(self, group):
         submission_current = group.submission_current(deadline=self.config.deadline)
-        message = git_tools.tag_message(
+        message = util.git.tag_message(
             submission_current.repo_remote_tag,
             default_to_commit_message=True,
         )

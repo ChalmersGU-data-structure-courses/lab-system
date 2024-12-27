@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Iterable, Union
 
 import util.general
-import path_tools
+import util.path
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class OverlayTypeFallback(OverlayType):
     @classmethod
     @contextlib.contextmanager
     def overlay(cls, dirs: Iterable[Path | tuple[Path, bool]], writable=False):
-        with path_tools.temp_dir() as target:
+        with util.path.temp_dir() as target:
             for dir in reversed(list(dirs)):
                 if isinstance(dir, Path):
                     resolve_symlinks = False
@@ -99,11 +99,11 @@ class OverlayTypeFuseFS(OverlayType):
         dirs = list(dirs_checked())
 
         with contextlib.ExitStack() as stack:
-            target = stack.enter_context(path_tools.temp_dir())
+            target = stack.enter_context(util.path.temp_dir())
             if writable:
                 # OverlayFS bugs out if upper_dir and target are the same path.
-                upper_dir = stack.enter_context(path_tools.temp_dir())
-                working_dir = stack.enter_context(path_tools.temp_dir())
+                upper_dir = stack.enter_context(util.path.temp_dir())
+                working_dir = stack.enter_context(util.path.temp_dir())
 
             try:
 

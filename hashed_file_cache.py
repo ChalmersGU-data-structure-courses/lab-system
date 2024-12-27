@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 import util.general
-import path_tools
+import util.path
 
 _FILENAME_LOCK = "lock"
 _FILENAME_LOCK_UPDATE = "lock_update"
@@ -34,7 +34,7 @@ def _validate_hash(hash):
         bytes.fromhex(hash)[0]
     except (ValueError, IndexError):
         raise CacheError(
-            "invalid hash in cache: " + path_tools.format_path(hash)
+            "invalid hash in cache: " + util.path.format_path(hash)
         ) from None
 
 
@@ -57,7 +57,7 @@ def _read_link(dir_fd, read_update_date: bool = False) -> Optional[LinkData]:
 
     update_date = None
     if read_update_date:
-        update_date = path_tools.get_modification_time(
+        update_date = util.path.get_modification_time(
             _FILENAME_LINK, dir_fd=dir_fd, follow_symlinks=False
         )
 
@@ -75,9 +75,9 @@ def _write_link(dir_fd, link_data: Optional[LinkData]) -> None:
         os.remove(_FILENAME_LINK, dir_fd=dir_fd)
     else:
         tmp = _filename_staging(_FILENAME_LINK)
-        path_tools.symlink_force(link_data.hash, tmp, dir_fd=dir_fd)
+        util.path.symlink_force(link_data.hash, tmp, dir_fd=dir_fd)
         if link_data.update_date:
-            path_tools.set_modification_time(
+            util.path.set_modification_time(
                 tmp,
                 link_data.update_date,
                 dir_fd=dir_fd,
@@ -105,7 +105,7 @@ def _write_data(dir_fd, link_data: LinkData, data: bytes):
         file.write(data)
 
     if link_data.update_date is not None:
-        path_tools.set_modification_time(
+        util.path.set_modification_time(
             tmp,
             link_data.update_date,
             dir_fd=dir_fd,
@@ -120,7 +120,7 @@ def _write_data(dir_fd, link_data: LinkData, data: bytes):
 
 
 def update_lock(dir_fd):
-    return path_tools.lock_file(
+    return util.path.lock_file(
         _FILENAME_LOCK_UPDATE,
         shared=False,
         dir_fd=dir_fd,
@@ -143,7 +143,7 @@ def read_cache(
     * read_update_date causes link_data.update_date to be set,
     * data is None if a hash was given and agrees with that of the cache.
     """
-    with path_tools.lock_file(_FILENAME_LOCK, shared=False, dir_fd=dir_fd):
+    with util.path.lock_file(_FILENAME_LOCK, shared=False, dir_fd=dir_fd):
         cache_link_data = _read_link(dir_fd, read_update_date=read_update_date)
         if cache_link_data is None:
             return None
@@ -243,7 +243,7 @@ def write_cache(
         else:
             keep_link = inhabited_and_up_to_date and link_data.update_date is None
         if not keep_link:
-            with path_tools.lock_file(_FILENAME_LOCK, shared=False, dir_fd=dir_fd):
+            with util.path.lock_file(_FILENAME_LOCK, shared=False, dir_fd=dir_fd):
                 _write_link(dir_fd, link_data)
 
         # Clean up old data.
@@ -265,7 +265,7 @@ class HashedFileCacheBase(abc.ABC):
         self._link_data = LinkData()
 
     def dir_fd_manager(self):
-        return path_tools.dir_fd(self.path)
+        return util.path.dir_fd(self.path)
 
     @property
     def update_date(self):
@@ -400,7 +400,7 @@ def main():
     """
     Tests.
     """
-    with path_tools.dir_fd("cash") as dir_fd:
+    with util.path.dir_fd("cash") as dir_fd:
         print("write: ", write_cache(dir_fd))
         print("read: ", read_cache(dir_fd, read_update_date=True))
         print("write: ", write_cache(dir_fd, lambda: b"1234"))
