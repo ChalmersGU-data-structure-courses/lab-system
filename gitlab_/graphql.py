@@ -6,7 +6,7 @@ from typing import Optional, Iterable, Tuple
 
 from gql.transport.requests import RequestsHTTPTransport
 
-import general
+import util.general
 import print_parse
 import graphql_.client
 from graphql_.tools import query, distribute, tupling, lift, over_list
@@ -58,7 +58,7 @@ class Client(graphql_.client.ClientBase):
             url=f"https://{domain}/api/graphql",
             verify=True,
             retries=0,  # TODO: change to a higher value
-            auth=general.BearerAuth(token),
+            auth=util.general.BearerAuth(token),
         )
         filename = "gitlab_schema{}.graphql".format("" if schema_full else "_extract")
         path_schema = this_dir / "graphql_" / filename

@@ -13,7 +13,7 @@ import tempfile
 import typing
 from pathlib import Path, PurePath, PurePosixPath
 
-import general
+import util.general
 
 # ## Type annotations.
 
@@ -742,7 +742,7 @@ class Cache(abc.ABC):
     @contextlib.contextmanager
     def updating(self):
         yield
-        self._time = general.now()
+        self._time = util.general.now()
         self._needs_save = True
 
 

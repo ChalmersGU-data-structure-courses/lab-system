@@ -56,7 +56,7 @@ import re
 import ldap
 import ldap.filter
 
-import general
+import util.general
 
 
 def list_all(client, base, scope, filterstr=None, attrlist=None, page_size=100):
@@ -146,7 +146,7 @@ def print_record(record):
     print()
 
 
-# with general.timing('test'):
+# with util.general.timing('test'):
 #     #r = search_people(client, ldap.filter.filter_format('(&(department=Data- och informationsteknik))', []))
 #     r = search_people(client, ldap.filter.filter_format('(&(uid=REDACTED))', []))
 #     rtype, rdata, rmsgid, serverctrls = client.result3(r)

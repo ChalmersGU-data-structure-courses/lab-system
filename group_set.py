@@ -3,7 +3,7 @@ import functools
 import logging
 
 import canvas.client_rest as canvas
-import general
+import util.general
 
 
 class GroupSet:
@@ -42,7 +42,7 @@ class GroupSet:
         This uses the configured Canvas group set where students sign up for lab groups.
         Refreshes the Canvas cache and local cache of the group set (this part of the call may not be interrupted).
         """
-        group_names = general.sdict(
+        group_names = util.general.sdict(
             (group_id, self.config.name.print(group_id)) for group_id in group_ids
         )
         for group_name in group_names.values():

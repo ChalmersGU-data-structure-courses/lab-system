@@ -19,7 +19,7 @@ import more_itertools
 import canvas.client_rest as canvas
 import graphql_.client
 import graphql_.tools
-import general
+import util.general
 import print_parse
 
 
@@ -269,7 +269,7 @@ class Client(graphql_.client.ClientBase):
 
     def groups_extract(self, x):
         ds = self.ds
-        return general.sdict(
+        return util.general.sdict(
             (
                 entry[ds.Group.name.name],
                 frozenset(
@@ -393,7 +393,7 @@ class CourseUsers:
         (sections, users) = data
 
         self.section_names = dict(sections)
-        self.sections_by_name = general.sdict(map(general.swap, sections))
+        self.sections_by_name = util.general.sdict(map(util.general.swap, sections))
         self.section_users = {id: list() for (id, name) in sections}
 
         self.users = dict()

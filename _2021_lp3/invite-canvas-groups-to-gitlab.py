@@ -4,7 +4,7 @@ import json
 import gitlab
 from pathlib import Path
 
-from general import print_json
+from util.general import print_json
 from canvas import Canvas, Course, GroupSet
 
 

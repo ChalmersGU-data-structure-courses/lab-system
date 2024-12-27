@@ -5,7 +5,7 @@ import re
 
 import dominate
 
-import general
+import util.general
 import gitlab_.tools
 import lab_interfaces
 import live_submissions_table
@@ -36,7 +36,7 @@ language_failure_key = "grading"
 def grading_response_for_outcome(outcome_name):
     """The standard grading response printer-parser for a given outcome name printer-parser."""
     return print_parse.compose(
-        print_parse.on(general.component("outcome"), outcome_name),
+        print_parse.on(util.general.component("outcome"), outcome_name),
         print_parse.regex_non_canonical_keyed(
             "Grading for {tag}: {outcome}",
             "grading\\s+(?:for|of)\\s+(?P<tag>[^: ]*)\\s*:\\s*(?P<outcome>[^:\\.!]*)[\\.!]*",

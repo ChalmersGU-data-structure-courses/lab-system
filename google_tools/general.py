@@ -10,7 +10,7 @@ import google.auth.transport.requests
 import google.oauth2.service_account
 import google_auth_oauthlib.flow
 
-import general
+import util.general
 import path_tools
 
 from .drive import Drive, TemporaryFile
@@ -165,4 +165,4 @@ def namespaced_replacements(sections):
         for key, value in getattr(section, "replacements_img", []):
             replacements_img.append((key, value))
 
-    return (general.sdict(replacements), general.sdict(replacements_img))
+    return (util.general.sdict(replacements), util.general.sdict(replacements_img))

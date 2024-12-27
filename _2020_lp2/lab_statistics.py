@@ -102,7 +102,7 @@ from types import SimpleNamespace
 
 from canvas import Canvas, Course
 import config
-from general import (
+from util.general import (
     namespaced, print_error, group_by_unique, get_attr, compose, multidict,
     map_with_val, partition, group_by, group_by_, list_get, dict_from_fun,
 )

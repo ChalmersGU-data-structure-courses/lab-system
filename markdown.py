@@ -5,7 +5,7 @@ from typing import Iterable, Sequence
 
 import more_itertools
 
-import general
+import util.general
 
 
 class Markdown:
@@ -35,12 +35,12 @@ def find_delimiter(s, char, least=0):
 
 
 def heading(s, level=1):
-    return general.join_lines(["#" * level + " " + s])
+    return util.general.join_lines(["#" * level + " " + s])
 
 
 def escape_code_block(s, char="`"):
     delimiter = find_delimiter(s, char, least=3)
-    return general.join_lines([delimiter, s.rstrip(), delimiter])
+    return util.general.join_lines([delimiter, s.rstrip(), delimiter])
 
 
 def join_blocks(blocks: Iterable[str]):
@@ -49,7 +49,7 @@ def join_blocks(blocks: Iterable[str]):
 
 
 def quote(block: str):
-    return general.join_lines("> " + line for line in block.splitlines())
+    return util.general.join_lines("> " + line for line in block.splitlines())
 
 
 def quote_blocks(blocks: Iterable[str]):
@@ -99,7 +99,7 @@ def table(column_specs: Iterable[ColumnSpec], rows: Iterable[Sequence[str]]):
         return "-" + s + "-"
 
     def join_with_pipe(entries):
-        return "".join(general.intercalate(entries, middle="|", start="|", end="|"))
+        return "".join(util.general.intercalate(entries, middle="|", start="|", end="|"))
 
     def format_row(entries):
         def f():
@@ -121,4 +121,4 @@ def table(column_specs: Iterable[ColumnSpec], rows: Iterable[Sequence[str]]):
         for row in rows:
             yield format_row(row)
 
-    return general.join_lines(lines())
+    return util.general.join_lines(lines())

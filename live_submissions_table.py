@@ -6,7 +6,7 @@ from pathlib import Path
 
 import dominate
 
-import general
+import util.general
 import git_tools
 import gitlab_.tools
 
@@ -294,7 +294,7 @@ class MembersColumn(Column):
                     format_url(canvas_user.name, canvas_user.enrollments[0].html_url)
                 else:
                     self.logger.warning(
-                        general.text_from_lines(
+                        util.general.text_from_lines(
                             f"Canvas course student {canvas_user.name}"
                             f" (id {canvas_user.id}) is missing an enrollment.",
                             "Please inform the script designer"
@@ -343,7 +343,7 @@ class QueryNumberColumn(Column):
         submissions_with_outcome = group.submissions_with_outcome(
             deadline=self.config.deadline
         )
-        return QueryNumberColumn.Value(general.ilen(submissions_with_outcome))
+        return QueryNumberColumn.Value(util.general.ilen(submissions_with_outcome))
 
 
 class MessageColumn(Column):
@@ -745,7 +745,7 @@ class LiveSubmissionsTable:
                 )
                 if any(value.has_content() for value in r.values.values()):
                     if column.sortable:
-                        r.canonical_sort_keys = general.canonical_keys(
+                        r.canonical_sort_keys = util.general.canonical_keys(
                             group_ids, lambda group_id: r.values[group_id].sort_key()
                         )
                     yield (name, r)

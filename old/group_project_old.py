@@ -200,7 +200,7 @@ class GroupProject:
         '''
         request_tags = self.course.parse_request_tags(self.project.get)
         updated = self.course.request_namespace(lambda request_type, _:
-            general.ne_on(
+            util.general.ne_on(
                 request_tags,
                 self.request_tags,
                 lambda x: tuple(tag.name for tag in x.__dict__[request_type])
@@ -230,7 +230,7 @@ class GroupProject:
         '''
         response_issues = self.course.parse_response_issues(self.project.get)
         updated = self.course.request_namespace(lambda request_type, _:
-            general.ne_on(
+            util.general.ne_on(
                 response_issues,
                 self.response_issues,
                 lambda x: dict(
@@ -265,7 +265,7 @@ class GroupProject:
             self.response_issues
         )
         updated = self.course.request_namespace(lambda request_type, _:
-            general.ne_on(
+            util.general.ne_on(
                 requests_and_responses,
                 self.requests_and_responses,
                 lambda x: key(x.__dict__[request_type]))
@@ -332,7 +332,7 @@ class GroupProject:
                 except course_basics.SubmissionHandlingException as e:
                     self.create_response_issue(**issue_params,
                         response_type = 'compilation',
-                        description = e.markdown() + general.join_lines([
+                        description = e.markdown() + util.general.join_lines([
                             '',
                             'If you believe this is a mistake on our end, please contact the responsible teacher.'
                         ]),
@@ -414,7 +414,7 @@ class GroupProject:
                             response_type = 'compilation',
                             description = str().join([
                                 message,
-                                general.join_lines([]),
+                                util.general.join_lines([]),
                                 e.markdown(),
                             ])
                         )

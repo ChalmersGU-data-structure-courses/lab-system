@@ -1,7 +1,7 @@
 import itertools
 from pathlib import Path
 
-from general import join_lines
+from util.general import join_lines
 
 
 def read_patterns(file, missing_ok = False):

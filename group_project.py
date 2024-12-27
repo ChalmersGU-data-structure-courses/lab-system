@@ -13,7 +13,7 @@ import gitlab
 import gitlab.v4.objects
 
 import events
-import general
+import util.general
 import git_tools
 import gitlab_.tools
 import grading_via_merge_request
@@ -136,13 +136,13 @@ class RequestAndResponses:
 
         def report_markdown(self):
             blocks = [
-                general.text_from_lines(
+                util.general.text_from_lines(
                     f"I failed to check out your commit "
                     f"`{markdown.escape(self.request_and_responses.request_name)}`.",
                     "This was the problem:",
                 ),
                 markdown.escape_code_block(self.message),
-                general.text_from_lines(
+                util.general.text_from_lines(
                     "Please fix the problem and try again.",
                     "If you are unable to do so,"
                     " please contact the person responsible for the labs.",
@@ -500,7 +500,7 @@ class RequestAndResponses:
             title_data
         )
         self.logger.debug(
-            general.text_from_lines(
+            util.general.text_from_lines(
                 "Posting response issue:",
                 f"* title: {title}",
                 "* description:",
@@ -546,7 +546,7 @@ class RequestAndResponses:
                 url = gitlab_.tools.url_tree(project, problem, False)
                 yield f"* [{problem}]({url})"
 
-        description = general.text_from_lines(
+        description = util.general.text_from_lines(
             msg,
             "The following problem stubs were searched for:",
             *all_problems(),
@@ -579,10 +579,10 @@ class RequestAndResponses:
         self.languages = None
         try:
             self._language = self.group.detect_language(self.repo_remote_commit)
-        except general.UniquenessError as e:
+        except util.general.UniquenessError as e:
             self.languages = list(e.iterator)
             self.logger.warn(
-                general.text_from_lines(
+                util.general.text_from_lines(
                     f"Language detection failure: (candidates {self.languages}).",
                     f"* {self.lab.name}",
                     f"* {self.group.name}",
@@ -609,7 +609,7 @@ class RequestAndResponses:
         result = self.handler_data.handler.handle_request(self)
 
         if result is not None:
-            self.logger.debug(general.join_lines(["Handler result:", str(result)]))
+            self.logger.debug(util.general.join_lines(["Handler result:", str(result)]))
 
         def checks():
             yield self.lab.config.grading_via_merge_request
@@ -1268,7 +1268,7 @@ class GroupProject:
         if problem is None:
             try:
                 problem = self.detect_ancestor_problem_for_merge(target_ref)
-            except general.UniquenessError as e:
+            except util.general.UniquenessError as e:
                 ancestors = list(e.iterator)
                 self.logger.error(
                     f"Hotfixing: could not determine unique ancestor for"
@@ -1516,7 +1516,7 @@ class GroupProject:
             (_, r) = x
             return r
 
-        return general.maybe(functools.partial(general.map_values, action))(
+        return util.general.maybe(functools.partial(util.general.map_values, action))(
             self.reviews
         )
 

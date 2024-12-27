@@ -117,7 +117,7 @@ import csv
 import logging
 import re
 
-from general import print_error, multidict, from_singleton
+from util.general import print_error, multidict, from_singleton
 from canvas import Canvas, Course
 
 from . import config

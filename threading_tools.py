@@ -3,7 +3,7 @@ import datetime
 import logging
 import threading
 
-import general
+import util.general
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ def timer_manager(timer):
         logger.debug(f"cancelling timer {timer.name}")
         timer.cancel()
 
-    return general.add_cleanup(thread_manager(timer), cleanup)
+    return util.general.add_cleanup(thread_manager(timer), cleanup)
 
 
 class FunctionThread(threading.Thread):

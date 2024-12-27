@@ -16,7 +16,7 @@ from this_dir import this_dir
 
 repo = this_dir / '..' / '..'
 sys.path.insert(1, str(repo / 'Lab-grading'))
-from general import *
+from util.general import *
 
 # Slow for large masks, should not be done in Python.
 def get_rect_from_alpha_mask(mask):

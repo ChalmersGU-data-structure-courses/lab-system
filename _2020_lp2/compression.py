@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import sys
 
-from general import flatten
+from util.general import flatten
 
 from . import dir_glob
 

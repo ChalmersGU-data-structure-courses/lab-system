@@ -7,7 +7,7 @@ import threading
 from typing import Optional
 
 import events
-import general
+import util.general
 import print_parse
 import ssh_tools
 import subsuming_queue
@@ -150,7 +150,7 @@ def run(
                 name="webhook-server-listener",
             )
             thread_managers.append(
-                general.add_cleanup(
+                util.general.add_cleanup(
                     threading_tools.thread_manager(webhook_server_thread),
                     webhook_server_shutdown,
                 )

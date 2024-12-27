@@ -1,7 +1,7 @@
 import logging
 import subprocess
 
-import general
+import util.general
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +27,6 @@ def generate_cert(file_cert, file_key):
         yield from ["-subj", "/C=/ST=/L=/O=/OU=/CN=anonymous"]
 
     args = list(args())
-    general.log_command(logger, args)
+    util.general.log_command(logger, args)
     process = subprocess.run(args, text=True, capture_output=True, check=True)
     logger.debug(process.stderr)

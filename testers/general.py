@@ -9,7 +9,7 @@ import signal
 import subprocess
 from typing import Iterable, Optional
 
-import general
+import util.general
 import markdown
 import overlay
 import path_tools
@@ -211,7 +211,7 @@ class LabTester:
             # > restarted, unless they were in group-stop.
             # So if SIGKILL is processed for tracer before it is processed for its tracee,
             # then in between the tracee has escaped the ptrace jail.
-            general.log_command(logger, args)
+            util.general.log_command(logger, args)
 
             timeout_real = None if timeout is None else timeout / self.machine_speed
             if not timeout_real is None:
@@ -254,7 +254,7 @@ class LabTester:
                         f.write("\n")
                         f.write("[truncated]\n")
 
-        (dir_out / file_result).write_text(general.join_lines([result]))
+        (dir_out / file_result).write_text(util.general.join_lines([result]))
         return process.returncode
 
     @abc.abstractmethod
@@ -364,7 +364,7 @@ class LabTester:
 
         err = self.filter_errors(read_file("file_err"))
         if err:
-            yield general.join_lines(["Errors:"])
+            yield util.general.join_lines(["Errors:"])
             yield markdown.escape_code_block(err)
 
         def result_msg():
@@ -378,7 +378,7 @@ class LabTester:
 
         msg = result_msg()
         if msg is not None:
-            yield general.join_lines([f"The program {msg}."])
+            yield util.general.join_lines([f"The program {msg}."])
 
     def format_tests_output_as_markdown(self, dir_out: Path) -> Iterable[str]:
         """
@@ -391,7 +391,7 @@ class LabTester:
         """
         for name, test in self.tests.items():
             dir_out_test = dir_out / name
-            yield general.join_lines(
+            yield util.general.join_lines(
                 [f"## {markdown.escape(get_description(name, test))}"]
             )
             yield from self.format_test_output_as_markdown(test, dir_out_test)

@@ -7,7 +7,7 @@ import time
 
 import more_itertools
 
-import general
+import util.general
 import git_tools
 import gitlab_.tools
 import markdown
@@ -56,7 +56,7 @@ class GradingViaMergeRequest:
         ),
     )
 
-    non_grader_change_message = general.join_lines(
+    non_grader_change_message = util.general.join_lines(
         ["⚠️**WARNING**⚠️ Grading label change by non-grader detected."]
     )
 
@@ -148,7 +148,7 @@ class GradingViaMergeRequest:
 
         merge_requests = list(f())
         try:
-            merge_request_maybe = general.from_singleton_maybe(merge_requests)
+            merge_request_maybe = util.general.from_singleton_maybe(merge_requests)
         except ValueError:
             raise ValueError(
                 "More than one lab system merge request"
@@ -169,7 +169,7 @@ class GradingViaMergeRequest:
             del self.merge_request
 
     def with_merge_request_url(self, line):
-        return general.join_lines([line, f"* {self.merge_request.web_url}"])
+        return util.general.join_lines([line, f"* {self.merge_request.web_url}"])
 
     @functools.cached_property
     def notes(self):
@@ -281,7 +281,7 @@ class GradingViaMergeRequest:
     @functools.cached_property
     def label_events(self):
         xs = list(self.label_events_generator())
-        if not general.is_sorted(xs, key=lambda x: x[0]):
+        if not util.general.is_sorted(xs, key=lambda x: x[0]):
             self.logger.warn(
                 self.with_merge_request_url(
                     "Grading label events not sorted by creation date:"
@@ -366,7 +366,7 @@ class GradingViaMergeRequest:
             ):
                 if request_name_next is not None:
                     (date_to, _) = self.synced_submissions[request_name_next]
-                (jt, it) = general.before_and_after(
+                (jt, it) = util.general.before_and_after(
                     lambda x: request_name_next is None or x[0] <= date_to, it
                 )
                 self.play_submission_label_events(outcome_status, jt)
@@ -529,11 +529,11 @@ class GradingViaMergeRequest:
 
         def blocks():
             if not for_real:
-                yield general.join_lines(
+                yield util.general.join_lines(
                     ["Your submission will be reviewed in this merge request."]
                 )
             else:
-                yield general.join_lines(
+                yield util.general.join_lines(
                     lines("is" if self.has_outcome() else "will be")
                 )
 
@@ -618,7 +618,7 @@ class GradingViaMergeRequest:
                     submission.request_name,
                     True,
                 )
-                yield general.join_lines(
+                yield util.general.join_lines(
                     [self.sync_message.print((submission.request_name, link))]
                 )
                 submission_message = git_tools.tag_message(

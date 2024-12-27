@@ -170,7 +170,7 @@ args = p.parse_args()
 import logging
 import shutil
 
-from general import print_error, join_lines
+from util.general import print_error, join_lines
 from canvas import Canvas, Course
 from path_tools import system_path_add
 

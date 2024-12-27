@@ -13,7 +13,7 @@ from pathlib import PurePosixPath
 import git
 import gitdb
 
-import general
+import util.general
 import path_tools
 import threading_tools
 
@@ -33,7 +33,7 @@ master = "master"
 
 
 def remove_prefix(path, prefix, **kwargs):
-    return PurePosixPath(**general.remove_prefix(path.parts, prefix.parts), **kwargs)
+    return PurePosixPath(**util.general.remove_prefix(path.parts, prefix.parts), **kwargs)
 
 
 def local_ref(is_tag, reference):
@@ -128,7 +128,7 @@ def find_unique_ancestor(repo, commit, ancestors):
             if repo.is_ancestor(ancestor, commit):
                 yield key
 
-    return general.from_singleton(f())
+    return util.general.from_singleton(f())
 
 
 # Tags.
@@ -226,7 +226,7 @@ references_hierarchy_basic = {
 
 
 def references_hierarchy(repo):
-    return general.expand_hierarchy(
+    return util.general.expand_hierarchy(
         {PurePosixPath(ref.path): ref for ref in repo.refs},
         operator.attrgetter("parts"),
         initial_value=copy.deepcopy(references_hierarchy_basic),
@@ -234,7 +234,7 @@ def references_hierarchy(repo):
 
 
 def flatten_references_hierarchy(ref_hierarchy):
-    return general.flatten_hierarchy(
+    return util.general.flatten_hierarchy(
         ref_hierarchy, key_combine=lambda x: PurePosixPath(*x)
     )
 
@@ -367,7 +367,7 @@ def checkout(repo, dir, ref, capture_stderr=False):
     """Checkout a reference into the given directory."""
     cmd = ["tar", "-x"]
     with path_tools.working_dir(dir):
-        general.log_command(logger, cmd, True)
+        util.general.log_command(logger, cmd, True)
         tar = subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE,
@@ -380,7 +380,7 @@ def checkout(repo, dir, ref, capture_stderr=False):
     repo.archive(tar.stdin, ref)
     tar.stdin.close()
 
-    general.wait_and_check(
+    util.general.wait_and_check(
         tar,
         cmd,
         stderr=t.get_result().decode() if capture_stderr else None,
@@ -433,7 +433,7 @@ def create_tree_from_entries(repo, entries):
         universal_newlines=True,
     )
     (out, err) = process.communicate(
-        general.join_lines(map(format_entry, entries), terminator="\0")
+        util.general.join_lines(map(format_entry, entries), terminator="\0")
     )
     if process.returncode:
         raise git.GitCommandError(

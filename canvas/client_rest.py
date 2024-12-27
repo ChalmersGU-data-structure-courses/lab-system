@@ -14,7 +14,7 @@ import urllib.parse
 import http_logging  # noqa F401
 import requests
 
-from general import (
+from util.general import (
     from_singleton,
     group_by,
     doublequote,
@@ -1184,11 +1184,11 @@ class Assignment:
     #         time_diff = current.submitted_at_date - deadline
     #         if time_diff >= timedelta(minutes = 5):
     #             with OpenWithModificationTime(dir / 'late.txt', current.submitted_at_date) as file:
-    #                 file.write_text(general.join_lines(['{:.2f} hours'.format(time_diff / timedelta(hours = 1))]))
+    #                 file.write_text(util.general.join_lines(['{:.2f} hours'.format(time_diff / timedelta(hours = 1))]))
 
     #     with (dir / 'members.txt').open('w') as file:
     #         for user in self.group_set.group_users[group]:
-    #             file.write_text(general.join_lines([self.group_set.user_details[user].name]))
+    #             file.write_text(util.general.join_lines([self.group_set.user_details[user].name]))
 
     # def prepare_submissions(self, dir, deadline = None):
     #     #self.build_submissions()

@@ -7,7 +7,7 @@ from pathlib import Path
 import subprocess
 from typing import Collection, Optional, Tuple, Union
 
-import general
+import util.general
 
 import testers.general
 
@@ -83,7 +83,7 @@ class LabTester(testers.general.LabTester):
                 yield test.image
 
             cmd = list(cmd_create())
-            general.log_command(logger, cmd)
+            util.general.log_command(logger, cmd)
             container_id = subprocess.run(
                 cmd,
                 check=True,
@@ -97,7 +97,7 @@ class LabTester(testers.general.LabTester):
                 yield container_id
 
             cmd = list(cmd_remove())
-            general.log_command(logger, cmd)
+            util.general.log_command(logger, cmd)
             subprocess.run(cmd, check=True, text=True, stdout=subprocess.PIPE)
 
     def run_test(self, dir_out: Path, dir_src: Path, name: str, test: Test, **kwargs):
@@ -122,7 +122,7 @@ class LabTester(testers.general.LabTester):
             yield from test.command_line
 
         cmd = list(cmd_create())
-        general.log_command(logger, cmd)
+        util.general.log_command(logger, cmd)
         container_id = subprocess.run(
             cmd,
             check=True,
@@ -151,7 +151,7 @@ class LabTester(testers.general.LabTester):
             yield container_id
 
         cmd = list(cmd_remove())
-        general.log_command(logger, cmd)
+        util.general.log_command(logger, cmd)
         subprocess.run(cmd, check=True, text=True, stdout=subprocess.PIPE)
 
 

@@ -2,7 +2,7 @@ import logging
 import os
 from pathlib import Path, PurePath
 
-import general
+import util.general
 import markdown
 import path_tools
 
@@ -20,7 +20,7 @@ class HasSymlinkException(SymlinkException):
         return f"There is a symlink {self.path_formatted}."
 
     def markdown(self):
-        return general.text_from_lines(
+        return util.general.text_from_lines(
             "There is a symlink",
             *markdown.escape_code_block(str(self.path)).splitlines(),
             "and symlinks are forbidden.",
@@ -32,7 +32,7 @@ class AbsoluteSymlinkException(SymlinkException):
         return f"The symlink {self.path_formatted} refers to an absolute path."
 
     def markdown(self):
-        return general.text_from_lines(
+        return util.general.text_from_lines(
             "The symlink",
             *markdown.escape_code_block(str(self.path)).splitlines(),
             "refers to an absolute path.",
@@ -47,7 +47,7 @@ class EscapingSymlinkException(SymlinkException):
         )
 
     def markdown(self):
-        return general.text_from_lines(
+        return util.general.text_from_lines(
             "The symlink",
             *markdown.escape_code_block(str(self.path)).splitlines(),
             "refers to a path outside the top-level directory.",

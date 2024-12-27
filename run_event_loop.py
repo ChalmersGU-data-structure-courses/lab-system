@@ -257,7 +257,7 @@ import logging.handlers
 
 import course
 import event_loop
-import general
+import util.general
 import ip_tools
 import print_parse
 
@@ -307,7 +307,7 @@ def courses():
         yield (dir, c)
 
 
-courses = general.sdict(courses())
+courses = util.general.sdict(courses())
 course_ = list(courses.values())[0]
 
 def get_value_from_courses(name, selector):
@@ -385,7 +385,7 @@ def run():
     with exit_stack:
         event_loop.run(
             courses=courses.values(),
-            run_time=general.with_default(
+            run_time=util.general.with_default(
                 lambda x: datetime.timedelta(hours=x), args.run_time
             ),
             webhook_config=webhook_config,
