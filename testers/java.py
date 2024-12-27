@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from typing import Iterable, Optional, Tuple, Union
 
-import general
+import util.general
 import java_tools
 import lab_interfaces
 import markdown
@@ -188,7 +188,7 @@ class LabTester(testers.general.LabTester):
 
     def filter_errors(self, err: str) -> str:
         return err.removeprefix(
-            general.join_lines(
+            util.general.join_lines(
                 [
                     "WARNING: A command line option has enabled the Security Manager",
                     "WARNING: The Security Manager is deprecated and will be removed in a future release",
@@ -212,7 +212,7 @@ class LabTester(testers.general.LabTester):
             if file("file_compile_err").exists():
                 compile_err = file("file_compile_err").read_text()
                 if compile_err:
-                    yield general.join_lines(["There were some compilation warnings:"])
+                    yield util.general.join_lines(["There were some compilation warnings:"])
                     yield markdown.escape_code_block(compile_err)
 
             yield from super().format_tests_output_as_markdown(dir_out)

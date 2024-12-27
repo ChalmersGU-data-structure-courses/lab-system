@@ -19,7 +19,7 @@ from dominate.tags import (
 )
 from dominate.util import raw, text
 
-from general import (
+from util.general import (
     from_singleton, ilen, Timer, print_error,
     format_with_rel_prec, format_timespan,
 )

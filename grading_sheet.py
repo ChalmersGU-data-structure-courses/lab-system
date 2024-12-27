@@ -7,7 +7,7 @@ import logging
 
 import gspread
 
-import general
+import util.general
 import google_tools.general
 import google_tools.sheets
 import gspread_tools
@@ -148,7 +148,7 @@ def parse_group_rows(config, gdpr_coding, values):
             except Exception:
                 continue
 
-    return general.sdict(f())
+    return util.general.sdict(f())
 
 
 def parse(config, gdpr_coding, sheet_data):
@@ -164,7 +164,7 @@ def parse(config, gdpr_coding, sheet_data):
     Exceptions encountered are raised as instances of SheetParseException.
     """
     ignore = {
-        general.normalize_list_index(sheet_data.num_rows, i)
+        util.general.normalize_list_index(sheet_data.num_rows, i)
         for i in config.grading_sheet.ignore_rows
     }
 
@@ -406,20 +406,20 @@ class GradingSheet:
         # TODO: test if deleting an empty range triggers an error.
         if not (
             not self.sheet_parsed.group_rows
-            and general.is_range_singleton(self.group_range)
+            and util.general.is_range_singleton(self.group_range)
         ):
             self.logger.debug(f"deleting existing group rows {self.group_range}")
             request_buffer.add(
                 google_tools.sheets.request_insert_dimension(
-                    self.row_range_param(general.range_singleton(group_start))
+                    self.row_range_param(util.general.range_singleton(group_start))
                 ),
                 google_tools.sheets.request_delete_dimension(
-                    self.row_range_param(general.range_shift(self.group_range, 1))
+                    self.row_range_param(util.general.range_shift(self.group_range, 1))
                 ),
             )
 
         self.sheet_parsed = self.sheet_parsed._replace(group_rows=[])
-        self.group_range = general.range_singleton(group_start)
+        self.group_range = util.general.range_singleton(group_start)
 
     def insert_groups(self, groups, group_link, request_buffer):
         """
@@ -483,7 +483,7 @@ class GradingSheet:
         # Perform the insertion requests and update the group column values.
         for (_, inherit_from_before), xs in insertions.items():
             (_, start) = xs[0]
-            range = general.range_from_size(start, len(xs))
+            range = util.general.range_from_size(start, len(xs))
             request_buffer.add(
                 google_tools.sheets.request_insert_dimension(
                     self.row_range_param(range),
@@ -496,7 +496,7 @@ class GradingSheet:
                         self.sheet_properties.sheetId,
                         (
                             range,
-                            general.range_singleton(self.sheet_parsed.group_column),
+                            util.general.range_singleton(self.sheet_parsed.group_column),
                         ),
                     ),
                 ),
@@ -504,7 +504,7 @@ class GradingSheet:
 
         # If we have at least one group row now and did not before, delete empty formatting rows.
         if groups_new and empty:
-            range = general.range_shift(self.group_range, len(groups_new))
+            range = util.general.range_shift(self.group_range, len(groups_new))
             self.logger.debug(f"deleting empty formatting rows {range}")
             request_buffer.add(
                 google_tools.sheets.request_delete_dimension(
@@ -577,11 +577,11 @@ class GradingSheet:
             self.grading_spreadsheet.config,
             len(self.sheet_parsed.query_column_groups),
         )
-        range = general.range_of(column_group)
+        range = util.general.range_of(column_group)
 
         def f():
             for column, header in zip(column_group, headers):
-                column_new = column + general.len_range(range)
+                column_new = column + util.general.len_range(range)
                 yield from google_tools.sheets.requests_duplicate_dimension(
                     self.sheet_properties.sheetId,
                     google_tools.sheets.Dimension.columns,
@@ -597,7 +597,7 @@ class GradingSheet:
                         self.sheet_properties.sheetId,
                         (
                             google_tools.sheets.range_unbounded,
-                            general.range_singleton(column_new),
+                            util.general.range_singleton(column_new),
                         ),
                     ),
                 )
@@ -685,7 +685,7 @@ class GradingSheet:
                     )
                 )
                 self.logger.warning(
-                    general.join_lines(
+                    util.general.join_lines(
                         [
                             f"overwriting existing value for {group_name}, query {query_name}, field {field}:",
                             f"* previous: {value_prev}",
@@ -805,7 +805,7 @@ class GradingSpreadsheet:
     @functools.cached_property
     def grading_sheets(self):
         """A dictionary sending lab ids to grading sheets."""
-        return general.sdict(self.load_grading_sheets())
+        return util.general.sdict(self.load_grading_sheets())
 
     def clear_cache(self):
         """Refresh the cached grading sheets."""

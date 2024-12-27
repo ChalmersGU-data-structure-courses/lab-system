@@ -13,7 +13,7 @@ import gitlab_.tools
 
 import canvas.client_rest as canvas
 import graph_ql.canvas
-import general
+import util.general
 import graph_ql.gitlab
 import print_parse
 
@@ -36,7 +36,7 @@ full_paths = [
 
 project_ids = [7208 + i for i in range(165)]
 
-# with general.timing('retrieve_projects_members'):
+# with util.general.timing('retrieve_projects_members'):
 #    print(client.retrieve_projects_members(project_ids))
 
 gl = gitlab.Gitlab(
@@ -45,52 +45,52 @@ gl = gitlab.Gitlab(
 )
 gl.auth()
 
-with general.timing('issues'):
+with util.general.timing('issues'):
     x = list(client.retrieve_issues_in_project('courses/lp2-data-structures/groups/97/lab-3-python'))
     #x = list(client.f('courses/lp2-data-structures/groups', 'lab-3-python'))
 
 
-# with general.timing('all users via REST one page'):
+# with util.general.timing('all users via REST one page'):
 #    y = gl.users.list(order = 'id', sort = 'asc', asd = 3, page = 0, per_page = 100, get_all = False)
 
-# with general.timing('all users via REST with get_all'):
+# with util.general.timing('all users via REST with get_all'):
 #    r = gl.users.list(per_page = 100, get_all = True)
 
-# with general.timing('all users via REST all pages'):
+# with util.general.timing('all users via REST all pages'):
 #    for i in itertools.count():
 #       r = gl.users.list(page = i, per_page = 100, get_all = False)
 #       if not r:
 #          break
 #    print(f'{i} pages')
 
-# with general.timing('retrieve_all_users'):
+# with util.general.timing('retrieve_all_users'):
 #     client.retrieve_all_users()
 
-# with general.timing('retrieve_all_users'):
+# with util.general.timing('retrieve_all_users'):
 #     client.retrieve_all_users()
 
-# with general.timing('retrieve_all_users'):
+# with util.general.timing('retrieve_all_users'):
 #     client.retrieve_all_users()
 
-# with general.timing('retrieve_all_users'):
+# with util.general.timing('retrieve_all_users'):
 #     client.retrieve_all_users()
 
-# with general.timing('retrieve_all_users_from'):
+# with util.general.timing('retrieve_all_users_from'):
 #     users = list(client.retrieve_all_users_from())
 #     print(len(users))
 
-# with general.timing('retrieve_all_users_from'):
+# with util.general.timing('retrieve_all_users_from'):
 #    x = datetime.datetime.now()
 #    client.retrieve_all_users_from(last_requested = x)
 
-# with general.timing('members via REST'):
+# with util.general.timing('members via REST'):
 #     for g in range(1, 101):
 #         gitlab_.tools.list_all(gl.projects.get(
 #             f'courses/lp2-data-structures/groups/{g:02d}/lab-1-java',
 #             lazy = True,
 #         ).members_all)
 
-# with general.timing('queued query_project_members_direct'):
+# with util.general.timing('queued query_project_members_direct'):
 #     results = {
 #         full_path: client.queue_query(client.query_project_members_direct(full_path))
 #         for full_path in full_paths
@@ -106,29 +106,29 @@ with general.timing('issues'):
 #result = client.client.execute(client.q())
 #print(result)
 
-# with general.timing('canvas.Course'):
+# with util.general.timing('canvas.Course'):
 #     x = canvas.Course(c, 21130, False)
 
-# with general.timing('retrieve_course_users'):
+# with util.general.timing('retrieve_course_users'):
 #     x = client.retrieve_course_users(21130)
 
-# with general.timing('CourseUsers'):
+# with util.general.timing('CourseUsers'):
 #     y = canvas_gql.CourseUsers(x)
 
 # course_id = 20885
 # group_set_name = 'Lab groups'
 
-# with general.timing('retrieve_group_set_groups_and_members + GroupSet'):
+# with util.general.timing('retrieve_group_set_groups_and_members + GroupSet'):
 #     a = canvas_gql.GroupSet((group_set_id, group_set_name, client.retrieve_group_set_groups_and_members(group_set_id)))
 
-# with general.timing('retrieve_course_group_sets'):
+# with util.general.timing('retrieve_course_group_sets'):
 #     group_sets = print_parse.from_dict(client.retrieve_course_group_sets(course_id))
 #     group_set_id = group_sets.parse(group_set_name)
 
-# with general.timing('retrieve_group_set_with_groups_and_members_via_name_in_course'):
+# with util.general.timing('retrieve_group_set_with_groups_and_members_via_name_in_course'):
 #     b = canvas_gql.GroupSet(client.retrieve_group_set_with_groups_and_members_via_name_in_course(course_id, group_set_name))
 
-# with general.timing('Course + GroupSet'):
+# with util.general.timing('Course + GroupSet'):
 #     course = canvas.Course(c, 21130, False)
 #     group_set = canvas.GroupSet(course, 'Lab group', False)
 

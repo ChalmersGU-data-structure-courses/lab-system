@@ -14,7 +14,7 @@ import gitlab
 import gitlab.v4.objects.tags
 
 import events
-import general
+import util.general
 import git_tools
 import gitlab_.tools
 import google_tools.sheets
@@ -297,7 +297,7 @@ class Lab:
         # TODO: unused?
         self.qualify_request = print_parse.compose(
             print_parse.on(
-                general.component_tuple(0),
+                util.general.component_tuple(0),
                 self.student_connector.gitlab_group_slug_pp(),
             ),
             print_parse.qualify_with_slash,
@@ -327,7 +327,7 @@ class Lab:
         if self.config.has_solution is True:
             self.solution_create_and_populate()
         self.logger.info(
-            general.text_from_lines(
+            util.general.text_from_lines(
                 "Next steps:",
                 "* Restart event loop.",
                 "* Check robograding/-testing output for solution submissions in live submissions table.",
@@ -340,7 +340,7 @@ class Lab:
         """
         if not force:
             self.logger.warn(
-                general.text_from_lines(
+                util.general.text_from_lines(
                     f"This will delete all data for {self.name}:",
                     f"* The GitLab group {self.gitlab_group.path}",
                     f"* The local directory {self.dir}",
@@ -1364,7 +1364,7 @@ class Lab:
         )
 
         # Ensure grading sheet has sufficient query group columns.
-        it = (general.ilen(group.submissions_relevant(deadline)) for group in groups)
+        it = (util.general.ilen(group.submissions_relevant(deadline)) for group in groups)
         self.grading_sheet.ensure_num_queries(max(it, default=0))
 
         request_buffer = self.course.grading_spreadsheet.create_request_buffer()
@@ -1565,7 +1565,7 @@ class Lab:
                 for gitlab_user in group.members:
                     yield (gitlab_user.username, group)
 
-        return general.sdict(f(), format_value=lambda group: group.name)
+        return util.general.sdict(f(), format_value=lambda group: group.name)
 
     def group_by_gitlab_username_clear(self):
         with contextlib.suppress(AttributeError):
@@ -1717,7 +1717,7 @@ class Lab:
         suffix = "@student.chalmers.se"
         pp_email = print_parse.PrintParse(
             print=lambda x: x + suffix,
-            parse=lambda x: general.remove_suffix(x, suffix),
+            parse=lambda x: util.general.remove_suffix(x, suffix),
         )
 
         def canvas_name(gitlab_username):
@@ -1760,7 +1760,7 @@ class Lab:
             members = {
                 gitlab_user.username
                 for gitlab_user in gitlab_.tools.members_dict(entity).values()
-                if general.when(
+                if util.general.when(
                     restrict_to_known,
                     gitlab_user.username in self.course.canvas_user_by_gitlab_username,
                 )

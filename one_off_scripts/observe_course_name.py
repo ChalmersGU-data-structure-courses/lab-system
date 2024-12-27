@@ -7,7 +7,7 @@ import time
 sys.path.append(str(Path('__file__').parent / '..'))
 
 import canvas.client_rest as canvas  # noqa: E402
-import general  # noqa: E402
+import util.general  # noqa: E402
 
 logging.basicConfig(
     format = '%(asctime)s %(levelname)s %(module)s: %(message)s',
@@ -25,7 +25,7 @@ desired_course_code = 'DIT182 and DAT495'
 while True:
     details = c.get(['courses', course_id], use_cache = False)
     if not (details.name == desired_name and details.course_code == desired_course_code):
-        logger.warning(general.join_lines([
+        logger.warning(util.general.join_lines([
             'Course details changed:',
             f'* name: {details.name}',
             f'* course code: {details.course_code}',

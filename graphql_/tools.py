@@ -3,7 +3,7 @@ import types
 
 from gql.dsl import dsl_gql, DSLQuery
 
-import general
+import util.general
 
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ def wrap_query_execution_many(f, field_iter):
 
 
 def with_processing(query):
-    return query if isinstance(query, tuple) else (query, general.identity)
+    return query if isinstance(query, tuple) else (query, util.general.identity)
 
 
 def only_query(query):

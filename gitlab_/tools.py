@@ -12,7 +12,7 @@ import urllib.parse
 import dateutil.parser
 import gitlab
 
-import general
+import util.general
 import path_tools
 import print_parse
 
@@ -312,7 +312,7 @@ def invitation_dict(gl, entity):
     The argument entity is a GitLab group or project object.
     Returns a dictionary mapping email addresses to an invitation in entity.
     """
-    return general.sdict(
+    return util.general.sdict(
         (invitation["invite_email"], invitation)
         for invitation in invitation_list(gl, entity)
     )
@@ -326,7 +326,7 @@ def invitation_create(gitlab_client, entity, email, access_level, **kwargs):
     )
 
     if r["status"] == "error":
-        message = general.from_singleton(r["message"].values())
+        message = util.general.from_singleton(r["message"].values())
         response_code = None
         if any(
             message.startswith(prefix)
@@ -397,7 +397,7 @@ def append_paragraph(text, paragraph):
             yield from lines
             yield ""
 
-    return general.join_lines(f()) + paragraph
+    return util.general.join_lines(f()) + paragraph
 
 
 def append_mentions(text, users):
@@ -516,7 +516,7 @@ def format_tag_metadata(project, tag_name, description=None):
         url = url_tag_name(project, tag_name)
         yield f"* URL: {url}"
 
-    return general.join_lines(lines())
+    return util.general.join_lines(lines())
 
 
 def format_issue_metadata(issue, description=None):
@@ -528,7 +528,7 @@ def format_issue_metadata(issue, description=None):
         yield f"* author: {author}"
         yield f"* URL: {issue.web_url}"
 
-    return general.join_lines(lines())
+    return util.general.join_lines(lines())
 
 
 def move_subgroups_and_subprojects(gl, group_source, group_target):
@@ -643,7 +643,7 @@ def hooks_get(project):
             url = print_parse.url.parse(hook.url)
             yield (url.netloc, hook)
 
-    return general.multidict(f())
+    return util.general.multidict(f())
 
 
 def hook_create(spec: HookSpec):

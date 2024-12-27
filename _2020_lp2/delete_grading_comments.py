@@ -1,6 +1,6 @@
 import logging
 
-from general import print_json
+from util.general import print_json
 from canvas import Canvas, Course, Assignment
 
 from . import config

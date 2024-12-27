@@ -10,7 +10,7 @@ import shlex
 import subprocess
 from pathlib import Path, PurePath
 
-import general
+import util.general
 import path_tools
 
 logger = logging.getLogger(__name__)
@@ -230,7 +230,7 @@ def compile_unknown(
             **kwargs,
         )
     )
-    general.log_command(logger, cmd, True)
+    util.general.log_command(logger, cmd, True)
     process = subprocess.run(cmd, stderr=subprocess.PIPE, encoding="utf-8")
     success = process.returncode == 0
 
@@ -293,7 +293,7 @@ def compile(
 
     logger.debug(f"Compiling source files {src_files}")
     cmd = list(cmd_javac(files=src_files, destination=bin, **kwargs))
-    general.log_command(logger, cmd, True)
+    util.general.log_command(logger, cmd, True)
     process = subprocess.run(cmd, stderr=subprocess.PIPE, encoding="utf-8")
     if process.returncode != 0:
         raise CompileError(process.stderr)
@@ -451,7 +451,7 @@ def policy_grant(path, permissions):
             )
         yield "{"
 
-    return general.join_lines(
+    return util.general.join_lines(
         [
             " ".join(line_grant()),
             *("  " + policy_permission(*permission) for permission in permissions),
@@ -601,7 +601,7 @@ def run(
             ]:
                 yield key
 
-    (kwargs_cmd_java, kwargs_run) = general.split_dict(
+    (kwargs_cmd_java, kwargs_run) = util.general.split_dict(
         kwargs, set(keys_cmd_java()).__contains__
     )
     logger.debug(f"Keyword arguments for cmd_java: {kwargs_cmd_java}")
@@ -609,5 +609,5 @@ def run(
 
     with run_context(main, policy_entries=policy_entries, **kwargs_cmd_java) as cmd:
         cmd = list(cmd)
-        general.log_command(logger, cmd, working_dir=True)
+        util.general.log_command(logger, cmd, working_dir=True)
         return subprocess.run(cmd, **kwargs_run)

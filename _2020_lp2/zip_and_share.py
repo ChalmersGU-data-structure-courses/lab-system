@@ -90,7 +90,7 @@ from collections import namedtuple
 import logging
 import shutil
 
-from general import print_error
+from util.general import print_error
 from canvas import Canvas, Course
 
 from . import compression

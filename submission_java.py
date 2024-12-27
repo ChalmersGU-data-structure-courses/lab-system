@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 import check_symlinks
-import general
+import util.general
 import java_tools
 import lab_interfaces
 import markdown
@@ -26,7 +26,7 @@ class SymlinkException(lab_interfaces.HandlingException):
         self.e = e
 
     def __str__(self):
-        return general.join_lines(
+        return util.general.join_lines(
             [
                 self.prefix,
                 str(self.e),
@@ -34,7 +34,7 @@ class SymlinkException(lab_interfaces.HandlingException):
         )
 
     def markdown(self):
-        return general.join_lines(
+        return util.general.join_lines(
             [
                 self.prefix,
                 *self.e.markdown().splitlines(),
@@ -53,7 +53,7 @@ class CompileException(java_tools.CompileError, lab_interfaces.HandlingException
     prefix = "There are compilation errors:"
 
     def __str__(self):
-        return general.join_lines(
+        return util.general.join_lines(
             [
                 self.prefix,
                 *self.compile_errors.splitlines(),
@@ -61,7 +61,7 @@ class CompileException(java_tools.CompileError, lab_interfaces.HandlingException
         )
 
     def markdown(self):
-        return general.join_lines(
+        return util.general.join_lines(
             [
                 self.prefix,
                 *markdown.escape_code_block(self.compile_errors).splitlines(),
@@ -115,7 +115,7 @@ class FileConflict(lab_interfaces.HandlingException):
         return f"{self.prefix} {path_tools.format_path(self.file)} {self.suffix}"
 
     def markdown(self):
-        return general.join_lines(
+        return util.general.join_lines(
             [
                 self.prefix,
                 *markdown.escape_code_block(self.file).splitlines(),

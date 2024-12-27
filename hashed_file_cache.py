@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from typing import Callable, Optional
 
-import general
+import util.general
 import path_tools
 
 _FILENAME_LOCK = "lock"
@@ -222,7 +222,7 @@ def write_cache(
         if use_update_lock:
             yield update_lock(dir_fd)
 
-    with general.traverse_managers_list(locks()):
+    with util.general.traverse_managers_list(locks()):
         # Start by reading the link.
         cache_link_data = _read_link(dir_fd)
 
@@ -362,7 +362,7 @@ class HashedFileCacheBase(abc.ABC):
         Raising DataUnchanged represents a shortcut/optimization.
         """
         with self.dir_fd_manager() as dir_fd, update_lock(dir_fd):
-            update_date = general.now()
+            update_date = util.general.now()
             try:
                 yield
                 self.write(True, update_date)

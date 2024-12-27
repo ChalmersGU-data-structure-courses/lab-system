@@ -4,7 +4,7 @@ import subprocess
 
 import gitlab
 
-from general import from_singleton, from_singleton_maybe
+from util.general import from_singleton, from_singleton_maybe
 
 
 id_group_dit = 1319

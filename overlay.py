@@ -8,7 +8,7 @@ import subprocess
 from pathlib import Path
 from typing import Iterable, Union
 
-import general
+import util.general
 import path_tools
 
 logger = logging.getLogger(__name__)
@@ -62,7 +62,7 @@ class OverlayTypeFallback(OverlayType):
 
 def run_and_log(cmd: Iterable[Union[str, Path]]):
     cmd = list(cmd)
-    general.log_command(logger, cmd)
+    util.general.log_command(logger, cmd)
     subprocess.run(cmd, check=True, text=True)
 
 

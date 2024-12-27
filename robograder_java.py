@@ -4,7 +4,7 @@ import logging
 import subprocess
 from pathlib import Path
 
-import general
+import util.general
 import java_tools
 import lab_interfaces
 import markdown
@@ -41,14 +41,14 @@ In the former case, please tell my designers!
         self.errors = errors
 
     def __str__(self):
-        return general.text_from_lines(
+        return util.general.text_from_lines(
             self.prolog,
             "",
             *self.errors.splitlines(),
         )
 
     def markdown(self):
-        return general.text_from_lines(
+        return util.general.text_from_lines(
             self.prolog,
             *markdown.escape_code_block(self.errors).splitlines(),
         )
@@ -99,7 +99,7 @@ def run(
     ) as cmd:
         logger.debug("Running robograder.")
         cmd = list(cmd)
-        general.log_command(logger, cmd)
+        util.general.log_command(logger, cmd)
         process = subprocess.run(
             cmd,
             cwd=submission_src,

@@ -2,7 +2,7 @@ import re
 from pathlib import PurePath
 from types import FunctionType, SimpleNamespace
 
-from general import compose, join_lines
+from util.general import compose, join_lines
 
 ################################################################################
 # General tools

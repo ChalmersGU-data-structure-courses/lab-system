@@ -72,7 +72,7 @@ args = p.parse_args()
 import logging
 import tempfile
 
-from general import multidict
+from util.general import multidict
 from canvas import Canvas, Course, Assignment
 from pathlib import fix_encoding
 

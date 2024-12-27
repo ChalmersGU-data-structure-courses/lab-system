@@ -13,7 +13,7 @@ import re
 import shlex
 import urllib.parse
 
-import general
+import util.general
 import path_tools
 from escaping_formatter import regex_escaping_formatter
 
@@ -22,16 +22,16 @@ PrintParse.__doc__ = "Approximations to isomorphisms."
 
 
 identity = PrintParse(
-    print=general.identity,
-    parse=general.identity,
+    print=util.general.identity,
+    parse=util.general.identity,
 )
 
 
 def compose(*xs):
     xs = builtins.tuple(xs)
     return PrintParse(
-        print=general.compose(*(x.print for x in xs)),
-        parse=general.compose(*(x.parse for x in reversed(xs))),
+        print=util.general.compose(*(x.print for x in xs)),
+        parse=util.general.compose(*(x.parse for x in reversed(xs))),
     )
 
 
@@ -43,18 +43,18 @@ def invert(x):
 
 
 swap = PrintParse(
-    print=general.swap,
-    parse=general.swap,
+    print=util.general.swap,
+    parse=util.general.swap,
 )
 
 interchange = PrintParse(
-    print=general.interchange,
-    parse=general.interchange,
+    print=util.general.interchange,
+    parse=util.general.interchange,
 )
 
 singleton = PrintParse(
-    print=general.singleton,
-    parse=general.from_singleton,
+    print=util.general.singleton,
+    parse=util.general.from_singleton,
 )
 
 # from_singleton = invert(singleton)
@@ -68,13 +68,13 @@ reversal = PrintParse(
 def on_print(print):
     return PrintParse(
         print=print,
-        parse=general.identity,
+        parse=util.general.identity,
     )
 
 
 def on_parse(parse):
     return PrintParse(
-        print=general.identity,
+        print=util.general.identity,
         parse=parse,
     )
 
@@ -84,25 +84,25 @@ lower = on_parse(str.lower)
 
 def on(lens, x):
     return PrintParse(
-        print=general.on(lens, x.print),
-        parse=general.on(lens, x.parse),
+        print=util.general.on(lens, x.print),
+        parse=util.general.on(lens, x.parse),
     )
 
 
 # These functions take collections of printer-parsers.
 def combine(xs):
     return PrintParse(
-        print=general.combine(builtins.tuple(x.print for x in xs)),
-        parse=general.combine(builtins.tuple(x.parse for x in xs)),
+        print=util.general.combine(builtins.tuple(x.print for x in xs)),
+        parse=util.general.combine(builtins.tuple(x.parse for x in xs)),
     )
 
 
 def combine_dict(xs):
     return PrintParse(
-        print=general.combine_dict(
+        print=util.general.combine_dict(
             builtins.dict((key, x.print) for (key, x) in xs.items())
         ),
-        parse=general.combine_dict(
+        parse=util.general.combine_dict(
             builtins.dict((key, x.parse) for (key, x) in xs.items())
         ),
     )
@@ -110,8 +110,8 @@ def combine_dict(xs):
 
 def combine_namedtuple(xs):
     return PrintParse(
-        print=general.combine_namedtuple(xs.__class__._make(x.print for x in xs)),
-        parse=general.combine_namedtuple(xs.__class__._make(x.parse for x in xs)),
+        print=util.general.combine_namedtuple(xs.__class__._make(x.print for x in xs)),
+        parse=util.general.combine_namedtuple(xs.__class__._make(x.parse for x in xs)),
     )
 
 
@@ -148,15 +148,15 @@ def dict(x):
 
 def maybe(x):
     return PrintParse(
-        print=general.maybe(x.print),
-        parse=general.maybe(x.parse),
+        print=util.general.maybe(x.print),
+        parse=util.general.maybe(x.parse),
     )
 
 
 def with_special_case(x, value, value_printed):
     return PrintParse(
-        print=general.with_special_case(x.print, value, value_printed),
-        parse=general.with_special_case(x.parse, value_printed, value),
+        print=util.general.with_special_case(x.print, value, value_printed),
+        parse=util.general.with_special_case(x.parse, value_printed, value),
     )
 
 
@@ -165,7 +165,7 @@ def with_none(x, none_printed):
 
 
 def without(x, value):
-    return compose(on_print(general.check_return(lambda x: x != value)), x)
+    return compose(on_print(util.general.check_return(lambda x: x != value)), x)
 
 
 quote = PrintParse(
@@ -174,7 +174,7 @@ quote = PrintParse(
 )
 
 doublequote = PrintParse(
-    print=general.doublequote,
+    print=util.general.doublequote,
     parse=ast.literal_eval,
 )
 
@@ -210,7 +210,7 @@ escape_parens = escape(["(", ")"])
 escape_brackets = escape(["[", "]"])
 
 string_letters = PrintParse(
-    print=general.identity,
+    print=util.general.identity,
     parse="".join,
 )
 
@@ -336,8 +336,8 @@ def join_bytes(sep=None, maxsplit=-1):
 def from_dict(xs, print_strict=True, parse_strict=True):
     xs = builtins.tuple(xs)
     return PrintParse(
-        print=general.sdict(((x, y) for (x, y) in xs), strict=print_strict).__getitem__,
-        parse=general.sdict(((y, x) for (x, y) in xs), strict=parse_strict).__getitem__,
+        print=util.general.sdict(((x, y) for (x, y) in xs), strict=print_strict).__getitem__,
+        parse=util.general.sdict(((y, x) for (x, y) in xs), strict=parse_strict).__getitem__,
     )
 
 
@@ -367,14 +367,14 @@ def skip_natural(n):
 
 
 def _singleton_range_parse(range):
-    if not general.is_range_singleton(range):
+    if not util.general.is_range_singleton(range):
         raise ValueError(f"not a singleton range: {range}")
 
     return range
 
 
 singleton_range = PrintParse(
-    print=general.range_singleton,
+    print=util.general.range_singleton,
     parse=_singleton_range_parse,
 )
 
@@ -532,7 +532,7 @@ def base64_pad(x):
 
 base64_standard = PrintParse(
     print=base64.standard_b64encode,
-    parse=general.compose(base64_pad, base64.standard_b64decode),
+    parse=util.general.compose(base64_pad, base64.standard_b64decode),
 )
 
 base64_standard_str = compose(ascii, base64_standard, invert(ascii))

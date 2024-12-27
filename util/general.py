@@ -150,8 +150,8 @@ def defaulting_to(default, value, key=None):
 
 
 # Bug in pyflakes (TODO: report):
-# ./general.py:102:28 local variable 'last' defined in enclosing scope on line 70 referenced before assignment
-# ./general.py:106:9 local variable 'last' is assigned to but never used
+# ./util.general.py:102:28 local variable 'last' defined in enclosing scope on line 70 referenced before assignment
+# ./util.general.py:106:9 local variable 'last' is assigned to but never used
 def without_adjacent_dups(eq, xs):
     has_last = False
     last = None  # Only there to work around bug in pyflakes.

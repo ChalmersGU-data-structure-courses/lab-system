@@ -2,7 +2,7 @@ import dataclasses
 import typing
 from pathlib import Path
 
-import general
+import util.general
 import ordering
 
 # ## Interfaces.
@@ -14,7 +14,7 @@ import ordering
 
 _dataclass_incomparable = dataclasses.dataclass(eq=False)
 
-_decorator = general.compose(
+_decorator = util.general.compose(
     _dataclass_incomparable,
     ordering.preorder_from_key,
 )

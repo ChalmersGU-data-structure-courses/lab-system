@@ -22,7 +22,7 @@ import more_itertools
 import canvas.client_rest as canvas
 import events
 import gdpr_coding
-import general
+import util.general
 import gitlab_.graphql
 import gitlab_.tools
 import gitlab_.users_cache
@@ -226,14 +226,14 @@ class Course:
                 profile_login_id = self.canvas_profile_login_id(user)
                 if not user_login_id == profile_login_id:
                     self.logger.error(
-                        general.text_from_lines(
+                        util.general.text_from_lines(
                             f"mismatch between login ids for user {user.name}:",
                             f"* in user object: {user_login_id}",
                             f"* in profile object: {profile_login_id}",
                         )
                     )
-                    general.print_json(user._dict)
-                    general.print_json(
+                    util.general.print_json(user._dict)
+                    util.general.print_json(
                         self.canvas.get(
                             ["users", user.id, "profile"],
                             use_cache=True,
@@ -466,7 +466,7 @@ class Course:
                 if gitlab_username is not None:
                     yield (canvas_user.id, gitlab_username)
 
-        return general.sdict(f(), strict=False)
+        return util.general.sdict(f(), strict=False)
 
     def gitlab_username_from_canvas_user_id(self, canvas_user_id, strict=True):
         """
@@ -503,7 +503,7 @@ class Course:
             ) in self.gitlab_username_by_canvas_user_id.items():
                 yield (gitlab_username, self.canvas_course.user_details[canvas_user_id])
 
-        return general.sdict(f())
+        return util.general.sdict(f())
 
     # This thing is a mess.
     # TODO: refactor.
@@ -736,7 +736,7 @@ class Course:
         """
         self.logger.info("Creating project hooks in all labs")
         try:
-            with general.traverse_managers_iterable(
+            with util.general.traverse_managers_iterable(
                 gitlab_.tools.hook_manager(spec) for spec in self.hook_specs
             ) as it:
                 yield list(it)
@@ -888,7 +888,7 @@ class Course:
                 name="webhook-server-listener",
             )
             thread_managers.append(
-                general.add_cleanup(
+                util.general.add_cleanup(
                     threading_tools.thread_manager(self.webhook_server_thread),
                     self.webhook_server.shutdown,
                 )
@@ -1008,7 +1008,7 @@ class Course:
             }
             return (scores_with_none, summary(scores_with_none))
 
-        return general.map_values(f, u)
+        return util.general.map_values(f, u)
 
     def grading_report_format_value(self, value, format_score=None):
         """
@@ -1039,7 +1039,7 @@ class Course:
             format_score = format_score_default
 
         (scores, summary) = value
-        return general.map_keys_and_values(
+        return util.general.map_keys_and_values(
             lambda lab_id: self.labs[lab_id].name,
             format_score,
             scores,

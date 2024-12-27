@@ -12,7 +12,7 @@ import typing
 
 import git
 
-import general
+import util.general
 import path_tools
 import print_parse
 import watchdog_tools
@@ -29,7 +29,7 @@ def arg_option(key, value):
 
 
 def value_string(s):
-    if not general.has_whitespace(s):
+    if not util.general.has_whitespace(s):
         return s
     if '"' in s:
         raise ValueError(f"invalid configuration value (OpenSSH bug): {shlex.quote(s)}")
@@ -42,7 +42,7 @@ def value_path(path, exclude=[]):
         raise ValueError(
             f"invalid configuration path (OpenSSH bug): {shlex.quote(path)}"
         )
-    return value_string(general.escape_percent(path))
+    return value_string(util.general.escape_percent(path))
 
 
 @dataclasses.dataclass(frozen=True)
@@ -335,7 +335,7 @@ def update_env_ssh_var(env, name, command_line):
     * command_line: The SSH command line with which to supplant the value.
     """
     pp = print_parse.command_line
-    previous = general.with_default(pp.parse, env.get(name))
+    previous = util.general.with_default(pp.parse, env.get(name))
     msg = " is missing" if previous is None else f": {previous}"
     logger.debug(f"previous value for {name}{msg}")
     env[name] = pp.print(supplant_ssh_command_line(previous, command_line))
@@ -382,15 +382,15 @@ def shutdown_control_master(control_path, check=True, force=False):
             ),
         )
     )
-    general.log_command(logger, cmd)
+    util.general.log_command(logger, cmd)
     result = subprocess.run(cmd, text=True, capture_output=True)
     if result.stderr and (check or not result.returncode):
-        logger.debug(general.join_lines(result.stderr.splitlines()))
+        logger.debug(util.general.join_lines(result.stderr.splitlines()))
     if result.returncode:
         if check:
             result.check_returncode()
         logger.warning(
-            general.join_lines(
+            util.general.join_lines(
                 [
                     "SSH control master commmand failed:",
                     *result.stderr.splitlines(),
@@ -452,10 +452,10 @@ class ConnectionMaster:
         def ssh_thread_run():
             try:
                 cmd = list(cmd_ssh_master(netloc, self.socket_file))
-                general.log_command(logger, cmd)
+                util.general.log_command(logger, cmd)
                 result = subprocess.run(cmd, text=True, capture_output=True)
                 if result.stderr:
-                    logger.debug(general.join_lines(result.stderr.splitlines()))
+                    logger.debug(util.general.join_lines(result.stderr.splitlines()))
 
                 # Unfortunately, the SSH control master exits with a non-zero
                 # return code after it receives a stop or exit control comman.
@@ -466,7 +466,7 @@ class ConnectionMaster:
                         result.check_returncode()
                     except Exception as e:
                         logger.warning(
-                            general.join_lines(
+                            util.general.join_lines(
                                 [
                                     "SSH control master failed in monitoring thread:",
                                     str(e),
@@ -709,7 +709,7 @@ class Multiplexer:
             **kwargs,
         )
         stderr_lines = stderr.splitlines()
-        logger.debug(general.join_lines(stderr_lines))
+        logger.debug(util.general.join_lines(stderr_lines))
         if status:
             # HACK.
             # Attempt to detect if failure was due to an SSH connection problem.
@@ -719,7 +719,7 @@ class Multiplexer:
                     or line == "fatal: Could not read from remote repository.",
                 ):
                     logger.warning(
-                        general.text_from_lines(
+                        util.general.text_from_lines(
                             "Git command failure assumed to stem from SSH connection failure.",
                             "Relevant line in stderr output:",
                             line,

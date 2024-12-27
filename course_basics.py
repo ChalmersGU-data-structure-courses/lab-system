@@ -2,7 +2,7 @@ import abc
 import re
 from collections import namedtuple
 
-import general
+import util.general
 import markdown
 import print_parse
 
@@ -104,7 +104,7 @@ compilation_requirement_warn = CompilationRequirement(
         {"tag": "[^: ]*"},
         flags=re.IGNORECASE,
     ),
-    response_prefix=general.join_lines(
+    response_prefix=util.general.join_lines(
         [
             "**Your submission does not compile.**",
             "For details, see the below error report.",
@@ -123,7 +123,7 @@ compilation_requirement_require = CompilationRequirement(
         {"tag": "[^: ]*"},
         flags=re.IGNORECASE,
     ),
-    response_prefix=general.join_lines(
+    response_prefix=util.general.join_lines(
         [
             "**Your submission does not compile and can therefore not be accepted.**",
             "For details, see the below error report.",
