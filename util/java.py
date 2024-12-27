@@ -11,7 +11,7 @@ import subprocess
 from pathlib import Path, PurePath
 
 import util.general
-import path_tools
+import util.path
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ def sourcepath_option(paths):
     if paths is not None:
         yield from [
             "-sourcepath",
-            path_tools.search_path_join(path.resolve() for path in paths),
+            util.path.search_path_join(path.resolve() for path in paths),
         ]
 
 
@@ -48,7 +48,7 @@ def classpath_option(paths):
     if paths is not None:
         yield from [
             "-classpath",
-            path_tools.search_path_join(path.resolve() for path in paths),
+            util.path.search_path_join(path.resolve() for path in paths),
         ]
 
 
@@ -125,7 +125,7 @@ def java_files(dir):
 
     Takes a string or instance of pathlib.Path, but returns an iterable of pathlib.Path.
     """
-    for file in path_tools.iterdir_recursive(dir):
+    for file in util.path.iterdir_recursive(dir):
         if file.is_file() and file.suffix == ".java":
             yield file
 
@@ -214,9 +214,9 @@ def compile_unknown(
 
     if detect_encoding:
         # Import locally to avoid charet dependency if this option is not used.
-        import chardet_tools
+        import util.chardet
 
-        encoding = chardet_tools.detect_encoding(src_files)
+        encoding = util.chardet.detect_encoding(src_files)
         logger.debug("Detected encoding {}".format(encoding))
         kwargs["encoding"] = encoding
 
@@ -309,14 +309,14 @@ def clean(src):
         The directory to be cleaned.
         Instance of pathlib.Path.
     """
-    for path in path_tools.iterdir_recursive(
+    for path in util.path.iterdir_recursive(
         src, include_top_level=False, pre_order=False
     ):
         if path.is_file():
             if path.suffix == ".class":
                 path.unlink()
         elif path.is_dir():
-            path_tools.rmdir_safe(path)
+            util.path.rmdir_safe(path)
 
 
 ################################################################################
@@ -476,7 +476,7 @@ def policy_manager(entries):
     Context manager for a policy file specified by entries as in 'policy'.
     Yields an instance of pathlib.Path.
     """
-    with path_tools.temp_file("policy") as path_policy:
+    with util.path.temp_file("policy") as path_policy:
         path_policy.write_text(policy(entries))
         yield path_policy
 

@@ -8,7 +8,7 @@ import time
 import more_itertools
 
 import util.general
-import git_tools
+import util.git
 import gitlab_.tools
 import markdown
 import print_parse
@@ -602,9 +602,9 @@ class GradingViaMergeRequest:
             self.logger.info(f"Syncing submission {submission.request_name}.")
             self.lab.repo.git.push(
                 self.project.ssh_url_to_repo,
-                git_tools.refspec(
+                util.git.refspec(
                     submission.repo_tag().commit,
-                    git_tools.local_branch(self.setup_data.source_branch),
+                    util.git.local_branch(self.setup_data.source_branch),
                     force=True,
                 ),
             )
@@ -621,7 +621,7 @@ class GradingViaMergeRequest:
                 yield util.general.join_lines(
                     [self.sync_message.print((submission.request_name, link))]
                 )
-                submission_message = git_tools.tag_message(
+                submission_message = util.git.tag_message(
                     submission.repo_remote_tag,
                     default_to_commit_message=False,
                 )

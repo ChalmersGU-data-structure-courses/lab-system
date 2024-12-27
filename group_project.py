@@ -14,7 +14,7 @@ import gitlab.v4.objects
 
 import events
 import util.general
-import git_tools
+import util.git
 import gitlab_.tools
 import grading_via_merge_request
 import instance_cache
@@ -71,16 +71,16 @@ class RequestAndResponses:
     def repo_remote_tag(self):
         return git.Reference(
             self.lab.repo,
-            str(git_tools.remote_tag(self.group.remote, self.request_name)),
+            str(util.git.remote_tag(self.group.remote, self.request_name)),
         )
 
     @functools.cached_property
     def repo_remote_commit(self):
-        return git_tools.tag_commit(self.repo_remote_tag)
+        return util.git.tag_commit(self.repo_remote_tag)
 
     @functools.cached_property
     def date(self):
-        return git_tools.commit_date(self.repo_remote_commit)
+        return util.git.commit_date(self.repo_remote_commit)
 
     def repo_tag(self, segments=["tag"]):
         """Forwards to self.group.repo_tag."""
@@ -116,14 +116,14 @@ class RequestAndResponses:
 
     def repo_tag_read_json(self, segments):
         """Read the JSON-encoded data in the message of a tag."""
-        return json.loads(git_tools.tag_message(self.repo_tag(segments)))
+        return json.loads(util.git.tag_message(self.repo_tag(segments)))
 
     def repo_tag_read_text_file(self, segments, path):
         """
         Read a text file given by 'path' (PurePosixPath)
         in the commit corresponding to 'segments'.
         """
-        return git_tools.read_text_file_from_tree(
+        return util.git.read_text_file_from_tree(
             self.repo_tag(segments).commit.tree,
             path,
         )
@@ -155,7 +155,7 @@ class RequestAndResponses:
         Use this method instead of checkout_manager if you want to deal with checkout errors.
         """
         try:
-            git_tools.checkout(
+            util.git.checkout(
                 self.lab.repo,
                 dir,
                 self.repo_tag(segments),
@@ -170,7 +170,7 @@ class RequestAndResponses:
         In contrast to checkout, errors raised by this manager are not supposed to be catched.
         Any error is printed to stderr.
         """
-        with git_tools.checkout_manager(self.lab.repo, self.repo_tag(segments)) as src:
+        with util.git.checkout_manager(self.lab.repo, self.repo_tag(segments)) as src:
             yield src
 
     def repo_report_create(self, segments, dir, commit_message="", **kwargs):
@@ -183,7 +183,7 @@ class RequestAndResponses:
         Symlinks are currently handled transparently.
         We may wish to allow for committing symlinks in the future.
         """
-        tree = git_tools.create_tree_from_dir(self.lab.repo, dir)
+        tree = util.git.create_tree_from_dir(self.lab.repo, dir)
         commit = git.Commit.create_from_tree(
             repo=self.lab.repo,
             tree=tree,
@@ -471,14 +471,14 @@ class RequestAndResponses:
 
         Returns an instance of git.TagReference for the created tag.
         """
-        prev_commit = git_tools.resolve(self.lab.repo, prev_ref)
+        prev_commit = util.git.resolve(self.lab.repo, prev_ref)
         commit = (
             self.repo_tag([*segments, "tag"]).commit
             if segments
             else self.repo_remote_commit
         )
         if not self.lab.repo.is_ancestor(prev_commit, commit):
-            commit = git_tools.onesided_merge(self.lab.repo, commit, prev_commit)
+            commit = util.git.onesided_merge(self.lab.repo, commit, prev_commit)
         return self.repo_tag_create(
             self._repo_tag_after_segments(prev_name, segments), commit, force=True
         )
@@ -563,7 +563,7 @@ class RequestAndResponses:
         # Create tag <full group id>/<request name>/tag copying the request tag.
         self.repo_tag_create(
             ref=self.repo_remote_commit,
-            message=git_tools.tag_message(self.repo_remote_tag),
+            message=util.git.tag_message(self.repo_remote_tag),
             force=True,
         )
 
@@ -955,7 +955,7 @@ class GroupProject:
             else:
                 path = PurePosixPath() / "solution"
 
-        tree = git_tools.create_tree_from_dir(
+        tree = util.git.create_tree_from_dir(
             self.lab.repo, self.lab.config.path_source / path
         )
         msg = (
@@ -971,7 +971,7 @@ class GroupProject:
             tag_name = (
                 "submission" if language is None else f"submission-solution-{language}"
             )
-            with git_tools.with_tag(self.lab.repo, tag_name, commit) as tag:
+            with util.git.with_tag(self.lab.repo, tag_name, commit) as tag:
                 self.lab.repo.remote(self.remote).push(tag, force=True)
 
     def repo_add_remote(self, ignore_missing=False, **kwargs):
@@ -985,8 +985,8 @@ class GroupProject:
             self.lab.repo_add_remote(
                 self.remote,
                 self.project.get,
-                fetch_branches=[(git_tools.Namespacing.remote, git_tools.wildcard)],
-                fetch_tags=[(git_tools.Namespacing.remote, git_tools.wildcard)],
+                fetch_branches=[(util.git.Namespacing.remote, util.git.wildcard)],
+                fetch_tags=[(util.git.Namespacing.remote, util.git.wildcard)],
                 prune=True,
                 **kwargs,
             )
@@ -1076,9 +1076,9 @@ class GroupProject:
 
         base = request_name
         if isinstance(self, GroupProject):
-            base = git_tools.qualify(self.remote, request_name)
+            base = util.git.qualify(self.remote, request_name)
         request_name = base / PurePosixPath(*segments)
-        return git_tools.normalize_tag(self.repo, request_name)
+        return util.git.normalize_tag(self.repo, request_name)
 
     def repo_tag_exist(self, request_name, segments=["tag"]):
         """
@@ -1086,7 +1086,7 @@ class GroupProject:
         Arguments are as for repo_tag.
         Returns a boolean.
         """
-        return git_tools.tag_exist(GroupProject.repo_tag(self, request_name, segments))
+        return util.git.tag_exist(GroupProject.repo_tag(self, request_name, segments))
 
     def repo_tag_mark_repo_updated(self):
         # Mark local collection repository as updated and clear cache of tags.
@@ -1140,8 +1140,8 @@ class GroupProject:
         GroupProject.repo_tag_mark_repo_updated(self)
 
     def ancestral_tag(self, problem):
-        return git_tools.normalize_tag(
-            git_tools.refs / "ancestral" / self.remote / problem
+        return util.git.normalize_tag(
+            util.git.refs / "ancestral" / self.remote / problem
         )
 
     def update_problem(
@@ -1166,15 +1166,15 @@ class GroupProject:
         for problem in self.lab.heads_problem:
             if ensure_ancestral:
                 tag = self.ancestral_tag(problem)
-                if not git_tools.tag_exist(tag):
+                if not util.git.tag_exist(tag):
                     self.repo.create_tag(
                         tag.name,
-                        ref=git_tools.remote_branch(self.remote, problem),
+                        ref=util.git.remote_branch(self.remote, problem),
                     )
 
-            branch = git_tools.normalize_branch(self.lab.repo, problem).commit
+            branch = util.git.normalize_branch(self.lab.repo, problem).commit
             self.repo.remote(self.remote).push(
-                git_tools.refspec(
+                util.git.refspec(
                     problem.hexsha,
                     branch,
                     force=force,
@@ -1186,11 +1186,11 @@ class GroupProject:
         Find out which language problem a commit derives from.
         The language will be None for labs that are not multi-language.
         """
-        return git_tools.find_unique_ancestor(
+        return util.git.find_unique_ancestor(
             self.repo,
             commit,
             {
-                language: git_tools.normalize_branch(self.lab.repo, problem)
+                language: util.git.normalize_branch(self.lab.repo, problem)
                 for (language, problem) in self.lab.language_problem_names.items()
             },
         )
@@ -1214,7 +1214,7 @@ class GroupProject:
             except KeyError:
                 return self.ancestral_tag(problem).commit
 
-        return git_tools.find_unique_ancestor(
+        return util.git.find_unique_ancestor(
             self.repo,
             commit,
             {problem: get_commit(problem) for problem in self.lab.heads_problem},
@@ -1261,8 +1261,8 @@ class GroupProject:
         """
         self.logger.info(f"Hotfixing {target_branch} in {self.project.path}")
 
-        target_ref = git_tools.resolve(
-            self.repo, git_tools.remote_branch(self.remote, target_branch)
+        target_ref = util.git.resolve(
+            self.repo, util.git.remote_branch(self.remote, target_branch)
         )
 
         if problem is None:
@@ -1281,7 +1281,7 @@ class GroupProject:
                     ancestors,
                 ) from None
 
-        problem = git_tools.resolve(self.repo, problem)
+        problem = util.git.resolve(self.repo, problem)
 
         if problem_old is None:
             problem_old = self.repo.merge_base(
@@ -1293,8 +1293,8 @@ class GroupProject:
             self.logger.warning("Hotfixing: hotfix identical to problem.")
             return
 
-        target_ref = git_tools.resolve(
-            self.repo, git_tools.remote_branch(self.remote, target_branch)
+        target_ref = util.git.resolve(
+            self.repo, util.git.remote_branch(self.remote, target_branch)
         )
         if self.repo.is_ancestor(problem, target_ref):
             self.logger.info("Hotfixing: hotfix already applied")
@@ -1322,7 +1322,7 @@ class GroupProject:
                     raise RuntimeError("could not perform merge")
 
                 try:
-                    git_tools.resolve_unmerged_blobs(self.repo, index)
+                    util.git.resolve_unmerged_blobs(self.repo, index)
                 except git.exc.GitCommandError as e:
                     exit_code = e.args[1]
                     if exit_code == 255:
@@ -1353,7 +1353,7 @@ class GroupProject:
             )
 
         self.repo.remote(self.remote).push(
-            git_tools.refspec(
+            util.git.refspec(
                 resolved_commit.hexsha,
                 target_branch,
                 force=False,
@@ -1409,10 +1409,10 @@ class GroupProject:
             f"Parsing request tags in {self.name} from local collection repository."
         )
         xs = (
-            (str(key), (tag, git_tools.tag_commit(tag)))
+            (str(key), (tag, util.git.tag_commit(tag)))
             for (key, tag) in self.lab.remote_tags[self.id].items()
         )
-        return sorted(xs, key=lambda x: (git_tools.commit_date(x[1][1]), x[0]))
+        return sorted(xs, key=lambda x: (util.git.commit_date(x[1][1]), x[0]))
 
     def parse_request_tags(self, from_gitlab=True):
         """

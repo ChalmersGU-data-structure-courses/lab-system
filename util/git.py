@@ -14,8 +14,8 @@ import git
 import gitdb
 
 import util.general
-import path_tools
-import threading_tools
+import util.path
+import util.threading
 
 logger = logging.getLogger(__name__)
 
@@ -366,7 +366,7 @@ def tag_onesided_merge(repo, tag_name, commit, new_parent):
 def checkout(repo, dir, ref, capture_stderr=False):
     """Checkout a reference into the given directory."""
     cmd = ["tar", "-x"]
-    with path_tools.working_dir(dir):
+    with util.path.working_dir(dir):
         util.general.log_command(logger, cmd, True)
         tar = subprocess.Popen(
             cmd,
@@ -375,7 +375,7 @@ def checkout(repo, dir, ref, capture_stderr=False):
         )
 
     if capture_stderr:
-        t = threading_tools.FileReader(tar.stderr)
+        t = util.threading.FileReader(tar.stderr)
 
     repo.archive(tar.stdin, ref)
     tar.stdin.close()
@@ -390,7 +390,7 @@ def checkout(repo, dir, ref, capture_stderr=False):
 @contextlib.contextmanager
 def checkout_manager(repo, ref):
     """Context manager for a temporary directory containing a checkout."""
-    with path_tools.temp_dir() as dir:
+    with util.path.temp_dir() as dir:
         checkout(repo, dir, ref)
         yield dir
 
@@ -407,7 +407,7 @@ def format_entry(entry, as_log_message=False):
         stat.S_IFDIR: "tree",
     }[stat.S_IFMT(mode)]
     # The last whitespace is a tab character.
-    return f"{mode:06o} {kind} {hexsha}	{name if as_log_message else path_tools.format_path(name)}"
+    return f"{mode:06o} {kind} {hexsha}	{name if as_log_message else util.path.format_path(name)}"
 
 
 def create_blob_from_file(repo, file):
@@ -464,7 +464,7 @@ def create_tree_from_dir(repo, dir):
                 obj = create_tree_from_dir(repo, path)
             else:
                 raise ValueError(
-                    f"not a file or directory: {path_tools.format_path(path)}"
+                    f"not a file or directory: {util.path.format_path(path)}"
                 )
             yield (obj.binsha, obj.mode, path.name)
 
@@ -483,7 +483,7 @@ def merge_blobs(
     other: git.objects.Blob,
     *merge_file_options,
 ) -> git.objects.Blob:
-    with path_tools.temp_dir() as tmp_dir:
+    with util.path.temp_dir() as tmp_dir:
         file_current = tmp_dir / "current"
         file_base = tmp_dir / "base"
         file_other = tmp_dir / "other"

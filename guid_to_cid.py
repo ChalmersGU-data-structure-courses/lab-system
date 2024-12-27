@@ -2,12 +2,12 @@ import logging
 
 import ldap
 
-import path_tools
+import util.path
 
 logger = logging.getLogger(__name__)
 
 
-class GUIDtoCID(path_tools.AttributeJSONCache):
+class GUIDtoCID(util.path.AttributeJSONCache):
     # cached attribute
     mapping: dict[str, str]
 

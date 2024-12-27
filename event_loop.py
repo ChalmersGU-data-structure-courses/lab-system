@@ -8,10 +8,10 @@ from typing import Optional
 
 import events
 import util.general
-import print_parse
-import ssh_tools
+import util.print_parse
+import util.ssh
 import subsuming_queue
-import threading_tools
+import util.threading
 import webhook_listener
 
 
@@ -102,7 +102,7 @@ def run(
         # Ideally, all courses connect to the same SSH server.
         def f():
             for ssh_netloc in set(c.config.gitlab_ssh.netloc for c in courses):
-                multiplexer = ssh_tools.Multiplexer(ssh_netloc)
+                multiplexer = util.ssh.Multiplexer(ssh_netloc)
                 exit_stack.enter_context(contextlib.closing(multiplexer))
                 yield (ssh_netloc, multiplexer)
 
@@ -151,19 +151,19 @@ def run(
             )
             thread_managers.append(
                 util.general.add_cleanup(
-                    threading_tools.thread_manager(webhook_server_thread),
+                    util.threading.thread_manager(webhook_server_thread),
                     webhook_server_shutdown,
                 )
             )
 
         # Set up program termination timer.
         if run_time is not None:
-            shutdown_timer = threading_tools.Timer(
+            shutdown_timer = util.threading.Timer(
                 run_time,
                 shutdown,
                 name="shutdown-timer",
             )
-            thread_managers.append(threading_tools.timer_manager(shutdown_timer))
+            thread_managers.append(util.threading.timer_manager(shutdown_timer))
 
         # Set up Canvas sync event timers and add potential initial sync.
         def sync_from_canvas(course):
@@ -181,7 +181,7 @@ def run(
                 if canvas_sync_config.start_with_sync:
                     sync_from_canvas(course)
                 if canvas_sync_config.sync_interval is not None:
-                    course.sync_timer = threading_tools.Timer(
+                    course.sync_timer = util.threading.Timer(
                         canvas_sync_config.sync_interval,
                         sync_from_canvas,
                         args=[course],
@@ -192,7 +192,7 @@ def run(
                         repeat=True,
                     )
                     thread_managers.append(
-                        threading_tools.timer_manager(course.sync_timer)
+                        util.threading.timer_manager(course.sync_timer)
                     )
 
         # Set up lab refresh event timers and add initial lab refreshes.
@@ -209,7 +209,7 @@ def run(
             for lab in c.labs.values():
                 refresh_lab(lab)
                 if lab.config.refresh_period is not None:
-                    lab.refresh_timer = threading_tools.Timer(
+                    lab.refresh_timer = util.threading.Timer(
                         lab.config.refresh_period + delay,
                         refresh_lab,
                         args=[lab],
@@ -217,7 +217,7 @@ def run(
                         repeat=True,
                     )
                     thread_managers.append(
-                        threading_tools.timer_manager(lab.refresh_timer)
+                        util.threading.timer_manager(lab.refresh_timer)
                     )
                     delay += c.config.webhook.first_lab_refresh_delay
 

@@ -258,8 +258,8 @@ import logging.handlers
 import course
 import event_loop
 import util.general
-import ip_tools
-import print_parse
+import util.ip
+import util.print_parse
 
 
 # Configure logging.
@@ -330,8 +330,8 @@ else:
         "GitLab network location",
         lambda c: c.gitlab_netloc,
     )
-    netloc_listen = print_parse.NetLoc(
-        host=ip_tools.get_local_ip_routing_to(gitlab_netloc),
+    netloc_listen = util.print_parse.NetLoc(
+        host=util.ip.get_local_ip_routing_to(gitlab_netloc),
         port=args.port,
     )
     netloc_specify = (

@@ -2,11 +2,11 @@ from pathlib import PurePosixPath, Path
 
 import dominate
 
-import git_tools
+import util.git
 import gitlab_.tools
 import lab_interfaces
 import live_submissions_table
-import path_tools
+import util.path
 import robograder_java
 import submission_java
 
@@ -40,7 +40,7 @@ class CompilationColumn(live_submissions_table.Column):
         if not submission_current.handled_result["compilation_succeded"]:
             cl = "error"
             sort_key = 0
-        elif not git_tools.read_text_file_from_tree(
+        elif not util.git.read_text_file_from_tree(
             report.commit.tree, report_compilation
         ):
             cl = "grayed-out"
@@ -118,7 +118,7 @@ class CompilationAndRobogradingColumn(live_submissions_table.Column):
         if not submission_current.handled_result["compilation_succeded"]:
             cl = "error"
             sort_key = 0  # Compilation failed.
-        elif git_tools.read_text_file_from_tree(report.commit.tree, report_compilation):
+        elif util.git.read_text_file_from_tree(report.commit.tree, report_compilation):
             cl = "grayed-out"
             sort_key = 1  # Compilation succeeded, but compiler produced warnings.
         else:
@@ -237,7 +237,7 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
 
     def handle_request(self, request_and_responses):
         with request_and_responses.checkout_manager() as src:
-            with path_tools.temp_dir() as report:
+            with util.path.temp_dir() as report:
                 return self._handle_request(request_and_responses, src, report)
 
 
@@ -269,7 +269,7 @@ class RobogradingHandler(handlers.general.RobogradingHandler):
 
         # Compile and robograde.
         try:
-            dir_src = src / self.kwargs.get("dir_submission_src", path_tools.Path())
+            dir_src = src / self.kwargs.get("dir_submission_src", util.path.Path())
             with submission_java.submission_checked_and_compiled(dir_src) as (
                 dir_bin,
                 compiler_report,

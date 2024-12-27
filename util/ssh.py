@@ -13,9 +13,9 @@ import typing
 import git
 
 import util.general
-import path_tools
-import print_parse
-import watchdog_tools
+import util.path
+import util.print_parse
+import util.watchdog
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +80,7 @@ class Control:
     """
 
     master: typing.Optional[bool] = False
-    path: typing.Optional[path_tools.PathLike] = None
+    path: typing.Optional[util.path.PathLike] = None
     command: typing.Optional[str] = None
     force: bool = False
 
@@ -370,7 +370,7 @@ def shutdown_control_master(control_path, check=True, force=False):
     """
     logger.debug(
         "Shutting down control master with "
-        f"socket {path_tools.format_path(control_path)} "
+        f"socket {util.path.format_path(control_path)} "
         f"(force: {force})."
     )
     cmd = list(
@@ -444,7 +444,7 @@ class ConnectionMaster:
         logger.info("Opening SSH connection control master.")
 
         self.exit_stack = contextlib.ExitStack()
-        self.socket_dir = self.exit_stack.enter_context(path_tools.temp_dir())
+        self.socket_dir = self.exit_stack.enter_context(util.path.temp_dir())
         self.socket_file = self.socket_dir / "socket"
 
         self.control_master_ready = threading.Event()
@@ -493,7 +493,7 @@ class ConnectionMaster:
         self.ssh_thread.start()
 
         logger.debug("Waiting for control socket.")
-        if not watchdog_tools.wait_for_file_created(
+        if not util.watchdog.wait_for_file_created(
             self.socket_file,
             self.control_master_ready,
         ):

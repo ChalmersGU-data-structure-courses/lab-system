@@ -5,9 +5,9 @@ import logging
 import ssl
 from pathlib import PurePosixPath
 
-import openssl_tools
-import path_tools
-import print_parse
+import util.openssl
+import util.path
+import util.print_parse
 
 logger = logging.getLogger(__name__)
 
@@ -69,13 +69,13 @@ def server_manager(netloc, secret_token, callback, logger=logger):
     netloc = print_parse.netloc_normalize(netloc)
     address = (netloc.host, netloc.port)
 
-    with path_tools.temp_dir() as dir:
+    with util.path.temp_dir() as dir:
         # Generate an SSL certificate.
         # This is needed for GitLab to connect to our webhook listener.
         # (Only HTTPS listener addresses are allowed, not HTTP.).
         file_cert = dir / "cert.pem"
         file_key = dir / "key.pem"
-        openssl_tools.generate_cert(file_cert, file_key)
+        util.openssl.generate_cert(file_cert, file_key)
 
         # Create the server.
         with http.server.HTTPServer(address, Handler) as server:

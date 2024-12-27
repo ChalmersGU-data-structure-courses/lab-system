@@ -172,7 +172,7 @@ import shutil
 
 from util.general import print_error, join_lines
 from canvas import Canvas, Course
-from path_tools import system_path_add
+from util.path import system_path_add
 
 from . import config
 from .lab_assignment import LabAssignment

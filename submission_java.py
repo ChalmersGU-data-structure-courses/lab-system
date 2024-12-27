@@ -6,10 +6,10 @@ from typing import Any, Iterable
 
 import check_symlinks
 import util.general
-import java_tools
+import util.java
 import lab_interfaces
 import markdown
-import path_tools
+import util.path
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ def submission_check_symlinks(src, strict=False):
         raise SymlinkException(e) from None
 
 
-class CompileException(java_tools.CompileError, lab_interfaces.HandlingException):
+class CompileException(util.java.CompileError, lab_interfaces.HandlingException):
     prefix = "There are compilation errors:"
 
     def __str__(self):
@@ -71,13 +71,13 @@ class CompileException(java_tools.CompileError, lab_interfaces.HandlingException
 
 def submission_compile(src, bin):
     try:
-        return java_tools.compile_unknown(
+        return util.java.compile_unknown(
             src=src,
             bin=bin,
             check=True,
             options=["-Xlint:all"],
         )
-    except java_tools.CompileError as e:
+    except util.java.CompileError as e:
         raise CompileException(e.compile_errors) from None
 
 
@@ -93,7 +93,7 @@ def submission_checked_and_compiled(src):
     Yields the managed output directory of compiled class files and the compiler report.
     """
     submission_check_symlinks(src)
-    with path_tools.temp_dir() as bin:
+    with util.path.temp_dir() as bin:
         report = submission_compile(src, bin)
         yield (bin, report)
 
@@ -112,7 +112,7 @@ class FileConflict(lab_interfaces.HandlingException):
         self.file = file
 
     def __str__(self):
-        return f"{self.prefix} {path_tools.format_path(self.file)} {self.suffix}"
+        return f"{self.prefix} {util.path.format_path(self.file)} {self.suffix}"
 
     def markdown(self):
         return util.general.join_lines(
@@ -154,7 +154,7 @@ def run_context(
     * arguments: Arguments to pass to the invocation.
     * permissions:
         Specifies additional permission statements to apply in the security policy to the submission code.
-        See java_tools.permission_file for an example of such a permission statement.
+        See util.java.permission_file for an example of such a permission statement.
         By default, the only permission granted is to read within the submission source directory.
     * check_conflict: Raise FileConflict if a submission class is shadowed by a class in the given classpath.
 
@@ -166,7 +166,7 @@ def run_context(
     if check_conflict:
         logger.debug("Checking for file conflicts.")
         for dir in classpath:
-            with path_tools.working_dir(dir):
+            with util.path.working_dir(dir):
                 files = list(Path().rglob("*.class"))
             for file in files:
                 if (submission_bin / file).exists():
@@ -175,19 +175,19 @@ def run_context(
     # Set up security policy to allow submission code to only read submission directory.
     def policy_entries():
         for dir in classpath:
-            yield (dir, [java_tools.permission_all])
+            yield (dir, [util.java.permission_all])
         yield (
             submission_bin,
-            [java_tools.permission_file(submission_dir.resolve(), True), *permissions],
+            [util.java.permission_file(submission_dir.resolve(), True), *permissions],
         )
 
-    # Necessary if we call java_tools.run in a different working directory
+    # Necessary if we call util.java.run in a different working directory
     # and the generator resolves paths.
     policy_entries_ = list(policy_entries())
 
     # Run the robograder.
     logger.debug("Running robograder.")
-    with java_tools.run_context(
+    with util.java.run_context(
         main=entrypoint,
         policy_entries=policy_entries_,
         args=arguments,

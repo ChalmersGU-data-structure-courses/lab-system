@@ -27,7 +27,7 @@ from util.general import (
     join_lines,
     BearerAuth,
 )
-from path_tools import (
+from util.path import (
     add_suffix,
     format_path,
     set_modification_time,

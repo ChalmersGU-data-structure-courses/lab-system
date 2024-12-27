@@ -129,7 +129,7 @@ class GroupProject:
     #     Doesn't work references are packed by git.
     #     We should not assume they are unpacked.
     #     '''
-    #     dir = Path(self.lab.repo.git_dir) / git_tools.refs / git_tools.remote_tags / self.remote
+    #     dir = Path(self.lab.repo.git_dir) / util.git.refs / util.git.remote_tags / self.remote
     #     return [file.name for file in dir.iterdir()]
 
     def get_requests_and_responses(self):
@@ -321,7 +321,7 @@ class GroupProject:
 
         # Check the commit out.
         with (
-            git_tools.with_checkout(self.lab.repo, git_tools.remote_tag(self.remote, request)) as src,
+            util.git.with_checkout(self.lab.repo, util.git.remote_tag(self.remote, request)) as src,
             tempfile.TemporaryDirectory() as bin
         ):
             # If a compiler is configured, compile first.
@@ -392,7 +392,7 @@ class GroupProject:
 
         # Check the commit out.
         with (
-            git_tools.with_checkout(self.lab.repo, git_tools.remote_tag(self.remote, request)) as src,
+            util.git.with_checkout(self.lab.repo, util.git.remote_tag(self.remote, request)) as src,
             tempfile.TemporaryDirectory() as bin,
         ):
 

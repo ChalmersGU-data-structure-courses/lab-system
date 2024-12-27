@@ -5,10 +5,10 @@ import subprocess
 from pathlib import Path
 
 import util.general
-import java_tools
+import util.java
 import lab_interfaces
 import markdown
-import path_tools
+import util.path
 import submission_java
 from this_dir import this_dir
 
@@ -85,7 +85,7 @@ def run(
         A list of strings.
     * permissions:
         Specifies additional permission statements to apply in the security policy to the submission code.
-        See java_tools.permission_file for an example such permission statement.
+        See util.java.permission_file for an example such permission statement.
         By default, the only permission granted is to read within the submission source directory.
     """
     with submission_java.run_context(
@@ -174,7 +174,7 @@ def compile(
         The compiled class files of the robograder are placed here.
         If set to None, it defaults to robograder_src.
     * kwargs:
-        Further named arguments to be passed to java_tools.compile.
+        Further named arguments to be passed to util.java.compile.
         These should exclude: files, destination, implicit.
         Notes for specific arguments:
         - classpath:
@@ -184,7 +184,7 @@ def compile(
         - options: We presend javac_standard_options to this iterable.
     """
     logger.debug("Compiling robograder.")
-    java_tools.compile(
+    util.java.compile(
         src=robograder_src,
         bin=robograder_bin,
         sourcepath=[problem_src],
@@ -218,7 +218,7 @@ def compile_lib(force=False):
     Compilation can be forced by setting 'force' to True.
     """
     logger.info("Compiling robograder library.")
-    java_tools.compile(
+    util.java.compile(
         src=dir_lib_src,
         bin=dir_lib_src,
         implicit=False,
@@ -228,7 +228,7 @@ def compile_lib(force=False):
 
 def clean_lib():
     logger.info("Deleting compiled class files in robograder library.")
-    java_tools.clean(dir_lib_src)
+    util.java.clean(dir_lib_src)
 
 
 class RobograderMissingException(Exception):
@@ -286,9 +286,9 @@ class LabRobograder:
         self.robograder_src = self.dir_lab / dir_robograder
         if not self.robograder_src.is_dir():
             raise RobograderMissingException(
-                f"No robograder found in {path_tools.format_path(self.dir_lab)}"
+                f"No robograder found in {util.path.format_path(self.dir_lab)}"
             )
-        logger.debug(f"Detected robograder in {path_tools.format_path(self.dir_lab)}.")
+        logger.debug(f"Detected robograder in {util.path.format_path(self.dir_lab)}.")
 
         self.problem_src = self.dir_lab / dir_problem
 
@@ -309,10 +309,10 @@ class LabRobograder:
         )
 
     def clean(self):
-        java_tools.clean(self.robograder_src)
+        util.java.clean(self.robograder_src)
 
     def run(self, src, bin):
-        logger.info(f"Running robograder on {path_tools.format_path(src)}.")
+        logger.info(f"Running robograder on {util.path.format_path(src)}.")
         return run(
             submission_src=src,
             submission_bin=bin,

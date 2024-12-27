@@ -10,8 +10,8 @@ import gitlab_.tools
 import lab_interfaces
 import live_submissions_table
 import markdown
-import path_tools
-import print_parse
+import util.path
+import util.print_parse
 
 
 logger = logging.getLogger(__name__)
@@ -137,7 +137,7 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
         For example, checkout problems can arise from symlinks with targets that are too long.
         This commonly happens when Windows students change the target of a symlink to the content of its target.
         """
-        with path_tools.temp_dir() as src:
+        with util.path.temp_dir() as src:
             try:
                 request_and_responses.checkout(src)
             except request_and_responses.CheckoutError as e:
@@ -272,13 +272,13 @@ class GenericTestingHandler(TestingHandler):
         if self.response_key in request_and_responses.responses:
             return
 
-        with path_tools.temp_dir() as src:
+        with util.path.temp_dir() as src:
             try:
                 request_and_responses.checkout(src)
             except request_and_responses.CheckoutError as e:
                 report = e.report_markdown()
             else:
-                with path_tools.temp_dir() as dir_out:
+                with util.path.temp_dir() as dir_out:
                     self.tester.run_tests(dir_out, src)
                     report = self.get_test_report(dir_out)
 
@@ -411,7 +411,7 @@ class SubmissionTesting:
         if not self.tester:
             return
 
-        with path_tools.temp_dir() as test:
+        with util.path.temp_dir() as test:
             if not suppress:
                 self.tester.run_tests(test, src, dir_bin=bin)
             request_and_responses.repo_report_create(
@@ -421,7 +421,7 @@ class SubmissionTesting:
                 force=True,
             )
             if self.has_markdown_report:
-                with path_tools.temp_dir() as test_report:
+                with util.path.temp_dir() as test_report:
                     (test_report / self.report_path).write_text(
                         markdown.join_blocks(
                             self.tester.format_tests_output_as_markdown(test)
