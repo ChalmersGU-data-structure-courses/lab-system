@@ -394,7 +394,7 @@ class CourseUsers:
 
         self.section_names = dict(sections)
         self.sections_by_name = util.general.sdict(map(util.general.swap, sections))
-        self.section_users = {id: list() for (id, name) in sections}
+        self.section_users = {id: [] for (id, name) in sections}
 
         self.users = dict()
         self.users_by_name = dict()

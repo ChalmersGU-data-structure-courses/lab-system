@@ -83,7 +83,7 @@ def protect_tags(gl, project_id, patterns=[], delete_existing=False, exist_ok=Tr
         # Otherwise, the attribute protectedtags does not exist.
         for x in protected_prev:
             x.delete()
-        protected_prev = list()
+        protected_prev = []
     if exist_ok:
         patterns_prev = set(
             protect.name

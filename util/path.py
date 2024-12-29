@@ -356,7 +356,7 @@ def link_dir_contents(dir_from, dir_to, rel=None, exists_ok=False):
     if rel is None:
         rel = Path(os.path.relpath(dir_from, dir_to))
 
-    files = list()
+    files = []
     for path in dir_from.iterdir():
         file = dir_to / path.name
         files.append(file)
