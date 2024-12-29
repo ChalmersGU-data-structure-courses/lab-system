@@ -33,7 +33,9 @@ master = "master"
 
 
 def remove_prefix(path, prefix, **kwargs):
-    return PurePosixPath(**util.general.remove_prefix(path.parts, prefix.parts), **kwargs)
+    return PurePosixPath(
+        **util.general.remove_prefix(path.parts, prefix.parts), **kwargs
+    )
 
 
 def local_ref(is_tag, reference):

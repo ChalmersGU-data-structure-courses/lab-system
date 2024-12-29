@@ -99,7 +99,9 @@ def table(column_specs: Iterable[ColumnSpec], rows: Iterable[Sequence[str]]):
         return "-" + s + "-"
 
     def join_with_pipe(entries):
-        return "".join(util.general.intercalate(entries, middle="|", start="|", end="|"))
+        return "".join(
+            util.general.intercalate(entries, middle="|", start="|", end="|")
+        )
 
     def format_row(entries):
         def f():

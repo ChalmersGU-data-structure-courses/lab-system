@@ -212,7 +212,9 @@ class LabTester(testers.general.LabTester):
             if file("file_compile_err").exists():
                 compile_err = file("file_compile_err").read_text()
                 if compile_err:
-                    yield util.general.join_lines(["There were some compilation warnings:"])
+                    yield util.general.join_lines(
+                        ["There were some compilation warnings:"]
+                    )
                     yield util.markdown.escape_code_block(compile_err)
 
             yield from super().format_tests_output_as_markdown(dir_out)

@@ -403,7 +403,9 @@ class SubmissionTesting:
             )
 
     def test_report(self, test):
-        return util.markdown.join_blocks(self.tester.format_tests_output_as_markdown(test))
+        return util.markdown.join_blocks(
+            self.tester.format_tests_output_as_markdown(test)
+        )
 
     # The suppress option is useful if the submission did not compile.
     # In that case, we want to skip testing.
