@@ -383,6 +383,7 @@ def checkout(repo, dir, ref, capture_stderr=False):
     cmd = ["tar", "-x"]
     with util.path.working_dir(dir):
         util.general.log_command(logger, cmd, True)
+        # pylint: disable-next=R1732
         tar = subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE,
