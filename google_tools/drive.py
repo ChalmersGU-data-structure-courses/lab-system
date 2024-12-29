@@ -62,10 +62,10 @@ class TemporaryFile:
         self.name = name
 
     def __enter__(self):
-        logger.log(logging.DEBUG, f"Creating a copy of drive file {self.id}...")
+        logger.debug(f"Creating a copy of drive file {self.id}...")
         self.id_copy = self.drive.copy(self.id, self.name)
         return self.id_copy
 
     def __exit__(self, type, value, traceback):
-        logger.log(logging.DEBUG, "Deleting copy of drive file...")
+        logger.debug("Deleting copy of drive file...")
         self.drive.delete(self.id_copy)

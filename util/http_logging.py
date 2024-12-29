@@ -7,7 +7,7 @@ httpclient_logger = logging.getLogger("http.client")
 
 
 def httpclient_log(*args):
-    httpclient_logger.log(logging.DEBUG, " ".join(args))
+    httpclient_logger.debug(" ".join(args))
 
 
 # mask the print() built-in in the http.client module to use logging instead

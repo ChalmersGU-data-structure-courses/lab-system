@@ -140,13 +140,13 @@ def generate_from_template_document(
                 )
 
             # Perform the replacements as a single batch request.
-            logger.log(logging.DEBUG, f"Performing replacements:\n{requests}\n...")
+            logger.debug(f"Performing replacements:\n{requests}\n...")
             if requests:
                 docs.batch_update(id_copy, requests)
 
         # Export the document in the requested file types.
         for suffix, path in output_paths.items():
-            logger.log(logging.DEBUG, f"Generating {shlex.quote(str(path))}...")
+            logger.debug(f"Generating {shlex.quote(str(path))}...")
             drive.export(id_copy, path, Drive.mime_types_document[suffix])
 
 

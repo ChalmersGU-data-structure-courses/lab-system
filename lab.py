@@ -1825,7 +1825,8 @@ class Lab:
             for email in invitations_desired - invitations:
                 if add:
                     self.logger.log(
-                        25, f"inviting {user_str_from_email(email)} to {entity_name}"
+                        25,
+                        f"inviting {user_str_from_email(email)} to {entity_name}",
                     )
                     try:
                         with gitlab_.tools.exist_ok():
