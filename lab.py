@@ -1617,7 +1617,7 @@ class Lab:
             self.logger.warning(f"Received webhook event for unknown group id {id}.")
             self.logger.debug(f"Webhook event:\n{hook_event}")
             if strict:
-                raise ValueError(f"Unknown group id {id}")
+                raise ValueError(f"Unknown group id {id}") from None
             return
 
         yield from webhook_listener.map_with_callback(

@@ -90,7 +90,9 @@ def parse_grading_columns(config, header_row):
                 )
             return column
         except StopIteration:
-            raise SheetParseException(f"expected header {value_expected} at end of row")
+            raise SheetParseException(
+                f"expected header {value_expected} at end of row"
+            ) from None
 
     headers = config.grading_sheet.header
     group_column = consume(headers.group)

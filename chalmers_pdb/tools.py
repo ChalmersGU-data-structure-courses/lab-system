@@ -16,7 +16,7 @@ def personnummer_to_cid(personnummer):
         rs = pdb.account_dig({"cid_of": {"all_pnrs": personnummer}}, {"name": True})
         (r,) = rs
         return r["name"]
-    except (KeyError, ValueError):
+    except (KeyError, ValueError) as e:
         raise PDBException(
             f"Could not obtain CID for personnummer {personnummer}: got {rs}"
-        )
+        ) from e

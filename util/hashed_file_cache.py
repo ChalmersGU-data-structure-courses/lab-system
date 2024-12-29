@@ -382,7 +382,7 @@ class HashedFileCacheSerializer(HashedFileCacheBase):
         try:
             data = self.data
         except AttributeError:
-            raise self.DataEmptyError()
+            raise self.DataEmptyError() from None
 
         return self.serializer.print(data)
 
