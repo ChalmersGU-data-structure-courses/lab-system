@@ -13,7 +13,7 @@ class SimpleCache:
 
     def __init__(self, cache_dir):
         self.cache_dir = Path(cache_dir)
-        logger.log(logging.INFO, "initializing cache: " + str(cache_dir))
+        logger.info("initializing cache: " + str(cache_dir))
         Path(cache_dir).mkdir(exist_ok=True)
 
     def __get_path(self, path):
@@ -45,7 +45,7 @@ class SimpleCache:
         * a Boolean
         * a timestamp: only entries at most this old are considered valid
         """
-        logger.log(logging.DEBUG, "constructing cached path: " + str(path))
+        logger.debug("constructing cached path: " + str(path))
         real_path = self.__get_path(path)
 
         if isinstance(use_cache, datetime.datetime):
@@ -56,11 +56,11 @@ class SimpleCache:
             really_use_cache = bool(use_cache) and real_path.exists()
 
         if really_use_cache:
-            logger.log(logging.DEBUG, "reading")
+            logger.debug("reading")
             x = reader(real_path)
         else:
             c = constructor()
-            logger.log(logging.DEBUG, "writing")
+            logger.debug("writing")
             p = self.__get_path(path)
             p.parent.mkdir(parents=True, exist_ok=True)
             x = writer(real_path, c)
@@ -119,7 +119,7 @@ class SimpleCache:
 class JSONCache:
     def __init__(self, cache_dir):
         self.cache_dir = Path(cache_dir)
-        logger.log(logging.INFO, "initializing cache: " + str(cache_dir))
+        logger.info("initializing cache: " + str(cache_dir))
         Path(cache_dir).mkdir(exist_ok=True)
 
 

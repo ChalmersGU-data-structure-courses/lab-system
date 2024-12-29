@@ -151,8 +151,7 @@ class Canvas:
     # internal
     def json_cacher(self, method):
         def f(endpoint, params=None, use_cache=True):
-            logger.log(
-                logging.INFO,
+            logger.info(
                 "accessing endpoint " + self.get_url(Canvas.with_api(endpoint)),
             )
             return Canvas.objectify_json(
@@ -186,7 +185,7 @@ class Canvas:
     def get_file_bare(self, id, verifier, use_cache=True):
         endpoint = ["files", id, "download"]
         params = {"verifier": verifier}
-        logger.log(logging.INFO, "accessing endpoint " + self.get_url(endpoint))
+        logger.info("accessing endpoint " + self.get_url(endpoint))
 
         def constructor(file_path):
             r = self.session.get(
@@ -236,9 +235,7 @@ class Canvas:
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
     # The starting elements 'api' and 'v1' are omitted.
     def put(self, endpoint, params=None, data=None, json=None):
-        logger.log(
-            logging.INFO, "PUT with endpoint " + self.get_url(Canvas.with_api(endpoint))
-        )
+        logger.info("PUT with endpoint " + self.get_url(Canvas.with_api(endpoint)))
         return Canvas.objectify_json(
             Canvas.get_response_json(
                 self.session.put(
@@ -254,10 +251,7 @@ class Canvas:
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
     # The starting elements 'api' and 'v1' are omitted.
     def post(self, endpoint, data=None, json=None, params=None):
-        logger.log(
-            logging.INFO,
-            "POST with endpoint " + self.get_url(Canvas.with_api(endpoint)),
-        )
+        logger.info("POST with endpoint " + self.get_url(Canvas.with_api(endpoint)))
         return Canvas.objectify_json(
             Canvas.get_response_json(
                 self.session.post(
@@ -274,8 +268,7 @@ class Canvas:
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
     # The starting elements 'api' and 'v1' are omitted.
     def delete(self, endpoint, params=None):
-        logger.log(
-            logging.INFO,
+        logger.info(
             "DELETE with endpoint " + self.get_url(Canvas.with_api(endpoint)),
         )
         return Canvas.objectify_json(
@@ -925,18 +918,16 @@ class Assignment:
 
             did_not_submit = set(group_users).difference(set(user_grouping))
             if did_not_submit:
-                logger.log(
-                    logging.INFO,
-                    f"The following members have not submitted with {self.group_set.str(group)}:",
+                logger.info(
+                    f"The following members have not submitted with {self.group_set.str(group)}:"
                 )
                 for user_id in did_not_submit:
                     logger.info("- " + self.course.user_str(user_id))
 
             not_part_of_group = set(user_grouping).difference(set(group_users))
             if not_part_of_group:
-                logger.log(
-                    logging.INFO,
-                    f"The following non-members have submitted with {self.group_set.str(group)}:",
+                logger.info(
+                    f"The following non-members have submitted with {self.group_set.str(group)}:"
                 )
                 for user_id in not_part_of_group:
                     logger.info("- " + self.course.user_str(user_id))
