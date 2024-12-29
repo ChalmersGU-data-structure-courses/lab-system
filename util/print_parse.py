@@ -336,8 +336,14 @@ def join_bytes(sep=None, maxsplit=-1):
 def from_dict(xs, print_strict=True, parse_strict=True):
     xs = builtins.tuple(xs)
     return PrintParse(
-        print=util.general.sdict(((x, y) for (x, y) in xs), strict=print_strict).__getitem__,
-        parse=util.general.sdict(((y, x) for (x, y) in xs), strict=parse_strict).__getitem__,
+        print=util.general.sdict(
+            ((x, y) for (x, y) in xs),
+            strict=print_strict,
+        ).__getitem__,
+        parse=util.general.sdict(
+            ((y, x) for (x, y) in xs),
+            strict=parse_strict,
+        ).__getitem__,
     )
 
 

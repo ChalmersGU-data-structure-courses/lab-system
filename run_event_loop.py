@@ -310,6 +310,7 @@ def courses():
 courses = util.general.sdict(courses())
 course_ = list(courses.values())[0]
 
+
 def get_value_from_courses(name, selector):
     values = set(map(selector, courses.values()))
     try:
@@ -335,7 +336,9 @@ else:
         port=args.port,
     )
     netloc_specify = (
-        netloc_listen if args.netloc is None else util.print_parse.netloc.parse(args.netloc)
+        netloc_listen
+        if args.netloc is None
+        else util.print_parse.netloc.parse(args.netloc)
     )
     if netloc_specify is None:
         netloc_specify = netloc_specify._replace(port=netloc_listen.port)

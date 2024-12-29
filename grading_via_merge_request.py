@@ -49,7 +49,9 @@ class SetupData:
 
 class GradingViaMergeRequest:
     sync_message = util.print_parse.compose(
-        util.print_parse.combine((util.print_parse.escape_brackets, util.print_parse.escape_parens)),
+        util.print_parse.combine(
+            (util.print_parse.escape_brackets, util.print_parse.escape_parens)
+        ),
         util.print_parse.regex_many(
             "Synchronized submission branch with [{}]({}).",
             [r"(?:[^\[\]\\]|\\[\[\]\\])*", r"(?:[^\(\)\\]|\\[\(\)\\])*"],
@@ -476,8 +478,14 @@ class GradingViaMergeRequest:
                 )
             )
             yield util.markdown.ColumnSpec(title="Synchronized")
-            yield util.markdown.ColumnSpec(title="Outcome", align=util.markdown.Alignment.CENTER)
-            yield util.markdown.ColumnSpec(title="Grader", align=util.markdown.Alignment.CENTER)
+            yield util.markdown.ColumnSpec(
+                title="Outcome",
+                align=util.markdown.Alignment.CENTER,
+            )
+            yield util.markdown.ColumnSpec(
+                title="Grader",
+                align=util.markdown.Alignment.CENTER,
+            )
 
         def rows():
             for request_name, (date, note) in self.synced_submissions.items():

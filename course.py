@@ -158,7 +158,7 @@ class Course:
     def canvas_course_refresh(self):
         self.logger.debug("Refreshing Canvas course")
         self.canvas_course = self.canvas_course_get(False)
-        if 'student_name_coding' in self.__dict__.keys():
+        if "student_name_coding" in self.__dict__.keys():
             self.student_name_coding_update()
 
     @functools.cached_property

@@ -565,4 +565,8 @@ Print INFO level (once specified) or DEBUG level (twice specified) logging.
         tester = Tester(**dict(params()))
         tester.run_tests(dir_out, args.submission)
         if args.markdown:
-            print(util.markdown.join_blocks(tester.format_tests_output_as_markdown(dir_out)))
+            print(
+                util.markdown.join_blocks(
+                    tester.format_tests_output_as_markdown(dir_out)
+                )
+            )

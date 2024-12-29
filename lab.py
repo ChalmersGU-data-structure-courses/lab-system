@@ -1364,7 +1364,9 @@ class Lab:
         )
 
         # Ensure grading sheet has sufficient query group columns.
-        it = (util.general.ilen(group.submissions_relevant(deadline)) for group in groups)
+        it = (
+            util.general.ilen(group.submissions_relevant(deadline)) for group in groups
+        )
         self.grading_sheet.ensure_num_queries(max(it, default=0))
 
         request_buffer = self.course.grading_spreadsheet.create_request_buffer()
