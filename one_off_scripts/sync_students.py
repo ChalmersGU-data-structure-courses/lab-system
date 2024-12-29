@@ -27,7 +27,7 @@ def add_user(course, section_id, user_id):
     }
     course.canvas.post(course.endpoint + ['enrollments'], params = params)
 
-from gitlab_config_personal import canvas.client_rest as canvas_auth_token  # noqa: E402
+from gitlab_config_personal import canvas_auth_token  # noqa: E402
 canvas_chalmers = canvas.Canvas('chalmers.instructure.com', auth_token = canvas_auth_token)
 canvas_gu = canvas.Canvas('canvas.gu.se', auth_token = canvas_auth_token)
 
