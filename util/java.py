@@ -231,7 +231,7 @@ def compile_unknown(
         )
     )
     util.general.log_command(logger, cmd, True)
-    process = subprocess.run(cmd, stderr=subprocess.PIPE, encoding="utf-8")
+    process = subprocess.run(cmd, stderr=subprocess.PIPE, encoding="utf-8", check=False)
     success = process.returncode == 0
 
     if not check:
@@ -294,7 +294,7 @@ def compile(
     logger.debug(f"Compiling source files {src_files}")
     cmd = list(cmd_javac(files=src_files, destination=bin, **kwargs))
     util.general.log_command(logger, cmd, True)
-    process = subprocess.run(cmd, stderr=subprocess.PIPE, encoding="utf-8")
+    process = subprocess.run(cmd, stderr=subprocess.PIPE, encoding="utf-8", check=False)
     if process.returncode != 0:
         raise CompileError(process.stderr)
 
@@ -624,4 +624,5 @@ def run(
     with run_context(main, policy_entries=policy_entries, **kwargs_cmd_java) as cmd:
         cmd = list(cmd)
         util.general.log_command(logger, cmd, working_dir=True)
+        # pylint: disable-next=subprocess-run-check
         return subprocess.run(cmd, **kwargs_run)

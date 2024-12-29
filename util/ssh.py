@@ -389,7 +389,7 @@ def shutdown_control_master(control_path, check=True, force=False):
         )
     )
     util.general.log_command(logger, cmd)
-    result = subprocess.run(cmd, text=True, capture_output=True)
+    result = subprocess.run(cmd, text=True, capture_output=True, check=False)
     if result.stderr and (check or not result.returncode):
         logger.debug(util.general.join_lines(result.stderr.splitlines()))
     if result.returncode:
@@ -453,7 +453,12 @@ class ConnectionMaster:
             try:
                 cmd = list(cmd_ssh_master(netloc, self.socket_file))
                 util.general.log_command(logger, cmd)
-                result = subprocess.run(cmd, text=True, capture_output=True)
+                result = subprocess.run(
+                    cmd,
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
                 if result.stderr:
                     logger.debug(util.general.join_lines(result.stderr.splitlines()))
 
