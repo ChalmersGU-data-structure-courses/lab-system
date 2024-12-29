@@ -42,10 +42,10 @@ def send_message(service, user_id, message):
         message = (
             service.users().messages().send(userId=user_id, body=message).execute()
         )
-        print("Message Id: %s" % message["id"])
+        print("Message Id: " + message["id"])
         return message
     except errors.HttpError as error:
-        print("An error occurred: %s" % error)
+        print("An error occurred: " + error)
 
 
 # Email variables. Modify this!

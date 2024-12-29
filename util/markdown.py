@@ -28,7 +28,7 @@ def find_delimiter(s, char, least=0):
 
     def values():
         yield least
-        for match in re.finditer("{}+".format(re.escape(char)), s):
+        for match in re.finditer(re.escape(char) + "+", s):
             yield len(match.group(0)) + 1
 
     return char * max(values())

@@ -60,7 +60,8 @@ class Client(graphql_.client.ClientBase):
             retries=0,  # TODO: change to a higher value
             auth=util.general.BearerAuth(token),
         )
-        filename = "gitlab_schema{}.graphql".format("" if schema_full else "_extract")
+        version = "" if schema_full else "_extract"
+        filename = f"gitlab_schema{version}.graphql"
         path_schema = this_dir / "graphql_" / filename
         super().__init__(transport, path_schema)
 

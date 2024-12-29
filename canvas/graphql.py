@@ -386,6 +386,7 @@ class CourseUsers:
                 yield "SIS id " + user["sisId"]
 
         infos = list(f())
+        # pylint: disable-next=C0209
         extra = " ({})".format(", ".join(infos)) if infos else ""
         return user["name" if primary_name else "id"] + extra
 

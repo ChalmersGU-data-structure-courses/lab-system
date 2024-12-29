@@ -217,7 +217,7 @@ def compile_unknown(
         import util.chardet
 
         encoding = util.chardet.detect_encoding(src_files)
-        logger.debug("Detected encoding {}".format(encoding))
+        logger.debug(f"Detected encoding {encoding}")
         kwargs["encoding"] = encoding
 
     javac_prepend_standard_options(kwargs)
@@ -363,7 +363,7 @@ def codebase_file_or_dir(path):
         return False
     if path.is_dir():
         return True
-    raise ValueError("invalid code base: {}".format(shlex.quote(str(path))))
+    raise ValueError("invalid code base: " + shlex.quote(str(path)))
 
 
 permission_all = ("java.security.AllPermission", [])
@@ -427,7 +427,7 @@ def policy_permission(type, args=None):
     formatted_args = (
         " " + ", ".join(string_encode(str(arg)) for arg in args) if args else ""
     )
-    return "permission {}{};".format(type, formatted_args)
+    return f"permission {type}{formatted_args};"
 
 
 def policy_grant(path, permissions):
