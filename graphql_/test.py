@@ -8,7 +8,7 @@ import gitlab
 from gql.transport.requests import RequestsHTTPTransport
 from gql.dsl import dsl_gql, DSLSchema, DSLQuery, DSLInlineFragment
 
-from gitlab_config_personal import canvas.client_rest as canvas_auth_token, gitlab_private_token
+from gitlab_config_personal import canvas_auth_token, gitlab_private_token
 import gitlab_.tools
 
 import canvas.client_rest as canvas
@@ -18,21 +18,18 @@ import graph_ql.gitlab
 import util.print_parse
 
 
-#logging.basicConfig()
-#logging.getLogger().setLevel(logging.DEBUG)
+# logging.basicConfig()
+# logging.getLogger().setLevel(logging.DEBUG)
 
-#c = canvas.Canvas('chalmers.instructure.com')
-#client = canvas_gql.Client(c)
+# c = canvas.Canvas('chalmers.instructure.com')
+# client = canvas_gql.Client(c)
 
-client = graph_ql.gitlab.Client('git.chalmers.se', gitlab_private_token)
+client = graph_ql.gitlab.Client("git.chalmers.se", gitlab_private_token)
 
-#c = canvas.Canvas('canvas.gu.se')
+# c = canvas.Canvas('canvas.gu.se')
 
 
-full_paths = [
-    f'courses/dat151/group/{i:02d}/lab-2'
-    for i in range(1, 28)
-]
+full_paths = [f"courses/dat151/group/{i:02d}/lab-2" for i in range(1, 28)]
 
 project_ids = [7208 + i for i in range(165)]
 
@@ -40,14 +37,18 @@ project_ids = [7208 + i for i in range(165)]
 #    print(client.retrieve_projects_members(project_ids))
 
 gl = gitlab.Gitlab(
-    'https://git.chalmers.se/',
-    private_token = gitlab_private_token,
+    "https://git.chalmers.se/",
+    private_token=gitlab_private_token,
 )
 gl.auth()
 
-with util.general.timing('issues'):
-    x = list(client.retrieve_issues_in_project('courses/lp2-data-structures/groups/97/lab-3-python'))
-    #x = list(client.f('courses/lp2-data-structures/groups', 'lab-3-python'))
+with util.general.timing("issues"):
+    x = list(
+        client.retrieve_issues_in_project(
+            "courses/lp2-data-structures/groups/97/lab-3-python"
+        )
+    )
+    # x = list(client.f('courses/lp2-data-structures/groups', 'lab-3-python'))
 
 
 # with util.general.timing('all users via REST one page'):
@@ -99,12 +100,12 @@ with util.general.timing('issues'):
 #     for (full_path, r) in results.items():
 #         print(f'{full_path}: {r()}')
 
-#r = client.q()
-#print(r)
+# r = client.q()
+# print(r)
 
 
-#result = client.client.execute(client.q())
-#print(result)
+# result = client.client.execute(client.q())
+# print(result)
 
 # with util.general.timing('canvas.Course'):
 #     x = canvas.Course(c, 21130, False)
@@ -132,5 +133,5 @@ with util.general.timing('issues'):
 #     course = canvas.Course(c, 21130, False)
 #     group_set = canvas.GroupSet(course, 'Lab group', False)
 
-#x = client.queue_query_node(client.ds.Course, 21130, client.ds.Course.name)
-#client.flush_queue_node()
+# x = client.queue_query_node(client.ds.Course, 21130, client.ds.Course.name)
+# client.flush_queue_node()
