@@ -1152,11 +1152,15 @@ class GroupProject:
 
     def ancestral_tag(self, problem):
         return util.git.normalize_tag(
-            util.git.refs / "ancestral" / self.remote / problem
+            self.repo,
+            util.git.refs / "ancestral" / self.remote / problem,
         )
 
     def update_problem(
-        self, force=False, notify_students: str = None, ensure_ancestral=True
+        self,
+        force=False,
+        notify_students: str = None,
+        ensure_ancestral=True,
     ):
         """
         Update problem branch(es) in student repositories to the problem commit in the primary repository.
