@@ -329,7 +329,7 @@ class JSONObject(SimpleNamespace):
         super().__init__(**kwargs)
         self._dict = kwargs
 
-        for (key, value) in kwargs.items():
+        for key, value in kwargs.items():
             value_str = str(value)
             # idea from canvasapi/canvas_object.py
             if JSONObject.DATE_PATTERN.match(value_str):
@@ -385,9 +385,8 @@ def appropriate_time_unit(delta):
 
 
 def format_timespan_using(delta, time_unit, precision=2):
-    return "{} {}".format(
-        format_with_rel_prec(delta / timedelta(**{time_unit: 1})), time_unit
-    )
+    amount = format_with_rel_prec(delta / timedelta(**{time_unit: 1}))
+    return f"{amount} {time_unit}"
 
 
 def format_timespan(delta, precision=2):
@@ -450,12 +449,8 @@ def pipe(min_size):
 
 
 def log_command(logger, cmd, working_dir=False):
-    logger.debug(
-        "running command{}:\n{}".format(
-            " in {}".format(shlex.quote(os.getcwd())) if working_dir else "",
-            shlex.join(map(str, cmd)),
-        )
-    )
+    where = " in " + format(shlex.quote(os.getcwd())) if working_dir else ""
+    logger.debug(f"running command{where}:\n{shlex.join(map(str, cmd))}")
 
 
 def wait_and_check(process, cmd, stderr=None):

@@ -64,9 +64,7 @@ class Canvas:
             except FileNotFoundError:
                 print_error("No Canvas authorization token found.")
                 print_error(
-                    "Expected Canvas authorization token in file {}.".format(
-                        format_path(auth_token)
-                    )
+                    f"Expected Canvas authorization token in file {format_path(auth_token)}."
                 )
                 sys.exit(1)
         else:
@@ -144,7 +142,7 @@ class Canvas:
         while "next" in r.links:
             r = self.session.get(
                 r.links["next"]["url"],
-                headers={"Authorization": "Bearer {}".format(self.auth_token)},
+                headers={"Authorization": f"Bearer {self.auth_token}"},
                 timeout=self.timeout,
             )
             x.extend(Canvas.get_response_json(r))
@@ -481,7 +479,7 @@ class Course:
         return self._user_maybe(self.user_integration_id_to_id.get(integration_id))
 
     def user_str(self, id):
-        return "{} (id {})".format(self.user_details[id].name, id)
+        return f"{self.user_details[id].name} (id {id})"
 
     def users_str(self, ids):
         return ", ".join(self.user_str(id) for id in ids) if ids else "[no users]"
@@ -514,17 +512,15 @@ class Course:
             return xs[0]
 
         if not xs:
-            print_error("No assigments found fitting '{}'.".format(assignment_name))
+            print_error(f"No assigments found fitting '{assignment_name}'.")
         else:
-            print_error(
-                "Multiple assignments found fitting '{}':".format(assignment_name)
-            )
+            print_error(f"Multiple assignments found fitting '{assignment_name}':")
             for assignment in xs:
                 print_error("  " + assignment.name)
         assert False
 
     def assignment_str(self, id):
-        return "{} (id {})".format(self.assignment_details[id].name, id)
+        return f"{self.assignment_details[id].name} (id {id})"
 
     def post_assignment(self, assignment):
         return self.canvas.post(
@@ -631,9 +627,7 @@ class Course:
         folder = self.canvas.post(self.endpoint + ["folders"], params)
         if not folder.full_name == "course files" + str(canvas_dir):
             self.delete_folder(folder.id)
-            assert False, "Could not create Canvas folder {}.".format(
-                format_path(canvas_dir)
-            )
+            assert False, f"Could not create Canvas folder {format_path(canvas_dir)}."
 
         return folder
 
@@ -721,7 +715,7 @@ class GroupSet:
         )
 
     def str(self, id):
-        return "{} (id {})".format(self.details[id].name, id)
+        return f"{self.details[id].name} (id {id})"
 
     def members_str(self, id):
         return self.course.users_str(self.group_users[id])
@@ -920,14 +914,10 @@ class Assignment:
             # TODO: handle this somehow if it ever happens (assuming students can change groups).
             if len(user_groupings) > 1:
                 print_error(
-                    "Incongruous submissions for members of {}.".format(
-                        self.group_set.str(group)
-                    )
+                    f"Incongruous submissions for members of {self.group_set.str(group)}."
                 )
                 print_error(
-                    "The group consists of: {}.".format(
-                        self.group_set.members_str(group)
-                    )
+                    f"The group consists of: {self.group_set.members_str(group)}."
                 )
                 print_error(
                     "But only the following groups of users have submitted identically:"
@@ -942,9 +932,7 @@ class Assignment:
             if did_not_submit:
                 logger.log(
                     logging.INFO,
-                    "The following members have not submitted with {}:".format(
-                        self.group_set.str(group)
-                    ),
+                    f"The following members have not submitted with {self.group_set.str(group)}:",
                 )
                 for user_id in did_not_submit:
                     logger.log(
@@ -955,14 +943,10 @@ class Assignment:
             if not_part_of_group:
                 logger.log(
                     logging.INFO,
-                    "The following non-members have submitted with {}:".format(
-                        self.group_set.str(group)
-                    ),
+                    f"The following non-members have submitted with {self.group_set.str(group)}:",
                 )
                 for user_id in not_part_of_group:
-                    logger.log(
-                        logging.INFO, "- {}".format(self.course.user_str(user_id))
-                    )
+                    logger.log(logging.INFO, f"- {self.course.user_str(user_id)}")
 
             result[group] = lookup[tuple(user_grouping)]
         return result
@@ -1062,9 +1046,8 @@ class Assignment:
                     prev_attachment = submission_files.get(name)
                     if prev_attachment:
                         print_error(
-                            "Duplicate filename {} in submission {}: files ids {} and {}.".format(
-                                name, submission.id, prev_attachment.id, attachment.id
-                            )
+                            f"Duplicate filename {name} in submission {submission.id}:"
+                            f"files ids {prev_attachment.id} and {attachment.id}."
                         )
                         raise RuntimeError()
                     submission_files[name] = attachment
@@ -1157,9 +1140,7 @@ class Assignment:
                 try:
                     modify_no_modification_time(source, content_handler)
                 except HandlerException as e:
-                    print_error(
-                        "Content handler failed on {}".format(format_path(source))
-                    )
+                    print_error(f"Content handler failed on {format_path(source)}")
                     raise e
 
             target = dir / filename

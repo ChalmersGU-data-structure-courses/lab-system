@@ -283,7 +283,7 @@ def add_remote(
         push_refspecs = []
 
     with repo.config_writer() as c:
-        section = 'remote "{}"'.format(remote)
+        section = f'remote "{remote}"'
         if c.has_section(section):
             if overwrite:
                 c.remove_section(section)
