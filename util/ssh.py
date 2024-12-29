@@ -421,20 +421,14 @@ class ConnectionMaster:
         can be retrieved from the first entry of self.args.
         """
 
-        pass
-
     class StartupFailure(Failure):
         """Raised during initialization when SSH master connection cannot be established."""
-
-        pass
 
     class StartupNoSocketFailure(Failure):
         pass
 
     class LateFailure(Failure):
         """Raised during closing when SSH connection cannot be cleanly shut down."""
-
-        pass
 
     class MasterFailure(LateFailure):
         pass
@@ -575,8 +569,6 @@ class Multiplexer:
         It signals to the multiplexer that the multiplexed connection failed.
         The multiplexer may then attempt to reestablish the connection and retry the command.
         """
-
-        pass
 
     def __init__(self, netloc):
         self.netloc = util.print_parse.netloc_normalize(netloc)

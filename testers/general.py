@@ -280,7 +280,6 @@ class LabTester:
 
         For conventions for storing program results, see record.
         """
-        pass
 
     def run_tests(self, dir_out: Path, dir_src: Path, **kwargs) -> None:
         """
