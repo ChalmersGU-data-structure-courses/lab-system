@@ -220,7 +220,6 @@ class GradingViaMergeRequest:
                     )
                 except ValueError:
                     pass
-        pass
 
     @functools.cached_property
     def synced_submissions(self):

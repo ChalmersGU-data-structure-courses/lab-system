@@ -60,8 +60,6 @@ GradingSheetData.__doc__ = """
 class SheetParseException(Exception):
     """Exception base type used for grading sheet parsing exceptions."""
 
-    pass
-
 
 def query_column_group_headers(config, query):
     headers = config.grading_sheet.header
