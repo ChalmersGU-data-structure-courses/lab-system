@@ -217,6 +217,7 @@ class LabTester:
             if not timeout_real is None:
                 logger.debug(f"Timeout value is {timeout_real} seconds.")
 
+            # pylint: disable-next=R1732
             process = subprocess.Popen(
                 args=args,
                 text=True,

@@ -431,6 +431,8 @@ def Popen(cmd, **kwargs):
     fds = list(kwargs.get("pass_fds", []))
     for fd in fds:
         os.set_inheritable(fd, True)
+
+    # pylint: disable-next=R1732
     p = subprocess.Popen(cmd, **kwargs)
     for fd in fds:
         os.close(fd)
