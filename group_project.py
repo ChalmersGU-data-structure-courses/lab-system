@@ -1566,11 +1566,11 @@ class GroupProject:
 
         if delete_duplicates:
 
-            def delete_duplicates(item, key, value):
+            def delete_duplicates_fun(item, key, value):
                 item.delete()
 
         else:
-            delete_duplicates = None
+            delete_duplicates_fun = None
 
         util.item_parser.parse_all_items(
             util.item_parser.Config(
@@ -1579,7 +1579,7 @@ class GroupProject:
                 item_formatter=gitlab_.tools.format_issue_metadata,
                 logger=self.logger,
                 on_duplicate=on_duplicate,
-                delete_duplicates=delete_duplicates,
+                delete_duplicates=delete_duplicates_fun,
             ),
             parser_data(),
             self.official_issues(),
