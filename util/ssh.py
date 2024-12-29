@@ -309,6 +309,7 @@ def merge_command_lines(
     previous = iter(previous)
     current = iter(current)
 
+    # pylint: disable-next=R1708
     yield merge_executables(next(previous), next(current))
     yield from itertools.chain(
         *((current, previous) if prefix_options else (previous, current))

@@ -193,6 +193,7 @@ def escape(chars):
                 return
 
             if c == "\\":
+                # pylint: disable-next=R1708
                 yield next(it)
             else:
                 yield c
