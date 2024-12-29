@@ -54,6 +54,8 @@ class RequestMatcher:
 
 
 class RegexRequestMatcher(RequestMatcher):
+    # pylint: disable=abstract-method
+
     def __init__(self, name, protection_patterns, regex, regex_flags=0):
         """
         Build a request matcher from a specified regex.
@@ -268,6 +270,7 @@ class Tester(SubmissionHandler):
 
 
 class Robograder(SubmissionHandler):
+    # pylint: disable=abstract-method
     """
     Interface defining a robograder.
 
@@ -312,6 +315,7 @@ class Robograder(SubmissionHandler):
 
 
 class SubmissionGradingRobograder(Robograder):
+    # pylint: disable=abstract-method
     """
     Interface defining a submission-grading robograder.
 

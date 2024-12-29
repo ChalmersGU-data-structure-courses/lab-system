@@ -10,6 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 class SymlinkException(Exception, util.markdown.Markdown):
+    # pylint: disable=abstract-method
+
     def __init__(self, path):
         self.path = path
         self.path_formatted = util.path.format_path(path)

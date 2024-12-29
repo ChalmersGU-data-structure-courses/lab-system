@@ -84,6 +84,7 @@ tester_response_title = util.print_parse.regex_keyed(
 
 
 class SubmissionHandler(lab_interfaces.SubmissionHandler):
+    # pylint: disable=abstract-method
     """
     A base class for submission handlers.
 
@@ -189,6 +190,7 @@ class SubmissionHandlerWithCheckout(SubmissionHandler):
 
 
 class RobogradingHandler(lab_interfaces.RequestHandler):
+    # pylint: disable=abstract-method
     """
     A base class for robograding (or testing) handlers.
 
@@ -245,6 +247,8 @@ class RobogradingHandler(lab_interfaces.RequestHandler):
 
 
 class TestingHandler(RobogradingHandler):
+    # pylint: disable=abstract-method
+
     response_title = tester_response_title
 
 
