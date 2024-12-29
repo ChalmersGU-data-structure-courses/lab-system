@@ -412,7 +412,7 @@ def sheet_data(sheet):
         try:
             r = sheet["data"][0]["rowData"][row]["values"][column]
             # TODO: remove this hack.
-            if r == dict():
+            if r == {}:
                 r = cell_value_empty
             return r
         except (KeyError, IndexError):

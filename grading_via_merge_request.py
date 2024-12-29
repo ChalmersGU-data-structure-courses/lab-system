@@ -357,7 +357,7 @@ class GradingViaMergeRequest:
 
     @functools.cached_property
     def submission_outcomes(self):
-        outcome_status = dict()
+        outcome_status = {}
 
         def f():
             it = iter(self.label_events)

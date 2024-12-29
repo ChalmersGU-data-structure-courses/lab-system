@@ -405,7 +405,7 @@ def append_mentions(text, users):
     return append_paragraph(text, mentions(users))
 
 
-def project_url(project, path_segments=[], query_params=dict()):
+def project_url(project, path_segments=[], query_params={}):
     """
     Format a URL for a project request.
 

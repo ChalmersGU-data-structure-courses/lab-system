@@ -53,7 +53,7 @@ class RequestAndResponses:
         else:
             self.gitlab_tag = None
             (self.repo_remote_tag, self.repo_remote_commit) = tag_data
-        self.responses = dict()
+        self.responses = {}
 
     @property
     def course(self):
@@ -483,7 +483,7 @@ class RequestAndResponses:
             self._repo_tag_after_segments(prev_name, segments), commit, force=True
         )
 
-    def post_response_issue(self, response_key, title_data=dict(), description=str()):
+    def post_response_issue(self, response_key, title_data={}, description=str()):
         # Only allow posting if there is not already a response issue of the same type.
         if response_key in self.responses:
             ValueError(
@@ -518,7 +518,7 @@ class RequestAndResponses:
         self.responses[response_key] = issue_data
         self.handler_data.responses[response_key][self.request_name] = issue_data
 
-    def post_language_failure_issue(self, response_key, title_data=dict()):
+    def post_language_failure_issue(self, response_key, title_data={}):
         assert self.languages is not None
 
         # TODO: change get to lazy once web_url is confirmed to exist there.
@@ -725,7 +725,7 @@ class HandlerData:
                 return None
             return (tag_name, tag_data)
 
-        u = dict()
+        u = {}
         self.requests = u
         return (parser, self.handler_key, u)
 
@@ -747,7 +747,7 @@ class HandlerData:
                     return None
                 return (r["tag"], (issue, r))
 
-            u = dict()
+            u = {}
             self.responses[response_key] = u
             yield (parser, f"{self.handler_key} {response_key}", u)
 
@@ -760,7 +760,7 @@ class HandlerData:
         Before this cached property can be constructed,
         calls parse_request_tags and parse_response_issues need to complete.
         """
-        result = dict()
+        result = {}
         for request_name, tag_data in self.requests.items():
             result[request_name] = RequestAndResponses(
                 self.lab,

@@ -923,7 +923,7 @@ class Lab:
 
         def f():
             for group in self.groups_known():
-                value = remote_tags.get(group.remote, dict())
+                value = remote_tags.get(group.remote, {})
                 yield (group.id, util.git.flatten_references_hierarchy(value))
 
         return dict(f())
@@ -1291,7 +1291,7 @@ class Lab:
 
     def parse_grading_issues(self):
         for group in self.groups_known():
-            group.grading_issues = dict()
+            group.grading_issues = {}
 
         r = self.course.parse_response_issues(self.collection_project)
         for (request, response_type), value in r.items():

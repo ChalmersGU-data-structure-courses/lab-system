@@ -582,7 +582,7 @@ class SubmissionDiffSolutionColumn(SubmissionDiffColumn):
         return (name, submission_solution.repo_tag(), None)
 
 
-def with_standard_columns(columns=dict(), with_solution=True, choose_solution=None):
+def with_standard_columns(columns={}, with_solution=True, choose_solution=None):
     def f():
         yield ("date", DateColumn)
         yield ("query-number", QueryNumberColumn)

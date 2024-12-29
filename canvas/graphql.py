@@ -396,11 +396,11 @@ class CourseUsers:
         self.sections_by_name = util.general.sdict(map(util.general.swap, sections))
         self.section_users = {id: [] for (id, name) in sections}
 
-        self.users = dict()
-        self.users_by_name = dict()
-        self.users_by_sortable_name = dict()
-        self.users_by_integration_id = dict()
-        self.users_by_sis_id = dict()
+        self.users = {}
+        self.users_by_name = {}
+        self.users_by_sortable_name = {}
+        self.users_by_integration_id = {}
+        self.users_by_sis_id = {}
 
         for user in users:
             self.users[user["id"]] = user
@@ -454,7 +454,7 @@ class GroupSet:
                 for (group_name, members) in groups.values()
             }
 
-        self.group_by_user = dict()
+        self.group_by_user = {}
         for group, members in self.groups.items():
             for user_id in members:
                 self.group_by_user[user_id] = group

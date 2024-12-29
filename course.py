@@ -110,7 +110,7 @@ class Course:
         self.ssh_multiplexer = None
 
         # Map from group set names on Canvas to instances of group_set.GroupSet.
-        self.group_sets = dict()
+        self.group_sets = {}
 
         import lab
 
@@ -543,7 +543,7 @@ class Course:
                 f"Invitation history file {shlex.quote(str(path))} not found;"
                 " a new one will be created."
             )
-            history = dict()
+            history = {}
         try:
             yield history
         finally:
