@@ -258,24 +258,6 @@ class CachedProject:
         with contextlib.suppress(AttributeError):
             del self.get
 
-        """
-        Note: Due to a GitLab bug, the hook is not called when an issue is deleted.
-              Thus, before deleting a response issue, you should first rename it
-              (triggering the hook) so that it is no longer recognized as a response issue.
-        """
-
-    @contextlib.contextmanager
-    def hook_manager(self, netloc, events):
-        """
-        A context manager for a webhook.
-        Encapsulates hook_create and hool_delete.
-        """
-        hook = self.hook_create(netloc=netloc)
-        try:
-            yield hook
-        finally:
-            self.hook_delete(hook)
-
 
 def users_dict(manager):
     return dict((user.username, user) for user in list_all(manager))
