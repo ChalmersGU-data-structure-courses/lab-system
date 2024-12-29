@@ -162,7 +162,7 @@ def tag_exist(ref):
     Return a boolean. indicating whether
     """
     try:
-        ref.commit
+        ref.commit  # pylint: disable=pointless-statement
         return True
     except ValueError as e:
         if str(e).endswith(" does not exist"):
