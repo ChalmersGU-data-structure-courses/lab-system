@@ -42,6 +42,7 @@ def write_group_membership_report(course):
                 continue
 
             def f(lab):
+                # pylint: disable=cell-var-from-loop
                 g = lab.group_by_gitlab_username.get(gitlab_username)
                 if g:
                     return g.id

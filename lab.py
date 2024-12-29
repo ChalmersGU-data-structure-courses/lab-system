@@ -1769,6 +1769,7 @@ class Lab:
             }
 
             def invitations():
+                # pylint: disable=cell-var-from-loop
                 for email in gitlab_.tools.invitation_dict(self.gl, entity):
                     if restrict_to_known and not known_gitlab_username_from_email(
                         email
@@ -1961,6 +1962,7 @@ class Lab:
             remote = dir_remote.name
 
             def refspecs():
+                # pylint: disable=cell-var-from-loop
                 for dir_branch in dir_remote.iterdir():
                     branch = dir_branch.name
                     if branch.startswith("submission-"):
@@ -1971,8 +1973,8 @@ class Lab:
                     refspec = "+" + util.git.refspec(source, target)
                     yield refspec
 
-                specs = list(refspecs())
-                self.repo.remote(remote).push(refspec=refspec, force=True)
+            specs = list(refspecs())
+            self.repo.remote(remote).push(refspec=specs, force=True)
 
     def recover_tags(self):
         """
@@ -1987,6 +1989,7 @@ class Lab:
             remote = dir_remote.name
 
             def refspecs():
+                # pylint: disable=cell-var-from-loop
                 for dir_tag in dir_remote.iterdir():
                     tag = dir_tag.name
                     source = str(dir_tag.relative_to(self.repo.git_dir))

@@ -359,6 +359,7 @@ class GradingViaMergeRequest:
         outcome_status = {}
 
         def f():
+            # pylint: disable=cell-var-from-loop
             it = iter(self.label_events)
             for request_name, request_name_next in more_itertools.stagger(
                 self.synced_submissions.keys(),
@@ -487,6 +488,7 @@ class GradingViaMergeRequest:
             )
 
         def rows():
+            # pylint: disable=cell-var-from-loop
             for request_name, (date, note) in self.synced_submissions.items():
                 has_outcome = self.outcome_with_link_and_grader(request_name)
                 if has_outcome:
@@ -620,6 +622,7 @@ class GradingViaMergeRequest:
             time.sleep(0.1)
 
             def body():
+                # pylint: disable=cell-var-from-loop
                 link = gitlab_.tools.url_tree(
                     self.group.project.get,
                     submission.request_name,
