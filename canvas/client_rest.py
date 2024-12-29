@@ -60,7 +60,7 @@ class Canvas:
     ):
         if isinstance(auth_token, PurePosixPath):
             try:
-                self.auth_token = Path(auth_token).read_text().strip()
+                self.auth_token = Path(auth_token).read_text(encoding="ascii").strip()
             except FileNotFoundError:
                 print_error("No Canvas authorization token found.")
                 print_error(
@@ -195,7 +195,7 @@ class Canvas:
                 self.get_url(endpoint), params=params, timeout=self.timeout
             )
             r.raise_for_status()
-            with open(file_path, "wb") as file:
+            with Path(file_path).open("wb") as file:
                 file.write(r.content)
 
         return self.cache.with_cache_file(
