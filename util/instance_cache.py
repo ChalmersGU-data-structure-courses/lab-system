@@ -17,7 +17,7 @@ class instance_memoizer:
 
         self._signature = inspect.signature(self._function)
         self._self_name = next(iter(self._signature.parameters))
-        self.cache = dict()
+        self.cache = {}
 
     def key(self, *args, **kwargs):
         """

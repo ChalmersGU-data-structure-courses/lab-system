@@ -128,7 +128,7 @@ def prepare_requested_entries(
                 )
                 continue
 
-            value = by_gitlab_username.pop(gitlab_username, (dict(), None))
+            value = by_gitlab_username.pop(gitlab_username, ({}, None))
             name = entry.get(header_name)
             if name is None:
                 name = canvas_user.sortable_name

@@ -58,7 +58,7 @@ class NameCoding:
             with self.path.open() as file:
                 self.encode = json.load(file)
         except FileNotFoundError:
-            self.encode = dict()
+            self.encode = {}
 
         self.decode = {code: id for (id, code) in self.encode.items()}
 

@@ -215,7 +215,7 @@ def sandboxed_python_args(
         Must include host_dir_main and env.
 
     Example use case:
-    > env = dict()
+    > env = {}
     > cmd = sandboxed_python_args(
     >     guest_script = <some script relative to host main dir>,
     >     guest_args = <arguments>,

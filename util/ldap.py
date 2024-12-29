@@ -160,9 +160,9 @@ def print_record(record):
 # CID to email addresses
 # Names to CID
 
-# ldap_details = dict()
+# ldap_details = {}
 
-# ldap_details_by_email_localpart = dict()
+# ldap_details_by_email_localpart = {}
 
 # not_found = set()
 # for user in c._gitlab_users.values():
