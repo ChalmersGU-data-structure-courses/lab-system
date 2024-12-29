@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class RobograderException(lab_interfaces.HandlingException):
+    # pylint: disable=abstract-method
     """Raised for robograding errors caused by a problem with a submission."""
 
 

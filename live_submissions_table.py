@@ -170,14 +170,17 @@ class Column:
 
 
 class CallbackColumnValue(ColumnValue):
+    # pylint: disable=abstract-method
     """
     A column value implementation using a callback function for format_cell.
     Values for sort_key and has_content are given at construction.
     """
 
+    def sort_key(self):
+        return self._sort_key
+
     def __init__(self, sort_key=None, has_content=True, callback=None):
-        if sort_key is not None:
-            self.sort_key = lambda: sort_key
+        self._sort_key = sort_key
         self.has_content = lambda: has_content
         self.format_cell = callback if callback is not None else lambda cell: None
 
@@ -273,6 +276,8 @@ class MembersColumn(Column):
             dominate.util.text("Members on record")
 
     class Value(ColumnValue):
+        # pylint: disable=abstract-method
+
         def __init__(self, members, logger):
             """
             Members is a list of pairs (gitlab_username, canvas_user) where:
@@ -395,6 +400,8 @@ class SubmissionFilesColumn(Column):
         float_left_and_right(cell, "Submission", " vs:")
 
     class Value(ColumnValue):
+        # pylint: disable=abstract-method
+
         def __init__(self, linked_name, linked_grading_response):
             self.linked_name = linked_name
             self.linked_grading_response = linked_grading_response
@@ -450,6 +457,8 @@ class SubmissionFilesColumn(Column):
 
 
 class SubmissionDiffColumnValue(ColumnValue):
+    # pylint: disable=abstract-method
+
     def __init__(self, linked_name, linked_grader=None, is_same=False):
         self.linked_name = linked_name
         self.linked_grader = linked_grader
@@ -481,7 +490,7 @@ class SubmissionDiffColumn(Column):
         self.title = title
 
     @abc.abstractmethod
-    def base_ref_and_grader(self, group):
+    def base_ref(self, group):
         """
         Returns a tuple of:
         * request name

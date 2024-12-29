@@ -116,6 +116,7 @@ class RequestHandler:
 
 
 class SubmissionHandler(RequestHandler):
+    # pylint: disable=abstract-method
     """
     This interface specifies a request handler for handling submissions.
 
@@ -166,6 +167,7 @@ class SubmissionHandler(RequestHandler):
 
 
 class HandlingException(Exception, util.markdown.Markdown):
+    # pylint: disable=abstract-method
     """
     Raised for errors caused by a problems with a submission.
     Should be reportable in issues in student repositories.
