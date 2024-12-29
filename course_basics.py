@@ -138,6 +138,7 @@ compilation_requirement_require = CompilationRequirement(
 class Compiler:
     """
     Interface defining a submission compiler.
+    Currently unused.
 
     Required attributes:
     * requirement: value of type CompilationRequirement.
@@ -157,7 +158,7 @@ class Compiler:
         """
 
     @abc.abstractmethod
-    def compile(src, bin):
+    def compile(self, src, bin):
         """
         Compile a submission (problem, solution, or student submission).
 
