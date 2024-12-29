@@ -1178,8 +1178,8 @@ class Lab:
     def heads_problem(self):
         if self.config.multi_language is None:
             return [self.config.branch_problem]
-        else:
-            return self.config.branch_problem.values()
+
+        return self.config.branch_problem.values()
 
     @functools.cached_property
     def compiler(self):
