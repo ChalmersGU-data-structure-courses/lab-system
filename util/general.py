@@ -342,8 +342,10 @@ class JSONObject(SimpleNamespace):
 
 class JSONEncoderForJSONObject(json.JSONEncoder):
     def default(self, o):
-        if isinstance(o, JSONObject):
-            return o._dict
+        if not isinstance(o, JSONObject):
+            return None
+
+        return o._dict
 
 
 def print_json(x):

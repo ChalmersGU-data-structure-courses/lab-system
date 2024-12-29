@@ -248,6 +248,8 @@ class GradingViaMergeRequest:
             if end is None:
                 return (reviewer, start)
 
+        return None
+
     def label_events_generator(self):
         for label_event in gitlab_.tools.list_all(
             self.merge_request.resourcelabelevents
@@ -353,6 +355,7 @@ class GradingViaMergeRequest:
                         f"{msg} for submission {request_name}, defaulting to {n}:"
                     )
                 )
+        return None
 
     @functools.cached_property
     def submission_outcomes(self):
@@ -373,7 +376,9 @@ class GradingViaMergeRequest:
                 )
                 self.play_submission_label_events(outcome_status, jt)
                 consolidated_outcome = self.consolidate_outcome(
-                    outcome_status, request_name, not request_name_next
+                    outcome_status,
+                    request_name,
+                    not request_name_next,
                 )
                 if consolidated_outcome:
                     yield (request_name, consolidated_outcome)
@@ -424,7 +429,7 @@ class GradingViaMergeRequest:
         If within the context of notes_cache_clearing_suppressor, the clear_cache flag is ignored.
         """
         if self.merge_request is None:
-            return
+            return None
 
         try:
             x = self.outcome_last_checked
@@ -513,17 +518,22 @@ class GradingViaMergeRequest:
                     )
 
                 def col_outcome():
-                    if has_outcome:
-                        return util.markdown.link(
-                            self.course.config.outcome.name.print(outcome), link
-                        )
+                    if not has_outcome:
+                        return None
+
+                    return util.markdown.link(
+                        self.course.config.outcome.name.print(outcome),
+                        link,
+                    )
 
                 def col_grader():
-                    if has_outcome:
-                        return util.markdown.link(
-                            grader,
-                            gitlab_.tools.url_username(self.gl, grader),
-                        )
+                    if not has_outcome:
+                        return None
+
+                    return util.markdown.link(
+                        grader,
+                        gitlab_.tools.url_username(self.gl, grader),
+                    )
 
                 yield (col_request_name(), col_sync(), col_outcome(), col_grader())
 

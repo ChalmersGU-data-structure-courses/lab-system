@@ -532,13 +532,15 @@ class SubmissionDiffPreviousColumn(SubmissionDiffColumn):
         submissions_with_outcome = list(
             group.submissions_with_outcome(deadline=self.config.deadline)
         )
-        if submissions_with_outcome:
-            submission_previous = submissions_with_outcome[-1]
-            return (
-                submission_previous.request_name,
-                submission_previous.repo_tag(),
-                (submission_previous.grader_informal_name, submission_previous.link),
-            )
+        if not submissions_with_outcome:
+            return None
+
+        submission_previous = submissions_with_outcome[-1]
+        return (
+            submission_previous.request_name,
+            submission_previous.repo_tag(),
+            (submission_previous.grader_informal_name, submission_previous.link),
+        )
 
 
 class SubmissionDiffProblemColumn(SubmissionDiffColumn):

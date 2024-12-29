@@ -335,11 +335,13 @@ class SubmissionTesting:
 
                 # Skip test column if no test was produced.
                 def check():
-                    if submission_current.repo_tag_exist(self_outer.segments_test):
-                        with submission_current.checkout_manager(
-                            self_outer.segments_test
-                        ) as dir:
-                            return list(dir.iterdir())
+                    if not submission_current.repo_tag_exist(self_outer.segments_test):
+                        return None
+
+                    with submission_current.checkout_manager(
+                        self_outer.segments_test
+                    ) as dir:
+                        return list(dir.iterdir())
 
                 if not check():
                     return live_submissions_table.CallbackColumnValue(has_content=False)

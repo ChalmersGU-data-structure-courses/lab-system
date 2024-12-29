@@ -353,6 +353,8 @@ class RequestAndResponses:
             (outcome, _, _) = x
             return outcome
 
+        return None
+
     @functools.cached_property
     def outcome(self):
         return self.outcome_acc()
@@ -362,6 +364,7 @@ class RequestAndResponses:
         """
         Link to the outcome evidence.
         Should be viewable by students and graders.
+        Only valid for submission requests with an outcome.
         """
         if self.outcome_with_issue:
             (_, issue) = self.outcome_with_issue
@@ -371,9 +374,14 @@ class RequestAndResponses:
             (_, link, _) = self.outcome_link_grader_from_grading_merge_request
             return link
 
+        raise ValueError("no outcome")
+
     @functools.cached_property
     def grader_username(self):
-        """Usename of grader on Chalmers GitLab."""
+        """
+        Usename of grader on Chalmers GitLab.
+        Only valid for submission requests with an outcome.
+        """
         if self.outcome_with_issue:
             (_, issue) = self.outcome_with_issue
             return issue.author["username"]
@@ -381,6 +389,8 @@ class RequestAndResponses:
         if self.outcome_link_grader_from_grading_merge_request:
             (_, _, grader) = self.outcome_link_grader_from_grading_merge_request
             return grader
+
+        raise ValueError("no outcome")
 
     @functools.cached_property
     def grader_informal_name(self):
@@ -405,6 +415,8 @@ class RequestAndResponses:
                     " in _cid_to_gitlab_username in course configuration file."
                 ) from e
             return self.course.canvas_user_informal_name(canvas_user)
+
+        raise ValueError("no outcome")
 
     # TODO:
     # Shelved for now.
@@ -1674,6 +1686,8 @@ class GroupProject:
             submission_last = submissions[-1]
             if submission_last.outcome_acc(accumulative=True) is None:
                 return submission_last
+
+        return None
 
     def parse_hook_event_tag(self, hook_event, strict):
         """

@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 import course
 import gitlab_.tools  # noqa: E402
-import lp3.config as config
+import lp3.config as config  # pylint: disable=consider-using-from-import
 from util.this_dir import this_dir
 
 c = course.Course(config, this_dir / "lp3")

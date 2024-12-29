@@ -44,8 +44,10 @@ def write_group_membership_report(course):
             def f(lab):
                 # pylint: disable=cell-var-from-loop
                 g = lab.group_by_gitlab_username.get(gitlab_username)
-                if g:
-                    return g.id
+                if g is None:
+                    return None
+
+                return g.id
 
             entry = {
                 header_personnummer: canvas_user.sis_user_id,
