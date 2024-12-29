@@ -59,8 +59,8 @@ def run(
     submission_bin,
     classpath,
     entrypoint,
-    arguments=[],
-    permissions=[],
+    arguments=None,
+    permissions=None,
 ):
     """
     Run a robograder on a submission.
@@ -83,6 +83,7 @@ def run(
     * arguments:
         List of string arguments to pass to the robograder.
         A list of strings.
+        Defaults to the empty list.
     * permissions:
         Specifies additional permission statements to apply in the security policy to the submission code.
         See util.java.permission_file for an example such permission statement.

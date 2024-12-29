@@ -121,7 +121,7 @@ class Canvas:
         return response.json()
 
     # internal
-    def get_json(self, endpoint, params={}):
+    def get_json(self, endpoint, params=None):
         r = self.session.get(
             self.get_url(Canvas.with_api(endpoint)), params=params, timeout=self.timeout
         )
@@ -130,11 +130,14 @@ class Canvas:
         return result
 
     # internal
-    def get_list_json(self, endpoint, params={}):
-        p = params.copy()
-        p["per_page"] = "100"
+    def get_list_json(self, endpoint, params=None):
+        if params is None:
+            params = {}
+        params = params | {"per_page": "100"}
         r = self.session.get(
-            self.get_url(Canvas.with_api(endpoint)), params=p, timeout=self.timeout
+            self.get_url(Canvas.with_api(endpoint)),
+            params=params,
+            timeout=self.timeout,
         )
         x = Canvas.get_response_json(r)
         assert isinstance(x, list)
@@ -149,7 +152,7 @@ class Canvas:
 
     # internal
     def json_cacher(self, method):
-        def f(endpoint, params={}, use_cache=True):
+        def f(endpoint, params=None, use_cache=True):
             logger.log(
                 logging.INFO,
                 "accessing endpoint " + self.get_url(Canvas.with_api(endpoint)),
@@ -172,13 +175,13 @@ class Canvas:
     # Using GET to retrieve a JSON object.
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
     # The starting elements 'api' and 'v1' are omitted.
-    def get(self, endpoint, params={}, use_cache=True):
+    def get(self, endpoint, params=None, use_cache=True):
         return self.json_cacher(self.get_json)(endpoint, params, use_cache)
 
     # Using GET to retrieve a JSON list.
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
     # The starting elements 'api' and 'v1' are omitted.
-    def get_list(self, endpoint, params={}, use_cache=True):
+    def get_list(self, endpoint, params=None, use_cache=True):
         return self.json_cacher(self.get_list_json)(endpoint, params, use_cache)
 
     # internal
@@ -234,7 +237,7 @@ class Canvas:
     # Perform a PUT request to the designated endpoint.
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
     # The starting elements 'api' and 'v1' are omitted.
-    def put(self, endpoint, params={}, data=None, json=None):
+    def put(self, endpoint, params=None, data=None, json=None):
         logger.log(
             logging.INFO, "PUT with endpoint " + self.get_url(Canvas.with_api(endpoint))
         )
@@ -252,7 +255,7 @@ class Canvas:
     # Perform a POST request to the designated endpoint.
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
     # The starting elements 'api' and 'v1' are omitted.
-    def post(self, endpoint, data=None, json=None, params={}):
+    def post(self, endpoint, data=None, json=None, params=None):
         logger.log(
             logging.INFO,
             "POST with endpoint " + self.get_url(Canvas.with_api(endpoint)),
@@ -272,7 +275,7 @@ class Canvas:
     # Perform a DELETE request to the designated endpoint.
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
     # The starting elements 'api' and 'v1' are omitted.
-    def delete(self, endpoint, params={}):
+    def delete(self, endpoint, params=None):
         logger.log(
             logging.INFO,
             "DELETE with endpoint " + self.get_url(Canvas.with_api(endpoint)),

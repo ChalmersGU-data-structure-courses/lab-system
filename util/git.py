@@ -266,8 +266,8 @@ def add_remote(
     repo,
     remote,
     url,
-    fetch_refspecs=[],
-    push_refspecs=[],
+    fetch_refspecs: list[str] | None = None,
+    push_refspecs: list[str] | None = None,
     prune=None,
     no_tags=False,
     exist_ok=False,
@@ -277,6 +277,10 @@ def add_remote(
     Add a remote to a git repository.
     Bug: does not escape characters in 'remote' argument.
     """
+    if fetch_refspecs is None:
+        fetch_refspecs = []
+    if push_refspecs is None:
+        push_refspecs = []
 
     with repo.config_writer() as c:
         section = 'remote "{}"'.format(remote)
@@ -302,10 +306,10 @@ def add_tracking_remote(
     repo,
     remote,
     url,
-    fetch_branches=[],
-    fetch_tags=[],
-    push_branches=[],
-    push_tags=[],
+    fetch_branches: list[str] | None = None,
+    fetch_tags: list[str] | None = None,
+    push_branches: list[str] | None = None,
+    push_tags: list[str] | None = None,
     force=True,
     **kwargs,
 ):
@@ -322,6 +326,15 @@ def add_tracking_remote(
     * the second component gives the reference.
     For example, to fetch or pull all branches, use wildcard as reference.
     """
+    if fetch_branches is None:
+        fetch_branches = []
+    if fetch_tags is None:
+        fetch_tags = []
+    if push_branches is None:
+        push_branches = []
+    if push_tags is None:
+        push_tags = []
+
     fetch_refspecs = [
         refspec(
             namespaced(Namespacing.local, remote, ref),

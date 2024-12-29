@@ -378,7 +378,7 @@ class FilePermission(enum.Enum):
     readlink = "readlink"
 
 
-def permission_file(path, is_dir=False, file_permissions=[FilePermission.read]):
+def permission_file(path, is_dir=False, file_permissions=None):
     """
     Permission for accessing files or directory descendants.
     At runtime, these are checked before symlink resolution.
@@ -395,7 +395,11 @@ def permission_file(path, is_dir=False, file_permissions=[FilePermission.read]):
         applying to all descendants) or a single file.
     * file_permissions:
         An iterable of instances of FilePermission.
+        Defaults to [FilePermission.read].
     """
+    if file_permissions is None:
+        file_permissions = [FilePermission.read]
+
     formatted_permissions = ",".join(
         permission.value for permission in file_permissions
     )
@@ -405,16 +409,21 @@ def permission_file(path, is_dir=False, file_permissions=[FilePermission.read]):
     )
 
 
-def policy_permission(type, args=[]):
+def policy_permission(type, args=None):
     """
     Format a permission entry in a Java policy file.
 
     Arguments:
     * type: permission type (string), e.g. 'java.security.AllPermission'.
-    * args: iterable of string arguments.
+    * args:
+        Iterable of string arguments.
+        Defaults to the empty list.
 
     Returns a single-line string not terminated by a linefeed.
     """
+    if args is None:
+        args = []
+
     formatted_args = (
         " " + ", ".join(string_encode(str(arg)) for arg in args) if args else ""
     )
@@ -483,7 +492,7 @@ def policy_manager(entries):
 
 def cmd_java(
     main,
-    args=[],
+    args=None,
     classpath=None,
     security_policy=None,
     enable_assertions=False,
@@ -495,7 +504,9 @@ def cmd_java(
 
     Arguments:
     * main: Main class to execute.
-    * args: Iterable of program arguments (strings).
+    * args:
+        Iterable of program arguments (strings).
+        Defaults to the empty list.
     * classpath:
         Iterable of paths to use as classpath.
         An empty iterable defaults at runtime to the current directory.
@@ -508,6 +519,9 @@ def cmd_java(
 
     Returns an iterable of strings.
     """
+    if args is None:
+        args = []
+
     yield "java"
     if security_policy:
         yield str().join(["-D", "java.security.manager"])

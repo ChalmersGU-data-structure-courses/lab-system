@@ -582,7 +582,10 @@ class SubmissionDiffSolutionColumn(SubmissionDiffColumn):
         return (name, submission_solution.repo_tag(), None)
 
 
-def with_standard_columns(columns={}, with_solution=True, choose_solution=None):
+def with_standard_columns(columns=None, with_solution=True, choose_solution=None):
+    if columns is None:
+        columns = {}
+
     def f():
         yield ("date", DateColumn)
         yield ("query-number", QueryNumberColumn)
@@ -656,9 +659,12 @@ class LiveSubmissionsTable:
         self,
         lab,
         config,
-        column_types=with_standard_columns(),
+        column_types=None,
         logger=logging.getLogger(__name__),
     ):
+        if column_types is None:
+            column_types = with_standard_columns()
+
         self.lab = lab
         self.course = lab.course
         self.config = config
