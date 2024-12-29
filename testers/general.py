@@ -372,8 +372,9 @@ class LabTester:
                 exit_code = int(result)
             except ValueError:
                 return result
-            if exit_code != 0:
-                return f"exited with an error (exit code {exit_code})"
+            if exit_code is 0:
+                return None
+            return f"exited with an error (exit code {exit_code})"
 
         msg = result_msg()
         if msg is not None:

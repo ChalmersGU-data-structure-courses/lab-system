@@ -1289,6 +1289,8 @@ class Lab:
                 except Exception:
                     continue
 
+        return None
+
     def parse_grading_issues(self):
         for group in self.groups_known():
             group.grading_issues = {}
@@ -1329,8 +1331,10 @@ class Lab:
 
     @functools.cached_property
     def grading_sheet_group_link(self):
-        if not self.student_connector.gdpr_link_problematic:
-            return lambda group_id: self.groups[group_id].project.get.web_url
+        if self.student_connector.gdpr_link_problematic:
+            return None
+
+        return lambda group_id: self.groups[group_id].project.get.web_url
 
     def update_grading_sheet(self, group_ids=None, deadline=None):
         """

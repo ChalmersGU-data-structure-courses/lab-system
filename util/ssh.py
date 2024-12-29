@@ -625,7 +625,7 @@ class Multiplexer:
             is be reestablished and the function is called once more.
             This happens a maximum of self.max_callback_attempts many times.
 
-        Returns the result of the callback function.
+        Returns the result of the callback function, or None otherwise.
         """
         for k in range(self.max_callback_attempts):
             if self.connection_master is None:
@@ -645,6 +645,8 @@ class Multiplexer:
                         f"SSH connection to {util.print_parse.netloc.print(self.netloc)} "
                         f"failed {self.max_callback_attempts} times in a row "
                     ) from e
+
+        return None
 
     def git_env(self, env=None):
         """

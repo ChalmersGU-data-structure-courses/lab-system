@@ -578,6 +578,8 @@ class _T:
             with contextlib.suppress(ValueError):
                 return self.pp_change.parse(body)
 
+        return None
+
 
 parse_reviewer_change = _T()
 

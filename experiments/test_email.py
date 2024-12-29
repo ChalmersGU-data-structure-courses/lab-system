@@ -46,6 +46,7 @@ def send_message(service, user_id, message):
         return message
     except errors.HttpError as error:
         print("An error occurred: " + error)
+        return None
 
 
 # Email variables. Modify this!
