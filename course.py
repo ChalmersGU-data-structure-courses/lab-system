@@ -1147,6 +1147,7 @@ class Course:
                 continue
 
             def f(lab):
+                # pylint: disable=cell-var-from-loop
                 try:
                     grade = grades[lab.id].pop(gitlab_username)
                 except KeyError:

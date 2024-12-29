@@ -752,6 +752,7 @@ class LiveSubmissionsTable:
         # Compute the columns (with column values) for these submissions.
         # We omit empty columns.
         def f():
+            # pylint: disable=cell-var-from-loop
             for name, column in self.columns.items():
                 r = types.SimpleNamespace()
                 r.values = dict(

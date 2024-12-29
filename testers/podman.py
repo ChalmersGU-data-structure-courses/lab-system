@@ -79,6 +79,7 @@ class LabTester(testers.general.LabTester):
         for test in self.tests.values():
 
             def cmd_create():
+                # pylint: disable=cell-var-from-loop
                 yield from ["podman", "create"]
                 yield test.image
 
@@ -92,6 +93,7 @@ class LabTester(testers.general.LabTester):
             ).stdout.strip()
 
             def cmd_remove():
+                # pylint: disable=cell-var-from-loop
                 yield from ["podman", "rm"]
                 yield "--force"
                 yield container_id
