@@ -504,7 +504,7 @@ def component(key):
 
     return Lens(
         get=lambda u: u[key],
-        set=lambda u, value: set(u, value),
+        set=set,
     )
 
 

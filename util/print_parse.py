@@ -218,7 +218,7 @@ string_letters = PrintParse(
 def int_str(format=""):
     format_str = f"{{:{format}d}}"
     return PrintParse(
-        print=lambda n: format_str.format(n),
+        print=format_str.format,
         parse=int,
     )
 
@@ -317,7 +317,7 @@ braces_bytes = regex_non_canonical(b"{{{}}}", rb"\{(.*)\}")
 def join(sep=None, maxsplit=-1):
     _sep = " " if sep is None else sep
     return PrintParse(
-        print=lambda x: _sep.join(x),
+        print=_sep.join,
         parse=lambda s: s.split(sep, maxsplit),
     )
 
@@ -325,7 +325,7 @@ def join(sep=None, maxsplit=-1):
 def join_bytes(sep=None, maxsplit=-1):
     _sep = b" " if sep is None else sep
     return PrintParse(
-        print=lambda x: _sep.join(x),
+        print=_sep,
         parse=lambda s: s.split(sep, maxsplit),
     )
 
