@@ -163,7 +163,7 @@ class Course:
 
     @functools.cached_property
     def student_name_coding(self):
-        self.logger.debug(f"Creating student name codings")
+        self.logger.debug("Creating student name codings")
 
         def first_and_last_name(cid):
             gitlab_username = self.rectify_cid_to_gitlab_username(cid)
