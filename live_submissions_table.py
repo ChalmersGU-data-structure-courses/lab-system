@@ -579,8 +579,8 @@ class SubmissionDiffSolutionColumn(SubmissionDiffColumn):
                     f"submission-solution-{submission_current.language}"
                 ]
                 return ("solution", submission_solution.repo_tag(), None)
-            except (KeyError, AttributeError):
-                raise ValueError("Diff with solution: no solution available")
+            except (KeyError, AttributeError) as e:
+                raise ValueError("Diff with solution: no solution available") from e
 
         submission_current = group.submission_current(deadline=self.config.deadline)
         x = self.choose_solution(submission_current)

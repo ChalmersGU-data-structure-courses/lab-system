@@ -155,7 +155,7 @@ class GradingViaMergeRequest:
             raise ValueError(
                 "More than one lab system merge request"
                 f" detected in {self.group.path_name}"
-            )
+            ) from None
 
         return merge_request_maybe
 

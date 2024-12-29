@@ -396,14 +396,14 @@ class RequestAndResponses:
                 canvas_user = self.course.canvas_user_by_gitlab_username[
                     self.grader_username
                 ]
-            except KeyError:
+            except KeyError as e:
                 if self.grader_username in self.course.config.gitlab_lab_system_users:
                     return "Lab system"
                 raise ValueError(
                     f"Unknown GitLab grader username {self.grader_username}. "
                     "If different from CID, consider adding as override"
                     " in _cid_to_gitlab_username in course configuration file."
-                )
+                ) from e
             return self.course.canvas_user_informal_name(canvas_user)
 
     # TODO:
@@ -601,7 +601,9 @@ class RequestAndResponses:
 
             # Language detection failure for official solution is not allowed.
             if self.group.is_solution:
-                raise ValueError("Language detection failure in official solution.")
+                raise ValueError(
+                    "Language detection failure in official solution."
+                ) from e
 
             if (
                 language_failure_key is not None
@@ -1349,7 +1351,7 @@ class GroupProject:
                         )
                         if not fail_on_problem:
                             return
-                        raise RuntimeError("could not perform merge")
+                        raise RuntimeError("could not perform merge") from e
 
             merge = index.write_tree()
             diff = merge.diff(target_ref)
