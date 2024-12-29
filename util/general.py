@@ -329,11 +329,11 @@ class JSONObject(SimpleNamespace):
         super().__init__(**kwargs)
         self._dict = kwargs
 
-        for key in kwargs:
-            value = str(kwargs[key])
+        for (key, value) in kwargs.items():
+            value_str = str(value)
             # idea from canvasapi/canvas_object.py
-            if JSONObject.DATE_PATTERN.match(value):
-                t = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(
+            if JSONObject.DATE_PATTERN.match(value_str):
+                t = datetime.strptime(value_str, "%Y-%m-%dT%H:%M:%SZ").replace(
                     tzinfo=timezone.utc
                 )
                 new_key = key + "_date"
