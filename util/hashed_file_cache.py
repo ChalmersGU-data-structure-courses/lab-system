@@ -274,12 +274,10 @@ class HashedFileCacheBase(abc.ABC):
     @abc.abstractmethod
     def serialize(self) -> bytes:
         """Source of data to write into the cache."""
-        ...
 
     @abc.abstractmethod
     def deserialize(self, bytes):
         """Sink for data read from the cache."""
-        ...
 
     def read(self):
         """Returns a boolean indicating if new data was read from the cache."""
