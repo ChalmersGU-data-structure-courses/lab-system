@@ -118,7 +118,7 @@ class OverlayTypeFuseFS(OverlayType):
                 run_and_log(cmd())
                 yield target
             finally:
-
+                # pylint: disable-next=function-redefined
                 def cmd():
                     yield "fusermount"
                     yield from ["-u", str(target)]
