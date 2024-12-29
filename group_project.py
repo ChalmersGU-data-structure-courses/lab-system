@@ -495,7 +495,7 @@ class RequestAndResponses:
 
         # Only allow posting if there is not already a response issue of the same type.
         if response_key in self.responses:
-            ValueError(
+            raise ValueError(
                 f"Response issue for {response_key} already exists "
                 "for request {self.request_name} in {self.name} in {self.lab.name}"
             )
