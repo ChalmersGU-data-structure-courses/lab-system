@@ -6,24 +6,13 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Emacs
-*~
-\#*
-.#*
-
-# Mac files
-.DS_Store
-
 # Node.js
-node_modules/
-package.json
-package-lock.json
+#node_modules/
+#package.json
+#package-lock.json
 
 # Canvas cache
 cache
-
-# Invitations cache
-invitations_sent
 
 # Secrets
 /auth_token
@@ -32,6 +21,3 @@ invitations_sent
 /google_tools/token.pickle
 /cert.pem
 /key.pem
-
-# Ignore directories called 'local'
-local
