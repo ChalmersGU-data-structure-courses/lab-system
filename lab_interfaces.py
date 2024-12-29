@@ -18,7 +18,7 @@ class RequestMatcher:
     """
 
     @abc.abstractmethod
-    def parse(self, tag_name):
+    def parse(self, tag):
         """
         Determines whether the given tag name matches this request matcher.
         If it matches, returns an implementation-specific value different from None.
