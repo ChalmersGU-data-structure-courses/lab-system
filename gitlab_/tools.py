@@ -74,7 +74,16 @@ def wait_for_fork(gl, project, fork_poll_interval=0.5, check_immediately=True):
     return project
 
 
-def protect_tags(gl, project_id, patterns=[], delete_existing=False, exist_ok=True):
+def protect_tags(
+    gl,
+    project_id,
+    patterns: list[str] | None = None,
+    delete_existing=False,
+    exist_ok=True,
+):
+    if patterns is None:
+        patterns = []
+
     project = gl.projects.get(project_id, lazy=True)
     if delete_existing or exist_ok:
         protected_prev = list_all(project.protectedtags)
@@ -405,17 +414,21 @@ def append_mentions(text, users):
     return append_paragraph(text, mentions(users))
 
 
-def project_url(project, path_segments=[], query_params={}):
+def project_url(project, path_segments=None, query_params=None):
     """
     Format a URL for a project request.
 
     Arguments:
     * project: Project in which to make the request in.
     * path_segments:
-        Iterable of path segments to append to
-        the projects path to give the desired endpoint.
-    * query: Query parameters represented as a dictionary mapping strings to strings.
+        Optional Iterable of path segments to append to the projects path to give the desired endpoint.
+    * query_params: Optional query parameters represented as a dictionary mapping strings to strings.
     """
+    if path_segments is None:
+        path_segments = []
+    if query_params is None:
+        query_params = {}
+
     url = urllib.parse.urlparse(project.web_url)
     url = url._replace(
         path=str(PurePosixPath(url.path) / PurePosixPath(*path_segments))

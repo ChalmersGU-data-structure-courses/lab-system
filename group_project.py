@@ -82,7 +82,7 @@ class RequestAndResponses:
     def date(self):
         return util.git.commit_date(self.repo_remote_commit)
 
-    def repo_tag(self, segments=["tag"]):
+    def repo_tag(self, segments=None):
         """Forwards to self.group.repo_tag."""
         return GroupProject.repo_tag(self.group, self.request_name, segments)
 
@@ -90,13 +90,13 @@ class RequestAndResponses:
         """Forwards to self.group.repo_tag_exist."""
         return GroupProject.repo_tag_exist(self.group, self.request_name, segments)
 
-    def repo_tag_create(self, segments=["tag"], ref=None, **kwargs):
+    def repo_tag_create(self, segments=None, ref=None, **kwargs):
         """Forwards to self.group.repo_tag_create."""
         return GroupProject.repo_tag_create(
             self.group, self.request_name, segments, ref, **kwargs
         )
 
-    def repo_tag_delete(self, segments=["tag"]):
+    def repo_tag_delete(self, segments=None):
         """Forwards to self.group.repo_tag_delete."""
         return GroupProject.repo_tag_delete(self.group, self.request_name, segments)
 
@@ -150,7 +150,7 @@ class RequestAndResponses:
             ]
             return util.markdown.join_blocks(blocks)
 
-    def checkout(self, dir, segments=["tag"]):
+    def checkout(self, dir, segments=None):
         """
         Use this method instead of checkout_manager if you want to deal with checkout errors.
         """
@@ -165,7 +165,7 @@ class RequestAndResponses:
             raise RequestAndResponses.CheckoutError(self, e) from e
 
     @contextlib.contextmanager
-    def checkout_manager(self, segments=["tag"]):
+    def checkout_manager(self, segments=None):
         """
         In contrast to checkout, errors raised by this manager are not supposed to be catched.
         Any error is printed to stderr.
@@ -445,11 +445,14 @@ class RequestAndResponses:
     #         self.repo_tag_create_json(RequestAndResponses.segment_review, data = result,force = True)
     #     return True
 
-    def _repo_tag_after_segments(self, prev_name, segments=[]):
+    def _repo_tag_after_segments(self, prev_name, segments=None):
+        if segments is None:
+            segments = []
+
         return [*segments, "after", prev_name]
 
     @util.instance_cache.instance_cache
-    def repo_tag_after(self, prev_name, segments=[]):
+    def repo_tag_after(self, prev_name, segments=None):
         """
         Returns an instance of git.TagReference for the tag with name
             <full group id>/<request name>/after/<prev_name>
@@ -460,7 +463,7 @@ class RequestAndResponses:
         """
         return self._repo_tag_after_segments(prev_name, segments)
 
-    def repo_tag_after_create(self, prev_name, prev_ref, segments=[]):
+    def repo_tag_after_create(self, prev_name, prev_ref, segments=None):
         """
         Given a reference prev_ref in the collection repository, create a tag
             <full group id>/<request name>/<segments>/after/<prev_name>
@@ -471,6 +474,9 @@ class RequestAndResponses:
 
         Returns an instance of git.TagReference for the created tag.
         """
+        if segments is None:
+            segments = []
+
         prev_commit = util.git.resolve(self.lab.repo, prev_ref)
         commit = (
             self.repo_tag([*segments, "tag"]).commit
@@ -483,7 +489,10 @@ class RequestAndResponses:
             self._repo_tag_after_segments(prev_name, segments), commit, force=True
         )
 
-    def post_response_issue(self, response_key, title_data={}, description=str()):
+    def post_response_issue(self, response_key, title_data=None, description=str()):
+        if title_data is None:
+            title_data = {}
+
         # Only allow posting if there is not already a response issue of the same type.
         if response_key in self.responses:
             ValueError(
@@ -518,7 +527,7 @@ class RequestAndResponses:
         self.responses[response_key] = issue_data
         self.handler_data.responses[response_key][self.request_name] = issue_data
 
-    def post_language_failure_issue(self, response_key, title_data={}):
+    def post_language_failure_issue(self, response_key, title_data=None):
         assert self.languages is not None
 
         # TODO: change get to lazy once web_url is confirmed to exist there.
@@ -1055,7 +1064,7 @@ class GroupProject:
         self.logger.info(f"Fetching from student repository, remote {self.remote}.")
         self.lab.repo_command_fetch(self.repo, [self.remote])
 
-    def repo_tag(self, request_name, segments=["tag"]):
+    def repo_tag(self, request_name, segments=None):
         """
         Construct a tag reference object for the current lab group.
         This only constructs an in-memory object and does not yet interact with the collection repository.
@@ -1064,13 +1073,15 @@ class GroupProject:
         Arguments:
         * tag_name: Instance of PurePosixPath, str, or gitlab.v4.objects.tags.ProjectTag.
         * segments:
-            Iterable of path segments to attach to tag_name.
+            Optional iterable of path segments to attach to tag_name.
             Strings or instances of PurePosixPath.
-            If not given, defaults to 'tag' for the request tag
-            corresponding to the given request_name.
+            If not given, defaults to 'tag' for the request tag corresponding to the given request_name.
 
         Returns an instance of git.Tag.
         """
+        if segments is None:
+            segments = ["tag"]
+
         if isinstance(request_name, gitlab.v4.objects.tags.ProjectTag):
             request_name = request_name.name
 
@@ -1080,7 +1091,7 @@ class GroupProject:
         request_name = base / PurePosixPath(*segments)
         return util.git.normalize_tag(self.repo, request_name)
 
-    def repo_tag_exist(self, request_name, segments=["tag"]):
+    def repo_tag_exist(self, request_name, segments=None):
         """
         Test whether a tag with specified name and segments for the current lab group exists in the collection repository.
         Arguments are as for repo_tag.
@@ -1095,7 +1106,7 @@ class GroupProject:
         with contextlib.suppress(AttributeError):
             del lab.tags
 
-    def repo_tag_create(self, request_name, segments=["tag"], ref=None, **kwargs):
+    def repo_tag_create(self, request_name, segments=None, ref=None, **kwargs):
         """
         Create a tag in the collection repository for the current lab group.
 
@@ -1128,7 +1139,7 @@ class GroupProject:
         GroupProject.repo_tag_mark_repo_updated(self)
         return tag
 
-    def repo_tag_delete(self, request_name, segments):
+    def repo_tag_delete(self, request_name, segments=None):
         """
         Delete a tag in the collection repository for the current lab group.
         This can be required under normal circumstances if submission review issues are altered.

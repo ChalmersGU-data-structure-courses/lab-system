@@ -872,14 +872,19 @@ class GradingSpreadsheet:
             raise
 
     def grading_sheet_create(
-        self, lab, groups=[], group_link=None, exist_ok=False, use_prev=False
+        self,
+        lab,
+        groups=None,
+        group_link=None,
+        exist_ok=False,
+        use_prev=False,
     ):
         """
         Create a new worksheet in the grading sheet for the given lab (instance of Lab).
 
         Other arguments are as follows:
         * groups:
-            Create rows for the given groups.
+            Optionally create rows for the given groups.
         * group_link:
             An optional function taking a group id and returning a URL to their lab project.
             If given, the group ids are made into links.
@@ -895,6 +900,9 @@ class GradingSpreadsheet:
 
         Returns the created instance of GradingSheet.
         """
+        if groups is None:
+            groups = []
+
         self.logger.info(f"creating grading sheet for {lab.name}...")
 
         grading_sheet = self.grading_sheets.get(lab.id)
@@ -930,14 +938,17 @@ class GradingSpreadsheet:
         self.logger.info(f"creating grading sheet for {lab.name}: done")
         return grading_sheet
 
-    def ensure_grading_sheet(self, lab, groups=[], group_link=None):
+    def ensure_grading_sheet(self, lab, groups=None, group_link=None):
         self.logger.info(f"ensuring grading sheet for {lab.name}...")
         grading_sheet = self.grading_sheets.get(lab.name)
         if grading_sheet:
             grading_sheet.setup_groups(groups, group_link)
         else:
             grading_sheet = self.grading_sheet_create(
-                lab, groups, group_link, exist_ok=True
+                lab,
+                groups,
+                group_link,
+                exist_ok=True,
             )
         self.logger.info(f"ensuring grading sheet for {lab.name}: done")
         return grading_sheet

@@ -18,8 +18,8 @@ class RepeatTimer(threading.Timer):
 def Timer(
     interval,
     callback,
-    args=[],
-    kwargs={},
+    args=None,
+    kwargs=None,
     name=None,
     repeat=False,
 ):
@@ -40,6 +40,11 @@ def Timer(
     * repeat:
         Whether the timer should trigger repeatedly after each interval instead of just one.
     """
+    if args is None:
+        args = []
+    if kwargs is None:
+        kwargs = {}
+
     interval = (
         interval.total_seconds()
         if isinstance(interval, datetime.timedelta)

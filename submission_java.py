@@ -130,8 +130,8 @@ def run_context(
     submission_bin: Path,
     classpath: Iterable[Path],
     entrypoint: str,
-    arguments: Iterable[str] = [],
-    permissions: Iterable[Any] = [],
+    arguments: Iterable[str] = None,
+    permissions: Iterable[Any] = None,
     check_conflict=True,
 ):
     """
@@ -151,7 +151,9 @@ def run_context(
         Classpath for any testing or robograding classes.
         These have precedence over classes in the submission.
     * entrypoint: The invocation entrypoint as a fully qualified Java class name.
-    * arguments: Arguments to pass to the invocation.
+    * arguments:
+        Arguments to pass to the invocation.
+        Defaults to the empty list.
     * permissions:
         Specifies additional permission statements to apply in the security policy to the submission code.
         See util.java.permission_file for an example of such a permission statement.
@@ -162,6 +164,9 @@ def run_context(
     Note: the process must be executed in the submission source directory.
     """
     classpath = list(classpath)
+
+    if permissions is None:
+        permissions = []
 
     if check_conflict:
         logger.debug("Checking for file conflicts.")

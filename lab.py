@@ -1874,7 +1874,7 @@ class Lab:
                             f" of {entity_name}"
                         )
 
-    def sync_projects_and_students_from_canvas(self, synced_group_sets=set()):
+    def sync_projects_and_students_from_canvas(self, synced_group_sets=frozenset()):
         """
         Create lab projects and sync their membership according to the information on Canvas.
         Currently does not delete any groups that were deleted on Canvas (for safety).

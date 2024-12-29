@@ -36,7 +36,10 @@ def value_string(s):
     return s
 
 
-def value_path(path, exclude=[]):
+def value_path(path, exclude: list[str] | None = None):
+    if exclude is None:
+        exclude = []
+
     path = str(path)
     if path.startswith("~") or path in exclude:
         raise ValueError(
@@ -138,7 +141,7 @@ def cmd_ssh(
     server_alive=None,
     ip4_only=False,
     ip6_only=False,
-    options=[],
+    options=None,
 ):
     """
     Arguments:
@@ -183,6 +186,9 @@ def cmd_ssh(
     (missing its destination argument),
     include ('Hostname', '::') as option.
     """
+    if options is None:
+        options = []
+
     yield "ssh"
 
     # Process net location options.

@@ -15,7 +15,7 @@ proot = Path(proot)
 def proot_args(
     args,
     working_directory,
-    bindings=[],
+    bindings=None,
     root=Path("/root"),
     proot_executable=proot,
 ):
@@ -36,7 +36,7 @@ def proot_args(
     * working_directory
         Working directory of the invoked program within its root.
     * bindings:
-        An iterable of bindings.
+        An optional iterable of bindings.
         A binding is a pair (path_host, path_guest) where:
         - path_host refers to a filesystem path,
         - path_guest refers to a path within the new root.
@@ -61,6 +61,8 @@ def proot_args(
     * proot_executable:
         The proot executable.
     """
+    if bindings is None:
+        bindings = []
 
     def r():
         # Path to executable, remaining output is program arguments.
@@ -103,14 +105,14 @@ guest_dir_main_default = PurePath("/jail/main")
 
 def proot_python_args(
     guest_script,
-    guest_args=[],
+    guest_args=None,
     *,
     host_dir_main,
     guest_dir_main=guest_dir_main_default,
     python_executable_name="python3",
-    python_args_extra=[],
-    python_path_extra=[],
-    bindings=[],
+    python_args_extra=None,
+    python_path_extra=None,
+    bindings=None,
     env=None,
     **kwargs,
 ):
@@ -124,7 +126,7 @@ def proot_python_args(
     * guest_script:
         Path to guest script to execute.
     * guest_args:
-        Iterable of arguments to pass to the guest script.
+        Optional iterable of arguments to pass to the guest script.
     * host_dir_main:
         Host directory that guest_dir_main binds to.
     * guest_dir_main:
@@ -135,16 +137,16 @@ def proot_python_args(
     * python_executable_name:
         Executable name of the Python interpreter
     * python_args_extra:
-        Iterable of extra flags to use in the invocation of python3.
+        Optional iterable of extra flags to use in the invocation of python3.
         Activated by default:
         - '-B' (don't write bytecode cache)
         - '-s' (don't add user site directory to sys.path)
     * python_path_extra:
-        Additional python search paths to hand to the interpreter.
+        Optional additional python search paths to hand to the interpreter.
         This pushes to the list of paths under the key 'PYTHONPATH' in env.
         If at least one path is given and the dictionary entry is missing, it is created.
     * bindings:
-        Iterable of additional bindings passed to proot_args.
+        Optional iterable of additional bindings passed to proot_args.
     * env:
         Environment dictionary to update.
         Use in call to subprocess.Popen or subprocess.run.
@@ -152,6 +154,15 @@ def proot_python_args(
     * kwargs:
         Keyword arguments passed on to proot_args.
     """
+    if guest_args is None:
+        guest_args = []
+    if python_args_extra is None:
+        python_args_extra = []
+    if python_path_extra is None:
+        python_path_extra = []
+    if bindings is None:
+        bindings = []
+
     util.path.search_path_add_env(env, "PYTHONPATH", python_path_extra)
 
     return proot_args(
@@ -183,11 +194,11 @@ sandboxer_default = PurePath(__file__).parent / "seccomp.py"
 
 def sandboxed_python_args(
     guest_script,
-    guest_args=[],
+    guest_args=None,
     *,
     sandboxer=sandboxer_default,
-    sandboxer_args=[],
-    bindings=[],
+    sandboxer_args=None,
+    bindings=None,
     **kwargs,
 ):
     """
@@ -201,15 +212,15 @@ def sandboxed_python_args(
         Relative to the working directory given by the argument
         guest_dir_main as received by proot_python_args.
     * guest_args:
-        Iterable of arguments to pass to the guest script.
+        Optional iterable of arguments to pass to the guest script.
     * sandboxer:
         Executable path to the sandboxer (sandboxing Python script).
         A sandboxer first takes some sandboxer-specific argument.
         This is followed by the command line of the guest script to execute (path to script followed by arguments).
     * sandboxer_args:
-        Iterable of arguments to pass to the sandboxing script.
+        Optional iterable of arguments to pass to the sandboxing script.
     * bindings:
-        Iterable of additional bindings passed to proot_python_args.
+        Optional iterable of additional bindings passed to proot_python_args.
     * kwargs:
         Keyword arguments passed on to proot_python_args.
         Must include host_dir_main and env.
@@ -224,6 +235,13 @@ def sandboxed_python_args(
     > )
     > subprocess.run(cmd, env = env)
     """
+    if guest_args is None:
+        guest_args = []
+    if sandboxer_args is None:
+        sandboxer_args = []
+    if bindings is None:
+        bindings = []
+
     executable = guest_python_packages / "_sandboxer.py"
 
     return proot_python_args(

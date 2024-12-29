@@ -88,8 +88,8 @@ def generate_from_template_document(
     name,
     token,
     id,
-    replacements={},
-    replacements_img={},
+    replacements=None,
+    replacements_img=None,
     share_dir=None,
     share_url=None,
 ):
@@ -100,14 +100,18 @@ def generate_from_template_document(
 
     output_paths is a map from file types to generated (specified by suffix) to output paths.
 
-    replacements is a dictionary specifying textual replacements.
+    replacements is an optional dictionary specifying textual replacements.
 
-    replacements_img is a dictionary from image ids to paths to image files to use as replacement.
+    replacements_img is an optional dictionary from image ids to paths to image files to use as replacement.
     The replacements will be scaled to the dimensions of the corresponding image in the template.
     share_dir and share_url are required if images are to be replaced.
     share_url is the url of a directory (with trailing slash) from which Google Docs will read an uploaded image.
     share_dir is the path to a local directory from which the files in share_url are populated.
     """
+    if replacements is None:
+        replacements = {}
+    if replacements_img is None:
+        replacements_img = {}
 
     drive = Drive(token)
     docs = Documents(token)
