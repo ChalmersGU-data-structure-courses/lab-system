@@ -609,4 +609,5 @@ def dataclass_json(cls, nice=False):
 
 
 def dataclass_field(pp):
+    # pylint: disable=invalid-field-call
     return dataclasses.field(metadata={"pp": pp})
