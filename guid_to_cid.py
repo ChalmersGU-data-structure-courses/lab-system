@@ -8,7 +8,7 @@ import util.path
 logger = logging.getLogger(__name__)
 
 
-class GUIDtoCID(util.path.AttributeJSONCache):
+class GUIDtoCID(util.path.JSONAttributeCache):
     # cached attribute
     mapping: dict[str, str]
 
@@ -48,7 +48,7 @@ class GUIDtoCID(util.path.AttributeJSONCache):
             return updated
 
         with self.updating:
-            updated = self.time is None or any(map(process, canvas_users))
+            updated = self._time is None or any(map(process, canvas_users))
         if updated:
             self.save()
 
