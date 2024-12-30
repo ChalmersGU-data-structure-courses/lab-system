@@ -728,7 +728,7 @@ class Multiplexer:
             for line in stderr_lines:
                 if (
                     line.startswith("ssh")
-                    or line == "fatal: Could not read from remote repository.",
+                    or line == "fatal: Could not read from remote repository."
                 ):
                     logger.warning(
                         util.general.text_from_lines(
