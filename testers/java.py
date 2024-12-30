@@ -174,6 +174,7 @@ class LabTester(testers.general.LabTester):
         dir_bin: Path = None,
         file_compile_err="__compile_err",
         file_error="error.md",
+        **kwargs,
     ) -> None:
         """See testers.general.run_tests."""
         try:
