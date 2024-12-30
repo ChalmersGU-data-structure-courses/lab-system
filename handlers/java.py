@@ -271,7 +271,7 @@ class RobogradingHandler(handlers.general.RobogradingHandler):
             dir_src = src / self.kwargs.get("dir_submission_src", util.path.Path())
             with submission_java.submission_checked_and_compiled(dir_src) as (
                 dir_bin,
-                compiler_report,
+                _compiler_report,
             ):
                 robograding_report = self.robograder.run(src, dir_bin)
         except lab_interfaces.HandlingException as e:

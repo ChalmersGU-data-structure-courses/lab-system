@@ -7,7 +7,7 @@ def get_connect_info(netloc, callback):
     connected via UDP (connection-less) to the given net location.
     """
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-        (host, port, *args) = netloc
+        (host, port, *_args) = netloc
         s.connect((host, port))
         return callback(s)
 

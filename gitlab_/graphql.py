@@ -133,7 +133,7 @@ class Client(graphql_.client.ClientBase):
             cursor = CreatedCursor(created_at=last_requested - safety_interval, id=0)  # type: ignore
 
         def f(item):
-            (id, username) = item
+            (id, _username) = item
             return last_known_id is None or id > last_known_id
 
         yield from filter(

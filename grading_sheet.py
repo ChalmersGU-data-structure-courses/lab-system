@@ -469,7 +469,7 @@ class GradingSheet:
         # inherit the formatting from the following (False) or previous (True) row
         # to lists of pairs of a new group id and its final row index.
         insertions = collections.defaultdict(lambda: [])
-        (groups_start, groups_end) = self.group_range
+        (groups_start, _groups_end) = self.group_range
         for offset, group_id in enumerate(groups_new):
             # TODO: use this line instead of the next for Python 3.10
             # i = bisect.bisect_left(groups_old, group_id, key = sort_key)

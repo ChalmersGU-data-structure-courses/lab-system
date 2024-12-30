@@ -308,7 +308,6 @@ class Lab:
         Currently only supports a single solution project.
         """
         assert self.config.has_solution is True
-        [solution_name] = self.solutions.keys()
         group = self.group_create("solution")
         if self.config.multi_language:
             for language in self.config.branch_problem.keys():
@@ -1963,7 +1962,6 @@ class Lab:
         WARNING: this force pushes to student projects.
         """
         self.logger.info("Restoring student branches from local repository")
-        dir_ref = Path(self.repo.git_dir) / "refs"
         for dir_remote in (Path(self.repo.git_dir) / "refs" / "remotes").iterdir():
             remote = dir_remote.name
 
@@ -1990,7 +1988,6 @@ class Lab:
         WARNING: this force pushes to student projects.
         """
         self.logger.info("Restoring student tags from local repository")
-        dir_ref = Path(self.repo.git_dir) / "refs"
         for dir_remote in (Path(self.repo.git_dir) / "refs" / "remote_tags").iterdir():
             remote = dir_remote.name
 

@@ -465,7 +465,7 @@ class GradingViaMergeRequest:
             )
 
         try:
-            (outcome, (date, (username, system))) = self.submission_outcomes[
+            (outcome, (date, (username, _system))) = self.submission_outcomes[
                 request_name
             ]
         except KeyError:
@@ -493,7 +493,7 @@ class GradingViaMergeRequest:
 
         def rows():
             # pylint: disable=cell-var-from-loop
-            for request_name, (date, note) in self.synced_submissions.items():
+            for request_name, (_date, note) in self.synced_submissions.items():
                 has_outcome = self.outcome_with_link_and_grader(request_name)
                 if has_outcome:
                     (outcome, link, grader) = has_outcome
@@ -599,7 +599,7 @@ class GradingViaMergeRequest:
 
         # Block syncing if a review is happening.
         if self.reviewer_current:
-            (reviewer, (start_id, start_date)) = self.reviewer_current
+            (_reviewer, (_start_id, start_date)) = self.reviewer_current
             block_period = (
                 self.course.config.grading_via_merge_request.maximum_reserve_time
             )

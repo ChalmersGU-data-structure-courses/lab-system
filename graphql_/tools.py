@@ -34,12 +34,12 @@ def with_processing(query):
 
 
 def only_query(query):
-    (query, process) = with_processing(query)
+    (query, _process) = with_processing(query)
     return query
 
 
 def only_process(query):
-    (query, process) = with_processing(query)
+    (_query, process) = with_processing(query)
     return process
 
 
