@@ -105,6 +105,8 @@ def over_list(arg):
     (query, process_inner) = with_processing(arg)
 
     def process(xs):
+        # Unconvinced.
+        # pylint: disable-next=consider-using-enumerate
         for i in range(len(xs)):
             xs[i] = process_inner(xs[i])
         return xs
