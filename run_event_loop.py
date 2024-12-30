@@ -249,6 +249,7 @@ args = p.parse_args()
 
 
 # Argument parsing is done: expensive initialization can start now.
+# pylint: disable=wrong-import-position
 import contextlib
 import datetime
 import importlib
