@@ -112,7 +112,7 @@ class LabTester:
     @classmethod
     def exists(cls, dir_lab, dir_tester):
         try:
-            cls.tester_type(dir_lab, dir_tester)
+            cls(dir_lab, dir_tester)
             return True
         except TesterMissingException:
             return False

@@ -262,6 +262,8 @@ def request_delete_sheet(id):
 
 
 def spreadsheets(token):
+    # False positive.
+    # pylint: disable-next=no-member
     return googleapiclient.discovery.build(
         "sheets", "v4", credentials=token, cache_discovery=False
     ).spreadsheets()

@@ -51,6 +51,9 @@ class ClientBase:
         # print(print_ast(query))
         return process(self.session.execute(query, variable_values=values))
 
+    def execute_query(self, *args, **kwargs):
+        return self.execute(query(*args, **kwargs))
+
     def execute_queries(self, queries):
         def name(i):
             return f"q{i}"

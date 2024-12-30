@@ -651,7 +651,7 @@ class Lab:
         if keep_existing:
             ids_old = self.groups.keys()
         else:
-            self.group_delete_all()
+            self.groups_delete_all()
             ids_old = ()
 
         if refresh:
@@ -1644,7 +1644,7 @@ class Lab:
     def report_assignment_populate(self, scoring=None, strict=True):
         grades = self.grading_report(scoring=scoring, strict=strict)
 
-        id = self.report_assignment_get().id
+        id = self.course.report_assignment_get().id
         submissions = self.course.canvas_course.get_submissions(id, use_cache=False)
         for submission in submissions:
             canvas_user_id = submission.user_id

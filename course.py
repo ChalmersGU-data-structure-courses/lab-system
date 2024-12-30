@@ -602,7 +602,7 @@ class Course:
         for email in invitations.keys() - invite():
             self.logger.debug(f"deleting obsolete invitation of {email}")
             with gitlab_.tools.exist_ok():
-                gitlab_.tools.delete(self.gl, self.graders_group.lazy, email)
+                gitlab_.tools.invitation_delete(self.gl, self.graders_group.lazy, email)
 
     def student_members(self, cached_entity):
         """

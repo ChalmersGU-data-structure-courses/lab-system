@@ -56,6 +56,8 @@ class GUIDtoCID(util.path.JSONAttributeCache):
         """Could use improved heuristic."""
         results = self.client.search_ext_s(
             "ou=people,dc=chalmers,dc=se",
+            # False positive.
+            # pylint: disable=no-member
             ldap.SCOPE_ONELEVEL,
             ldap.filter.filter_format("(cn=%s)", [canvas_name]),
             attrlist=["uid", "sn", "givenName"],
