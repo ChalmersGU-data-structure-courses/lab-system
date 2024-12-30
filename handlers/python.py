@@ -25,6 +25,7 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
             if self.testing is not None:
                 yield from self.testing.grading_columns()
 
+        # pylint: disable-next=attribute-defined-outside-init
         self.grading_columns = live_submissions_table.with_standard_columns(
             dict(columns()),
             with_solution=self.show_solution,

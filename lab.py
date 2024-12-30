@@ -972,6 +972,11 @@ class Lab:
             deadline = self.deadline
         config = live_submissions_table.Config(deadline=deadline)
 
+        # TODO:
+        # Find better architecture that avoids late assignments.
+        # Currently, we rely on ugly checks hasattr(self, "live_submissions_table").
+        # These decide if a live submissions table is enabled.
+        # pylint: disable-next=attribute-defined-outside-init
         self.live_submissions_table = live_submissions_table.LiveSubmissionsTable(
             self,
             config=config,

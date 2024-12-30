@@ -940,6 +940,7 @@ class Assignment:
         grouped_submission = Assignment.group_identical_submissions(
             Assignment.filter_submissions(raw_submissions)
         )
+        # pylint: disable-next=attribute-defined-outside-init
         self.submissions = self.align_with_groups(grouped_submission)
 
     @staticmethod

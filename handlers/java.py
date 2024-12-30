@@ -177,6 +177,7 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
         self.show_solution = show_solution
 
     def setup(self, lab):
+        # pylint: disable=attribute-defined-outside-init
         super().setup(lab)
         if self.tester_factory is not None:
             self.testing.setup(lab)
@@ -257,6 +258,7 @@ class RobogradingHandler(handlers.general.RobogradingHandler):
 
     def setup(self, lab):
         super().setup(lab)
+        # pylint: disable-next=attribute-defined-outside-init
         self.robograder = self.robograder_factory(
             dir_lab=lab.config.path_source, **self.kwargs
         )

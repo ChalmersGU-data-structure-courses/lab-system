@@ -483,8 +483,10 @@ class ConnectionMaster:
                         )
                         raise
             except Exception as e:
+                # pylint: disable-next=attribute-defined-outside-init
                 self.ssh_thread_exception = e
             else:
+                # pylint: disable-next=attribute-defined-outside-init
                 self.ssh_thread_exception = None
 
             self.stopped = True

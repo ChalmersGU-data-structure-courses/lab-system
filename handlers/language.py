@@ -82,6 +82,7 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
                 }
                 yield (column, wrap_column_types(column_types))
 
+        # pylint: disable-next=attribute-defined-outside-init
         self.grading_columns = live_submissions_table.with_standard_columns(
             dict(columns()),
             with_solution=self.show_solution,

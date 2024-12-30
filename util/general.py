@@ -404,6 +404,8 @@ def format_timespan(delta, precision=2):
 
 
 class Timer:
+    # pylint: disable=attribute-defined-outside-init
+
     def __enter__(self):
         self.start = time.monotonic()
         return self

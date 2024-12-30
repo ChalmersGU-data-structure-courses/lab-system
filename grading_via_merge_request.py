@@ -69,6 +69,7 @@ class GradingViaMergeRequest:
 
         self.notes_suppress_cache_clear_counter = 0
         self.non_grader_change = False
+        self.outcome_last_checked = None
 
     @property
     def course(self):
@@ -430,16 +431,11 @@ class GradingViaMergeRequest:
         if self.merge_request is None:
             return None
 
-        try:
-            x = self.outcome_last_checked
-        except AttributeError:
-            x = None
-
         if self.notes_suppress_cache_clear_counter == 0 and clear_cache:
             self.notes_clear()
-        updated = self.submission_outcomes != x
+        updated = self.submission_outcomes != self.outcome_last_checked
 
-        self.logger.debug(f"old outcomes: {x}")
+        self.logger.debug(f"old outcomes: {self.outcome_last_checked}")
         self.logger.debug(f"new outcomes: {self.submission_outcomes}")
         self.logger.debug(f"updated: {updated}")
 
