@@ -741,7 +741,7 @@ class Course:
         self.logger.info("Creating project hooks in all labs")
         try:
             with util.general.traverse_managers_iterable(
-                gitlab_.tools.hook_manager(spec) for spec in self.hook_specs
+                gitlab_.tools.hook_manager(spec) for spec in self.hook_specs(netloc)
             ) as it:
                 yield list(it)
         finally:

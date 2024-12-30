@@ -124,7 +124,6 @@ class GradingViaMergeRequest:
             )
         with gitlab_.tools.exist_ok():
             gitlab_.tools.protect_branch(
-                self.lab.gl,
                 self.project,
                 self.setup_data.source_branch,
             )

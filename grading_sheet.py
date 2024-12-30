@@ -133,7 +133,7 @@ def parse_grading_columns(config, header_row):
     return (group_column, query_column_groups)
 
 
-def parse_group_rows(config, gdpr_coding, values):
+def parse_group_rows(gdpr_coding, values):
     """
     Determine which row indices in a column correspond to student groups.
     This is done by attempting to parse each entry as a group id.
@@ -203,7 +203,6 @@ def parse(config, gdpr_coding, sheet_data):
         sheet_data=sheet_data,
         header_row=header_row,
         group_rows=parse_group_rows(
-            config,
             gdpr_coding,
             (
                 (row, sheet_data.value(row, group_column))

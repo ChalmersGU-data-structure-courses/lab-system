@@ -114,7 +114,7 @@ class ColumnValueEmpty:
     def has_content(self):
         return False
 
-    def format_cell(self, cell):
+    def format_cell(self, _cell):
         return ""
 
 

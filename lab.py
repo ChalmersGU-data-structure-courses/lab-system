@@ -825,7 +825,7 @@ class Lab:
         self.logger.debug("Setting up protected branches")
         gitlab_.tools.delete_protected_branches(project)
         for problem in self.heads_problem:
-            gitlab_.tools.protect_branch(self.gl, project, problem)
+            gitlab_.tools.protect_branch(project, problem)
 
     def unprotect_main_branches(self):
         for g in self.groups.values():
@@ -877,7 +877,7 @@ class Lab:
         target_branch="main",
         merge_files=False,
         fail_on_problem=True,
-        notify_students: str = None,
+        notify_students: str | None = None,
     ):
         """
         Hotfix the main 'target_branch' in student projects group project.
@@ -891,6 +891,7 @@ class Lab:
         """
         for group_id in self.normalize_group_ids(group_ids):
             self.groups[group_id].merge_problem_into_branch(
+                target_branch=target_branch,
                 merge_files=merge_files,
                 fail_on_problem=fail_on_problem,
                 notify_students=notify_students,
@@ -1437,7 +1438,7 @@ class Lab:
         if group_ids:
             if hasattr(self, "live_submissions_table"):
                 self.update_live_submissions_table()
-            self.update_grading_sheet(group_ids=group_ids)
+            self.update_grading_sheet(group_ids=group_ids, deadline=deadline)
 
     def initial_run(self, deadline=None):
         """
