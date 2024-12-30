@@ -79,6 +79,8 @@ def parse_tests(test_type, file):
     Returns a dictionary sending test names to test specifications.
     """
     environment = {test_type.__name__: test_type}
+    # TODO: switch to declarative test specifications.
+    # pylint: disable-next=exec-used
     exec(file.read_text(), environment)
     return environment["tests"]
 
