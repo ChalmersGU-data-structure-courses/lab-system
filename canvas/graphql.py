@@ -432,9 +432,6 @@ class CourseUsers:
     def teachers(self):
         return self._subdict(CourseUsers.is_teacher)
 
-    def section_users(self, section):
-        return self.section_users[self.section_id(section)]
-
 
 class GroupSet:
     def __init__(self, data, pp_group_name: util.print_parse.PrintParse = None):
