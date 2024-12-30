@@ -4,13 +4,13 @@ import itertools
 import logging
 from pathlib import Path
 
-import gitlab
-import graph_ql.canvas
-import graph_ql.gitlab
 from gql.dsl import DSLInlineFragment, DSLQuery, DSLSchema, dsl_gql
 from gql.transport.requests import RequestsHTTPTransport
 
+import gitlab
 import canvas.client_rest as canvas
+import canvas.graphql
+import gitlab_.graphql
 import gitlab_.tools
 import util.general
 import util.print_parse
@@ -26,7 +26,7 @@ from gitlab_config_personal import canvas_auth_token, gitlab_private_token
 # c = canvas.Canvas('chalmers.instructure.com')
 # client = canvas_gql.Client(c)
 
-client = graph_ql.gitlab.Client("git.chalmers.se", gitlab_private_token)
+client = gitlab_.graphql.Client("git.chalmers.se", gitlab_private_token)
 
 # c = canvas.Canvas('canvas.gu.se')
 
