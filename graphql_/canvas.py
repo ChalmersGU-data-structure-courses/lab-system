@@ -251,9 +251,9 @@ class Client:
             )
         ]
 
-    @property
-    def group_set(self):
-        return functools.partial(self.node, self.ds.GroupSet)
+    # @property
+    # def group_set(self):
+    #     return functools.partial(self.node, self.ds.GroupSet)
 
     def execute_query_group_set(self, id):
         return self.execute_query_node(self.ds.GroupSet, id)
