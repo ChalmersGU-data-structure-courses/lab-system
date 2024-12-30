@@ -31,7 +31,7 @@ class LabTester(testers.general.LabTester):
         dir_src: Path,
         name: str,
         test: testers.podman.Test,
-        dir_bin: Path = None,
+        dir_bin: Path | None = None,
     ):
         """
         See testers.general.LabTester.run_test.

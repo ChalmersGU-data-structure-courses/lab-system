@@ -267,7 +267,7 @@ class LabTester:
         dir_src: Path,
         name: str,
         test,
-        dir_bin: Path = None,
+        dir_bin: Path | None = None,
     ) -> None:
         """
         Arguments:
