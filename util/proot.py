@@ -1,11 +1,11 @@
-import distutils.spawn
 from pathlib import Path, PurePath
+import shutil
 
 import util.path
 
 
 # Find proot executable at module import to make sure it exists.
-proot = distutils.spawn.find_executable(Path("proot"))
+proot = shutil.which(Path("proot"))
 if proot is None:
     raise ValueError(
         "executable proot not found (suggested fix: install system package proot)"
