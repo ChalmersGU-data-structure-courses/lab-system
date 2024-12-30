@@ -764,16 +764,16 @@ class Course:
     def grading_spreadsheet(self):
         return grading_sheet.GradingSpreadsheet(self.config, self.labs)
 
-    def grading_template_issue_parser(self, parsed_issues):
-        """Specialization of parse_issues for the grading template issue."""
-
-        def parser(issue):
-            self.config.grading_response_template.parse(issue.title)
-            return ((), issue)
-
-        return functools.partial(
-            self.parse_issues, "grading template", parser, parsed_issues
-        )
+    # def grading_template_issue_parser(self, parsed_issues):
+    #     """Specialization of parse_issues for the grading template issue."""
+    #
+    #     def parser(issue):
+    #         self.config.grading_response_template.parse(issue.title)
+    #         return ((), issue)
+    #
+    #     return functools.partial(
+    #         self.parse_issues, "grading template", parser, parsed_issues
+    #     )
 
     def sync_teachers_and_lab_projects(self, lab_ids):
         """
