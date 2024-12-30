@@ -770,6 +770,9 @@ class HandlerData:
                 parse = response_title.parse.__call__
                 try:
                     r = parse(title)
+                # We currently rely on generic exceptions to detect parse failure.
+                # For example, these can be ValueError, LookupError, IndexError.
+                # pylint: disable-next=broad-exception-caught
                 except Exception:
                     return None
                 return (r["tag"], (issue, r))

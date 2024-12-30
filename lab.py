@@ -1294,6 +1294,9 @@ class Lab:
             for response_type, pp in spec.issue.__dict__.items():
                 try:
                     return (request_type, response_type, pp.parse(issue.title))
+                # We currently rely on generic exceptions to detect parse failure.
+                # For example, these can be ValueError, LookupError, IndexError.
+                # pylint: disable-next=broad-exception-caught
                 except Exception:
                     continue
 
@@ -1749,6 +1752,9 @@ class Lab:
         def known_gitlab_username_from_email(email):
             try:
                 gitlab_username = pp_email.parse(email)
+            # We currently rely on generic exceptions to detect parse failure.
+            # For example, these can be ValueError, LookupError, IndexError.
+            # pylint: disable-next=broad-exception-caught
             except Exception:
                 return None
             if not gitlab_username in self.course.canvas_user_by_gitlab_username:

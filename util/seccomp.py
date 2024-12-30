@@ -138,13 +138,14 @@ def main():
 
     try:
         path = PurePath(sys.argv[1])
-        del sys.argv[1]
-    except Exception:
+    except IndexError:
         print(
             "Usage: python3 <this script> <script to run> [<arguments>...]",
             file=sys.stderr,
         )
         sys.exit(-1)
+
+    del sys.argv[1]
 
     # def print_hierarchy(path):
     #     print(path, path.is_dir())
