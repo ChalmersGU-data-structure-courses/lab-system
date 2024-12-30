@@ -117,14 +117,16 @@ class LabTester(testers.general.LabTester):
             )
 
     def run_test(
-        self, dir_out: Path, dir_src: Path, name: str, test: Test, dir_bin: Path
+        self,
+        dir_out: Path,
+        dir_src: Path,
+        name: str,
+        test: Test,
+        dir_bin: Path | None = None,
     ):
         """
         See testers.general.LabTester.run_test.
         We produce the files according to testers.general.LabTester.record.
-
-        Takes an additional keyword-argument:
-        * dir_bin: Path to the compiled submission.
         """
         logger.debug(f"Running test {name}.")
 

@@ -72,8 +72,13 @@ class LabTester(testers.general.LabTester):
     TestSpec = Test
 
     def run_test(
-        self, dir_out: Path, dir_src: Path, name: str, test: Test, dir_bin: Path = None
-    ):
+        self,
+        dir_out: Path,
+        dir_src: Path,
+        name: str,
+        test,
+        dir_bin: Path | None = None,
+    ) -> None:
         """
         See testers.general.LabTester.run_test.
         We produce the files according to testers.general.LabTester.record.
