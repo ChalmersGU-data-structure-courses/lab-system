@@ -136,7 +136,7 @@ args = p.parse_args()
 # Argument parsing is done: expensive initialization can start now.
 
 # Configure Logging.
-# pylint: disable-next=wrong-import-position
+# pylint: disable-next=wrong-import-order,wrong-import-position
 import logging
 
 

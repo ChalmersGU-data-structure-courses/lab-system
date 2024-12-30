@@ -8,6 +8,7 @@ import google_tools.general
 
 
 # isort: split
+# pylint: disable-next=wrong-import-order
 import gitlab_config_personal as config
 
 

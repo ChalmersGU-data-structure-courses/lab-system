@@ -10,6 +10,10 @@ import logging
 
 from course import Course
 from lab import StudentConnectorGroupSet, StudentConnectorIndividual
+
+
+# isort: split
+# pylint: disable-next=wrong-import-order
 from prelude import *
 
 
