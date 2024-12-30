@@ -4,6 +4,7 @@ import canvas.client_rest as canvas
 
 
 # isort: split
+# pylint: disable-next=wrong-import-order
 from gitlab_config_personal import canvas_auth_token
 
 

@@ -8,6 +8,7 @@ import util.general  # noqa: E402
 
 
 # isort: split
+# pylint: disable-next=wrong-import-order
 from gitlab_config_personal import canvas_auth_token  # noqa: E402
 
 
