@@ -61,7 +61,7 @@ class StudentConnector(abc.ABC):
     @abc.abstractmethod
     def gdpr_link_problematic(self):
         """
-        Whether gorup links can be set in non-GDPR-cleared documents.
+        Whether group links can be set in non-GDPR-cleared documents.
         Currently only used in the grading spreadsheet.
         """
 
@@ -1341,7 +1341,7 @@ class Lab:
 
     @functools.cached_property
     def grading_sheet_group_link(self):
-        if self.student_connector.gdpr_link_problematic:
+        if self.student_connector.gdpr_link_problematic():
             return None
 
         return lambda group_id: self.groups[group_id].project.get.web_url
