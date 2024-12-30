@@ -10,7 +10,7 @@ from lab import StudentConnectorGroupSet
 
 
 # isort: split
-# pylint: disable-next=wrong-import-order
+# pylint: disable-next=wrong-import-order,no-name-in-module
 from prelude import c, l
 
 
