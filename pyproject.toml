@@ -13,7 +13,7 @@ dependencies = [
   'chardet >=5.2, <6',
   'dominate >=2.8, <3',
   'gitdb >=4.0.11, <5',
-  'GitPython >=3.1.40, <4',
+  'GitPython >=3.1.43, <4',
   'google-api-python-client >=2.111, <3',
   'google-auth >=2.25.2, <3',
   'google-auth-oauthlib >=1.1, <2',
@@ -24,7 +24,7 @@ dependencies = [
   'python-dateutil >=2.8.2, <3',
   'python-gitlab >=4.3, <5',
   'python-ldap >=3.4.4, <4',
-  'requests >=2.31, <3',
+  'requests >=2.32, <3',
   'watchdog >=2.3.1, <3',
 ]
 
