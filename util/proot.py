@@ -3,6 +3,7 @@ from pathlib import Path, PurePath
 
 import util.path
 
+
 # Find proot executable at module import to make sure it exists.
 proot = distutils.spawn.find_executable(Path("proot"))
 if proot is None:

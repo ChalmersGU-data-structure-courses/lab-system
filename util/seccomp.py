@@ -3,8 +3,8 @@
 import errno
 import fcntl
 import os
-import sys
 import runpy
+import sys
 from pathlib import PurePath
 
 import seccomp

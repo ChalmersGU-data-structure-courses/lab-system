@@ -4,12 +4,13 @@ import logging
 from pathlib import Path
 from typing import Any, Iterable
 
+import lab_interfaces
 import util.check_symlinks
 import util.general
 import util.java
-import lab_interfaces
 import util.markdown
 import util.path
+
 
 logger = logging.getLogger(__name__)
 

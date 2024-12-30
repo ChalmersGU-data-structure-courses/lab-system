@@ -4,10 +4,10 @@ import functools
 import hashlib
 import logging
 import operator
-from pathlib import Path, PurePosixPath
 import time
-from typing import Any, Tuple
 import urllib.parse
+from pathlib import Path, PurePosixPath
+from typing import Any, Tuple
 
 import dateutil.parser
 import gitlab

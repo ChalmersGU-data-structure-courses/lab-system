@@ -4,13 +4,14 @@ import logging
 import subprocess
 from pathlib import Path
 
+import lab_interfaces
+import submission_java
 import util.general
 import util.java
-import lab_interfaces
 import util.markdown
 import util.path
-import submission_java
 from util.this_dir import this_dir
+
 
 logger = logging.getLogger(__name__)
 

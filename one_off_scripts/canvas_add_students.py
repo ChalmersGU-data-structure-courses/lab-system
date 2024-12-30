@@ -1,7 +1,11 @@
 import logging
 
 import canvas.client_rest as canvas
+
+
+# isort: split
 from gitlab_config_personal import canvas_auth_token
+
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)

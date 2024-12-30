@@ -4,17 +4,15 @@ import logging
 from pathlib import Path
 
 import gitlab
-
-from gql.transport.requests import RequestsHTTPTransport
-from gql.dsl import dsl_gql, DSLSchema, DSLQuery, DSLInlineFragment
-
+import graph_ql.canvas
+import graph_ql.gitlab
 from gitlab_config_personal import canvas_auth_token, gitlab_private_token
-import gitlab_.tools
+from gql.dsl import DSLInlineFragment, DSLQuery, DSLSchema, dsl_gql
+from gql.transport.requests import RequestsHTTPTransport
 
 import canvas.client_rest as canvas
-import graph_ql.canvas
+import gitlab_.tools
 import util.general
-import graph_ql.gitlab
 import util.print_parse
 
 

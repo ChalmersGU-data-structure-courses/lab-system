@@ -5,9 +5,10 @@ import argparse
 import sys
 from pathlib import Path
 
-import util.path
 import robograder_java
 import submission_java
+import util.path
+
 
 dir_executable = Path(sys.argv[0]).parent
 
@@ -137,6 +138,7 @@ args = p.parse_args()
 # Configure Logging.
 # pylint: disable-next=wrong-import-position
 import logging
+
 
 logging_level = {
     0: logging.WARNING,

@@ -13,10 +13,10 @@ import gitlab
 import gitlab.v4.objects
 
 import events
-import util.general
-import util.git
 import gitlab_.tools
 import grading_via_merge_request
+import util.general
+import util.git
 import util.instance_cache
 import util.item_parser
 import util.markdown

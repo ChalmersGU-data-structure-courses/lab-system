@@ -17,6 +17,7 @@ import util.general
 import util.path
 from util.escaping_formatter import regex_escaping_formatter
 
+
 PrintParse = collections.namedtuple("PrintParse", ["print", "parse"])
 PrintParse.__doc__ = "Approximations to isomorphisms."
 

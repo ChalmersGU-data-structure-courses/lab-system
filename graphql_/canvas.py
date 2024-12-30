@@ -7,16 +7,16 @@ from pathlib import Path
 from typing import Iterable
 
 import gql
-from gql.transport.requests import RequestsHTTPTransport
-from gql.dsl import (
-    dsl_gql,
-    DSLSchema,
-    DSLType,
-    DSLQuery,
-    DSLInlineFragment,
-    DSLSelectable,
-)
 import more_itertools
+from gql.dsl import (
+    DSLInlineFragment,
+    DSLQuery,
+    DSLSchema,
+    DSLSelectable,
+    DSLType,
+    dsl_gql,
+)
+from gql.transport.requests import RequestsHTTPTransport
 
 import canvas.client_rest as canvas
 import util.general

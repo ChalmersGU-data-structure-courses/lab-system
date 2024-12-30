@@ -1,14 +1,14 @@
 import functools
 import logging
-from pathlib import PurePosixPath
 import re
+from pathlib import PurePosixPath
 
 import dominate
 
-import util.general
 import gitlab_.tools
 import lab_interfaces
 import live_submissions_table
+import util.general
 import util.markdown
 import util.path
 import util.print_parse

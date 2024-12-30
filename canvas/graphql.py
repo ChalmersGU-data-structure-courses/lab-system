@@ -7,14 +7,9 @@ from pathlib import Path
 from typing import Iterable
 
 import gql
-from gql.transport.requests import RequestsHTTPTransport
-from gql.dsl import (
-    DSLSchema,
-    DSLType,
-    DSLInlineFragment,
-    DSLSelectable,
-)
 import more_itertools
+from gql.dsl import DSLInlineFragment, DSLSchema, DSLSelectable, DSLType
+from gql.transport.requests import RequestsHTTPTransport
 
 import canvas.client_rest as canvas
 import graphql_.client

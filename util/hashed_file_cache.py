@@ -10,6 +10,7 @@ from typing import Callable, Optional
 import util.general
 import util.path
 
+
 _FILENAME_LOCK = "lock"
 _FILENAME_LOCK_UPDATE = "lock_update"
 _FILENAME_LINK = "data"

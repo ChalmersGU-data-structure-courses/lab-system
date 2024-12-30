@@ -6,9 +6,10 @@ from pathlib import Path
 
 import dominate
 
+import gitlab_.tools
 import util.general
 import util.git
-import gitlab_.tools
+
 
 logger = logging.getLogger(__name__)
 

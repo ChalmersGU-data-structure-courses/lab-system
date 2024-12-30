@@ -2,14 +2,14 @@ import dataclasses
 import datetime
 import functools
 import logging
-from typing import Optional, Iterable, Tuple
+from typing import Iterable, Optional, Tuple
 
 from gql.transport.requests import RequestsHTTPTransport
 
+import graphql_.client
 import util.general
 import util.print_parse
-import graphql_.client
-from graphql_.tools import query, distribute, tupling, lift, over_list
+from graphql_.tools import distribute, lift, over_list, query, tupling
 from util.this_dir import this_dir
 
 
