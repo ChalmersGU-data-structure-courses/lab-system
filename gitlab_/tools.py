@@ -154,6 +154,7 @@ class CachedGroup:
         g.web_url = urllib.parse.urljoin(self.gl.url, str(self.path))
         return g
 
+    # pylint: disable-next=method-hidden
     def create(self, group=None, **kwargs):
         if self.logger:
             self.logger.info(f"Creating group {self.path}")
