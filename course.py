@@ -874,9 +874,7 @@ class Course:
                     shutdown,
                     name="shutdown-timer",
                 )
-                thread_managers.append(
-                    util.threading.timer_manager(shutdown_timer)
-                )
+                thread_managers.append(util.threading.timer_manager(shutdown_timer))
 
             # Set up lab refresh event timers and add initial lab refreshes.
             def refresh_lab(lab):

@@ -18,7 +18,9 @@ class Drive:
         return (
             # False positive.
             # pylint: disable-next=no-member
-            self.drive.files().get(fileId=id, fields="parents").execute()["parents"][0]
+            self.drive.files()
+            .get(fileId=id, fields="parents")
+            .execute()["parents"][0]
         )
 
     def list(self, id):

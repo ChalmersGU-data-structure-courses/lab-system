@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 # pylint: disable-next=consider-using-from-import,import-error,wrong-import-order,wrong-import-position
 import lp3.config as config
 
+
 c = course.Course(config, this_dir / "lp3")
 
 for user in c.gitlab_users_cache.username_from_id.values():

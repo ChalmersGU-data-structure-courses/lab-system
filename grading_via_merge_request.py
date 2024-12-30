@@ -373,7 +373,8 @@ class GradingViaMergeRequest:
                     (date_to, _) = self.synced_submissions[request_name_next]
                 (jt, it) = util.general.before_and_after(
                     # pylint: disable-next = possibly-used-before-assignment
-                    lambda x: request_name_next is None or x[0] <= date_to, it
+                    lambda x: request_name_next is None or x[0] <= date_to,
+                    it,
                 )
                 self.play_submission_label_events(outcome_status, jt)
                 consolidated_outcome = self.consolidate_outcome(

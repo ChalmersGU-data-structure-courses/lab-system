@@ -4,10 +4,10 @@ import itertools
 import logging
 from pathlib import Path
 
+import gitlab
 from gql.dsl import DSLInlineFragment, DSLQuery, DSLSchema, dsl_gql
 from gql.transport.requests import RequestsHTTPTransport
 
-import gitlab
 import canvas.client_rest as canvas
 import canvas.graphql
 import gitlab_.graphql
