@@ -684,8 +684,7 @@ def hook_create(spec: HookSpec):
                 f"Invalid net location {util.print_parse.netloc.print(spec.netloc)} "
                 f"for a webhook in {spec.project.web_url}."
             ) from e
-        else:
-            raise
+        raise
 
 
 def hook_delete(project, hook):
