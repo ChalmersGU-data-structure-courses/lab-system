@@ -304,9 +304,9 @@ class GradingViaMergeRequest:
 
     def submission_label_events(self, request_from=None, request_to=None):
         if request_from is not None:
-            date_from = self.sync_submissions[request_from]
+            date_from = self.sync_submissions([request_from])
         if request_to is not None:
-            date_to = self.sync_submissions[request_to]
+            date_to = self.sync_submissions([request_to])
 
         def conditions(x):
             if request_from is not None:
