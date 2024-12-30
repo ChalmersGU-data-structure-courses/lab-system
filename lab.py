@@ -625,6 +625,7 @@ class Lab:
         return {id: group_project.GroupProject(self, id) for id in group_ids()}
 
     def groups_known(self):
+        # pylint: disable=use-yield-from
         for group in self.groups.values():
             # if group.is_known:
             yield group
@@ -724,8 +725,7 @@ class Lab:
                 if self.config.multi_language is None:
                     yield "problem"  # self.course.config.branch.master  # TODO: fix in config.
                 else:
-                    for branch in self.config.branch_problem.values():
-                        yield branch
+                    yield from self.config.branch_problem.values()
 
             self.repo_add_remote(
                 self.course.config.path_lab.primary,
@@ -814,8 +814,7 @@ class Lab:
         def patterns():
             if not is_solution:
                 for request_handler in self.config.request_handlers.values():
-                    for pattern in request_handler.request_matcher.protection_patterns:
-                        yield pattern
+                    yield from request_handler.request_matcher.protection_patterns
 
         # Should only be needed for solution projects.
         # Protected tags are inherited from primary project by forking.
