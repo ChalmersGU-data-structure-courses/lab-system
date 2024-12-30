@@ -9,6 +9,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Iterable, Optional
 
+import dateutil.parser
 import git
 import gitlab
 import gitlab.v4.objects.tags
@@ -1884,6 +1885,41 @@ class Lab:
                             f"missing member {user_str_from_gitlab_username(gitlab_username)}"
                             f" of {entity_name}"
                         )
+
+    def recreate_student_invitations(self, keep_after=None):
+        """
+        Recreate student invitations to groups on Chalmers GitLab.
+        Since GitLab does not expose an API for resending invitations,
+        we delete and recreate invitations instead.
+
+        If the date keep_after is given (instance of datetime.datetime),
+        only those invitations are recreated that have been created before the given date.
+        """
+        earlier_than = "" if keep_after is None else f" earlier than {keep_after}"
+        self.logger.info(f"recreating student invitations{earlier_than}.")
+
+        for group_id in self.student_connector.desired_groups():
+            entity_name = (
+                f"{self.student_connector.gitlab_group_name(group_id)} on GitLab"
+            )
+            entity = self.groups[group_id].project.lazy
+
+            for invitation in gitlab_.tools.invitation_dict(self.gl, entity).values():
+                created_at = dateutil.parser.parse(invitation["created_at"])
+                if keep_after is None or created_at < keep_after:
+                    email = invitation["invite_email"]
+                    self.logger.info(
+                        f"Recreating invitation from {created_at} of {email} to {entity_name}."
+                    )
+                    with gitlab_.tools.exist_ok():
+                        gitlab_.tools.invitation_delete(self.gl, entity, email)
+                    try:
+                        with gitlab_.tools.exist_ok():
+                            gitlab_.tools.invitation_create(
+                                self.gl, entity, email, gitlab.const.DEVELOPER_ACCESS
+                            )
+                    except gitlab.exceptions.GitlabCreateError as e:
+                        self.logger.error(str(e))
 
     def sync_projects_and_students_from_canvas(self, synced_group_sets=frozenset()):
         """
