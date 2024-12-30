@@ -12,6 +12,7 @@ from course import Course
 from lab import StudentConnectorGroupSet, StudentConnectorIndividual
 from prelude import *
 
+
 logging.basicConfig(
     format="%(asctime)s %(levelname)s %(module)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",

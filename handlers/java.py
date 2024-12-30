@@ -1,16 +1,15 @@
-from pathlib import PurePosixPath, Path
+from pathlib import Path, PurePosixPath
 
 import dominate
 
-import util.git
 import gitlab_.tools
+import handlers.general
 import lab_interfaces
 import live_submissions_table
-import util.path
 import robograder_java
 import submission_java
-
-import handlers.general
+import util.git
+import util.path
 
 
 report_segments = ["report"]

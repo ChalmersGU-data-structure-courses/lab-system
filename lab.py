@@ -14,14 +14,14 @@ import gitlab
 import gitlab.v4.objects.tags
 
 import events
-import util.general
-import util.git
 import gitlab_.tools
 import google_tools.sheets
 import grading_sheet
 import grading_via_merge_request
 import group_project
 import live_submissions_table
+import util.general
+import util.git
 import util.path
 import util.print_parse
 import webhook_listener

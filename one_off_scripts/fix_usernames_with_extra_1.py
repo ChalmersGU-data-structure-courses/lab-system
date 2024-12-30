@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 
 import gitlab
+
 import course
 import gitlab_.tools  # noqa: E402
 from util.this_dir import this_dir
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 # pylint: disable-next=consider-using-from-import,wrong-import-position
 import lp3.config as config
+
 
 c = course.Course(config, this_dir / "lp3")
 

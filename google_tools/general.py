@@ -1,10 +1,10 @@
 import json
 import logging
-from pathlib import Path
 import pickle
 import shlex
 import shutil
 import urllib.parse
+from pathlib import Path
 
 import google.auth.transport.requests
 import google.oauth2.service_account
@@ -13,8 +13,8 @@ import google_auth_oauthlib.flow
 import util.general
 import util.path
 
-from .drive import Drive, TemporaryFile
 from .documents import Documents
+from .drive import Drive, TemporaryFile
 
 
 logger = logging.getLogger("google_tools.general")

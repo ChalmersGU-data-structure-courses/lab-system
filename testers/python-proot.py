@@ -11,9 +11,8 @@ from typing import Optional, Tuple, Union
 # We import it to make sure that all dependencies of the sandboxing script are satisfies.
 import seccomp  # noqa: F401
 
-import util.proot
-
 import testers.general
+import util.proot
 
 
 logger = logging.getLogger(__name__)

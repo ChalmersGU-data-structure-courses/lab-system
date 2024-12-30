@@ -3,13 +3,12 @@
 import dataclasses
 import logging
 import os
-from pathlib import Path
 import subprocess
+from pathlib import Path
 from typing import Collection, Optional, Tuple, Union
 
-import util.general
-
 import testers.general
+import util.general
 
 
 logger = logging.getLogger(__name__)

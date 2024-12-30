@@ -7,9 +7,9 @@ import time
 
 import more_itertools
 
+import gitlab_.tools
 import util.general
 import util.git
-import gitlab_.tools
 import util.markdown
 import util.print_parse
 

@@ -9,8 +9,8 @@ import operator
 import random
 import shlex
 import threading
-import types
 import traceback
+import types
 from pathlib import Path
 from typing import Iterable
 
@@ -23,21 +23,22 @@ import more_itertools
 import canvas.client_rest as canvas
 import chalmers_pdb.tools
 import events
-import util.gdpr_coding
-import util.general
 import gitlab_.graphql
 import gitlab_.tools
 import gitlab_.users_cache
 import google_tools.sheets
 import grading_sheet
 import group_set
+import util.gdpr_coding
+import util.general
+import util.instance_cache
 import util.ip
 import util.ldap
 import util.print_parse
 import util.subsuming_queue
 import util.threading
 import webhook_listener
-import util.instance_cache
+
 
 # ===============================================================================
 # Tools

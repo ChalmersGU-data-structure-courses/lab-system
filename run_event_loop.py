@@ -7,6 +7,7 @@ from pathlib import Path
 
 import argcomplete
 
+
 p = argparse.ArgumentParser(
     add_help=False,
     description="Manage labs for specified courses in an event loop.",

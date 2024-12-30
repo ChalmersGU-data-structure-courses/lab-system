@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 import logging
-from pathlib import Path
 import time
+from pathlib import Path
 
 import canvas.client_rest as canvas  # noqa: E402
 import util.general  # noqa: E402
 
+
+# isort: split
 from gitlab_config_personal import canvas_auth_token  # noqa: E402
 
 

@@ -1,13 +1,14 @@
-from __future__ import print_function
-
 import base64
 from email.mime.text import MIMEText
 
 from apiclient import errors
 from googleapiclient.discovery import build
 
-import gitlab_config_personal as config
 import google_tools.general
+
+
+# isort: split
+import gitlab_config_personal as config
 
 
 def create_message(sender, to, subject, message_text):

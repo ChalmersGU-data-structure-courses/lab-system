@@ -1,11 +1,11 @@
 import functools
 import itertools
 
-import more_itertools
 import gql
+import more_itertools
 from gql.dsl import DSLSchema
 
-from graphql_.tools import query, with_processing, labelled
+from graphql_.tools import labelled, query, with_processing
 
 
 def retrieve_all_from_cursor(callback, cursor=None):

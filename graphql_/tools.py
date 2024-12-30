@@ -1,7 +1,7 @@
 import logging
 import types
 
-from gql.dsl import dsl_gql, DSLQuery
+from gql.dsl import DSLQuery, dsl_gql
 
 import util.general
 

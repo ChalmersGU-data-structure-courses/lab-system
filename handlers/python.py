@@ -1,6 +1,5 @@
-import live_submissions_table
-
 import handlers.general
+import live_submissions_table
 
 
 class SubmissionHandler(handlers.general.SubmissionHandler):

@@ -1,41 +1,41 @@
-from datetime import timedelta
 import functools
-import logging
 import json
+import logging
 import os.path
-from pathlib import PurePosixPath, Path
 import re
 import shutil
 import subprocess
 import sys
 import types
 import urllib.parse
+from datetime import timedelta
+from pathlib import Path, PurePosixPath
 
-import util.http_logging  # noqa F401
 import requests
 
+import util.http_logging  # noqa F401
+import util.simple_cache
 from util.general import (
+    BearerAuth,
+    JSONObject,
+    doublequote,
+    eq,
     from_singleton,
     group_by,
-    doublequote,
-    JSONObject,
-    json_encoder,
-    print_error,
-    on,
-    eq,
-    without_adjacent_dups,
     join_lines,
-    BearerAuth,
+    json_encoder,
+    on,
+    print_error,
+    without_adjacent_dups,
 )
 from util.path import (
-    add_suffix,
-    format_path,
-    set_modification_time,
     OpenWithModificationTime,
-    modify_no_modification_time,
+    add_suffix,
     fix_encoding,
+    format_path,
+    modify_no_modification_time,
+    set_modification_time,
 )
-import util.simple_cache
 
 
 logger = logging.getLogger(__name__)

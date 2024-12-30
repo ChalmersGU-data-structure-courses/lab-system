@@ -1,8 +1,7 @@
 import dominate
 
-import live_submissions_table
-
 import handlers.general
+import live_submissions_table
 
 
 class LanguageColumn(live_submissions_table.Column):

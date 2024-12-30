@@ -8,13 +8,12 @@ import os
 from pathlib import Path
 from typing import Iterable, Optional, Tuple, Union
 
+import lab_interfaces
+import submission_java
+import testers.general
 import util.general
 import util.java
-import lab_interfaces
 import util.markdown
-import submission_java
-
-import testers.general
 
 
 logger = logging.getLogger(__name__)
