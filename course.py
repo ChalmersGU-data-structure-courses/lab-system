@@ -402,12 +402,12 @@ class Course:
         """
         return dict({user.id: user for user in self.graders.values()})
 
-    @functools.cached_property
-    def labs(self):
-        return frozenset(
-            self.config.lab.id_gitlab.parse(lab.path)
-            for lab in gitlab_.tools.list_all(self.labs_group.lazy.subgroups)
-        )
+    # @functools.cached_property
+    # def labs(self):
+    #     return frozenset(
+    #         self.config.lab.id_gitlab.parse(lab.path)
+    #         for lab in gitlab_.tools.list_all(self.labs_group.lazy.subgroups)
+    #     )
 
     @functools.cached_property
     def gitlab_graphql_client(self):
