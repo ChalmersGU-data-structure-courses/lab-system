@@ -902,13 +902,8 @@ class Assignment:
                     user_groupings.add(tuple(user_grouping))
 
             if not user_groupings:
-                logger.log(
-                    logging.INFO,
-                    "Info: {} did not submit:".format(self.group_set.str(group)),
-                )
-                logger.log(
-                    logging.INFO, "- {}".format(self.course.users_str(group_users))
-                )
+                logger.info(f"Info: {self.group_set.str(group)} did not submit:")
+                logger.info("- " + self.course.users_str(group_users))
                 continue
 
             # TODO: handle this somehow if it ever happens (assuming students can change groups).
@@ -923,7 +918,7 @@ class Assignment:
                     "But only the following groups of users have submitted identically:"
                 )
                 for user_grouping in user_groupings:
-                    print_error("- {}".format(self.course.users_str(user_grouping)))
+                    print_error("- " + self.course.users_str(user_grouping))
                 assert False
 
             user_grouping = next(iter(user_groupings))
@@ -935,9 +930,7 @@ class Assignment:
                     f"The following members have not submitted with {self.group_set.str(group)}:",
                 )
                 for user_id in did_not_submit:
-                    logger.log(
-                        logging.INFO, "- {}".format(self.course.user_str(user_id))
-                    )
+                    logger.info("- " + self.course.user_str(user_id))
 
             not_part_of_group = set(user_grouping).difference(set(group_users))
             if not_part_of_group:
@@ -946,7 +939,7 @@ class Assignment:
                     f"The following non-members have submitted with {self.group_set.str(group)}:",
                 )
                 for user_id in not_part_of_group:
-                    logger.log(logging.INFO, f"- {self.course.user_str(user_id)}")
+                    logger.info("- " + self.course.user_str(user_id))
 
             result[group] = lookup[tuple(user_grouping)]
         return result
