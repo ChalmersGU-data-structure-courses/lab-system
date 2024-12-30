@@ -114,10 +114,12 @@ def interchange(xss):
 
 
 def last(xs, default=None, strict=False):
+    good = False
     for x in xs:
         good = True
 
     if good:
+        # pylint: disable-next=undefined-loop-variable
         return x
 
     assert not strict
@@ -385,6 +387,7 @@ def appropriate_time_unit(delta):
     for time_unit, min_ in reversed(time_units_min.items()):
         if abs(delta) >= min_:
             return time_unit
+    # pylint: disable-next=undefined-loop-variable
     return time_unit
 
 
