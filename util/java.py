@@ -240,6 +240,7 @@ def compile_unknown(
     return process.stderr
 
 
+# pylint: disable-next=redefined-builtin
 def compile(
     src=None,
     bin=None,
@@ -408,12 +409,12 @@ def permission_file(path, is_dir=False, file_permissions=None):
     )
 
 
-def policy_permission(type, args=None):
+def policy_permission(type_, args=None):
     """
     Format a permission entry in a Java policy file.
 
     Arguments:
-    * type: permission type (string), e.g. 'java.security.AllPermission'.
+    * type_: permission type (string), e.g. 'java.security.AllPermission'.
     * args:
         Iterable of string arguments.
         Defaults to the empty list.
@@ -426,7 +427,7 @@ def policy_permission(type, args=None):
     formatted_args = (
         " " + ", ".join(string_encode(str(arg)) for arg in args) if args else ""
     )
-    return f"permission {type}{formatted_args};"
+    return f"permission {type_}{formatted_args};"
 
 
 def policy_grant(path, permissions):

@@ -46,6 +46,7 @@ class Dimension(enum.Enum):
 range_unbounded = (None, None)
 
 
+# pylint: disable-next=redefined-builtin
 def range_in_dimension(dimension, range):
     return (
         range if dimension == Dimension.rows else range_unbounded,
@@ -157,6 +158,7 @@ def row_data(values):
     }
 
 
+# pylint: disable-next=redefined-builtin
 def request_update_cells(rows, fields, start=None, range=None):
     """
     * rows: Iterable (of rows) of iterables (of cells) of cell values (API type CellData).
@@ -171,6 +173,8 @@ def request_update_cells(rows, fields, start=None, range=None):
             start = None
         elif range is not None:
             yield ("range", range)
+            # Pylint bug: it does not see that this refers to the argument of the outer method.
+            # pylint: disable-next=redefined-builtin
             range = None
         if not (start is None and range is None):
             raise ValueError("Exactly one of 'start' and 'range' must be given")
@@ -196,6 +200,7 @@ def request_update_cell(cell, fields, sheet_id, row, column):
     )
 
 
+# pylint: disable-next=redefined-builtin
 def request_update_cells_user_entered_value(rows, start=None, range=None):
     """
     Convenience specialization of request_update_cells for updating the user entered valued.

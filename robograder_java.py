@@ -154,6 +154,8 @@ def run(
 # Always specifying the destination directory explicitly also side-steps problems with symlinks.
 
 
+# Pylint bug: whilelisting via allowed-redefined-builtins is ignored.
+# pylint: disable-next=redefined-builtin
 def compile(
     problem_src,
     robograder_src,
