@@ -313,8 +313,7 @@ class GradingSheet:
         )
 
     def index(self):
-        # TODO: replace by .index once next version of gspread releases
-        return self.gspread_worksheet._properties["index"]
+        return self.gspread_worksheet.index
 
     def clear_cache(self):
         for x in [
