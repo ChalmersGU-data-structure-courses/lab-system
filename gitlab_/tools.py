@@ -839,6 +839,8 @@ class UsernameCache:
         self._path_lock = self.path / "lock"
         self._path_lock_update = self.path / "lock_update"
 
+        # Class DateFile has since been removed.
+        # pylint: disable=undefined-variable
         self.last_updated = DateFile(self.path / "last_update")
         self.last_changed = DateFile(self.path / "last_changed")
 
@@ -867,6 +869,8 @@ class UsernameCache:
         """
         with util.path.working_dir(self.path):
             for path_file in self.paths:
+                # Function create_placeholder_file_for_group has since been removed.
+                # pylint: disable=undefined-variable
                 create_placeholder_file_for_group(path_file, group_id)
 
     @property
