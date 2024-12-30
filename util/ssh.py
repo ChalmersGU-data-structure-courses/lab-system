@@ -258,11 +258,11 @@ def cmd_template_via_control_socket(control_path):
     )
 
 
-def take_previous_executable(previous, current):
+def take_previous_executable(previous, _current):
     return previous
 
 
-def take_current_executable(previous, current):
+def take_current_executable(_previous, current):
     return current
 
 
@@ -438,7 +438,7 @@ class ConnectionMaster:
     class CommandFailure(LateFailure):
         pass
 
-    def __init__(self, netloc, **kwargs):
+    def __init__(self, netloc, **_kwargs):
         """
         Initialize an SSH connection control master to the given net location.
         Further keyword arguments are passed to cmd_ssh.

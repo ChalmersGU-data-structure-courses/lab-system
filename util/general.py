@@ -387,7 +387,10 @@ def appropriate_time_unit(delta):
 
 
 def format_timespan_using(delta, time_unit, precision=2):
-    amount = format_with_rel_prec(delta / timedelta(**{time_unit: 1}))
+    amount = format_with_rel_prec(
+        delta / timedelta(**{time_unit: 1}),
+        precision=precision,
+    )
     return f"{amount} {time_unit}"
 
 

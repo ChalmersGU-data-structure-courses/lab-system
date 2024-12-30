@@ -215,7 +215,7 @@ class RequestAndResponses:
     def handled_result(self):
         return self.get_handled(read_data=True)
 
-    def set_handled(self, data=None, **kwargs):
+    def set_handled(self, data=None, **_kwargs):
         """
         Mark this request in the local collection repository as handled.
         See handled.
@@ -761,7 +761,7 @@ class HandlerData:
         for response_key, response_title in self.handler.response_titles.items():
             # Python scoping is bad.
             # Do the workaround using default arguments.
-            def parser(issue, response_key=response_key, response_title=response_title):
+            def parser(issue, _response_key=response_key, response_title=response_title):
                 title = issue.title
                 parse = response_title.parse.__call__
                 try:
@@ -1173,7 +1173,7 @@ class GroupProject:
     def update_problem(
         self,
         force=False,
-        notify_students: str = None,
+        notify_students: str = None,  # pylint: disable=unused-argument
         ensure_ancestral=True,
     ):
         """
@@ -1584,7 +1584,7 @@ class GroupProject:
 
         if delete_duplicates:
 
-            def delete_duplicates_fun(item, key, value):
+            def delete_duplicates_fun(item, _key, _value):
                 item.delete()
 
         else:
@@ -1689,7 +1689,7 @@ class GroupProject:
 
         return None
 
-    def parse_hook_event_tag(self, hook_event, strict):
+    def parse_hook_event_tag(self, hook_event, _strict):
         """
         For a tag push event, we always generate a queue event.
         TODO (optimization): Check that the tag name matches a request matcher.
@@ -1702,7 +1702,7 @@ class GroupProject:
             lambda: self.lab.refresh_group(self),
         )
 
-    def parse_hook_event_issue(self, hook_event, strict):
+    def parse_hook_event_issue(self, hook_event, _strict):
         """
         We only generate a group project event if both:
         - the (current or previous) author is a grader,
@@ -1763,7 +1763,7 @@ class GroupProject:
                 lambda: self.lab.refresh_group(self, refresh_issue_responses=True),
             )
 
-    def parse_hook_event_grading_merge_request(self, hook_event, strict):
+    def parse_hook_event_grading_merge_request(self, hook_event, _strict):
         self.logger.debug("Received a grading merge request event.")
         changes = hook_event.get("changes")
         if changes and "labels" in changes:

@@ -41,7 +41,9 @@ class GUIDtoCID(util.path.AttributeJSONCache):
             updated = not guid in self.mapping
             if updated:
                 self.mapping[guid] = self.do_lookup(
-                    guid, canvas_name, canvas_name_sortable
+                    guid,
+                    canvas_name,
+                    canvas_name_sortable,
                 )
             return updated
 
@@ -50,7 +52,7 @@ class GUIDtoCID(util.path.AttributeJSONCache):
         if updated:
             self.save()
 
-    def do_lookup(self, guid, canvas_name, canvas_name_sortable=None):
+    def do_lookup(self, guid, canvas_name, _canvas_name_sortable=None):
         """Could use improved heuristic."""
         results = self.client.search_ext_s(
             "ou=people,dc=chalmers,dc=se",

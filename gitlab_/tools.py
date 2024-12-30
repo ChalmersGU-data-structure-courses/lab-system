@@ -112,7 +112,7 @@ def delete_protected_branches(project):
         branch.delete()
 
 
-def protect_branch(gl, project, branch, delete_prev=False):
+def protect_branch(project, branch, delete_prev=False):
     if delete_prev:
         project.protectedbranches.delete(branch)
     data = {

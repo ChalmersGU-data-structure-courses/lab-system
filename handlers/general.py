@@ -177,7 +177,7 @@ class SubmissionHandlerWithCheckout(SubmissionHandler):
     Requires submission_failure to be set (see SubmissionHandler.handle_request_callback_with_src).
     """
 
-    def handle_request_with_src(self, request_and_responses, src):
+    def handle_request_with_src(self, _request_and_responses, _src):
         return {
             "accepted": True,
             "review_needed": True,

@@ -931,7 +931,10 @@ class Assignment:
         return result
 
     def collect_submissions(self, use_cache=True):
-        raw_submissions = self.course.get_submissions(self.assignment_id)
+        raw_submissions = self.course.get_submissions(
+            self.assignment_id,
+            use_cache=use_cache,
+        )
         grouped_submission = Assignment.group_identical_submissions(
             Assignment.filter_submissions(raw_submissions)
         )
