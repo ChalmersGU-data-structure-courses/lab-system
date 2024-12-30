@@ -1623,7 +1623,7 @@ class Lab:
         """
         id = self.group_slug_to_id(project_slug)
         if id is None:
-            raise Exception(f"Unexpected project slug in hook event: {project_slug}")
+            raise ValueError(f"Unexpected project slug in hook event: {project_slug}")
 
         try:
             group = self.groups[id]
