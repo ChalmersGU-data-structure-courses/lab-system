@@ -30,10 +30,7 @@ from util.general import (
 )
 from util.path import (
     OpenWithModificationTime,
-    add_suffix,
-    fix_encoding,
     format_path,
-    modify_no_modification_time,
     set_modification_time,
 )
 
@@ -1084,7 +1081,7 @@ class Assignment:
     #     for filename, attachment in files.items():
     #         path = dir / filename
     #         self.canvas.place_file(path, attachment)
-    #         fix_encoding(path)
+    #         util.path.fix_encoding(path)
     #
     #         file_mapping[attachment.id] = path
     #         if write_ids:
@@ -1094,7 +1091,7 @@ class Assignment:
     #         content_handler = content_handlers(attachment.id) if content_handlers else None
     #         if content_handler:
     #             try:
-    #                 modify_no_modification_time(path, content_handler)
+    #                 util.path.modify_no_modification_time(path, content_handler)
     #             except HandlerException as e:
     #                 print_error('Content handler failed on file id {}: {}'.format(attachment.id, format_path(path)))
     #                 raise e
@@ -1119,16 +1116,16 @@ class Assignment:
     #     for filename, attachment in files.items():
     #         source = dir_files / str(attachment.id)
     #         self.canvas.place_file(
-    #             source, attachment, temp_target=add_suffix(source, ".temp")
+    #             source, attachment, temp_target=util.path.add_suffix(source, ".temp")
     #         )
-    #         fix_encoding(source)
+    #         util.path.fix_encoding(source)
     #
     #         content_handler = (
     #             content_handlers(attachment.id) if content_handlers else None
     #         )
     #         if content_handler:
     #             try:
-    #                 modify_no_modification_time(source, content_handler)
+    #                 util.path.modify_no_modification_time(source, content_handler)
     #             except HandlerException as e:
     #                 print_error(f"Content handler failed on {format_path(source)}")
     #                 raise e

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import logging
-from pathlib import Path
 
 import canvas.client_rest as canvas  # noqa: E402
 
