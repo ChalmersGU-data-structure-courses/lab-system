@@ -1099,9 +1099,7 @@ class GroupProject:
         if isinstance(request_name, gitlab.v4.objects.tags.ProjectTag):
             request_name = request_name.name
 
-        base = request_name
-        if isinstance(self, GroupProject):
-            base = util.git.qualify(self.remote, request_name)
+        base = util.git.qualify(self.remote, request_name)
         request_name = base / PurePosixPath(*segments)
         return util.git.normalize_tag(self.repo, request_name)
 
@@ -1115,10 +1113,9 @@ class GroupProject:
 
     def repo_tag_mark_repo_updated(self):
         # Mark local collection repository as updated and clear cache of tags.
-        lab = self.lab if isinstance(self, GroupProject) else self
-        lab.repo_updated = True
+        self.lab.repo_updated = True
         with contextlib.suppress(AttributeError):
-            del lab.tags
+            del self.lab.tags
 
     def repo_tag_create(self, request_name, segments=None, ref=None, **kwargs):
         """
@@ -1150,7 +1147,7 @@ class GroupProject:
             ref=ref,
             **kwargs,
         )
-        GroupProject.repo_tag_mark_repo_updated(self)
+        self.repo_tag_mark_repo_updated()
         return tag
 
     def repo_tag_delete(self, request_name, segments=None):
@@ -1162,7 +1159,7 @@ class GroupProject:
         * request_name, segments: As for repo_tag.
         """
         self.lab.delete_tag(GroupProject.repo_tag(self, request_name, segments).name)
-        GroupProject.repo_tag_mark_repo_updated(self)
+        self.repo_tag_mark_repo_updated()
 
     def ancestral_tag(self, problem):
         return util.git.normalize_tag(
