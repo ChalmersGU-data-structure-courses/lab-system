@@ -134,7 +134,7 @@ class OpenWithModificationTime:
         set_modification_time(self.path, self.date)
 
 
-class OpenWithNoModificationTime(OpenWithModificationTime):
+class OpenWithNoModificationTime:
     def __init__(self, path):
         self.path = path
 
