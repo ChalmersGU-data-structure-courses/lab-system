@@ -1,0 +1,80 @@
+[tool.black]
+extend-exclude = """
+  /_2020_lp2/|\
+  /_2020_lp2_orig/|\
+  /_2021_lp3/|\
+  /chalmers_pdb/new_rpcc_client.py|\
+  /old/|\
+  a^
+"""  # Last line matches nothing.
+
+[tool.isort]
+profile = "black"
+skip_gitignore = true
+skip = [
+  './_2020_lp2/',
+  './_2020_lp2_orig/',
+  './_2021_lp3/',
+  './chalmers_pdb/new_rpcc_client.py',
+  './old/',
+]
+lines_after_imports = 2
+
+[tool.pylint]
+ignore-paths = [
+  '_2020_lp2/',
+  '_2020_lp2_orig/',
+  '_2021_lp3/',
+  'chalmers_pdb/new_rpcc_client.py',
+  'old/',
+  '.venv/',  # Not tracked.
+]
+max-line-length = 150  # Comments are often written in the style of one sentence per line.
+allowed-redefined-builtins = ['bin', 'compile', 'dir', 'format', 'id', 'input']
+
+disable = [
+  # These are acceptable for now.
+  # They are mostly non-upper-case class constants and false positives.
+  # In the future, we should follow standard naming conventions.
+  'C0103',  # invalid-name
+
+  # These are acceptable for now.
+  # In the future, we should improve documentation.
+  'C0114',  # missing-module-docstring
+  'C0115',  # missing-class-docstring
+  'C0116',  # missing-function-docstring
+
+  # Too many false positives.
+  'R0801',  # duplicate-code
+
+  # Too many false positives.
+  # We have examples similar to this one: https://github.com/pylint-dev/pylint/issues/9625
+  'W0135',  # contextmanager-generator-missing-cleanup
+
+  # Do not warn about already documented TODOs.
+  'W0511',  # fixme
+
+  # These are acceptablefor now.
+  # In the future, we should improve our logging framework.
+  'W1201',  # logging-not-lazy
+  'W1202',  # logging-format-interpolation
+  'W1203',  # logging-fstring-interpolation
+
+  # These are acceptable.
+  # Uncomment to perhaps find opportunities for refactoring.
+  'C0302',  # too-many-lines
+  'R0902',  # too-many-instance-attributes
+  'R0903',  # too-few-public-methods
+  'R0904',  # too-many-public-methods
+  'R0912',  # too-many-branches
+  'R0913',  # too-many-arguments
+  'R0914',  # too-many-locals
+  'R0915',  # too-many-statements
+  'R0917',  # too-many-positional-arguments
+
+  # Outer negation is preferrable if non-negated condition is the primary condition under consideration.
+  'C0117',  # unnecessary-negation
+
+  # Iterating over dictionary keys should be made explicit.
+  'C0201',  # consider-iterating-dictionary
+]
