@@ -47,7 +47,7 @@ class GUIDtoCID(util.path.JSONAttributeCache):
                 )
             return updated
 
-        with self.updating:
+        with self.updating():
             updated = self._time is None or any(map(process, canvas_users))
         if updated:
             self.save()
