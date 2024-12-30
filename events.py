@@ -15,10 +15,12 @@ import util.ordering
 
 _dataclass_incomparable = dataclasses.dataclass(eq=False)
 
-_decorator = util.general.compose(
-    _dataclass_incomparable,
-    util.ordering.preorder_from_key,
-)
+
+def _decorator(x):
+    return _dataclass_incomparable(
+        # pylint: disable-next=protected-access
+        util.ordering.preorder_from_key(x, key=lambda x: x._key)
+    )
 
 
 @_decorator

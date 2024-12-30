@@ -349,6 +349,7 @@ class JSONEncoderForJSONObject(json.JSONEncoder):
         if not isinstance(o, JSONObject):
             return None
 
+        # pylint: disable-next=protected-access
         return o._dict
 
 
@@ -858,6 +859,7 @@ def before_and_after(predicate, it):
 def caching(f):
     @functools.wraps(f)
     def g(*args, **kwargs):
+        # pylint: disable=protected-access
         try:
             return g._cached_value
         except AttributeError:
