@@ -471,7 +471,7 @@ class ConnectionMaster:
                 else:
                     try:
                         result.check_returncode()
-                    except Exception as e:
+                    except subprocess.CalledProcessError as e:
                         logger.warning(
                             util.general.join_lines(
                                 [
@@ -482,6 +482,7 @@ class ConnectionMaster:
                             )
                         )
                         raise
+            # pylint: disable-next=broad-exception-caught
             except Exception as e:
                 # pylint: disable-next=attribute-defined-outside-init
                 self.ssh_thread_exception = e

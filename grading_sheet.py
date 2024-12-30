@@ -110,6 +110,9 @@ def parse_grading_columns(config, header_row):
             value = value["userEnteredValue"]
             value = value["stringValue"]
             j = headers.query.parse(value)
+        # We currently rely on generic exceptions to detect parse failure.
+        # For example, these can be ValueError, LookupError, IndexError.
+        # pylint: disable-next=broad-exception-caught
         except Exception:
             continue
 
@@ -147,6 +150,9 @@ def parse_group_rows(gdpr_coding, values):
                 value = value["userEnteredValue"]
                 value = google_tools.sheets.extended_value_extract_primitive(value)
                 yield (gdpr_coding.identifier.parse(value), i)
+            # We currently rely on generic exceptions to detect parse failure.
+            # For example, these can be ValueError, LookupError, IndexError.
+            # pylint: disable-next=broad-exception-caught
             except Exception:
                 continue
 
@@ -746,7 +752,7 @@ class GradingSheet:
             if x is not None:
                 try:
                     (value, fields) = x
-                except Exception:
+                except TypeError:
                     value = x
                     fields = "userEnteredValue"
                 self.write_query_cell(
@@ -795,16 +801,23 @@ class GradingSpreadsheet:
         for worksheet in self.gspread_spreadsheet.worksheets():
             try:
                 lab_id = self.config.lab.name.parse(worksheet.title)
-                lab = self.labs.get(lab_id)
-                if lab:
-                    yield (
-                        lab_id,
-                        GradingSheet(
-                            self, lab, name=worksheet.title, gspread_worksheet=worksheet
-                        ),
-                    )
+            # We currently rely on generic exceptions to detect parse failure.
+            # For example, these can be ValueError, LookupError, IndexError.
+            # pylint: disable-next=broad-exception-caught
             except Exception:
-                pass
+                continue
+
+            lab = self.labs.get(lab_id)
+            if lab:
+                yield (
+                    lab_id,
+                    GradingSheet(
+                        self,
+                        lab,
+                        name=worksheet.title,
+                        gspread_worksheet=worksheet,
+                    ),
+                )
 
     @functools.cached_property
     def grading_sheets(self):
@@ -818,7 +831,9 @@ class GradingSpreadsheet:
 
     def update(self, *requests):
         google_tools.sheets.batch_update(
-            self.google, self.config.grading_sheet.spreadsheet, requests
+            self.google,
+            self.config.grading_sheet.spreadsheet,
+            requests,
         )
 
     @contextlib.contextmanager
