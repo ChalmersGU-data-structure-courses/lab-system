@@ -16,11 +16,15 @@ class Drive:
 
     def get_parent(self, id):
         return (
+            # False positive.
+            # pylint: disable-next=no-member
             self.drive.files().get(fileId=id, fields="parents").execute()["parents"][0]
         )
 
     def list(self, id):
         r = (
+            # False positive.
+            # pylint: disable-next=no-member
             self.drive.files()
             .list(q="'" + id + "' in parents and trashed = false")
             .execute()
@@ -29,14 +33,20 @@ class Drive:
         return [x["id"] for x in r["files"]]
 
     def delete(self, id):
+        # False positive.
+        # pylint: disable-next=no-member
         self.drive.files().delete(fileId=id).execute()
 
     def move(self, id, target):
+        # False positive.
+        # pylint: disable-next=no-member
         self.drive.files().update(
             fileId=id, removeParents=self.get_parent(id), addParents=target
         ).execute()
 
     def copy(self, id, name):
+        # False positive.
+        # pylint: disable-next=no-member
         return self.drive.files().copy(fileId=id, body={"name": name}).execute()["id"]
 
     def copy_to(self, id, name, target):
@@ -51,6 +61,8 @@ class Drive:
     }
 
     def export(self, id, path, mime_type):
+        # False positive.
+        # pylint: disable-next=no-member
         data = self.drive.files().export(fileId=id, mimeType=mime_type).execute()
         path.write_bytes(data)
 

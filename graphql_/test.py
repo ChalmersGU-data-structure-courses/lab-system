@@ -46,6 +46,8 @@ gl.auth()
 
 with util.general.timing("issues"):
     x = list(
+        # This is a commented-out method.
+        # pylint: disable-next=no-member
         client.retrieve_issues_in_project(
             "courses/lp2-data-structures/groups/97/lab-3-python"
         )

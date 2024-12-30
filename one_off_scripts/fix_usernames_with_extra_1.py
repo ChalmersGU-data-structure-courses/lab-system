@@ -17,7 +17,7 @@ import lp3.config as config
 
 c = course.Course(config, this_dir / "lp3")
 
-for user in c._gitlab_users.values():
+for user in c.gitlab_users_cache.username_from_id.values():
     username = user.username
     if username.endswith("1") and not username.startswith("project"):
         cid = username.strip("1")

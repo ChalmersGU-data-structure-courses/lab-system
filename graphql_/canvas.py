@@ -430,7 +430,7 @@ class CourseUsers:
         return self._is_teacher(self.user(id))
 
     def _subdict(self, pred):
-        return {id: user for (id, user) in self.user_details.items() if pred(user)}
+        return {id: user for (id, user) in self.users.items() if pred(user)}
 
     @functools.cached_property
     def students(self):

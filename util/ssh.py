@@ -595,7 +595,7 @@ class Multiplexer:
                 self.connection_master = ConnectionMaster(self.netloc)
                 return
             except ConnectionMaster.StartupFailure as e:
-                self.startup_failures.append((datetime.now(), e))
+                self.startup_failures.append((datetime.datetime.now(), e))
 
         logger.error(
             f"SSH connection to {util.print_parse.netloc.print(self.netloc)} "

@@ -632,7 +632,7 @@ class GradingSheet:
         * query: the query (indexed sequentially from 0).
         * field: the field to get (one of 'submission', 'grader', 'score')
         """
-        return self.sheet_data.values(*self._cell_coord(group_id, query, field))
+        return self.sheet_data.value(*self._cell_coords(group_id, query, field))
 
     def write_query_cell(
         self,

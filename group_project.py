@@ -761,7 +761,11 @@ class HandlerData:
         for response_key, response_title in self.handler.response_titles.items():
             # Python scoping is bad.
             # Do the workaround using default arguments.
-            def parser(issue, _response_key=response_key, response_title=response_title):
+            def parser(
+                issue,
+                _response_key=response_key,
+                response_title=response_title,
+            ):
                 title = issue.title
                 parse = response_title.parse.__call__
                 try:

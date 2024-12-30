@@ -13,6 +13,8 @@ class Documents:
         )
 
     def batch_update(self, id, requests):
+        # False positive.
+        # pylint: disable-next=no-member
         self.docs.documents().batchUpdate(
             documentId=id,
             body={"requests": requests},

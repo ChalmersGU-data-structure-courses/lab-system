@@ -87,6 +87,8 @@ class Client(graphql_.client.ClientBase):
                 tupling(
                     ds.Query.users(
                         sort="CREATED_ASC",
+                        # False positive.
+                        # pylint: disable-next=no-member
                         after=CreatedCursor.pp_cursor.print(cursor),  # type: ignore[attr-defined]
                     ).select
                 )(
@@ -97,6 +99,8 @@ class Client(graphql_.client.ClientBase):
                         )
                     ),
                     lift(ds.UserCoreConnection.pageInfo.select)(
+                        # False positive.
+                        # pylint: disable-next=no-member
                         (ds.PageInfo.endCursor, CreatedCursor.pp_cursor.parse),  # type: ignore[attr-defined]
                     ),
                 ),

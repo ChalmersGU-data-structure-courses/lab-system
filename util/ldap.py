@@ -77,7 +77,7 @@ def list_all(client, base, scope, filterstr=None, attrlist=None, page_size=100):
 
         (page_control_response,) = filter(
             lambda control: control.controlType
-            == ldap.control.SimplePagedResultsControl.controlType,
+            == ldap.controls.SimplePagedResultsControl.controlType,
             serverctrls_response,
         )
         page_control.cookie = page_control_response.cookie
@@ -119,6 +119,8 @@ def search_people(
 ):
     return client.search_ext_s(
         "ou=people,dc=chalmers,dc=se",
+        # False positive.
+        # pylint: disable=no-member
         ldap.SCOPE_ONELEVEL,
         filter_,
         serverctrls=[page_control],
