@@ -37,8 +37,6 @@ from util.path import (
 )
 import util.simple_cache
 
-from _2020_lp2.submission_fix_lib import HandlerException
-
 
 logger = logging.getLogger(__name__)
 
@@ -1079,6 +1077,7 @@ class Assignment:
         return lines
 
     # Returns a mapping from file ids to paths.
+    # Better use create_submission_dir_linked.
     # def create_submission_dir(self, dir, submission, files, write_ids = False, content_handlers = None):
     #     dir.mkdir(exist_ok = True) # useful if unpacking on top of template files
     #     file_mapping = {}
@@ -1103,36 +1102,43 @@ class Assignment:
     #     return file_mapping
 
     # Returns a mapping from file ids to paths.
-    def create_submission_dir_linked(
-        self, dir_files, dir, rel_dir_files, submission, files, content_handlers=None
-    ):
-        dir_files.mkdir(exist_ok=True)
-        dir.mkdir(exist_ok=True)
+    # Needs: from _2020_lp2.submission_fix_lib import HandlerException
+    # def create_submission_dir_linked(
+    #     self,
+    #     dir_files,
+    #     dir,
+    #     rel_dir_files,
+    #     submission,
+    #     files,
+    #     content_handlers=None,
+    # ):
+    #     dir_files.mkdir(exist_ok=True)
+    #     dir.mkdir(exist_ok=True)
+    #
+    #     file_mapping = {}
+    #     for filename, attachment in files.items():
+    #         source = dir_files / str(attachment.id)
+    #         self.canvas.place_file(
+    #             source, attachment, temp_target=add_suffix(source, ".temp")
+    #         )
+    #         fix_encoding(source)
+    #
+    #         content_handler = (
+    #             content_handlers(attachment.id) if content_handlers else None
+    #         )
+    #         if content_handler:
+    #             try:
+    #                 modify_no_modification_time(source, content_handler)
+    #             except HandlerException as e:
+    #                 print_error(f"Content handler failed on {format_path(source)}")
+    #                 raise e
+    #
+    #         target = dir / filename
+    #         target.symlink_to(rel_dir_files / str(attachment.id))
+    #         file_mapping[attachment.id] = target
 
-        file_mapping = {}
-        for filename, attachment in files.items():
-            source = dir_files / str(attachment.id)
-            self.canvas.place_file(
-                source, attachment, temp_target=add_suffix(source, ".temp")
-            )
-            fix_encoding(source)
-
-            content_handler = (
-                content_handlers(attachment.id) if content_handlers else None
-            )
-            if content_handler:
-                try:
-                    modify_no_modification_time(source, content_handler)
-                except HandlerException as e:
-                    print_error(f"Content handler failed on {format_path(source)}")
-                    raise e
-
-            target = dir / filename
-            target.symlink_to(rel_dir_files / str(attachment.id))
-            file_mapping[attachment.id] = target
-
-        set_modification_time(dir, submission.submitted_at_date)
-        return file_mapping
+    #     set_modification_time(dir, submission.submitted_at_date)
+    #     return file_mapping
 
     # def prepare_submission(self, deadline, group, dir, s):
     #     dir.mkdir()
