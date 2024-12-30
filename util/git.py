@@ -402,6 +402,7 @@ def checkout(repo, dir, ref, capture_stderr=False):
     util.general.wait_and_check(
         tar,
         cmd,
+        # pylint: disable-next=possibly-used-before-assignment
         stderr=t.get_result().decode() if capture_stderr else None,
     )
 
