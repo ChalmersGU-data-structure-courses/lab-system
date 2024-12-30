@@ -12,7 +12,6 @@ from gql.dsl import DSLInlineFragment, DSLSchema, DSLSelectable, DSLType
 from gql.transport.requests import RequestsHTTPTransport
 
 import canvas.client_rest as canvas
-import graphql_.client
 import graphql_.tools
 import util.general
 import util.print_parse
@@ -42,7 +41,8 @@ class QueryNode:
     fields: Iterable[DSLSelectable]
 
 
-class Client(graphql_.client.ClientBase):
+# TODO: refactor by inheriting from graphql_.client.ClientBase.
+class Client:
     def __init__(self, canvas_client):
         self.canvas = canvas_client
         self.transport = RequestsHTTPTransport(
