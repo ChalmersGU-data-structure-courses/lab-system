@@ -380,8 +380,8 @@ def appropriate_time_unit(delta):
         "weeks": timedelta(days=30),
     }
 
-    for time_unit, min in reversed(time_units_min.items()):
-        if abs(delta) >= min:
+    for time_unit, min_ in reversed(time_units_min.items()):
+        if abs(delta) >= min_:
             return time_unit
     return time_unit
 
@@ -400,7 +400,7 @@ class Timer:
         self.start = time.monotonic()
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, type_, value, traceback):
         self.stop = time.perf_counter()
         self.time = self.stop - self.start
         self.timedelta = timedelta(seconds=self.time)
@@ -496,26 +496,26 @@ Lens = namedtuple("Lens", ["get", "set"])
 
 # For copyable collections such as list and dict.
 def component(key):
-    def set(u, value):
+    def set_(u, value):
         v = u.copy()
         v[key] = value
         return v
 
     return Lens(
         get=lambda u: u[key],
-        set=set,
+        set=set_,
     )
 
 
 def component_tuple(key):
-    def set(u, value):
+    def set_(u, value):
         v = list(u)
         v[key] = value
         return tuple(v)
 
     return Lens(
         get=lambda u: u[key],
-        set=set,
+        set=set_,
     )
 
 
@@ -627,13 +627,13 @@ def range_of(xs):
     return (min(xs), max(xs) + 1)
 
 
-def len_range(range):
-    (start, end) = range
+def len_range(range_):
+    (start, end) = range_
     return end - start
 
 
-def range_is_empty(range):
-    (start, end) = range
+def range_is_empty(range_):
+    (start, end) = range_
     return start is not None and end is not None and start >= end
 
 
@@ -645,13 +645,13 @@ def range_singleton(i):
     return range_from_size(i, 1)
 
 
-def is_range_singleton(range):
-    (start, end) = range
+def is_range_singleton(range_):
+    (start, end) = range_
     return end == start + 1
 
 
-def range_shift(range, offset):
-    (start, end) = range
+def range_shift(range_, offset):
+    (start, end) = range_
     return (start + offset, end + offset)
 
 

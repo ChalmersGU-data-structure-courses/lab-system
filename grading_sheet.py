@@ -374,11 +374,11 @@ class GradingSheet:
             )
         return r
 
-    def row_range_param(self, range):
+    def row_range_param(self, range_):
         return google_tools.sheets.dimension_range(
             self.sheet_properties.sheetId,
             google_tools.sheets.Dimension.rows,
-            *range,
+            *range_,
         )
 
     def format_group(self, group_id, group_link):
@@ -485,10 +485,10 @@ class GradingSheet:
         # Perform the insertion requests and update the group column values.
         for (_, inherit_from_before), xs in insertions.items():
             (_, start) = xs[0]
-            range = util.general.range_from_size(start, len(xs))
+            range_ = util.general.range_from_size(start, len(xs))
             request_buffer.add(
                 google_tools.sheets.request_insert_dimension(
-                    self.row_range_param(range),
+                    self.row_range_param(range_),
                     inherit_from_before=inherit_from_before,
                 ),
                 google_tools.sheets.request_update_cells(
@@ -497,7 +497,7 @@ class GradingSheet:
                     range=google_tools.sheets.grid_range(
                         self.sheet_properties.sheetId,
                         (
-                            range,
+                            range_,
                             util.general.range_singleton(
                                 self.sheet_parsed.group_column
                             ),
@@ -508,11 +508,11 @@ class GradingSheet:
 
         # If we have at least one group row now and did not before, delete empty formatting rows.
         if groups_new and empty:
-            range = util.general.range_shift(self.group_range, len(groups_new))
-            self.logger.debug(f"deleting empty formatting rows {range}")
+            range_ = util.general.range_shift(self.group_range, len(groups_new))
+            self.logger.debug(f"deleting empty formatting rows {range_}")
             request_buffer.add(
                 google_tools.sheets.request_delete_dimension(
-                    self.row_range_param(range)
+                    self.row_range_param(range_)
                 ),
             )
         self.logger.debug("creating rows for potentially new groups: done")
@@ -581,11 +581,11 @@ class GradingSheet:
             self.grading_spreadsheet.config,
             len(self.sheet_parsed.query_column_groups),
         )
-        range = util.general.range_of(column_group)
+        range_ = util.general.range_of(column_group)
 
         def f():
             for column, header in zip(column_group, headers):
-                column_new = column + util.general.len_range(range)
+                column_new = column + util.general.len_range(range_)
                 yield from google_tools.sheets.requests_duplicate_dimension(
                     self.sheet_properties.sheetId,
                     google_tools.sheets.Dimension.columns,

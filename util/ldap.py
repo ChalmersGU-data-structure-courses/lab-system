@@ -111,11 +111,11 @@ def is_bot_user(user):
 page_control = ldap.controls.SimplePagedResultsControl(True, size=300, cookie="")
 
 
-def search_people(client, filter):
+def search_people(client, filter_):
     return client.search_ext_s(
         "ou=people,dc=chalmers,dc=se",
         ldap.SCOPE_ONELEVEL,
-        filter,
+        filter_,
         serverctrls=[page_control],
     )
 

@@ -1,4 +1,4 @@
-# Should only be imported qualified.
+# Should only be imported qualified as it redefines builtins.
 import ast
 import base64
 import builtins
@@ -66,9 +66,9 @@ reversal = PrintParse(
 )
 
 
-def on_print(print):
+def on_print(print_):
     return PrintParse(
-        print=print,
+        print=print_,
         parse=util.general.identity,
     )
 
@@ -126,6 +126,7 @@ def combine_generic(fs):
     return r(fs)
 
 
+# pylint: disable=redefined-builtin
 def list(x):
     return PrintParse(
         print=lambda vs: [x.print(v) for v in vs],
@@ -133,6 +134,7 @@ def list(x):
     )
 
 
+# pylint: disable=redefined-builtin
 def tuple(x):
     return PrintParse(
         print=lambda vs: builtins.tuple(x.print(v) for v in vs),
@@ -140,6 +142,7 @@ def tuple(x):
     )
 
 
+# pylint: disable=redefined-builtin
 def dict(x):
     return PrintParse(
         print=lambda vs: {key: x.print(v) for (key, v) in vs.items()},

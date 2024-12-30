@@ -20,8 +20,8 @@ import util.print_parse
 logger = logging.getLogger(__name__)
 
 
-def id_newstyle(type, id):
-    return base64.standard_b64encode(f"{type._type}-{id}".encode()).decode()
+def id_newstyle(type_, id):
+    return base64.standard_b64encode(f"{type_._type}-{id}".encode()).decode()
 
 
 def wrap_query_execution(f, field):
@@ -78,25 +78,25 @@ class Client:
     def execute_query_single(self, field):
         return self.execute(graphql_.tools.query(field))[field.name]
 
-    # def node(self, type, id, fields, alias = None):
-    #     x = self.ds.Query.node(id = id_newstyle(type, id))
+    # def node(self, type_, id, fields, alias = None):
+    #     x = self.ds.Query.node(id = id_newstyle(type_, id))
     #     if alias:
     #         x = x.alias(alias)
     #     return x.select(
-    #         DSLInlineFragment().on(type).select(*fields),
+    #         DSLInlineFragment().on(type_).select(*fields),
     #     )
 
-    def node_legacy(self, type, id, alias=None):
-        x = self.ds.Query.legacyNode(_id=id, type=str(type._type))
+    def node_legacy(self, type_, id, alias=None):
+        x = self.ds.Query.legacyNode(_id=id, type=str(type_._type))
         if alias:
             x = x.alias(alias)
         return lambda *fields: x.select(
-            DSLInlineFragment().on(type).select(*fields),
+            DSLInlineFragment().on(type_).select(*fields),
         )
 
-    def execute_query_node(self, type, id):
+    def execute_query_node(self, type_, id):
         return lambda *fields: self.execute_query_single(
-            self.node_legacy(type, id)(*fields)
+            self.node_legacy(type_, id)(*fields)
         )
 
     def execute_query_nodes(self, queries: Iterable[QueryNode]):
@@ -113,9 +113,9 @@ class Client:
         for i in more_itertools.take(queries.items_seen, itertools.count()):
             yield result[name(i)]
 
-    def queue_query_node(self, type, id, fields):
+    def queue_query_node(self, type_, id, fields):
         i = len(self.queue_node_queries)
-        self.queue_node_queries.append(QueryNode(type=type, id=id, fields=fields))
+        self.queue_node_queries.append(QueryNode(type=type_, id=id, fields=fields))
         results = self.queue_node_results
 
         def access_result():

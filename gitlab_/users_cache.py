@@ -34,8 +34,8 @@ class UsersCache(util.hashed_file_cache.HashedFileCacheSerializer):
         else:
             self.last_known_id = max(self.last_known_id, id)
 
-    def deserialize(self, bytes):
-        super().deserialize(bytes)
+    def deserialize(self, bytes_):
+        super().deserialize(bytes_)
         self._supplement_initialize()
         for id, username in self.data:
             self._supplement_add_item(id, username)

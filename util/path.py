@@ -222,7 +222,7 @@ class ScopedFiles:
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, type_, value, traceback):
         for file in reversed(self.files):
             file.unlink()
 
@@ -239,10 +239,10 @@ def read_lines_without_comments(path):
 # ## File and directory traversal.
 
 
-def sorted_directory_list(dir, filter=None):
+def sorted_directory_list(dir, filter_=None):
     return dict(
         sorted(
-            ((f.name, f) for f in dir.iterdir() if not filter or filter(f)),
+            ((f.name, f) for f in dir.iterdir() if not filter_ or filter_(f)),
             key=lambda x: x[0],
         )
     )
@@ -430,7 +430,7 @@ def file_content_eq(file_a, file_b, missing_ok_a=False, missing_ok_b=False):
     """
     exit_stack = contextlib.ExitStack()
 
-    def open(file, missing_ok):
+    def open_(file, missing_ok):
         try:
             return exit_stack.enter_context(file.open("rb"))
         except FileNotFoundError:
@@ -439,10 +439,10 @@ def file_content_eq(file_a, file_b, missing_ok_a=False, missing_ok_b=False):
             return None
 
     def open_a():
-        return open(file_a, missing_ok_a)
+        return open_(file_a, missing_ok_a)
 
     def open_b():
-        return open(file_b, missing_ok_b)
+        return open_(file_b, missing_ok_b)
 
     # Shortcut some comparisons.
     if missing_ok_a:

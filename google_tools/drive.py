@@ -66,6 +66,6 @@ class TemporaryFile:
         self.id_copy = self.drive.copy(self.id, self.name)
         return self.id_copy
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, type_, value, traceback):
         logger.debug("Deleting copy of drive file...")
         self.drive.delete(self.id_copy)

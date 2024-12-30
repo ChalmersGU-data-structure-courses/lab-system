@@ -30,12 +30,12 @@ class CacheError(Exception):
     pass
 
 
-def _validate_hash(hash):
+def _validate_hash(hash_):
     try:
-        bytes.fromhex(hash)[0]
+        bytes.fromhex(hash_)[0]
     except (ValueError, IndexError):
         raise CacheError(
-            "invalid hash in cache: " + util.path.format_path(hash)
+            "invalid hash in cache: " + util.path.format_path(hash_)
         ) from None
 
 
@@ -51,10 +51,10 @@ def _read_link(dir_fd, read_update_date: bool = False) -> Optional[LinkData]:
     """
     # Read link.
     try:
-        hash = os.readlink(_FILENAME_LINK, dir_fd=dir_fd)
+        hash_ = os.readlink(_FILENAME_LINK, dir_fd=dir_fd)
     except FileNotFoundError:
         return None
-    _validate_hash(hash)
+    _validate_hash(hash_)
 
     update_date = None
     if read_update_date:
@@ -62,7 +62,7 @@ def _read_link(dir_fd, read_update_date: bool = False) -> Optional[LinkData]:
             _FILENAME_LINK, dir_fd=dir_fd, follow_symlinks=False
         )
 
-    return LinkData(hash=hash, update_date=update_date)
+    return LinkData(hash=hash_, update_date=update_date)
 
 
 def _write_link(dir_fd, link_data: Optional[LinkData]) -> None:
@@ -131,6 +131,7 @@ def update_lock(dir_fd):
 def read_cache(
     dir_fd,
     *,
+    # pylint: disable-next=redefined-builtin
     hash: Optional[bytes] = None,
     read_update_date=False,
 ) -> Optional[tuple[LinkData, Optional[bytes]]]:
@@ -213,11 +214,11 @@ def write_cache(
             link_data = LinkData()
         if link_data.hash is None:
             data = get_data()
-            hash = hashlib.sha1(data).hexdigest()
+            hash_ = hashlib.sha1(data).hexdigest()
         else:
             data = None
-            hash = link_data.hash
-        link_data = dataclasses.replace(link_data, hash=hash)
+            hash_ = link_data.hash
+        link_data = dataclasses.replace(link_data, hash=hash_)
 
     def locks():
         if use_update_lock:
@@ -277,14 +278,14 @@ class HashedFileCacheBase(abc.ABC):
         """Source of data to write into the cache."""
 
     @abc.abstractmethod
-    def deserialize(self, bytes):
+    def deserialize(self, bytes_):
         """Sink for data read from the cache."""
 
     def read(self):
         """Returns a boolean indicating if new data was read from the cache."""
         with self.dir_fd_manager() as dir_fd:
             result = read_cache(
-                dir_fd, hash=self._link_data.hash, read_update_date=True
+                dir_fd, hash=self._link_data.hash, read_update_date=True,
             )
             if result is None:
                 raise self.CacheEmptyError()
@@ -328,13 +329,13 @@ class HashedFileCacheBase(abc.ABC):
             link_data = dataclasses.replace(link_data, hash=None)
 
         with self.dir_fd_manager() as dir_fd:
-            hash = write_cache(
+            hash_ = write_cache(
                 dir_fd,
                 get_data=self.serialize,
                 link_data=link_data,
                 use_update_lock=False,
             )
-            self._link_data = dataclasses.replace(link_data, hash=hash)
+            self._link_data = dataclasses.replace(link_data, hash=hash_)
 
     # High-level update API
 
@@ -387,12 +388,12 @@ class HashedFileCacheSerializer(HashedFileCacheBase):
 
         return self.serializer.print(data)
 
-    def deserialize(self, bytes):
+    def deserialize(self, bytes_):
         """
         Override this method as needed.
         Typically, you call this method and then update any supplemental data.
         """
-        self.data = self.serializer.parse(bytes)
+        self.data = self.serializer.parse(bytes_)
 
 
 def main():

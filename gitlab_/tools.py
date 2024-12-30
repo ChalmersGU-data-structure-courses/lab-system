@@ -900,13 +900,13 @@ class UsernameCache:
         except FileNotFoundError:
             return False
 
-    def hash_differs(self, hash: bytes):
+    def hash_differs(self, hash_: bytes):
         """
         Requires reading permissions.
 
         Checks if the cache hash differs with respect to the given hash.
         """
-        return hash != self._path_hash.read_bytes()
+        return hash_ != self._path_hash.read_bytes()
 
     def hash_update(self):
         """
@@ -916,10 +916,10 @@ class UsernameCache:
         Return a boolean indicating if it changed.
         """
         with self.path_data.open("b") as file:
-            hash = hashlib.file_digest(file, hashlib.sha1).digest()
-            changed = self.hash_differs(hash)
+            hash_ = hashlib.file_digest(file, hashlib.sha1).digest()
+            changed = self.hash_differs(hash_)
             if changed:
-                self._path_hash.write_bytes(hash)
+                self._path_hash.write_bytes(hash_)
             return changed
 
     @property
