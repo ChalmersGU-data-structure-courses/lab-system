@@ -318,7 +318,7 @@ def extended_value_extract_primitive(v):
 #
 # TODO: No idea how Google Sheets expects data to be escaped.
 # hyperlink = pp.compose(
-#    pp.tuple(pp.doublequote),
+#    pp.over_tuple(pp.doublequote),
 #    pp.regex_many('=HYPERLINK({}, {})', ['"(?:\\\\.|[^"\\\\])*"'] * 2),
 # )
 #
@@ -566,7 +566,7 @@ number_as_uppercase_letter = pp.PrintParse(
 # Note that 0 is printed as ''.
 alpha = pp.compose(
     list_of_digits(len(string.ascii_uppercase)),
-    pp.tuple(number_as_uppercase_letter),
+    pp.over_tuple(number_as_uppercase_letter),
     pp.reversal,
     pp.invert(pp.string_letters),
 )
@@ -582,21 +582,21 @@ numeral_unbounded = pp.with_none(pp.int_str(), str())
 # (Indices -1 may arise with the silly inclusive range convention.)
 a1_notation = pp.compose(
     pp.swap,
-    pp.tuple(pp.maybe(pp.from_one)),
+    pp.over_tuple(pp.maybe(pp.from_one)),
     pp.combine((alpha_unbounded, numeral_unbounded)),
     pp.regex_many("{}{}", ("[a-zA-Z]*", "\\-?\\d*"), flags=re.ASCII),
 )
 
 # Formats a (zero-based) range as a silly inclusive one-based range.
 range_as_one_based_inclusive = pp.compose(
-    pp.tuple(pp.maybe(pp.from_one)),
+    pp.over_tuple(pp.maybe(pp.from_one)),
     pp.on(util.general.component_tuple(1), pp.maybe(pp.add(-1))),
 )
 
 # Formats a pair of (zero-based) ranges as a range in (potentially unbounded) A1 notation.
 rect_to_a1 = pp.compose(
-    pp.tuple(range_as_one_based_inclusive),
+    pp.over_tuple(range_as_one_based_inclusive),
     pp.interchange,
-    pp.tuple(a1_notation),
+    pp.over_tuple(a1_notation),
     pp.regex_many("{}:{}", ("[^:]*", "[^:]*"), flags=re.ASCII),
 )

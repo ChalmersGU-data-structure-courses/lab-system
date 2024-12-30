@@ -1,7 +1,6 @@
-# Should only be imported qualified as it redefines builtins.
+# Recommended to import qualified.
 import ast
 import base64
-import builtins
 import collections
 import dataclasses
 import datetime as module_datetime
@@ -29,7 +28,7 @@ identity = PrintParse(
 
 
 def compose(*xs):
-    xs = builtins.tuple(xs)
+    xs = tuple(xs)
     return PrintParse(
         print=util.general.compose(*(x.print for x in xs)),
         parse=util.general.compose(*(x.parse for x in reversed(xs))),
@@ -61,8 +60,8 @@ singleton = PrintParse(
 # from_singleton = invert(singleton)
 
 reversal = PrintParse(
-    print=lambda xs: builtins.tuple(reversed(xs)),
-    parse=lambda xs: builtins.tuple(reversed(xs)),
+    print=lambda xs: tuple(reversed(xs)),
+    parse=lambda xs: tuple(reversed(xs)),
 )
 
 
@@ -93,18 +92,18 @@ def on(lens, x):
 # These functions take collections of printer-parsers.
 def combine(xs):
     return PrintParse(
-        print=util.general.combine(builtins.tuple(x.print for x in xs)),
-        parse=util.general.combine(builtins.tuple(x.parse for x in xs)),
+        print=util.general.combine(tuple(x.print for x in xs)),
+        parse=util.general.combine(tuple(x.parse for x in xs)),
     )
 
 
 def combine_dict(xs):
     return PrintParse(
         print=util.general.combine_dict(
-            builtins.dict((key, x.print) for (key, x) in xs.items())
+            {key: x.print for (key, x) in xs.items()}
         ),
         parse=util.general.combine_dict(
-            builtins.dict((key, x.parse) for (key, x) in xs.items())
+            {key: x.parse for (key, x) in xs.items()}
         ),
     )
 
@@ -117,9 +116,9 @@ def combine_namedtuple(xs):
 
 
 def combine_generic(fs):
-    if isinstance(fs, (builtins.list, builtins.tuple)):
+    if isinstance(fs, (list, tuple)):
         r = combine
-    elif isinstance(fs, builtins.dict):
+    elif isinstance(fs, dict):
         r = combine_dict
     elif hasattr(fs.__class__, "_make"):
         r = combine_namedtuple
@@ -128,24 +127,21 @@ def combine_generic(fs):
     return r(fs)
 
 
-# pylint: disable=redefined-builtin
-def list(x):
+def over_list(x):
     return PrintParse(
         print=lambda vs: [x.print(v) for v in vs],
         parse=lambda vs: [x.parse(v) for v in vs],
     )
 
 
-# pylint: disable=redefined-builtin
-def tuple(x):
+def over_tuple(x):
     return PrintParse(
-        print=lambda vs: builtins.tuple(x.print(v) for v in vs),
-        parse=lambda vs: builtins.tuple(x.parse(v) for v in vs),
+        print=lambda vs: tuple(x.print(v) for v in vs),
+        parse=lambda vs: tuple(x.parse(v) for v in vs),
     )
 
 
-# pylint: disable=redefined-builtin
-def dict(x):
+def over_dict(x):
     return PrintParse(
         print=lambda vs: {key: x.print(v) for (key, v) in vs.items()},
         parse=lambda vs: {key: x.parse(v) for (key, v) in vs.items()},
@@ -186,6 +182,7 @@ doublequote = PrintParse(
 
 
 def escape(chars):
+    # pylint: disable-next=redefined-builtin
     def print(s):
         for c in itertools.chain(["\\"], chars):
             s = s.replace(c, "\\" + c)
@@ -298,9 +295,10 @@ def regex_keyed(holed_string, regexes_keyed, **kwargs):
         holed_string,
         regex_escaping_formatter.format(
             holed_string,
-            **builtins.dict(
-                (key, f"(?P<{key}>{regex})") for (key, regex) in regexes_keyed.items()
-            ),
+            **{
+                key: f"(?P<{key}>{regex})"
+                for (key, regex) in regexes_keyed.items()
+            },
         ),
         **kwargs,
     )
@@ -347,7 +345,7 @@ def join_bytes(sep=None, maxsplit=-1):
 # The default semantics is strict, assuming that values and printings are unique.
 # If duplicates are allowed, use strict = False.
 def from_dict(xs, print_strict=True, parse_strict=True):
-    xs = builtins.tuple(xs)
+    xs = tuple(xs)
     return PrintParse(
         print=util.general.sdict(
             ((x, y) for (x, y) in xs),
@@ -371,6 +369,7 @@ from_one = add(1)
 
 
 def skip_natural(n):
+    # pylint: disable-next=redefined-builtin
     def print(i):
         return i if i < n else i + 1
 
@@ -385,11 +384,11 @@ def skip_natural(n):
     )
 
 
-def _singleton_range_parse(range):
-    if not util.general.is_range_singleton(range):
-        raise ValueError(f"not a singleton range: {range}")
+def _singleton_range_parse(range_):
+    if not util.general.is_range_singleton(range_):
+        raise ValueError(f"not a singleton range: {range_}")
 
-    return range
+    return range_
 
 
 singleton_range = PrintParse(
@@ -537,6 +536,7 @@ string_coding = PrintParse(
     bytes.decode,
 )
 
+# pylint: disable-next=redefined-builtin
 ascii = PrintParse(
     print=lambda s: s.encode("ascii"),
     parse=lambda x: x.decode("ascii"),
@@ -587,6 +587,7 @@ def dataclass_dict(cls):
             return identity
         return field.metadata.get("pp", identity)
 
+    # pylint: disable-next=redefined-builtin
     def print(x):
         return {
             name: pp_field(field).print(getattr(x, name))
