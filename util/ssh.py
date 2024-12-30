@@ -709,6 +709,8 @@ class Multiplexer:
             - with_exceptions = False.
         """
         kwargs["env"] = self.git_env(kwargs.get("env"))
+        # This method is documented in the API of GitPython.
+        # pylint: disable-next=protected-access
         (status, stdout, stderr) = repo.git._call_process(
             *command,
             as_process=False,

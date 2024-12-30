@@ -71,7 +71,7 @@ def preorder(cls):
     return cls
 
 
-def equality_from_key(cls, key=lambda x: x._key):
+def equality_from_key(cls, key):
     def __eq__(self, other):
         return key(self) == key(other)
 
@@ -85,7 +85,7 @@ def equality_from_key(cls, key=lambda x: x._key):
     return cls
 
 
-def preorder_from_key(cls, key=lambda x: x._key):
+def preorder_from_key(cls, key):
     def __lt__(self, other):
         return key(self) < key(other)
 
@@ -109,7 +109,7 @@ def preorder_from_key(cls, key=lambda x: x._key):
     return cls
 
 
-def order_from_key(cls, key=lambda x: x._key):
+def order_from_key(cls, key):
     equality_from_key(cls, key)
     preorder_from_key(cls, key)
     return cls

@@ -752,6 +752,8 @@ class Lab:
 
     def repo_remote_command(self, repo, command):
         if self.course.ssh_multiplexer is None:
+            # This method is documented in the API of GitPython.
+            # pylint: disable-next=protected-access
             repo.git._call_process(*command)
         else:
             self.course.ssh_multiplexer.git_cmd(repo, command)

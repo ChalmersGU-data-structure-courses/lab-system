@@ -1,3 +1,5 @@
+# False positives: _type and _id.
+# pylint: disable=protected-access
 import base64
 import dataclasses
 import functools

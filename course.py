@@ -190,6 +190,7 @@ class Course:
         )
 
     def canvas_user_login_id(self, user):
+        # pylint: disable-next=protected-access
         return user._dict.get("login_id")
 
     def canvas_profile_login_id(self, user):
@@ -230,6 +231,7 @@ class Course:
                 user_login_id = self.canvas_user_login_id(user)
                 profile_login_id = self.canvas_profile_login_id(user)
                 if not user_login_id == profile_login_id:
+                    # pylint: disable=protected-access
                     self.logger.error(
                         util.general.text_from_lines(
                             f"mismatch between login ids for user {user.name}:",
@@ -1062,6 +1064,7 @@ class Course:
         try:
             id = self.canvas_course.assignments_name_to_id[self.report_assignment_name]
         except KeyError:
+            # pylint: disable-next=protected-access
             self.canvas_course._init_assignments(False)
             try:
                 id = self.canvas_course.assignments_name_to_id[
@@ -1072,6 +1075,7 @@ class Course:
                     raise
 
                 self.report_assignment_create()
+                # pylint: disable-next=protected-access
                 self.canvas_course._init_assignments(False)
                 id = self.canvas_course.assignments_name_to_id[
                     self.report_assignment_name
