@@ -44,8 +44,7 @@ class StudentConnector(abc.ABC):
         """
 
     @abc.abstractmethod
-    def gitlab_group_slug_pp(self):
-        """ """
+    def gitlab_group_slug_pp(self): ...
 
     @abc.abstractmethod
     def gitlab_group_name(self, id):
