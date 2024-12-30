@@ -4,11 +4,6 @@ import logging
 import course
 
 
-# isort: split
-# pylint: disable-next=wrong-import-order
-from gitlab_config_personal import *
-
-
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 

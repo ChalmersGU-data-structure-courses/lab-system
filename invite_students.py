@@ -11,7 +11,7 @@ from lab import StudentConnectorGroupSet
 
 # isort: split
 # pylint: disable-next=wrong-import-order
-from prelude import *
+from prelude import c, l
 
 
 logging.basicConfig(
