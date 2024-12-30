@@ -72,7 +72,7 @@ def list_all(client, base, scope, filterstr=None, attrlist=None, page_size=100):
             serverctrls=[page_control],
         )
 
-        (rtype, rdata, rmsgid, serverctrls_response) = client.result3(response)
+        (_rtype, rdata, _rmsgid, serverctrls_response) = client.result3(response)
         yield from rdata
 
         (page_control_response,) = filter(

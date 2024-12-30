@@ -1457,7 +1457,7 @@ class GroupProject:
         # To be a valid request, the tag name must consist of a single path segment.
         # That is, it must be non-empty and cannot contain the character '/'.
         def check_single_path_segment(item):
-            (tag_name, tag_data) = item
+            (tag_name, _tag_data) = item
             tag_parts = PurePosixPath(tag_name).parts
             try:
                 (_,) = tag_parts

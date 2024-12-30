@@ -588,7 +588,7 @@ class Multiplexer:
     max_callback_attempts = 3
 
     def _startup(self):
-        for n in range(self.max_startup_attempts):
+        for _n in range(self.max_startup_attempts):
             try:
                 self.connection_master = ConnectionMaster(self.netloc)
                 return
