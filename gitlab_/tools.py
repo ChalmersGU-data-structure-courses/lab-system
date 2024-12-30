@@ -868,7 +868,7 @@ class UsernameCache:
         Every file needed is created empty, group-writable, owned by the given group.
         """
         with util.path.working_dir(self.path):
-            for path_file in self.paths:
+            for path_file in list(self.paths()):
                 # Function create_placeholder_file_for_group has since been removed.
                 # pylint: disable=undefined-variable
                 create_placeholder_file_for_group(path_file, group_id)
