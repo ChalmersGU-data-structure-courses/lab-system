@@ -292,8 +292,10 @@ def add_remote(
                 raise OverwriteException(f"remote {remote} already exists")
         c.add_section(section)
         c.add_value(section, "url", url)
+        # pylint: disable-next=redefined-outer-name
         for refspec in fetch_refspecs:
             c.add_value(section, "fetch", refspec)
+        # pylint: disable-next=redefined-outer-name
         for refspec in push_refspecs:
             c.add_value(section, "push", refspec)
         if prune is not None:

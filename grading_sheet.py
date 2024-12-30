@@ -14,7 +14,7 @@ import util.general
 import util.gspread
 
 
-logger = logging.getLogger(__name__)
+logger_default = logging.getLogger(__name__)
 
 Query = collections.namedtuple(
     "Query", ["submission", "grader", "score"], defaults=[None, None, None]
@@ -237,6 +237,7 @@ def relevant_columns(sheet_parsed):
         yield query_column_group.score
 
 
+# pylint: disable-next=redefined-outer-name
 def is_row_non_empty(sheet_data, relevant_columns, row):
     """
     Does this row only contain empty values?
@@ -248,6 +249,7 @@ def is_row_non_empty(sheet_data, relevant_columns, row):
     )
 
 
+# pylint: disable-next=redefined-outer-name
 def guess_group_row_range(sheet_data, relevant_columns):
     """
     Guess the group row range in a worksheet that does not have any group rows.
@@ -283,7 +285,7 @@ class GradingSheet:
         gspread_worksheet=None,
         *,
         name=None,
-        logger=logger,
+        logger=logger_default,
     ):
         """
         The lab instance is currently only used to retrieve the GDPR sort key of its student connector.
@@ -554,13 +556,13 @@ class GradingSheet:
         * delete_previous:
             Delete all previous group rows.
         """
-        logger.info("setting up groups...")
+        self.logger.info("setting up groups...")
         request_buffer = self.grading_spreadsheet.create_request_buffer()
         if delete_previous:
             self.delete_existing_groups(request_buffer)
         self.insert_groups(groups, group_link, request_buffer)
         self.flush(request_buffer)
-        logger.info("setting up groups: done")
+        self.logger.info("setting up groups: done")
 
     def add_query_column_group(self, request_buffer=None):
         """
@@ -574,7 +576,7 @@ class GradingSheet:
             If not given, then requests will be executed immediately and the sheet's
             cache will be cleared to allow for the new columns to be parsed.
         """
-        logger.debug("adding query column group...")
+        self.logger.debug("adding query column group...")
         column_group = self.sheet_parsed.query_column_groups[-1]
         headers = query_column_group_headers(
             self.grading_spreadsheet.config,
@@ -608,7 +610,7 @@ class GradingSheet:
         self.grading_spreadsheet.feed_request_buffer(request_buffer, *f())
         if not request_buffer:
             self.clear_cache()
-        logger.debug("adding query column group: done")
+        self.logger.debug("adding query column group: done")
 
     def _cell_coords(self, group_id, query, field):
         """
@@ -760,7 +762,7 @@ class GradingSheet:
 
 
 class GradingSpreadsheet:
-    def __init__(self, config, labs, logger=logger):
+    def __init__(self, config, labs, logger=logger_default):
         """
         Arguments:
         * config: course configuration

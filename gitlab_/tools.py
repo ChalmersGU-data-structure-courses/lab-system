@@ -79,6 +79,7 @@ def protect_tags(
     project_id,
     patterns: list[str] | None = None,
     delete_existing=False,
+    # pylint: disable-next=redefined-outer-name
     exist_ok=True,
 ):
     if patterns is None:
@@ -133,6 +134,7 @@ def members_from_access(entity, levels):
 
 
 class CachedGroup:
+    # pylint: disable-next=redefined-outer-name
     def __init__(self, gl, path, name, logger=None):
         self.gl = gl
         self.path = path
@@ -189,6 +191,7 @@ class CachedGroup:
 
 
 class CachedProject:
+    # pylint: disable-next=redefined-outer-name
     def __init__(self, gl, path, name, logger=None):
         self.gl = gl
         self.path = path
@@ -267,6 +270,7 @@ def members_dict(entity):
     return users_dict(entity.members)
 
 
+# pylint: disable-next=redefined-outer-name
 def member_create(entity, user_id, access_level, exist_ok=False, **kwargs):
     with exist_ok_check(exist_ok):
         entity.members.create(
@@ -278,6 +282,7 @@ def member_create(entity, user_id, access_level, exist_ok=False, **kwargs):
         )
 
 
+# pylint: disable-next=redefined-outer-name
 def member_delete(entity, user_id, exist_ok=False):
     with exist_ok_check(exist_ok):
         entity.members.delete(user_id)

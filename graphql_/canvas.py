@@ -78,6 +78,7 @@ class Client:
             self.session.close()
             del self.session
 
+    # pylint: disable-next=redefined-outer-name
     def execute(self, query):
         return self.session.execute(query)
 

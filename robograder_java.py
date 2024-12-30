@@ -207,7 +207,7 @@ def compile(
 # - path-finder.
 
 # Entrypoint of the robograder.
-entrypoint = "Robograder"
+entrypoint_default = "Robograder"
 
 # Library used by robograders.
 dir_lib = this_dir.parent / "labs" / "robograder" / "java"
@@ -323,7 +323,7 @@ class LabRobograder:
             submission_src=src,
             submission_bin=bin,
             classpath=[dir.resolve() for dir in [self.robograder_src, dir_lib_src]],
-            entrypoint=entrypoint,
+            entrypoint=entrypoint_default,
             arguments=[str(self.machine_speed)],
         )
 

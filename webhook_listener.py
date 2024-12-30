@@ -10,7 +10,7 @@ import util.path
 import util.print_parse
 
 
-logger = logging.getLogger(__name__)
+logger_default = logging.getLogger(__name__)
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -20,8 +20,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
         super().handle()
 
     def do_POST(self):
-        logger.info("do_POST: start")
-
         token = self.headers.get("X-Gitlab-Token")
         if token != self.server.secret_token:
             self.server.logger.warning(
@@ -42,11 +40,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.server.logger.debug("received hook callback with data:\n" + str(info))
         self.server.callback(info)
 
-        logger.info("do_POST: end")
-
 
 @contextlib.contextmanager
-def server_manager(netloc, secret_token, callback, logger=logger):
+def server_manager(netloc, secret_token, callback, logger=logger_default):
     """
     Context manager for an HTTP server that processes webhook notifications from GitLab.
     Only notifications with the correct secret token are considered.
@@ -118,7 +114,12 @@ def map_with_callback(f, xs):
         yield (f(e), callback)
 
 
-def parse_hook_event(courses_by_groups_path, hook_event, strict=False):
+def parse_hook_event(
+    courses_by_groups_path,
+    hook_event,
+    strict=False,
+    logger=logger_default,
+):
     """
     Parses an event received from a webhook.
 
@@ -144,6 +145,7 @@ def parse_hook_event(courses_by_groups_path, hook_event, strict=False):
         Not all assumptions are currently checked,
         So even with strict set to False,
         we might end up raising an instance of ParsingError.
+    * logger: logger to use.
 
     Returns an iterable of pairs of:
     - a program event (instance of events.ProgramEvent),

@@ -11,7 +11,7 @@ import util.general
 import util.git
 
 
-logger = logging.getLogger(__name__)
+logger_default = logging.getLogger(__name__)
 
 
 def add_class(element, class_name):
@@ -672,7 +672,7 @@ class LiveSubmissionsTable:
         lab,
         config,
         column_types=None,
-        logger=logging.getLogger(__name__),
+        logger=logger_default,
     ):
         if column_types is None:
             column_types = with_standard_columns()
@@ -697,7 +697,7 @@ class LiveSubmissionsTable:
         required afterwards before building or uploading the live submissions table.
         """
         group = self.lab.groups[group_id]
-        logger.info(f"updating row for {group.name} in live submissions table")
+        self.logger.info(f"updating row for {group.name} in live submissions table")
         if group.submission_current(deadline=self.config.deadline):
             self.group_rows[group.id] = {
                 column_name: column.get_value(group)
@@ -733,7 +733,7 @@ class LiveSubmissionsTable:
             for the specified deadline are supported.
             (Each supplied column type is responsible for this.)
         """
-        logger.info("building live submissions table...")
+        self.logger.info("building live submissions table...")
 
         # Compute the list of group ids with live submissions.
         if group_ids:
@@ -742,7 +742,7 @@ class LiveSubmissionsTable:
             group_ids = list(
                 self.lab.groups_with_live_submissions(deadline=self.config.deadline)
             )
-        logger.debug(
+        self.logger.debug(
             f"building live submissions table for the following groups: {group_ids}"
         )
 
@@ -822,7 +822,9 @@ class LiveSubmissionsTable:
                         column.format_header_cell(cell)
                 with dominate.tags.tbody():
                     for group_id in group_ids:
-                        logger.debug(f"processing {self.lab.groups[group_id].name}")
+                        self.logger.debug(
+                            f"processing {self.lab.groups[group_id].name}"
+                        )
                         with dominate.tags.tr():
                             for name, data in column_data.items():
                                 column = self.columns[name]
@@ -836,4 +838,4 @@ class LiveSubmissionsTable:
                                 data.values[group_id].format_cell(cell)
 
         file.write_text(doc.render(pretty=True))
-        logger.info("building live submissions table: done")
+        self.logger.info("building live submissions table: done")

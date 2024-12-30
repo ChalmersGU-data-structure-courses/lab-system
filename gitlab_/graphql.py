@@ -79,6 +79,7 @@ class Client(graphql_.client.ClientBase):
     def user_core_created_at(self):
         return (self.ds.UserCore.created_at, pp_date.parse)
 
+    # pylint: disable-next=redefined-outer-name
     def retrieve_all_users_page(self, cursor: Optional[CreatedCursor] = None):
         ds = self.ds
         return self.execute(
@@ -128,6 +129,7 @@ class Client(graphql_.client.ClientBase):
         And the provided order on created_at does not correspond to a public user_core attribute.
         This is the reason for this complicated setup.
         """
+        # pylint: disable-next=redefined-outer-name
         cursor = None
         if last_requested is not None:
             cursor = CreatedCursor(created_at=last_requested - safety_interval, id=0)  # type: ignore
