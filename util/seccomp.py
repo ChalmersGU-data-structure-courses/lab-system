@@ -4,6 +4,7 @@ import errno
 import fcntl
 import os
 import sys
+import runpy
 from pathlib import PurePath
 
 import seccomp
@@ -27,6 +28,8 @@ def setup_seccomp(callback=None):
     * x64 Linux 5.15 with glibc 2.33
     * x64 Linux with musl
     """
+    # Some shorthands.
+    # pylint: disable-next=import-outside-toplevel
     from seccomp import ALLOW, EQ, MASKED_EQ, Arg
 
     # Make the system call return an error if the policy is violated.
@@ -128,8 +131,6 @@ def main():
       This step is omitted if python is invoced in isolated mode (python -I).
     * Pushing the path of the given script.
     """
-    import runpy
-
     # print('sys.argv', sys.argv)
     # print('sys.path', sys.path)
     # print('__file__', __file__)

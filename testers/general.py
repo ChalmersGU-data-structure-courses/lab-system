@@ -1,7 +1,9 @@
 import abc
+import argparse
 import contextlib
 import dataclasses
 import functools
+import inspect
 import logging
 import os
 from pathlib import Path
@@ -347,8 +349,6 @@ class LabTester:
         The default implementation assumes the test records its output
         using self.record_process and the default file names.
         """
-        import inspect
-
         params = inspect.signature(self.record_process).parameters
 
         def read_file(arg_name):  # noqa E308
@@ -405,8 +405,6 @@ def cli(Tester) -> None:
     Arguments:
     * Tester: Construct an instance of LabTester given the (positional) arguments of its constructor.
     """
-    import argparse
-
     p = argparse.ArgumentParser(
         add_help=False,
         description="Run tests on a lab submission.",
@@ -516,6 +514,7 @@ Print INFO level (once specified) or DEBUG level (twice specified) logging.
 
     # Support for argcomplete.
     try:
+        # pylint: disable-next=import-outside-toplevel
         import argcomplete
 
         argcomplete.autocomplete(p)

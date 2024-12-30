@@ -10,6 +10,7 @@ import random
 import shlex
 import threading
 import types
+import traceback
 from pathlib import Path
 from typing import Iterable
 
@@ -20,12 +21,14 @@ import ldap
 import more_itertools
 
 import canvas.client_rest as canvas
+import chalmers_pdb.tools
 import events
 import util.gdpr_coding
 import util.general
 import gitlab_.graphql
 import gitlab_.tools
 import gitlab_.users_cache
+import google_tools.sheets
 import grading_sheet
 import group_set
 import util.ip
@@ -112,6 +115,8 @@ class Course:
         # Map from group set names on Canvas to instances of group_set.GroupSet.
         self.group_sets = {}
 
+        # Avoid cyclic import.
+        # pylint: disable-next=import-outside-toplevel
         import lab
 
         def lab_dir(lab_id):
@@ -327,10 +332,8 @@ class Course:
         if cid is not None:
             return cid
 
-        from chalmers_pdb.tools import personnummer_to_cid
-
         user_details = self.canvas_course.user_details[user_id]
-        return personnummer_to_cid(user_details.sis_user_id)
+        return chalmers_pdb.tools.personnummer_to_cid(user_details.sis_user_id)
 
     @property
     def gitlab_netloc(self):
@@ -1051,10 +1054,6 @@ class Course:
         A context manager for reporting program errors via a Google sheet.
         Use change notifications on Google sheets to get notifications on failure.
         """
-        import traceback
-
-        import google_tools.sheets
-
         # Shortcut
         spreadsheets = grading_sheet.GradingSpreadsheet(self.config, self.labs).google
 

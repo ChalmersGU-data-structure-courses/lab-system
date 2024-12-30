@@ -10,6 +10,7 @@ import shlex
 import subprocess
 from pathlib import Path, PurePath
 
+import util.chardet
 import util.general
 import util.path
 
@@ -213,9 +214,6 @@ def compile_unknown(
         return (True, str())
 
     if detect_encoding:
-        # Import locally to avoid charet dependency if this option is not used.
-        import util.chardet
-
         encoding = util.chardet.detect_encoding(src_files)
         logger.debug(f"Detected encoding {encoding}")
         kwargs["encoding"] = encoding

@@ -2,6 +2,8 @@ import abc
 import re
 from collections import namedtuple
 
+import dominate.tags
+
 import util.general
 import util.markdown
 import util.print_parse
@@ -246,8 +248,6 @@ class Tester(SubmissionHandler):
 
         Returns an instance of dominate.tags.div.
         """
-        import dominate.tags
-
         return dominate.tags.div("Testing")
 
     @abc.abstractmethod
@@ -329,8 +329,6 @@ class SubmissionGradingRobograder(Robograder):
 
         Returns an instance of dominate.tags.div.
         """
-        import dominate.tags
-
         return dominate.tags.div("Robograding")
 
     def index_div_column_entry(self, response_issue_link):

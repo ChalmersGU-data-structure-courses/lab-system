@@ -2,6 +2,7 @@
 # PYTHON_ARGCOMPLETE_OK
 import contextlib
 import dataclasses
+import inspect
 import logging
 import os
 from pathlib import Path
@@ -197,8 +198,6 @@ class LabTester(testers.general.LabTester):
         )
 
     def format_tests_output_as_markdown(self, dir_out: Path) -> Iterable[str]:
-        import inspect
-
         params = inspect.signature(self.run_tests).parameters
 
         def file(arg_name):  # noqa E308

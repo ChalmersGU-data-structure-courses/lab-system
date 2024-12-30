@@ -4,6 +4,7 @@ import contextlib
 import functools
 import itertools
 import logging
+import traceback
 
 import gspread
 
@@ -824,8 +825,6 @@ class GradingSpreadsheet:
         try:
             yield
         except:  # noqa: E722
-            import traceback
-
             print(traceback.format_exc())
             self.update(google_tools.sheets.request_delete_sheet(sheet_id))
             raise
