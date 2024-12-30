@@ -64,6 +64,7 @@ class instance_cache:
         self.__doc__ = function.__doc__
 
     def __set_name__(self, owner, name):
+        # pylint: disable-next=attribute-defined-outside-init
         self.name = name
 
     def __get__(self, instance, owner=None):

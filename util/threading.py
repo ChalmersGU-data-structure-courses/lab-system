@@ -80,6 +80,7 @@ def timer_manager(timer):
 class FunctionThread(threading.Thread):
     def __init__(self, function):
         def runner(*args, **kwargs):
+            # pylint: disable-next=attribute-defined-outside-init
             self.result = function(*args, **kwargs)
 
         super().__init__(target=runner)

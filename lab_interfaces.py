@@ -94,6 +94,8 @@ class RequestHandler:
         Setup this testing handler.
         Called by the Lab class before any other method is called.
         """
+        # TODO: design better architecture that avoids these late assignments.
+        # pylint: disable-next=attribute-defined-outside-init
         self.lab = lab
 
     @abc.abstractmethod

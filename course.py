@@ -859,10 +859,10 @@ class Course:
         thread_managers = []
 
         # The event queue.
-        self.event_queue = util.subsuming_queue.SubsumingQueue()
+        event_queue = util.subsuming_queue.SubsumingQueue()
 
         def shutdown():
-            self.event_queue.add((events.TerminateProgram(), None))
+            event_queue.add((events.TerminateProgram(), None))
 
         # Set up the server for listening for group project events.
         def add_webhook_event(hook_event):
@@ -871,7 +871,7 @@ class Course:
                 hook_event=hook_event,
                 strict=False,
             ):
-                self.event_queue.add(result)
+                event_queue.add(result)
 
         netloc = self.hook_normalize_netloc(netloc)
         webhook_listener_manager = webhook_listener.server_manager(
@@ -879,39 +879,39 @@ class Course:
             self.config.webhook.secret_token,
             add_webhook_event,
         )
-        with webhook_listener_manager as self.webhook_server:
+        with webhook_listener_manager as webhook_server:
 
             def webhook_server_run():
                 try:
-                    self.webhook_server.serve_forever()
+                    webhook_server.serve_forever()
                 finally:
                     shutdown()
 
-            self.webhook_server_thread = threading.Thread(
+            webhook_server_thread = threading.Thread(
                 target=webhook_server_run,
                 name="webhook-server-listener",
             )
             thread_managers.append(
                 util.general.add_cleanup(
-                    util.threading.thread_manager(self.webhook_server_thread),
-                    self.webhook_server.shutdown,
+                    util.threading.thread_manager(webhook_server_thread),
+                    webhook_server.shutdown,
                 )
             )
 
             # Set up program termination timer.
             if self.config.webhook.event_loop_runtime is not None:
-                self.shutdown_timer = util.threading.Timer(
+                shutdown_timer = util.threading.Timer(
                     self.config.webhook.event_loop_runtime,
                     shutdown,
                     name="shutdown-timer",
                 )
                 thread_managers.append(
-                    util.threading.timer_manager(self.shutdown_timer)
+                    util.threading.timer_manager(shutdown_timer)
                 )
 
             # Set up lab refresh event timers and add initial lab refreshes.
             def refresh_lab(lab):
-                self.event_queue.add(
+                event_queue.add(
                     (
                         self.program_event(lab.course_event(events.RefreshLab())),
                         lab.refresh_lab,
@@ -944,7 +944,7 @@ class Course:
                 # The event loop.
                 while True:
                     self.logger.info("Waiting for event.")
-                    (event, callback) = self.event_queue.remove()
+                    (event, callback) = event_queue.remove()
                     if isinstance(event, events.TerminateProgram):
                         self.logger.info(
                             "Program termination event received, shutting down."

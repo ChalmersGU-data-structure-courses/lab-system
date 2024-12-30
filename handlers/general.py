@@ -159,8 +159,9 @@ class SubmissionHandlerStub(SubmissionHandler):
 
     def setup(self, lab):
         super().setup(lab)
+        # pylint: disable-next=attribute-defined-outside-init
         self.grading_columns = live_submissions_table.with_standard_columns(
-            with_solution=False,
+            with_solution=False
         )
 
     def handle_request(self, request_and_responses):
@@ -264,6 +265,7 @@ class GenericTestingHandler(TestingHandler):
 
     def setup(self, lab):
         super().setup(lab)
+        # pylint: disable-next=attribute-defined-outside-init
         self.tester = self.tester_factory(dir_lab=lab.config.path_source, **self.kwargs)
 
     def get_test_report(self, dir_out):
@@ -313,6 +315,7 @@ class SubmissionTesting:
         self.solution = solution
 
     def setup(self, lab):
+        # pylint: disable-next=attribute-defined-outside-init
         self.tester = self.tester_factory(lab.config.path_source, **self.tester_args)
         # if not self.lab.submission_solution.repo_tag_exist(segments_test_tag):
         #    with self.lab.submission_solution.checkout_manager() as src:

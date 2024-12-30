@@ -63,6 +63,7 @@ class TemporaryFile:
 
     def __enter__(self):
         logger.debug(f"Creating a copy of drive file {self.id}...")
+        # pylint: disable-next=attribute-defined-outside-init
         self.id_copy = self.drive.copy(self.id, self.name)
         return self.id_copy
 

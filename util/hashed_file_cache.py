@@ -393,6 +393,7 @@ class HashedFileCacheSerializer(HashedFileCacheBase):
         Override this method as needed.
         Typically, you call this method and then update any supplemental data.
         """
+        # pylint: disable-next=attribute-defined-outside-init
         self.data = self.serializer.parse(bytes_)
 
 

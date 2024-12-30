@@ -126,6 +126,7 @@ class OpenWithModificationTime:
         self.date = date
 
     def __enter__(self):
+        # pylint: disable-next=attribute-defined-outside-init
         self.file = self.path.open("w")
         return self.file.__enter__()
 
@@ -139,6 +140,7 @@ class OpenWithNoModificationTime:
         self.path = path
 
     def __enter__(self):
+        # pylint: disable=attribute-defined-outside-init
         self.time = os.path.getmtime(self.path)
         self.file = self.path.open("w")
         return self.file.__enter__()
