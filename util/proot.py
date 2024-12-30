@@ -1,5 +1,5 @@
-from pathlib import Path, PurePath
 import shutil
+from pathlib import Path, PurePath
 
 import util.path
 

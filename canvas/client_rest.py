@@ -28,11 +28,7 @@ from util.general import (
     print_error,
     without_adjacent_dups,
 )
-from util.path import (
-    OpenWithModificationTime,
-    format_path,
-    set_modification_time,
-)
+from util.path import OpenWithModificationTime, format_path, set_modification_time
 
 
 logger = logging.getLogger(__name__)

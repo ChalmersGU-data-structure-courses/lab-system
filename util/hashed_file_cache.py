@@ -285,7 +285,9 @@ class HashedFileCacheBase(abc.ABC):
         """Returns a boolean indicating if new data was read from the cache."""
         with self.dir_fd_manager() as dir_fd:
             result = read_cache(
-                dir_fd, hash=self._link_data.hash, read_update_date=True,
+                dir_fd,
+                hash=self._link_data.hash,
+                read_update_date=True,
             )
             if result is None:
                 raise self.CacheEmptyError()

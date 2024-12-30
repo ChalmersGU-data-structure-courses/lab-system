@@ -57,6 +57,7 @@ EMAIL_TO = "REDACTED_EMAIL"
 EMAIL_SUBJECT = "Subject"
 EMAIL_CONTENT = "Content"
 
+
 def test():
     creds = google_tools.general.get_token_for_scopes(
         scopes=["https://mail.google.com/"],
@@ -67,5 +68,6 @@ def test():
 
     message = create_message(EMAIL_FROM, EMAIL_TO, EMAIL_SUBJECT, EMAIL_CONTENT)
     return send_message(service, "me", message)
+
 
 test()

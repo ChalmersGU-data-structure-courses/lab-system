@@ -3,10 +3,10 @@ import contextlib
 import dataclasses
 import functools
 import logging
+import os
 import random
 import shutil
 from collections.abc import Mapping
-import os
 from pathlib import Path
 from typing import Iterable, Optional
 

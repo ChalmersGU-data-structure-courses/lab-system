@@ -1,6 +1,5 @@
-from gitlab_config_personal import pdb_login
-
 from chalmers_pdb.new_rpcc_client import RPCC
+from gitlab_config_personal import pdb_login
 
 
 pdb = RPCC("https://pdb.chalmers.se:4434")
