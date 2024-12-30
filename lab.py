@@ -6,6 +6,7 @@ import logging
 import random
 import shutil
 from collections.abc import Mapping
+import os
 from pathlib import Path
 from typing import Iterable, Optional
 
@@ -470,7 +471,7 @@ class Lab:
         branches = list(branches)
 
         with util.path.temp_dir() as dir:
-            repo = git.Repo.init(dir.__fspath__())
+            repo = git.Repo.init(os.fspath(dir))
 
             shutil.copytree(source, dir, symlinks=True, dirs_exist_ok=True)
             repo.git.add("--all", "--force")
