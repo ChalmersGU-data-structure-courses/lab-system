@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 import logging
 from pathlib import Path
-import sys
 
 import gitlab
+import course
+import gitlab_.tools  # noqa: E402
+from util.this_dir import this_dir
 
-sys.path.append(str(Path("__file__").parent / ".."))
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)s %(module)s: %(message)s",
@@ -14,10 +15,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-import course
-import gitlab_.tools  # noqa: E402
-import lp3.config as config  # pylint: disable=consider-using-from-import
-from util.this_dir import this_dir
+# pylint: disable-next=consider-using-from-import,wrong-import-position
+import lp3.config as config
 
 c = course.Course(config, this_dir / "lp3")
 

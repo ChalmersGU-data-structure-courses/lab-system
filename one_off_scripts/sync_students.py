@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 import logging
 from pathlib import Path
-import sys
-
-sys.path.append(str(Path("__file__").parent / ".."))
 
 import canvas.client_rest as canvas  # noqa: E402
+
+from gitlab_config_personal import canvas_auth_token  # noqa: E402
+
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)s %(module)s: %(message)s",
@@ -29,8 +29,6 @@ def add_user(course, section_id, user_id):
     }
     course.canvas.post(course.endpoint + ["enrollments"], params=params)
 
-
-from gitlab_config_personal import canvas_auth_token  # noqa: E402
 
 canvas_chalmers = canvas.Canvas(
     "chalmers.instructure.com", auth_token=canvas_auth_token

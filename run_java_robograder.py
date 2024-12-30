@@ -122,6 +122,7 @@ The latter includes various paths, the Java security policy, and executed comman
 
 # Support for argcomplete.
 try:
+    # pylint: disable-next=wrong-import-position
     import argcomplete
 
     argcomplete.autocomplete(p)
@@ -134,6 +135,7 @@ args = p.parse_args()
 # Argument parsing is done: expensive initialization can start now.
 
 # Configure Logging.
+# pylint: disable-next=wrong-import-position
 import logging
 
 logging_level = {
