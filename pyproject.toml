@@ -1,3 +1,50 @@
+[project]
+name = 'lab-system'
+description = 'A system for administrating labs used by some courses at Chalmers University of Technology and Gothenburg University'
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python :: 3",
+]
+version = '0.1.0'
+requires-python = '>=3.12'
+dependencies = [
+  'argcomplete >=3.1.6, <4',
+  'atomicwrites >=1.4.1, <2',
+  'chardet >=5.2, <6',
+  'dominate >=2.8, <3',
+  'gitdb >=4.0.11, <5',
+  'GitPython >=3.1.40, <4',
+  'google-api-python-client >=2.111, <3',
+  'google-auth >=2.25.2, <3',
+  'google-auth-oauthlib >=1.1, <2',
+  'gql >=3.4.1, <4',
+  'graphql-core >=3.2.3, <4',
+  'gspread >=3.7, <4',
+  'more-itertools >=9.1, <10',
+  'python-dateutil >=2.8.2, <3',
+  'python-gitlab >=4.3, <5',
+  'python-ldap >=3.4.4, <4',
+  'requests >=2.31, <3',
+  'watchdog >=2.3.1, <3',
+]
+
+[project.optional-dependencies]
+# Only needed for tester.python_proot.
+# This also requires the proot executable.
+oldstyle_sandboxing = [
+  'seccomp >= 2.4.4, <3',
+]
+
+[[project.authors]]
+name = 'Christian Sattler'
+email = 'sattler@chalmers.se'
+
+[project.license]
+text = "MIT License"
+
+[project.urls]
+Homepage = 'https://github.com/ChalmersGU-data-structure-courses/lab-system'
+
 [tool.black]
 extend-exclude = """
   /_2020_lp2/|\
@@ -78,3 +125,7 @@ disable = [
   # Iterating over dictionary keys should be made explicit.
   'C0201',  # consider-iterating-dictionary
 ]
+
+[tool.setuptools]
+# TODO: Remove workaround once we have proper namespacing.
+py-modules = []
