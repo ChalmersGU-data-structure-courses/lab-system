@@ -47,7 +47,26 @@
 #   - givenName: Bbbb
 
 # Typical response for a GU student:
-# ('uid=REDACTED,ou=people,dc=chalmers,dc=se', {'objectClass': [b'top', b'person', b'organizationalPerson', b'inetOrgPerson', b'eduPerson', b'norEduPerson'], 'cn': [b'REDACTED REDACTED'], 'sn': [b'REDACTED'], 'givenName': [b'REDACTED'], 'uid': [b'REDACTED'], 'mail': [b'REDACTED@student.chalmers.se'], 'eduPersonPrimaryAffiliation': [b'student'], 'eduPersonAffiliation': [b'student', b'member']})
+# (
+#     "uid=REDACTED,ou=people,dc=chalmers,dc=se",
+#     {
+#         "objectClass": [
+#             b"top",
+#             b"person",
+#             b"organizationalPerson",
+#             b"inetOrgPerson",
+#             b"eduPerson",
+#             b"norEduPerson",
+#         ],
+#         "cn": [b"REDACTED REDACTED"],
+#         "sn": [b"REDACTED"],
+#         "givenName": [b"REDACTED"],
+#         "uid": [b"REDACTED"],
+#         "mail": [b"REDACTED@student.chalmers.se"],
+#         "eduPersonPrimaryAffiliation": [b"student"],
+#         "eduPersonAffiliation": [b"student", b"member"],
+#     },
+# )
 
 import re
 
