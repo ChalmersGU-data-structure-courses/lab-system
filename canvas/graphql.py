@@ -410,7 +410,7 @@ class CourseUsers:
                 self.section_users[enrollment["section"]].append(user)
 
     def section_id(self, id):
-        return id if isinstance(id, int) else self.sections_by_name(id)
+        return id if isinstance(id, int) else self.sections_by_name[id]
 
     def user(self, id):
         return self.users[id] if isinstance(id, int) else id
