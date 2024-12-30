@@ -1193,7 +1193,9 @@ class GroupProject:
 
             If this complains it cannot find the remote problem head, the fix is to run self.repo_fetch().
             If you are updating the problem for all the groups, it is more efficient to run l.repo_fetch_all().
-            TODO: create the ancestral tag already when the group project is created; then no fetch is needed (as long as run with the same local course directory).
+            TODO:
+            Create the ancestral tag already when the group project is created.
+            Then no fetch is needed (as long as run with the same local course directory).
         """
         self.logger.info(f"Updating problem branches in {self.project.path}")
         for problem in self.lab.heads_problem:
