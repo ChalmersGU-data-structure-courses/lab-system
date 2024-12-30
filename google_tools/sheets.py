@@ -74,6 +74,7 @@ def request(name, /, **params):
 # TODO:
 # inheritFromBefore = True for rows fails to copy vertical border.
 # Find out why.
+# pylint: disable-next=redefined-outer-name
 def request_insert_dimension(dimension_range, inherit_from_before=False):
     return request(
         "insertDimension",
@@ -82,6 +83,7 @@ def request_insert_dimension(dimension_range, inherit_from_before=False):
     )
 
 
+# pylint: disable-next=redefined-outer-name
 def request_delete_dimension(dimension_range):
     return request(
         "deleteDimension",
@@ -89,6 +91,7 @@ def request_delete_dimension(dimension_range):
     )
 
 
+# pylint: disable-next=redefined-outer-name
 def request_move_dimension(dimension_range, destination_index):
     return request(
         "moveDimension",
@@ -228,6 +231,7 @@ def request_update_cell_user_entered_value(value, sheet_id, row, column):
     )
 
 
+# pylint: disable-next=redefined-outer-name
 def requests_duplicate_dimension(sheet_id, dimension, copy_from, copy_to):
     dr = dimension_range(sheet_id, dimension, *util.general.range_singleton(copy_from))
     yield request_insert_dimension(dr)
@@ -323,9 +327,7 @@ def extended_value_extract_primitive(v):
 #    return extended_value_formula(value_link(s, url))
 
 
-def text_format(
-    link=None,
-):
+def text_format(link=None):
     """
     Produces a value for the API type TextFormat.
     Arguments:
@@ -339,9 +341,8 @@ def text_format(
     return dict(f())
 
 
-def cell_format(
-    text_format=None,
-):
+# pylint: disable-next=redefined-outer-name
+def cell_format(text_format=None):
     """Produces a value for the API type CellFormat."""
 
     def f():
@@ -431,6 +432,7 @@ def sheet_data(sheet):
     )
 
 
+# pylint: disable-next=redefined-outer-name
 def sheet_data_table(sheet_data):
     return [
         [sheet_data.value(row, column) for column in range(sheet_data.num_columns)]
@@ -454,6 +456,7 @@ def is_cell_non_empty(cell):
     return not cell.get("userEnteredValue") in [None, string_value_empty]
 
 
+# pylint: disable-next=redefined-outer-name
 def get(spreadsheets, id, fields=None, ranges=None):
     """
     Retrieve spreadsheet data using the 'get' API call.
@@ -475,11 +478,13 @@ def get(spreadsheets, id, fields=None, ranges=None):
     ).execute()
 
 
+# pylint: disable-next=redefined-outer-name
 def batch_update(spreadsheets, id, requests):
     requests = list(requests)
 
     def msg():
         yield f"Performing batch update of spreadsheet f{id} with requests:"
+        # pylint: disable-next=redefined-outer-name
         for request in requests:
             yield str(request)
 
@@ -492,6 +497,7 @@ def batch_update(spreadsheets, id, requests):
 
 
 class UpdateRequestBuffer:
+    # pylint: disable-next=redefined-outer-name
     def __init__(self, spreadsheets, id):
         self.spreadsheets = spreadsheets
         self.id = id
@@ -509,6 +515,7 @@ class UpdateRequestBuffer:
             self.requests = []
 
 
+# pylint: disable-next=redefined-outer-name
 def copy_to(spreadsheets, id_from, id_to, sheet_id):
     return (
         spreadsheets.sheets()

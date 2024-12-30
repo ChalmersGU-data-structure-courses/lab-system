@@ -45,6 +45,7 @@ class ClientBase:
             self.session.close()
             del self.session
 
+    # pylint: disable-next=redefined-outer-name
     def execute(self, query, values=None):
         (query, process) = with_processing(query)
         # print(print_ast(query))
@@ -61,6 +62,7 @@ class ClientBase:
         for i in more_itertools.take(queries.items_seen, itertools.count()):
             yield result[name(i)]
 
+    # pylint: disable-next=redefined-outer-name
     def queue_query(self, query, process=None):
         (query, process) = with_processing(query)
 

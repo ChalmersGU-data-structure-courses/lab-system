@@ -91,11 +91,9 @@ def proot_args(
     return list(r())
 
 
-root = Path("/")
-
-
 def standard_bindings():
     """Bindings for binaries and shared libraries for use with proot_args."""
+    root = Path("/")
     for path in [root, root / "usr"]:
         for pattern in ["bin", "lib*"]:
             yield from path.glob(pattern)

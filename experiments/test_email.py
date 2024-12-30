@@ -57,12 +57,15 @@ EMAIL_TO = "REDACTED_EMAIL"
 EMAIL_SUBJECT = "Subject"
 EMAIL_CONTENT = "Content"
 
-creds = google_tools.general.get_token_for_scopes(
-    scopes=["https://mail.google.com/"],
-    credentials=config.google_credentials_path,
-    prefix_url=False,
-)
-service = build("gmail", "v1", credentials=creds)
+def test():
+    creds = google_tools.general.get_token_for_scopes(
+        scopes=["https://mail.google.com/"],
+        credentials=config.google_credentials_path,
+        prefix_url=False,
+    )
+    service = build("gmail", "v1", credentials=creds)
 
-message = create_message(EMAIL_FROM, EMAIL_TO, EMAIL_SUBJECT, EMAIL_CONTENT)
-sent = send_message(service, "me", message)
+    message = create_message(EMAIL_FROM, EMAIL_TO, EMAIL_SUBJECT, EMAIL_CONTENT)
+    return send_message(service, "me", message)
+
+test()

@@ -108,10 +108,15 @@ def is_bot_user(user):
 
 
 # Chalmers LDAP has size limit 300.
-page_control = ldap.controls.SimplePagedResultsControl(True, size=300, cookie="")
-
-
-def search_people(client, filter_):
+def search_people(
+    client,
+    filter_,
+    page_control=ldap.controls.SimplePagedResultsControl(
+        True,
+        size=300,
+        cookie="",
+    ),
+):
     return client.search_ext_s(
         "ou=people,dc=chalmers,dc=se",
         ldap.SCOPE_ONELEVEL,

@@ -14,6 +14,7 @@ def query(*args, **kwargs):
 
 
 def query_with_variables(var, *args, **kwargs):
+    # pylint: disable-next=redefined-outer-name
     query = DSLQuery(*args, **kwargs)
     query.variable_definitions = var
     return dsl_gql(query)
@@ -29,15 +30,18 @@ def wrap_query_execution_many(f, field_iter):
     return f
 
 
+# pylint: disable-next=redefined-outer-name
 def with_processing(query):
     return query if isinstance(query, tuple) else (query, util.general.identity)
 
 
+# pylint: disable-next=redefined-outer-name
 def only_query(query):
     (query, _process) = with_processing(query)
     return query
 
 
+# pylint: disable-next=redefined-outer-name
 def only_process(query):
     (_query, process) = with_processing(query)
     return process
@@ -50,6 +54,7 @@ def distribute(f):
                 r[label] = process(r[label])
 
             for arg in args:
+                # pylint: disable-next=redefined-outer-name
                 (query, process_inner) = with_processing(arg)
                 update(query.name, process_inner)
             for label, arg in kwargs.items():
@@ -71,6 +76,7 @@ def tupling(f):
     def g(*args):
         def process(r):
             def g(arg):
+                # pylint: disable-next=redefined-outer-name
                 (query, process_inner) = with_processing(arg)
                 return process_inner(r[query.name])
 
@@ -83,6 +89,7 @@ def tupling(f):
 
 def lift(f):
     def g(arg):
+        # pylint: disable-next=redefined-outer-name
         (query, process_inner) = with_processing(arg)
 
         def process(r):
@@ -94,6 +101,7 @@ def lift(f):
 
 
 def over_list(arg):
+    # pylint: disable-next=redefined-outer-name
     (query, process_inner) = with_processing(arg)
 
     def process(xs):
@@ -105,6 +113,7 @@ def over_list(arg):
 
 
 def over_list_unique(arg):
+    # pylint: disable-next=redefined-outer-name
     (query, process_inner) = with_processing(arg)
 
     def process(xs):

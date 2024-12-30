@@ -228,6 +228,7 @@ def int_str(format=""):
     )
 
 
+# pylint: disable-next=redefined-outer-name
 def regex_parser(regex, keyed=False, **kwargs):
     pattern = re.compile(regex, **kwargs)
 
@@ -240,6 +241,7 @@ def regex_parser(regex, keyed=False, **kwargs):
     return f
 
 
+# pylint: disable-next=redefined-outer-name
 def regex_non_canonical(holed_string, regex, **kwargs):
     return compose(
         singleton,
@@ -247,6 +249,7 @@ def regex_non_canonical(holed_string, regex, **kwargs):
     )
 
 
+# pylint: disable-next=redefined-outer-name
 def regex_non_canonical_many(holed_string, regex, **kwargs):
     return PrintParse(
         print=lambda args: holed_string.format(*args),
@@ -254,6 +257,7 @@ def regex_non_canonical_many(holed_string, regex, **kwargs):
     )
 
 
+# pylint: disable-next=redefined-outer-name
 def regex_non_canonical_keyed(holed_string, regex, **kwargs):
     return PrintParse(
         print=lambda args: holed_string.format(**args),
@@ -264,6 +268,7 @@ def regex_non_canonical_keyed(holed_string, regex, **kwargs):
 # Bug.
 # This and following functions only work for holed_string arguments
 # that don't contain regex special characters (except for the holes).
+# pylint: disable-next=redefined-outer-name
 def regex(holed_string, regex=".*", **kwargs):
     return regex_non_canonical(
         holed_string,
@@ -300,6 +305,7 @@ def regex_keyed(holed_string, regexes_keyed, **kwargs):
 
 
 # Takes a format string with a single hole.
+# pylint: disable-next=redefined-outer-name
 def regex_int(holed_string, format="", regex="\\d+", **kwargs):
     return compose(
         int_str(format=format),
@@ -438,6 +444,7 @@ def netloc_normalize(it):
 
 # Exercise.
 # Merge _netloc_print and _netloc_regex_parse into a nice printer-parser network.
+# pylint: disable-next=redefined-outer-name
 def _netloc_print(netloc):
     def password():
         return "" if netloc.password is None else ":" + netloc.password

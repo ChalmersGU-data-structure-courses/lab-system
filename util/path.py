@@ -70,9 +70,9 @@ def closing_fd(fd):
 
 @contextlib.contextmanager
 def dir_fd(path, **kwargs):
-    dir_fd = os.open(path, flags=os.O_PATH | os.O_DIRECTORY | os.O_CLOEXEC, **kwargs)
-    with closing_fd(dir_fd):
-        yield dir_fd
+    fd = os.open(path, flags=os.O_PATH | os.O_DIRECTORY | os.O_CLOEXEC, **kwargs)
+    with closing_fd(fd):
+        yield fd
 
 
 # ## File locking.
@@ -309,6 +309,7 @@ def safe_symlink(source, target, exists_ok=False):
         source.symlink_to(target, target.is_dir())
 
 
+# pylint: disable-next=redefined-outer-name
 def symlink_force(src, dst, target_is_directory=False, *, dir_fd=None):
     """
     Force create a symlink.

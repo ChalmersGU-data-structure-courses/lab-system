@@ -229,6 +229,7 @@ class Canvas:
     # Perform a PUT request to the designated endpoint.
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
     # The starting elements 'api' and 'v1' are omitted.
+    # pylint: disable-next=redefined-outer-name
     def put(self, endpoint, params=None, data=None, json=None):
         logger.info("PUT with endpoint " + self.get_url(Canvas.with_api(endpoint)))
         return Canvas.objectify_json(
@@ -245,6 +246,7 @@ class Canvas:
     # Perform a POST request to the designated endpoint.
     # 'endpoint' is a list of strings and integers constituting the path component of the url.
     # The starting elements 'api' and 'v1' are omitted.
+    # pylint: disable-next=redefined-outer-name
     def post(self, endpoint, data=None, json=None, params=None):
         logger.info("POST with endpoint " + self.get_url(Canvas.with_api(endpoint)))
         return Canvas.objectify_json(
