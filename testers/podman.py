@@ -5,7 +5,7 @@ import logging
 import os
 import subprocess
 from pathlib import Path
-from typing import Collection, Optional, Tuple, Union
+from typing import Collection, Optional, Union
 
 import testers.general
 import util.general

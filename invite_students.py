@@ -4,12 +4,9 @@
 # to logging.WARNING and pipe the error output into a log file, e.g.
 #   while [[ 1 ]]; do ./invite_students.py 2>>invite_students_log; sleep 300; done
 # That way, the log file won't contain repeating redundant entries.
-
-import importlib
 import logging
 
-from course import Course
-from lab import StudentConnectorGroupSet, StudentConnectorIndividual
+from lab import StudentConnectorGroupSet
 
 
 # isort: split

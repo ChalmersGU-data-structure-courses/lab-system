@@ -1,5 +1,6 @@
 import logging
 
+# pylint: disable-next=unused-import
 import course
 
 

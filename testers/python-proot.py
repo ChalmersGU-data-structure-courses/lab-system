@@ -9,6 +9,7 @@ from typing import Optional, Tuple, Union
 
 # The following module is not needed here, but when tests are run.
 # We import it to make sure that all dependencies of the sandboxing script are satisfies.
+# pylint: disable-next=unused-import
 import seccomp  # noqa: F401
 
 import testers.general

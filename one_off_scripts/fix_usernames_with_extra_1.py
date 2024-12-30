@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 import logging
-from pathlib import Path
-
-import gitlab
 
 import course
-import gitlab_.tools  # noqa: E402
 from util.this_dir import this_dir
 
 
