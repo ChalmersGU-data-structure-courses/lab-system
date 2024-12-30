@@ -123,6 +123,8 @@ def combine_generic(fs):
         r = combine_dict
     elif hasattr(fs.__class__, "_make"):
         r = combine_namedtuple
+    else:
+        raise ValueError(f"no combine instance for {type(fs)}")
     return r(fs)
 
 
