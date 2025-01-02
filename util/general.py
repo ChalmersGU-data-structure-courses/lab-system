@@ -1,3 +1,4 @@
+import abc
 import contextlib
 import dataclasses
 import decimal
@@ -61,10 +62,18 @@ class UniquenessError(ValueError):
     def __init__(self, iterator):
         self.iterator = iterator
 
+    @classmethod
+    @abc.abstractmethod
+    def inflect_value(cls): ...
+
 
 class UniquenessErrorNone(UniquenessError):
     def __init__(self):
         super().__init__(())
+
+    @classmethod
+    def inflect_value(cls):
+        return "no value"
 
 
 class UniquenessErrorMultiple(UniquenessError):
@@ -73,6 +82,10 @@ class UniquenessErrorMultiple(UniquenessError):
         self.first = first
         self.second = second
         self.rest = rest
+
+    @classmethod
+    def inflect_value(cls):
+        return "multiple values"
 
 
 def from_singleton(xs):
@@ -208,16 +221,22 @@ def starfilter(f, xs):
             yield x
 
 
+class SDictException(ValueError):
+    def __init__(self, key, value_a, value_b, format_value=None):
+        self.key = key
+        self.value_a = value_a
+        self.value_b = value_b
+        msg = f"duplicate entry for key {key}"
+        if format_value is not None:
+            msg += f": values {format_value(value_a)} and {format_value(value_b)}"
+        super().__init__(msg)
+
+
 def sdict(xs, strict=True, format_value=None):
     r = {}
     for k, v in xs:
         if strict and k in r:
-            msg_value = (
-                ""
-                if format_value is None
-                else f": values {format_value(r[k])} and {format_value(v)}"
-            )
-            raise ValueError(f"duplicate entry for key {k}{msg_value}")
+            raise SDictException(k, r[k], v, format_value=format_value)
         r[k] = v
     return r
 
@@ -393,7 +412,7 @@ def appropriate_time_unit(delta):
     return time_unit
 
 
-def format_timespan_using(delta, time_unit, precision=2):
+def format_timespan_using(delta, time_unit, precision=3):
     amount = format_with_rel_prec(
         delta / timedelta(**{time_unit: 1}),
         precision=precision,
@@ -401,7 +420,7 @@ def format_timespan_using(delta, time_unit, precision=2):
     return f"{amount} {time_unit}"
 
 
-def format_timespan(delta, precision=2):
+def format_timespan(delta, precision=3):
     return format_timespan_using(delta, appropriate_time_unit(delta), precision)
 
 

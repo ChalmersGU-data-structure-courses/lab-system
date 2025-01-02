@@ -24,6 +24,13 @@ def retrieve_all_from_cursor(callback, cursor=None):
             break
 
 
+class Query:
+    def __init__(self, query):
+        self.query = query
+        self.result = None
+
+    
+
 class ClientBase:
     def __init__(self, transport, path_schema):
         self.transport = transport

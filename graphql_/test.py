@@ -3,8 +3,10 @@ import datetime
 import itertools
 import logging
 from pathlib import Path
+import pprint
 
 import gitlab
+from gql import gql
 from gql.dsl import DSLInlineFragment, DSLQuery, DSLSchema, dsl_gql
 from gql.transport.requests import RequestsHTTPTransport
 
@@ -26,7 +28,7 @@ from gitlab_config_personal import canvas_auth_token, gitlab_private_token
 # c = canvas.Canvas('chalmers.instructure.com')
 # client = canvas_gql.Client(c)
 
-client = gitlab_.graphql.Client("git.chalmers.se", gitlab_private_token)
+client = gitlab_.graphql.Client("git.chalmers.se", gitlab_private_token, schema_full=True)
 
 # c = canvas.Canvas('canvas.gu.se')
 
@@ -38,21 +40,62 @@ project_ids = [7208 + i for i in range(165)]
 # with util.general.timing('retrieve_projects_members'):
 #    print(client.retrieve_projects_members(project_ids))
 
-gl = gitlab.Gitlab(
-    "https://git.chalmers.se/",
-    private_token=gitlab_private_token,
-)
-gl.auth()
+# gl = gitlab.Gitlab(
+#     "https://git.chalmers.se/",
+#     private_token=gitlab_private_token,
+# )
+# gl.auth()
+
+def project_ids_():
+    for i in range(19300, 19400):
+        yield f'"gid://gitlab/Project/{i}"'
+
+project_ids = ", ".join(project_ids_())
+
+query = '''
+    query {
+      project(fullPath: "sattler/test") {
+        fullPath
+        topics
+        snippets {
+          nodes {
+            author {name}
+            title
+            description
+            fileName
+          }
+        }
+      }
+    }
+'''
+
+# query = '''
+# query {
+#   project(fullPath: "courses/data-structures/lp2/2024/lab-2/lab2-group-46") {
+#     fullPath
+#   }
+# }
+# '''
 
 with util.general.timing("issues"):
-    x = list(
-        # This is a commented-out method.
-        # pylint: disable-next=no-member
-        client.retrieve_issues_in_project(
-            "courses/lp2-data-structures/groups/97/lab-3-python"
-        )
-    )
-    # x = list(client.f('courses/lp2-data-structures/groups', 'lab-3-python'))
+    r = client.session.execute(gql(query))
+
+pprint.pprint(r)
+
+#with util.general.timing("issues"):
+#    r = client.session.execute(gql(query))
+
+#pprint.pprint(r)
+
+# with util.general.timing("issues"):
+#     x = list(
+#         # This is a commented-out method.
+#         # pylint: disable-next=no-member
+#         client.retrieve_issues_in_project(
+#             "courses/lp2-data-structures/groups/97/lab-3-python"
+#         )
+#     )
+#   # x = list(client.f('courses/lp2-data-structures/groups', 'lab-3-python'))
 
 
 # with util.general.timing('all users via REST one page'):
@@ -67,15 +110,6 @@ with util.general.timing("issues"):
 #       if not r:
 #          break
 #    print(f'{i} pages')
-
-# with util.general.timing('retrieve_all_users'):
-#     client.retrieve_all_users()
-
-# with util.general.timing('retrieve_all_users'):
-#     client.retrieve_all_users()
-
-# with util.general.timing('retrieve_all_users'):
-#     client.retrieve_all_users()
 
 # with util.general.timing('retrieve_all_users'):
 #     client.retrieve_all_users()
