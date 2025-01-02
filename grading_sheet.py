@@ -259,13 +259,13 @@ def is_row_non_empty(sheet_data, relevant_columns, row):
 def guess_group_row_range(sheet_data, relevant_columns):
     """
     Guess the group row range in a worksheet that does not have any group rows.
-    Returns the first contiguous range of empty rows (with respect to the relevant columns), skipping the first row.
+    Returns the first contiguous range of empty rows (with respect to the relevant columns) after the header row.
     The argument 'rows' is the rows as returned by the Google Sheets API.
     This will not include empty rows at the end of the worksheet, hence the additional 'row_count' argument.
     """
     start = None
     end = None
-    for row in range(1, sheet_data.num_rows):
+    for row in range(sheet_data.header_row, sheet_data.num_rows):
         if is_row_non_empty(sheet_data, relevant_columns, row):
             if start is not None:
                 end = row
