@@ -442,7 +442,7 @@ def sheet_data_table(sheet_data):
     ]
 
 
-def cell_as_string(cell):
+def cell_as_string(cell, strict=True):
     x = cell["userEnteredValue"]
     y = x.get("stringValue")
     if y is not None:
@@ -451,7 +451,9 @@ def cell_as_string(cell):
         y = x.get(attr)
         if y is not None:
             return str(y)
-    raise ValueError(f"Cannot interpret as string value: {x}")
+    if strict:
+        raise ValueError(f"Cannot interpret as string value: {x}")
+    return None
 
 
 def is_cell_non_empty(cell):
@@ -572,17 +574,22 @@ alpha = pp.compose(
 )
 
 # The alphabetical part of A1 notation, supporting the unbounded value None instead of the number 0.
-alpha_unbounded = pp.with_none(pp.without(alpha, 0), str())
+alpha_unbounded = pp.compose(
+    pp.maybe(pp.from_one),
+    pp.with_none(pp.without(alpha, 0), str()),
+)
 
 # The numerical part of A1 notation, supporting the unbounded value None.
-numeral_unbounded = pp.with_none(pp.int_str(), str())
+numeral_unbounded = pp.compose(
+    pp.maybe(pp.from_one),
+    pp.with_none(pp.int_str(), str()),
+)
 
 # Formats a (zero-based) pair of row and column index in A1 notation.
 # Supports unbounded delimiters instead of -1 as indices.
 # (Indices -1 may arise with the silly inclusive range convention.)
 a1_notation = pp.compose(
     pp.swap,
-    pp.over_tuple(pp.maybe(pp.from_one)),
     pp.combine((alpha_unbounded, numeral_unbounded)),
     pp.regex_many("{}{}", ("[a-zA-Z]*", "\\-?\\d*"), flags=re.ASCII),
 )

@@ -1,10 +1,13 @@
 import bisect
 import collections
+import collections.abc
 import contextlib
+import dataclasses
 import functools
 import itertools
 import logging
 import traceback
+from typing import Any, Callable, Iterable, Iterator
 
 import gspread
 
@@ -12,275 +15,401 @@ import google_tools.general
 import google_tools.sheets
 import util.general
 import util.gspread
+import util.print_parse
 
 
 logger_default = logging.getLogger(__name__)
 
-Query = collections.namedtuple(
-    "Query", ["submission", "grader", "score"], defaults=[None, None, None]
-)
-Query.__doc__ = """
-    A named tuple specifying values or metadata of a query column group in a grading sheet.
-    In each query column group, the columns are required to appear in this order:
-    * submission:
-        The submission column.
-        Entries in this column specify submission requests.
-        They link to the commit in the student repository corresponding to the submission.
-    * grader:
-        The grader column.
-        Graders write their name here before they start grading
-        to avoid other graders taking up the same submission.
-        When a grader creates a grading issue for this submission,
-        the lab script automatically fills in the graders name (as per the
-        config field graders_informal documented in gitlab_config.py.template)
-        and makes it link to the grading issue.
-    * score:
-        The score (outcome) column.
-        This should not be filled in by graders.
-        It is automatically filled in by the lab script from the grading issue created by the grader.
-        It is used only for informative purposes (not input to the lab script).
+
+@dataclasses.dataclass(kw_only=True, frozen=True)
+class HeaderConfig:
+    """
+    Configuration of grading sheet headers.
     """
 
-GradingSheetData = collections.namedtuple(
-    "GradingSheetData",
-    ["sheet_data", "group_column", "header_row", "group_rows", "query_column_groups"],
-)
-GradingSheetData.__doc__ = """
-    A parsed grading sheet.
+    group: str = "Group"
+    """The header for the group column."""
 
-    Arguments:
-    * sheet_data: A value of type google_tools.sheets.SheetData.
-    * header_row: The header row index.
-    * group_rows: A dictionary mapping group ids to row indices.
-    * group_column: The index of the group column (zero-based).
-    * query_column_groups:
-        A list of instances of Query corresponding to successive queries.
-        Each value in each instance specifies the corresponding (zero-based) column index in the spreadsheet.
+    query: util.print_parse.PrinterParser[int, str] = util.print_parse.compose(
+        util.print_parse.from_one,
+        util.print_parse.regex_int("Query #{}", regex="\\d+"),
+    )
     """
+    The printer-parser for the header of a submission column.
+    Defaults to "Query #n" with 1-based numbering.
+    """
+
+    grader: str = "Grader"
+    """The header for a grader column."""
+
+    score: str = "0/1"
+    """The header of an outcome column."""
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True)
+class IdentifierConfig[Identifier]:
+    """
+    Configuration for using identifiers in a worksheet.
+    Identifiers may not be None.
+    """
+
+    pp: util.print_parse.PrinterParser[Identifier, str]
+    """
+    Printer-parser for identifiers.
+    Used when formatting or parsing identifiers in worksheet cells.
+    """
+
+    sort_key: Callable[[Identifier], Any]
+    """
+    Sort key for identifiers.
+    Used when sorting rows or columns according to identifiers.
+    """
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True)
+class Config[GroupIdentifier]:
+    """
+    Configuration of the grading spreadsheet.
+    This keeps track of which groups have been or are to be graded.
+
+    Each worksheet has the following structure.
+
+    * The *group column* is the first column.
+    * The *header row* is the unique row with group cell `header.group`.
+    * The *group rows* are those following rows with group cell a parseable group identifier.
+
+    If there are no group rows, the lab system needs a placeholder row range for where to insert group rows.
+    This is the first continguous block of empty rows afrer the header row.
+
+    The remaining data is organized into query column groups.
+    A *query column group* is a contiguous range of three columns, appearing in the following order:
+
+    * The *query column* (or *submission column*).
+      Header `header.query.print(n)` for the query column group with index n.
+      Entries in this column specify submission requests.
+      They link to the commit in the student repository corresponding to the submission.
+
+    * The *grader column*.
+      Header `header.grader`.
+      Graders are encouraged to write their name here before they start grading.
+      This helps avoid other graders taking up the same submission.
+      When a grader creates a grading issue for this submission, the lab script fills this in with a link to the grading.
+      (See the the field graders_informal in the course configuration.)
+
+    * The *outcome column* (or *score column*).
+      Header `header.score`.
+      This should not be filled in by graders.
+      Instead, it is written by the lab script after the submission is graded.
+      Note that this is only for informational purposes.
+      It is not interpreted as input by the lab system for other tasks.
+
+    Additional query column groups are added dynamically by the lab system as needed.
+    The previous query column group is taken as template for this (TODO).
+
+    Data other than the above rows and columns is not interpreted by the lab system.
+    These extra rows and columns may be used for notes or formulas for submission statistics.
+    In particular, it is possible to have columns with headers other than the ones above.
+    """
+
+    spreadsheet: str
+    """
+    Key (in base64) of grading spreadsheet on Google Sheets.
+    The grading spreadsheet keeps track of grading outcomes.
+    This is created by the user, but maintained by the lab script.
+    The key can be found in the URL of the spreadsheet.
+    Individual grading sheets for each lab are worksheets in this spreadsheet.
+    """
+
+    template: tuple[str, str] | None = None
+    """
+    Pair of a spreadsheet key (base64) and a worksheet identifier (as for `spreadsheet`).
+    Optional template worksheet for creating a new grading worksheet for a lab.
+    Used for creating new grading worksheets.
+    If not specified, the worksheet of the previous lab is used instead.
+    In that case, the worksheet of the first lab must be created manually.
+    """
+
+    header: HeaderConfig = HeaderConfig()
+    """Configuration of the header row."""
+
+    group_identifier: IdentifierConfig[GroupIdentifier]
+    """
+    Configuration of group identifiers.
+    This determines how the group column is formatted and sorted.
+    """
+
+    ignore_rows: collections.abc.Collection[int] = frozenset()
+    """
+    Indices of rows to ignore when looking for the header row and group rows.
+    Bottom rows can be specified in Python style (negative integers, -1 for last row).
+    This can be used to embed grading-related information not touched by the lab system.
+    
+    TODO:
+    Maybe we do not need need this?
+    It suffices to just leave the group cell blank.
+    """
+
+    include_groups_with_no_submission = True
+    """
+    By default, the lab system adds rows only for groups with at least one submission.
+    If this is set to false, it also includes groups with at least one group member.
+
+    This parameter is interpreted by the module lab instead of module grading_sheet.
+    """
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True)
+class Query[T]:
+    """
+    A query.
+
+
+    The column indices for a query column group.
+    All zero-based.
+    """
+
+    submission: T
+    grader: T
+    score: T
+
+
+class QueryColumnGroup(Query[int]):
+    """
+    The column indices of a query column group.
+    """
+
+
+class QueryHeaders(Query[str]):
+    """
+    The headers of a query column group.
+    """
+
+    def __init__(self, config: HeaderConfig, query_index: int):
+        super().__init__(
+            submission=config.query.print(query_index),
+            grader=config.grader,
+            score=config.score,
+        )
 
 
 class SheetParseException(Exception):
     """Exception base type used for grading sheet parsing exceptions."""
 
 
-def query_column_group_headers(config, query):
-    headers = config.grading_sheet.header
-    return Query(
-        submission=headers.query.print(query),
-        grader=headers.grader,
-        score=headers.score,
-    )
+def _attempt_parse(pp, value):
+    try:
+        return pp.parse(value)
+    # We currently rely on generic exceptions to detect parse failure.
+    # For example, these can be ValueError, LookupError, IndexError.
+    # pylint: disable-next=broad-exception-caught
+    except Exception:
+        return None
 
 
-def parse_grading_columns(config, header_row):
-    """
-    Parse sheet headers.
-    Takes an iterable of pairs of a row index and a header string value.
-    Returns a pair of:
-    * The column index of the group id column.
-    * A list of instances of Query corresponding to successive queries.
-    """
+class GradingSheetData[GroupIdentifier]:
+    config: Config[GroupIdentifier]
+    sheet_data: google_tools.sheets.SheetData
 
-    def consume(value_expected):
+    def __init__(
+        self,
+        config: Config[GroupIdentifier],
+        sheet_data: google_tools.sheets.SheetData,
+    ):
+        self.config = config
+        self.sheet_data = sheet_data
+
+    def parse_user_string(self, row: int, column: int) -> str | None:
+        return google_tools.sheets.cell_as_string(
+            self.sheet_data.value(row, column),
+            strict=False,
+        )
+
+    @functools.cached_property
+    def ignored_rows(self) -> set[int]:
+        return {
+            util.general.normalize_list_index(self.sheet_data.num_rows, row)
+            for row in self.config.ignore_rows
+        }
+
+    @functools.cached_property
+    def group_column(self) -> int:
+        """
+        The index of the group column (zero-based).
+        """
+        return 0
+
+    @functools.cached_property
+    def header_row(self) -> int:
+        def candidates():
+            for row in range(self.sheet_data.num_rows):
+                if not row in self.ignored_rows:
+                    value = self.parse_user_string(row, self.group_column)
+                    if value == self.config.header.group:
+                        yield row
+
         try:
-            (column, value) = next(header_row)
-            value = value["userEnteredValue"]
-            value = value.get("stringValue")
-            if not value == value_expected:
-                raise SheetParseException(
-                    f"expected header {value_expected} in column {column}, got {value}"
-                )
-            return column
-        except StopIteration:
+            return util.general.from_singleton(candidates())
+        except util.general.UniquenessError as e:
             raise SheetParseException(
-                f"expected header {value_expected} at end of row"
+                "unable to locate header row:"
+                f" {e.inflect_value()} {self.config.header.group} in column"
+                f" {google_tools.sheets.numeral_unbounded.print(self.group_column)}"
             ) from None
 
-    headers = config.grading_sheet.header
-    group_column = consume(headers.group)
-    query_column_groups = []
-
-    while True:
-        try:
-            (column, value) = next(header_row)
-        except StopIteration:
-            break
-
-        try:
-            value = value["userEnteredValue"]
-            value = value["stringValue"]
-            j = headers.query.parse(value)
-        # We currently rely on generic exceptions to detect parse failure.
-        # For example, these can be ValueError, LookupError, IndexError.
-        # pylint: disable-next=broad-exception-caught
-        except Exception:
-            continue
-
-        if j != len(query_column_groups):
+    def _parse_query_columns(
+        self,
+        row,
+        columns: Iterator[int],
+    ) -> Iterable[QueryColumnGroup]:
+        def throw(column, found, expected):
             raise SheetParseException(
-                f"unexpected query header {value}, "
-                f"expected {config.grading_sheet.header.query.print(len(query_column_groups))}"
+                f"unexpected query header {found}"
+                f" in cell {google_tools.sheets.a1_notation.print((row, column))},"
+                f" expected {expected}"
             )
 
-        query_column_groups.append(
-            Query(
-                submission=column,
-                grader=consume(headers.grader),
-                score=consume(headers.score),
-            )
-        )
-
-    if not query_column_groups:
-        raise SheetParseException("excepted at least one query column group")
-
-    return (group_column, query_column_groups)
-
-
-def parse_group_rows(gdpr_coding, values):
-    """
-    Determine which row indices in a column correspond to student groups.
-    This is done by attempting to parse each entry as a group id.
-    The argument 'values' is an iterable of pairs of a column index and the string value of the group cell.
-    Returns a dictionary mapping group ids to row indices.
-    """
-
-    def f():
-        for i, value in values:
+        def consume(expected: str) -> int:
             try:
-                value = value["userEnteredValue"]
-                value = google_tools.sheets.extended_value_extract_primitive(value)
-                yield (gdpr_coding.identifier.parse(value), i)
-            # We currently rely on generic exceptions to detect parse failure.
-            # For example, these can be ValueError, LookupError, IndexError.
-            # pylint: disable-next=broad-exception-caught
-            except Exception:
-                continue
-
-    return util.general.sdict(f())
-
-
-def parse(config, gdpr_coding, sheet_data):
-    """
-    Parse a grading sheet.
-
-    Arguments:
-    * config: Configuration name space as in gitlab_config.py.template.
-    * gdpr_coding: instance of GDPR coding.
-    * sheet_data: A value of type google_tools.sheets.SheetData.
-    Returns a value of type GradingSheetData.
-
-    Exceptions encountered are raised as instances of SheetParseException.
-    """
-    ignore = {
-        util.general.normalize_list_index(sheet_data.num_rows, i)
-        for i in config.grading_sheet.ignore_rows
-    }
-
-    header_row = None
-    search_value = config.grading_sheet.header.group
-    for row in range(sheet_data.num_rows):
-        value = sheet_data.value(row, 0)
-        try:
-            value = value["userEnteredValue"]
-            value = value["stringValue"]
-        except KeyError:
-            continue
-        if value == search_value:
-            if header_row is not None:
+                column = next(columns)
+            except StopIteration:
                 raise SheetParseException(
-                    f'multiple header rows starting with "{search_value}"'
-                )
-            ignore.add(row)
-            header_row = row
-    if header_row is None:
-        raise SheetParseException(
-            f'unable to locate header row starting with "{search_value}"'
+                    f"expected header {expected} at end of"
+                    f" row {google_tools.sheets.a1_notation.print((row, None))}"
+                ) from None
+
+            value = self.parse_user_string(row, column)
+            if not value == expected:
+                throw(column, found, expected)
+
+            return column
+
+        found = False
+        for index in itertools.count():
+            try:
+                column_submission = next(columns)
+            except StopIteration:
+                break
+
+            value = self.parse_user_string(row, column_submission)
+            if value is None:
+                continue
+            index_parsed = _attempt_parse(self.config.header.query, value)
+            if index is None:
+                continue
+            if not index_parsed == index:
+                throw(column_submission, value, self.config.header.query.print(index))
+
+            column_grader = consume(self.config.header.grader)
+            column_score = consume(self.config.header.score)
+            yield QueryColumnGroup(
+                submission=column_submission,
+                grader=column_grader,
+                score=column_score,
+            )
+            found = True
+
+        if not found:
+            raise SheetParseException(
+                "no query column groups found, expected at least one"
+            )
+
+    @functools.cached_property
+    def query_column_groups(self) -> list[QueryColumnGroup]:
+        return list(
+            self._parse_query_columns(
+                self.header_row,
+                iter(range(self.group_column + 1, self.sheet_data.num_columns)),
+            )
         )
 
-    (group_column, query_column_groups) = parse_grading_columns(
-        config,
-        (
-            (column, sheet_data.value(header_row, column))
-            for column in range(sheet_data.num_columns)
-        ),
-    )
+    @functools.cached_property
+    def group_rows(self) -> dict[GroupIdentifier, int]:
+        """
+        Determine which row indices in the group column correspond to student groups.
+        This is done by attempting to parse each entry as a group identifier.
+        Returns a dictionary mapping group ids to row indices.
+        """
 
-    return GradingSheetData(
-        sheet_data=sheet_data,
-        header_row=header_row,
-        group_rows=parse_group_rows(
-            gdpr_coding,
-            (
-                (row, sheet_data.value(row, group_column))
-                for row in range(sheet_data.num_rows)
-                if not row in ignore
-            ),
-        ),
-        group_column=group_column,
-        query_column_groups=query_column_groups,
-    )
+        def f():
+            for row in range(self.header_row + 1, self.sheet_data.num_rows):
+                if not row in self.ignored_rows:
+                    value = self.parse_user_string(row, self.group_column)
+                    if value is None:
+                        continue
 
+                    id = _attempt_parse(self.config.group_identifier.pp, value)
+                    if id is None:
+                        continue
 
-def get_group_range(worksheet_parsed):
-    """
-    Compute the range of group rows in a parsed worksheet.
-    Returns None if there are no group rows.
-    Note: It is not guaranteed that all rows in this range are group rows.
-    """
-    rows = worksheet_parsed.group_rows.values()
-    return (min(rows), max(rows) + 1) if rows else None
+                    yield (id, row)
 
+        try:
+            return util.general.sdict(f())
+        except util.general.SDictException as e:
+            format_row = google_tools.sheets.numeral_unbounded.print
+            raise SheetParseException(
+                f"duplicate rows {format_row(e.value_a)} and {format_row(e.value_b)}"
+                f" for group {self.config.group_identifier.pp.print(e.key)}"
+            ) from None
 
-def relevant_columns(sheet_parsed):
-    """
-    Returns an iterable of the relevant column indices.
-    Relevant means it has meaning to this script.
-    """
-    yield sheet_parsed.group_column
-    for query_column_group in sheet_parsed.query_column_groups:
-        yield query_column_group.submission
-        yield query_column_group.grader
-        yield query_column_group.score
+    def relevant_columns(self) -> Iterable[int]:
+        """
+        Returns an iterable of the relevant column indices.
+        Relevant means it has meaning to this module.
+        """
+        yield self.group_column
+        for query_column_group in self.query_column_groups:
+            yield query_column_group.submission
+            yield query_column_group.grader
+            yield query_column_group.score
 
+    def is_row_non_empty(self, row: int) -> bool:
+        """
+        Does this row only contain empty values?
+        Only looks at the relevant columns.
+        """
+        return any(
+            google_tools.sheets.is_cell_non_empty(self.sheet_data.value(row, column))
+            for column in self.relevant_columns()
+        )
 
-# pylint: disable-next=redefined-outer-name
-def is_row_non_empty(sheet_data, relevant_columns, row):
-    """
-    Does this row only contain empty values?
-    Only looks at the relevant columns.
-    """
-    return any(
-        google_tools.sheets.is_cell_non_empty(sheet_data.value(row, column))
-        for column in relevant_columns
-    )
+    def empty_group_range(self) -> util.general.Range:
+        """
+        Guess the group row range in a worksheet that does not have any group rows.
+        Returns the first contiguous range of empty rows (with respect to the relevant columns) after the header row.
+        The argument 'rows' is the rows as returned by the Google Sheets API.
+        This will not include empty rows at the end of the worksheet, hence the additional 'row_count' argument.
+        """
+        start = None
+        end = self.sheet_data.num_rows
+        for row in range(self.sheet_data.header_row + 1, self.sheet_data.num_rows):
+            if self.is_row_non_empty(row) or row in self.ignored_rows:
+                if start is not None:
+                    end = row
+                    break
+            else:
+                if start is None:
+                    start = row
 
+        if start is None:
+            raise SheetParseException(
+                "unable to guess group row range: no suitable empty rows found"
+            )
+        return (start, end)
 
-# pylint: disable-next=redefined-outer-name
-def guess_group_row_range(sheet_data, relevant_columns):
-    """
-    Guess the group row range in a worksheet that does not have any group rows.
-    Returns the first contiguous range of empty rows (with respect to the relevant columns) after the header row.
-    The argument 'rows' is the rows as returned by the Google Sheets API.
-    This will not include empty rows at the end of the worksheet, hence the additional 'row_count' argument.
-    """
-    start = None
-    end = None
-    for row in range(sheet_data.header_row, sheet_data.num_rows):
-        if is_row_non_empty(sheet_data, relevant_columns, row):
-            if start is not None:
-                end = row
-                break
-        else:
-            if start is None:
-                start = row
+    @functools.cached_property
+    def group_range(self) -> util.general.Range:
+        """
+        The group range is the range of group rows.
+        If there are no group rows, it is a non-empty contiguous range of empty rows.
+        At least one empty row is needed here to retain the formatting of group rows.
+        As soon as a group row is inserted, the empty rows in the group range are deleted.
+        """
+        result = util.general.range_of(self.group_rows.values())
+        if result is not None:
+            return result
 
-    if start is None:
-        start = sheet_data.num_rows
-    if end is None:
-        end = sheet_data.num_rows
-    if start == end:
-        raise ValueError("unable to guess group row range")
-    return (start, end)
+        return self.empty_group_range
 
 
 class GradingSheet:
@@ -313,6 +442,10 @@ class GradingSheet:
         # Updated in write_query_cell.
         self.needed_num_queries = 0
 
+    @property
+    def config(self):
+        return self.grading_spreadsheet.config
+
     def delete(self):
         self.grading_spreadsheet.gspread_spreadsheet.del_worksheet(
             self.gspread_worksheet
@@ -328,7 +461,6 @@ class GradingSheet:
             "sheet_properties",
             "sheet_data",
             "sheet_parsed",
-            "group_range",
         ]:
             with contextlib.suppress(AttributeError):
                 delattr(self, x)
@@ -358,78 +490,66 @@ class GradingSheet:
         return self.sheet[1]
 
     @functools.cached_property
-    def sheet_parsed(self):
-        return parse(
-            self.grading_spreadsheet.config,
-            self.lab.student_connector.gdpr_coding(),
-            self.sheet_data,
-        )
+    def sheet_parsed(self) -> GradingSheetData:
+        return GradingSheetData(self.grading_spreadsheet.config, self.sheet_data)
 
-    @functools.cached_property
-    def group_range(self):
-        """
-        The group range is the range of group rows.
-        If there are no group rows, it is a non-empty range of empty rows.
-        At least one empty row is needed here to obtain the formatting of group rows from.
-        As soon as a group row is inserted, the empty rows in the group range are deleted.
-        """
-        r = get_group_range(self.sheet_parsed)
-        if not r:
-            r = guess_group_row_range(
-                self.sheet_data, list(relevant_columns(self.sheet_parsed))
-            )
-        return r
-
-    def row_range_param(self, range_):
+    def row_range_param(self, range_: util.general.Range):
         return google_tools.sheets.dimension_range(
             self.sheet_properties.sheetId,
             google_tools.sheets.Dimension.rows,
             *range_,
         )
 
-    def format_group(self, group_id, group_link):
+    def format_group(self, id, group_link):
         return google_tools.sheets.cell_data(
-            userEnteredValue=google_tools.sheets.extended_value_number_or_string(
-                self.lab.student_connector.gdpr_coding().identifier.print(group_id)
+            userEnteredValue=google_tools.sheets.extended_value_string(
+                self.config.group_identifier.print(id)
             ),
             userEnteredFormat=(
                 None
                 if group_link is None
-                else google_tools.sheets.linked_cell_format(group_link(group_id))
+                else google_tools.sheets.linked_cell_format(group_link(id))
             ),
         )
 
-    def delete_existing_groups(self, request_buffer):
+    def delete_existing_groups(self, request_buffer) -> util.general.Range:
         """
         Arguments:
         * request_buffer: Constructed requests will be added to this buffer.
 
-        After calling this method (modulo executing the request buffer),
-        all cached values except for sheet_parsed and group_range are invalid.
+        Returns the resulting empty group range.
+        Use this for a follow-up call to insert_groups.
         """
-        (group_start, _) = self.group_range
+        (group_start, _) = self.sheet_parsed.group_range
 
         # Delete existing group rows (including trailing empty rows).
         # Leave an empty group row for retaining formatting.
         # TODO: test if deleting an empty range triggers an error.
         if not (
             not self.sheet_parsed.group_rows
-            and util.general.is_range_singleton(self.group_range)
+            and util.general.is_range_singleton(self.sheet_parsed.group_range)
         ):
-            self.logger.debug(f"deleting existing group rows {self.group_range}")
-            request_buffer.add(
-                google_tools.sheets.request_insert_dimension(
-                    self.row_range_param(util.general.range_singleton(group_start))
-                ),
-                google_tools.sheets.request_delete_dimension(
-                    self.row_range_param(util.general.range_shift(self.group_range, 1))
-                ),
+            self.logger.debug(
+                f"deleting existing group rows {self.sheet_parsed.group_range}"
             )
+            request_insert = google_tools.sheets.request_insert_dimension(
+                self.row_range_param(util.general.range_singleton(group_start))
+            )
+            range_ = util.general.range_shift(self.sheet_parsed.group_range, 1)
+            request_delete = google_tools.sheets.request_delete_dimension(
+                self.row_range_param(range_)
+            )
+            request_buffer.add(request_insert, request_delete)
 
-        self.sheet_parsed = self.sheet_parsed._replace(group_rows=[])
-        self.group_range = util.general.range_singleton(group_start)
+        return util.general.range_singleton(group_start)
 
-    def insert_groups(self, groups, group_link, request_buffer):
+    def insert_groups(
+        self,
+        groups,
+        group_link,
+        request_buffer,
+        empty_group_range: util.general.Range | None,
+    ):
         """
         Update grading sheet with rows for groups.
         This will create new rows as per the GDPR coding of the student connector of the lab.
@@ -437,90 +557,97 @@ class GradingSheet:
 
         Arguments:
         * groups:
-            Create rows for the given groups, ignoring those who already have a row.
+          Create rows for the given groups, ignoring those who already have a row.
         * group_link:
-            An optional function taking a group id and returning a URL to their lab project.
-            If not None, the group ids are made into links.
+          An optional function taking a group id and returning a URL to their lab project.
+          If not None, the group ids are made into links.
         * request_buffer:
-            Constructed requests will be added to this buffer.
-
-        After calling this method (modulo executing the request buffer),
-        all cached values except for group_range are invalid.
+          Constructed requests will be added to this buffer.
+        * empty_group_range:
+          Optional empty group range to override the parsed group range.
+          Used when following up on a call to delete_existing_groups.
         """
         self.logger.debug("creating rows for potentially new groups...")
 
-        gdpr_coding = self.lab.student_connector.gdpr_coding()
-
-        def sort_key(g_id):
-            return gdpr_coding.sort_key(gdpr_coding.identifier.print(g_id))
-
-        groups = sorted(groups, key=sort_key)
-
-        # Sorting for the previous groups should not be necessary.
-        groups_old = sorted(self.sheet_parsed.group_rows, key=sort_key)
-        groups_new = tuple(
-            filter(
-                lambda group_id: group_id not in self.sheet_parsed.group_rows, groups
-            )
-        )
-
         # Are there no previous group rows?
-        # In that case, self.group_range denotes a non-empty range of empty formatting rows.
-        empty = not self.sheet_parsed.group_rows
+        # In that case, self.group_range denotes a non-empty range of empty rows.
+        empty = not self.sheet_parsed.group_rows or empty_group_range is not None
+        (groups_start, groups_end) = (
+            empty_group_range
+            if empty_group_range is not None
+            else self.sheet_parsed.group_range
+        )
+        sort_key = self.config.group_identifier.sort_key
 
-        # TODO: remove for Python 3.10
-        groups_old_sort_key = [sort_key(group_old) for group_old in groups_old]
+        # We maintain the ordering of the existing group rows.
+        # They might not be sorted.
+        groups_old = sorted(self.sheet_parsed.group_rows.keys(), key=sort_key)
+        groups_new = sorted(
+            (id for id in self.sheet_parsed.group_rows.keys() if not id in groups),
+            key=sort_key,
+        )
 
         # Compute the insertion locations for the new group rows.
         # Sends pairs of an insertion location and a boolean indicating whether to
         # inherit the formatting from the following (False) or previous (True) row
         # to lists of pairs of a new group id and its final row index.
         insertions = collections.defaultdict(lambda: [])
-        (groups_start, _groups_end) = self.group_range
-        for offset, group_id in enumerate(groups_new):
-            # TODO: use this line instead of the next for Python 3.10
-            # i = bisect.bisect_left(groups_old, group_id, key = sort_key)
-            i = bisect.bisect_left(groups_old_sort_key, sort_key(group_id))
-            row_insert = groups_start + i + offset
-            group_name = self.lab.groups[group_id].name
-            self.logger.debug(f"adding row {row_insert} for {group_name}")
-            insertions[(i, i == len(groups_old) and not empty)].append(
-                (group_id, row_insert)
-            )
+        for id in enumerate(groups_new):
+            if empty:
+                inherit_from_after = True
+                row = groups_start
+            else:
+                k = bisect.bisect_left(groups_old, id, key=sort_key)
+                if k < len(groups_old):
+                    inherit_from_after = True
+                    row = self.sheet_parsed.group_rows[groups_old[k]]
+                else:
+                    inherit_from_after = False
+                    row = groups_end
 
-        # Perform the insertion requests and update the group column values.
-        for (_, inherit_from_before), xs in insertions.items():
-            (_, start) = xs[0]
-            range_ = util.general.range_from_size(start, len(xs))
-            request_buffer.add(
-                google_tools.sheets.request_insert_dimension(
-                    self.row_range_param(range_),
-                    inherit_from_before=inherit_from_before,
-                ),
-                google_tools.sheets.request_update_cells(
-                    [[self.format_group(group_id, group_link)] for (group_id, _) in xs],
-                    fields=google_tools.sheets.cell_link_fields,
-                    range=google_tools.sheets.grid_range(
-                        self.sheet_properties.sheetId,
-                        (
-                            range_,
-                            util.general.range_singleton(
-                                self.sheet_parsed.group_column
-                            ),
-                        ),
-                    ),
-                ),
+            insertions[(row, inherit_from_after)].append(id)
+
+        insertions_sorted = sorted(insertions.items(), key=lambda x: x[0])
+
+        # Compute the requests for inserting rows and setting group column values.
+        counter = 0
+        for (row, inherit_from_after), new_ids in sorted(insertions_sorted):
+            row += counter
+            for i, id in enumerate(new_ids):
+                self.logger.debug(
+                    f"adding row {row + i} for group"
+                    f" {self.config.group_identifier.print(id)}"
+                )
+
+            range_ = util.general.range_from_size(row, len(new_ids))
+            request_add = google_tools.sheets.request_insert_dimension(
+                self.row_range_param(range_),
+                inherit_from_before=not inherit_from_after,
             )
+            ranges = (
+                range_,
+                util.general.range_singleton(self.sheet_parsed.group_column),
+            )
+            grid_range = google_tools.sheets.grid_range(
+                self.sheet_properties.sheetId,
+                ranges,
+            )
+            request_update = google_tools.sheets.request_update_cells(
+                [[self.format_group(id, group_link)] for id in new_ids],
+                fields=google_tools.sheets.cell_link_fields,
+                range=grid_range,
+            )
+            request_buffer.add(request_add, request_update)
+            counter += len(new_ids)
 
         # If we have at least one group row now and did not before, delete empty formatting rows.
         if groups_new and empty:
-            range_ = util.general.range_shift(self.group_range, len(groups_new))
+            range_ = util.general.range_shift(self.sheet_parsed.group_range, counter)
             self.logger.debug(f"deleting empty formatting rows {range_}")
-            request_buffer.add(
-                google_tools.sheets.request_delete_dimension(
-                    self.row_range_param(range_)
-                ),
+            request_delete = google_tools.sheets.request_delete_dimension(
+                self.row_range_param(range_)
             )
+            request_buffer.add(request_delete)
         self.logger.debug("creating rows for potentially new groups: done")
 
     def ensure_num_queries(self, num_queries=None):
@@ -553,63 +680,72 @@ class GradingSheet:
 
         Arguments:
         * groups:
-            Create rows for the given groups, ignoring those
-            who already have a row if delete_previous is not set.
+          Create rows for the given groups, ignoring those
+          who already have a row if delete_previous is not set.
         * group_link:
-            An optional function taking a group id and returning a URL to their lab project.
-            If not None, the group ids are made into links.
+          An optional function taking a group id and returning a URL to their lab project.
+          If not None, the group ids are made into links.
         * delete_previous:
-            Delete all previous group rows.
+          Delete all previous group rows.
         """
         self.logger.info("setting up groups...")
         request_buffer = self.grading_spreadsheet.create_request_buffer()
+        empty_group_range = None
         if delete_previous:
-            self.delete_existing_groups(request_buffer)
-        self.insert_groups(groups, group_link, request_buffer)
+            empty_group_range = self.delete_existing_groups(request_buffer)
+        self.insert_groups(groups, group_link, request_buffer, empty_group_range)
         self.flush(request_buffer)
         self.logger.info("setting up groups: done")
 
     def add_query_column_group(self, request_buffer=None):
         """
         Add a column group for another query.
-        Call when the sheet the amount of queries in the sheet is surpassed
-        by the number of submission gradings for some group.
+        Call when required by more subissions in some group.
 
         Arguments:
         * request_buffer:
-            An optional request buffer to use.
-            If not given, then requests will be executed immediately and the sheet's
-            cache will be cleared to allow for the new columns to be parsed.
+          An optional request buffer to use.
+          If not given, then requests will be executed immediately.
+          In that case, the cache will be cleared to allow for the new columns to be parsed.
         """
         self.logger.debug("adding query column group...")
         column_group = self.sheet_parsed.query_column_groups[-1]
-        headers = query_column_group_headers(
-            self.grading_spreadsheet.config,
+        headers = QueryHeaders(
+            self.config.header,
             len(self.sheet_parsed.query_column_groups),
         )
-        range_ = util.general.range_of(column_group)
+        offset = util.general.len_range(util.general.range_of(column_group))
 
         def f():
-            for column, header in zip(column_group, headers):
-                column_new = column + util.general.len_range(range_)
+            # Pylint bug: https://github.com/pylint-dev/pylint/issues/2698#issuecomment-1133667061
+            # pylint: disable-next=no-member
+            for field in Query.__dataclass_fields__.keys():
+                header = headers.__dict__[field]
+                column = column_group.__dict__[field]
+                column_new = column + offset
                 yield from google_tools.sheets.requests_duplicate_dimension(
                     self.sheet_properties.sheetId,
                     google_tools.sheets.Dimension.columns,
                     column,
                     column_new,
                 )
-                yield google_tools.sheets.request_update_cells_user_entered_value(
-                    [
-                        *itertools.repeat([], self.sheet_parsed.header_row),
-                        [google_tools.sheets.extended_value_string(header)],
-                    ],
-                    range=google_tools.sheets.grid_range(
+
+                def grid_range(r):
+                    return google_tools.sheets.grid_range(
                         self.sheet_properties.sheetId,
-                        (
-                            google_tools.sheets.range_unbounded,
-                            util.general.range_singleton(column_new),
-                        ),
-                    ),
+                        # pylint: disable-next=cell-var-from-loop
+                        (r, util.general.range_singleton(column_new)),
+                    )
+
+                row_range = util.general.range_singleton(self.sheet_parsed.header_row)
+                yield google_tools.sheets.request_update_cells_user_entered_value(
+                    [[google_tools.sheets.extended_value_string(header)]],
+                    range=grid_range(row_range),
+                )
+                row_range = self.sheet_parsed.group_range
+                yield google_tools.sheets.request_update_cells_user_entered_value(
+                    itertools.repeat([], util.general.len_range(row_range)),
+                    range=grid_range(row_range),
                 )
 
         self.grading_spreadsheet.feed_request_buffer(request_buffer, *f())
@@ -624,7 +760,7 @@ class GradingSheet:
         """
         return (
             self.sheet_parsed.group_rows[group_id],
-            self.sheet_parsed.query_column_groups[query]._asdict()[field],
+            self.sheet_parsed.query_column_groups[query].__dict__[field],
         )
 
     def get_query_cell(self, group_id, query, field):
@@ -686,21 +822,14 @@ class GradingSheet:
             if google_tools.sheets.is_subdata(value, value_prev):
                 return
             if google_tools.sheets.is_cell_non_empty(value_prev):
-                group_name = self.lab.student_connector.gdpr_coding().identifier.print(
-                    group_id
-                )
-                query_name = (
-                    self.grading_spreadsheet.config.grading_sheet.header.query.print(
-                        query
-                    )
-                )
+                group_name = self.config.group_identifier.print(group_id)
+                query_name = self.config.header.query.print(query)
                 self.logger.warning(
-                    util.general.join_lines(
-                        [
-                            f"overwriting existing value for {group_name}, query {query_name}, field {field}:",
-                            f"* previous: {value_prev}",
-                            f"* current: {value}",
-                        ]
+                    util.general.text_from_lines(
+                        f"overwriting existing value for group {group_name},"
+                        f" query {query_name}, field {field}:",
+                        f"* previous: {value_prev}",
+                        f"* current: {value}",
                     )
                 )
         # TODO:
@@ -708,15 +837,13 @@ class GradingSheet:
         # If query is not smaller than needed_num_queries,
         # then the call computing coords will have triggered an exception.
         self.needed_num_queries = max(self.needed_num_queries, query + 1)
-
-        request_buffer.add(
-            google_tools.sheets.request_update_cell(
-                value,
-                fields,
-                self.sheet_properties.sheetId,
-                *coords,
-            )
+        request_update = google_tools.sheets.request_update_cell(
+            value,
+            fields,
+            self.sheet_properties.sheetId,
+            *coords,
         )
+        request_buffer.add(request_update)
 
     def write_query(
         self,
@@ -747,8 +874,10 @@ class GradingSheet:
             Then fields default to 'userEnteredValue'.
         * force: Passed on to each call of write_query_cell.
         """
-        for field in Query._fields:
-            x = query_values._asdict()[field]
+        # Pylint bug: https://github.com/pylint-dev/pylint/issues/2698#issuecomment-1133667061
+        # pylint: disable-next=no-member
+        for field in Query.__dataclass_fields__.keys():
+            x = query_values.__dict__[field]
             if x is not None:
                 try:
                     (value, fields) = x
