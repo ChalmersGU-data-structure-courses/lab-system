@@ -16,12 +16,13 @@ import time
 from collections import defaultdict, namedtuple
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
+from typing import Callable, Protocol
 
 import more_itertools
 import requests
 
 
-def identity(x):
+def identity[T](x: T) -> T:
     return x
 
 
@@ -502,7 +503,22 @@ def filter_keywords(keywords, s):
     return [k for i, k in find_all_many(keywords, s)]
 
 
-Lens = namedtuple("Lens", ["get", "set"])
+class Lens[A, B](Protocol):
+    """
+    Protocol for a lens.
+    """
+    def get(self, _a: A, /) -> B:
+        """
+        Get the target attribute from _a.
+        """
+
+    def set(self, _a: A, _b: B, /) -> A:
+        """
+        Set the target attribute of _a to _b.
+        """
+
+
+LensOf = namedtuple("LensOf", ["get", "set"])
 
 
 # For copyable collections such as list and dict.
@@ -512,7 +528,7 @@ def component(key):
         v[key] = value
         return v
 
-    return Lens(
+    return LensOf(
         get=lambda u: u[key],
         set=set_,
     )
@@ -524,20 +540,20 @@ def component_tuple(key):
         v[key] = value
         return tuple(v)
 
-    return Lens(
+    return LensOf(
         get=lambda u: u[key],
         set=set_,
     )
 
 
 def component_namedtuple(key):
-    return Lens(
+    return LensOf(
         get=lambda u: u[key],
         set=lambda u, value: u._replace(**{key: value}),
     )
 
 
-def on(lens, f):
+def on[A, B](lens: Lens[A, B], f: Callable[[B], B]) -> Callable[[A], A]:
     return lambda u: lens.set(u, f(lens.get(u)))
 
 
