@@ -316,13 +316,10 @@ def regex_int(holed_string, format="", regex="\\d+", **kwargs):
 qualify_with_slash = regex_many("{}/{}", ["[^/]*", ".*"])
 
 parens = regex_non_canonical("({})", r"\((.*)\)")
-parens_bytes = regex_non_canonical(b"({})", rb"\((.*)\)")
 
 bracks = regex_non_canonical("[{}]", r"\[(.*)\]")
-bracks_bytes = regex_non_canonical(b"[{}]", rb"\[(.*)\]")
 
 braces = regex_non_canonical("{{{}}}", r"\{(.*)\}")
-braces_bytes = regex_non_canonical(b"{{{}}}", rb"\{(.*)\}")
 
 
 def join(sep=None, maxsplit=-1):
