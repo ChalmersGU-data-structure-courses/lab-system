@@ -148,7 +148,21 @@ class StudentConnectorGroupSet(StudentConnector):
         return True
 
 
-class Lab:
+class LabUpdateListener[GroupIdentifier](contextlib.AbstractContextManager):
+    """
+    A listener for lab updates.
+    """
+
+    def group_changed(self, id: GroupIdentifier):
+        """
+        Called when a change occurs in a group.
+        Currently, these are:
+        * new request
+        * new response
+        """
+
+
+class Lab[GroupIdentifier]:
     """
     This class abstracts over a single lab in a course.
     Each instance is managed by an instance of course.Course.
@@ -203,6 +217,12 @@ class Lab:
 
     This class is configured by the config argument to its constructor.
     The format of this argument is documented in gitlab.config.py.template under _lab_config.
+    """
+
+    update_listeners: dict[int, LabUpdateListener[GroupIdentifier]]
+    """
+    Dictionary of registered update listeners.
+    Keyed by their object identity.
     """
 
     def __init__(
@@ -303,6 +323,24 @@ class Lab:
             ),
             util.print_parse.qualify_with_slash,
         )
+
+        # Listeners
+        self.update_listeners = {}
+
+    def update_listener_register(self, listener: GroupIdentifier) -> None:
+        """
+        Register an update listener.
+        """
+        key = id(listener)
+        if key in self.update_listeners:
+            raise ValueError(f"listener {key} is already registered")
+        self.update_listeners[key] = listener
+
+    def update_listener_unregister(self, listener: GroupIdentifier) -> None:
+        """
+        Unregister an update listener.
+        """
+        del self.update_listeners[id(listener)]
 
     def solution_create_and_populate(self):
         """
@@ -1449,6 +1487,11 @@ class Lab:
             if hasattr(self, "live_submissions_table"):
                 self.update_live_submissions_table()
             self.update_grading_sheet(group_ids=group_ids, deadline=deadline)
+
+        for update_listener in self.update_listeners.values():
+            with update_listener:
+                for id in group_ids:
+                    update_listener.group_changed(id)
 
     def initial_run(self, deadline=None):
         """
