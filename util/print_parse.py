@@ -493,10 +493,7 @@ query = PrintParse(
     parse=lambda query_string: urllib.parse.parse_qs(
         query_string,
         keep_blank_values=True,
-        # TODO:
-        # Enable once this pull request has been accepted:
-        # https://github.com/python/cpython/pull/29716
-        # strict_parsing = True,
+        strict_parsing=True,
     ),
 )
 
