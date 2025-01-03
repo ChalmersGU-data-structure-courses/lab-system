@@ -635,35 +635,38 @@ def previous_items(collection, item):
             found = True
 
 
-def range_of(xs):
-    xs = tuple(xs)
-    return (min(xs), max(xs) + 1)
+Range = tuple[int, int]
 
 
-def len_range(range_):
+def range_of(xs) -> Range | None:
+    xs = list(xs)
+    return (min(xs), max(xs) + 1) if xs else None
+
+
+def len_range(range_: Range) -> int:
     (start, end) = range_
     return end - start
 
 
-def range_is_empty(range_):
+def range_is_empty(range_: Range) -> bool:
     (start, end) = range_
     return start is not None and end is not None and start >= end
 
 
-def range_from_size(i, n):
+def range_from_size(i: int, n: int) -> Range:
     return (i, i + n)
 
 
-def range_singleton(i):
+def range_singleton(i: int) -> Range:
     return range_from_size(i, 1)
 
 
-def is_range_singleton(range_):
+def is_range_singleton(range_: Range) -> bool:
     (start, end) = range_
     return end == start + 1
 
 
-def range_shift(range_, offset):
+def range_shift(range_: Range, offset: int) -> Range:
     (start, end) = range_
     return (start + offset, end + offset)
 
