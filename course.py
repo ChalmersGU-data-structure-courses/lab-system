@@ -1045,10 +1045,10 @@ class Course:
                 spreadsheet_id,
                 [
                     google_tools.sheets.request_update_cell_user_entered_value(
-                        google_tools.sheets.cell_value(report),
                         sheet_id,
                         0,
                         0,
+                        google_tools.sheets.cell_value(report),
                     )
                 ],
             )

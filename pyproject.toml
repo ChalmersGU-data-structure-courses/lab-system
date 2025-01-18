@@ -67,6 +67,9 @@ skip = [
 ]
 lines_after_imports = 2
 
+[tool.mypy]
+#project-root = "."
+
 [tool.pylint]
 source-root = '.'
 ignore-paths = [

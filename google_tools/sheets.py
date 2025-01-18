@@ -6,11 +6,16 @@ import logging
 import re
 import string
 import types
+from collections.abc import Iterable, Mapping
+from typing import Any, ClassVar, Type
 
+import google.auth.credentials
 import googleapiclient.discovery
 
 import util.general
 import util.print_parse as pp
+from google_tools.general import Request
+from util.general import JSONDict
 
 
 logger = logging.getLogger(__name__)
@@ -75,7 +80,7 @@ def request(name, /, **params):
 # inheritFromBefore = True for rows fails to copy vertical border.
 # Find out why.
 # pylint: disable-next=redefined-outer-name
-def request_insert_dimension(dimension_range, inherit_from_before=False):
+def request_insert_dimension(dimension_range, inherit_from_before=False) -> Request:
     return request(
         "insertDimension",
         range=dimension_range,
@@ -84,7 +89,7 @@ def request_insert_dimension(dimension_range, inherit_from_before=False):
 
 
 # pylint: disable-next=redefined-outer-name
-def request_delete_dimension(dimension_range):
+def request_delete_dimension(dimension_range) -> Request:
     return request(
         "deleteDimension",
         range=dimension_range,
@@ -92,7 +97,7 @@ def request_delete_dimension(dimension_range):
 
 
 # pylint: disable-next=redefined-outer-name
-def request_move_dimension(dimension_range, destination_index):
+def request_move_dimension(dimension_range, destination_index) -> Request:
     return request(
         "moveDimension",
         source=dimension_range,
@@ -100,7 +105,7 @@ def request_move_dimension(dimension_range, destination_index):
     )
 
 
-def request_update_title(sheet_id, title):
+def request_update_title(sheet_id, title) -> Request:
     return request(
         "updateSheetProperties",
         properties={
@@ -142,7 +147,12 @@ class PasteOrientation(enum.Enum):
     transpose = "TRANSPOSE"
 
 
-def request_copy_paste(source, destination, paste_type, paste_orientation=None):
+def request_copy_paste(
+    source,
+    destination,
+    paste_type,
+    paste_orientation=None,
+) -> Request:
     if paste_orientation is None:
         paste_orientation = PasteOrientation.normal
 
@@ -162,7 +172,7 @@ def row_data(values):
 
 
 # pylint: disable-next=redefined-builtin
-def request_update_cells(rows, fields, start=None, range=None):
+def request_update_cells(rows, fields, start=None, range=None) -> Request:
     """
     * rows: Iterable (of rows) of iterables (of cells) of cell values (API type CellData).
     """
@@ -185,13 +195,19 @@ def request_update_cells(rows, fields, start=None, range=None):
     return request("updateCells", **dict(f()))
 
 
-def request_update_cell(cell, fields, sheet_id, row, column):
+def request_update_cell(
+    sheet_id: str,
+    row: int,
+    column: int,
+    value,
+    fields: str,
+) -> Request:
     """
     Convenience specialization of request_update_cells for updating a single cell.
     * cell: value matching API type CellData.
     """
     return request_update_cells(
-        [[cell]],
+        [[value]],
         fields,
         range=grid_range(
             sheet_id,
@@ -204,7 +220,7 @@ def request_update_cell(cell, fields, sheet_id, row, column):
 
 
 # pylint: disable-next=redefined-builtin
-def request_update_cells_user_entered_value(rows, start=None, range=None):
+def request_update_cells_user_entered_value(rows, start=None, range=None) -> Request:
     """
     Convenience specialization of request_update_cells for updating the user entered valued.
     * rows: Iterable (of rows) of iterables (of cells) of user entered values (API type ExtendedValue).
@@ -217,22 +233,94 @@ def request_update_cells_user_entered_value(rows, start=None, range=None):
     )
 
 
-def request_update_cell_user_entered_value(value, sheet_id, row, column):
+def request_update_cell_user_entered_value(sheet_id, row, column, value) -> Request:
     """
-    Convenience specialization of request_update_cell for updating the user entered valued.
-    * cell: value matching API type ExtendedValue.
+    Convenience specialization of request_update_cell.
+    Request for updating the user-entered value.
+    Arguments:
+
+    * value: API type ExtendedValue.
     """
-    return request_update_cell(
-        [[value]],
-        "userEnteredValue",
-        sheet_id=sheet_id,
-        row=row,
-        column=column,
-    )
+    return request_update_cell(sheet_id, row, column, [[value]], "userEnteredValue")
+
+Field = str
+"""A field name in the Google API."""
+
+FieldMask = str | None
+"""
+A field mask in the Google API.
+The value None means everything (`*`).
+"""
+
+def user_entered_value(value: str | int) -> tuple[tuple[Field, JSONDict], FieldMask]:
+    value = extended_value_number_or_string(value)
+    field = "userEnteredValue"
+    return ((field, value), None)
+
+
+def text_format(link=Nonem) -> tuple[]:
+    """
+    Produces a value for the API type TextFormat.
+    Arguments:
+    * link: an optional URL (string) to use for a link.
+    """
+
+    def f():
+        if link is not None:
+            yield ("link", {"uri": link})
+
+    return dict(f())
 
 
 # pylint: disable-next=redefined-outer-name
-def requests_duplicate_dimension(sheet_id, dimension, copy_from, copy_to):
+def cell_format(text_format=None):
+    """Produces a value for the API type CellFormat."""
+
+    def f():
+        if text_format is not None:
+            yield ("textFormat", text_format)
+
+    return dict(f())
+
+
+def cell_value_with_link(
+    ,
+    link: str | None = None,
+) -> tuple[JSONDict, str]:
+    value = extended_value_number_or_string(value)
+    fields = "userEnteredValue"
+
+
+def request_update_cell_value_with_link(
+    sheet_id: str,
+    row: int,
+    column: int,
+    value: str | int,
+    link: str | None = None,
+) -> Request:
+    """
+    Convenience specialization of request_update_cell.
+    Request for updating the user-entered string or number value, with an optional link.
+
+    * value: API type ExtendedValue.
+    """
+    value = extended_value_number_or_string(value)
+    fields = "userEnteredValue"
+    if link is None:
+        format = None
+    else:
+        format = linked_cell_format(link)
+        fields = cell_link_fields
+    return request_update_cell(sheet_id, row, column, cell_data(value, format), fields)
+
+
+def requests_duplicate_dimension(
+    sheet_id,
+    dimension,
+    copy_from,
+    # pylint: disable-next=redefined-outer-name
+    copy_to,
+) -> Iterable[Request]:
     dr = dimension_range(sheet_id, dimension, *util.general.range_singleton(copy_from))
     yield request_insert_dimension(dr)
     yield request_move_dimension(dr, pp.SkipNatural(copy_from).print(copy_to))
@@ -245,7 +333,7 @@ def requests_duplicate_dimension(sheet_id, dimension, copy_from, copy_to):
     yield request_copy_paste(selection(copy_from), selection(copy_to), PasteType.normal)
 
 
-def request_duplicate_sheet(id, new_index, new_id=None, new_name=None):
+def request_duplicate_sheet(id, new_index, new_id=None, new_name=None) -> Request:
     def f():
         yield ("sourceSheetId", id)
         yield ("insertSheetIndex", new_index)
@@ -257,15 +345,22 @@ def request_duplicate_sheet(id, new_index, new_id=None, new_name=None):
     return request("duplicateSheet", **dict(f()))
 
 
-def request_delete_sheet(id):
+def request_delete_sheet(id) -> Request:
     return request("deleteSheet", sheetId=id)
 
 
-def spreadsheets(token):
+def get_client(credentials: google.auth.credentials.Credentials):
+    """
+    Get a spreadsheets client using googleapiclient.
+    """
+
     # False positive.
     # pylint: disable-next=no-member
     return googleapiclient.discovery.build(
-        "sheets", "v4", credentials=token, cache_discovery=False
+        "sheets",
+        "v4",
+        credentials=credentials,
+        cache_discovery=False,
     ).spreadsheets()
 
 
@@ -277,40 +372,170 @@ def redecode_json(s):
 SheetData = collections.namedtuple("Data", ["num_rows", "num_columns", "value"])
 
 
-def extended_value_number(n):
-    return {"numberValue": n}
+def api_union_field(field: Field, type_: Type):
+     class R:
+        def print(value: type_):
+            return {field: value}
+
+        def parse_value(value) -> type_:
+            assert isinstance(value, type_)
+            return value
+
+        def parse(x) -> type_:
+            [(field_parsed, value)] = x.items()
+            assert field == field_parsed
+            return parse_value(value_parsed)
+
+    return R
 
 
-def extended_value_string(s):
-    return {"stringValue": s}
+def annotate(cls, fields: Mapping[str, tuple[str, Type]], allow_empty: bool = False):
+    field_actions = {
+        name: api_union_field(field, type_)
+        for (name, (field, type_)) in fields.items():
+    }
+    cls.Field = StrEnum('Field', {field: field.upper() for field in fields.keys()})
+    for (name, field_action) in field_actions.items():
+        setattr(cls, f"print_{name}", field_action.print)
+        setattr(cls, f"parse_{name}", field_action.parse)
+    
 
 
-def extended_value_number_or_string(x):
-    if isinstance(x, int):
-        return extended_value_number(x)
-    if isinstance(x, str):
-        return extended_value_string(x)
-    raise TypeError(f"{x} is neither an integer nor a string")
+class api_union_type:
+    scaffold: SimpleNamespace
+
+    def unpack(x) -> tuple[Field, Any]:
+        [(field, value)] = v.items()
+        return (field, value)
+        
+    def __init__(self, fields: Mapping[str, tuple[str, Type]], allow_empty: bool = False,):
+        field_actions = {
+            name: api_union_field(field, type_)
+            for (name, (field, type_)) in fields.items():
+        }
+        self.allow_empty = allow_empty
+
+        self.scaffold = SimpleNamespace()
+        self.scaffold = 
+        for (name, field_action) in field_actions.items():
+            setattr(self.scaffold, f"print_{name}", field_action.print)
+            setattr(self.scaffold, f"parse_{name}", field_action.parse)
 
 
-def extended_value_formula(s):
-    return {"formulaValue": s}
+    def __call__(cls: Type):
+        for (key, value) in self.scaffold.items():
+            setattr(cls, key, value)
+
+#"numberValue", "number", int | float, 
 
 
-def extended_value_extract_primitive(v):
-    n = v.get("numberValue")
-    if n is not None:
-        if not isinstance(n, int):
-            raise ValueError(f"Not an integer: {n}")
-        return n
 
-    s = v.get("stringValue")
-    if s is not None:
-        if not isinstance(s, str):
-            raise ValueError(f"Not a string: {s}")
-        return s
 
-    raise ValueError(f"Extended value is not a number or string: {v}")
+class ExtendedValue:
+    numberValue: int | float
+
+    class Field(enum.StrEnum):
+        NUMBER = "numberValue"
+        STRING = "stringValue"
+        BOOL = "boolValue"
+        FORMULA = "formulaValue"
+
+    def empty() -> JSONDict:
+        return {}
+
+    def number(n: int | float) -> JSONDict:
+        return {ExtendedValue.Field.NUMBER: n}
+
+    def string(s: str) -> JSONDict:
+        return {ExtendedValue.Field.STRING: s}
+
+    def bool(b: bool) -> JSONDict:
+        return {ExtendedValue.Field.BOOL: b}
+
+    def formula(s: str) -> JSONDict:
+        return {ExtendedValue.Field.FORMULA: s}
+
+    def non_formula(x: int | float | str | bool | None) -> JSONDict:
+        if x is None:
+            return ExtendedValue.empty()
+        if isinstance(x, int | float):
+            return ExtendedValue.number(x)
+        if isinstance(x, str):
+            return ExtendedValue.string(x)
+        if isinstance(x, bool):
+            return ExtendedValue.bool(x)
+        raise TypeError(f"value {x} has type {type(x)} unsupported for extended value")
+
+    def type(v) -> str | None:
+        if not v:
+            return None
+        return list(v.keys())[0]
+
+    def _parse_value_int(value) -> int:
+        assert isinstance(value, int)
+        return value
+
+    def _parse_value_number(value) -> int | float:
+        assert isinstance(value, int | float)
+        return value
+
+    def _parse_value_string(value) -> str:
+        assert isinstance(value, str)
+        return value
+
+    def _parse_value_bool(value) -> bool:
+        assert isinstance(value, bool)
+        return value
+
+    def _parse_value_formula(value) -> str:
+        assert isinstance(value, str)
+        return str
+
+    def parse_int(v) -> int:
+        (field, value) = _unpack(v)
+        assert field == ExtendedValue.Field.NUMBER
+        return ExtendedValue._parse_value_int(value)
+
+    def _unpack(v) -> tuple[str, Any]:
+        [(field, value)] = v.items()
+        return (field, value)
+
+    def parse_strict(v) -> tuple[ExtendedValue.Field, int | float | str | bool]:
+        [(field, value)] = v.items()
+        match field as:
+            case ExtendedValue.NUMBER:
+                r = ExtendedValue._parse_value_number(value)
+            case ExtendedValue.STRING:
+                r = ExtendedValue._parse_value_string(value)
+            case ExtendedValue.BOOL::
+                r = ExtendedValue._parse_value_bool(value)
+            case ExtendedValue.FORMULA:
+                r = ExtendedValue._parse_value_formula(value)
+            case:
+                assert False
+        return (field, r)
+
+    def parse(v) -> tuple[ExtendedValue.Field, int | float | str | bool] | None:
+        if not v:
+            return None
+        return parse_strict(v)
+
+class Link:
+    URI = "uri"
+
+    def parse(v) -> str:
+        match v as:
+            case {Link.URI: }:
+
+
+@dataclass.dataclasses
+class TextFormat:
+    LINK: ClassVar[str] = "link"
+
+    value: JSONData
+    field_mask: FieldMask
+
+    def build(link=None) -> tuple[JSONDATA][
 
 
 # Obsolete.
@@ -443,7 +668,10 @@ def sheet_data_table(sheet_data):
 
 
 def cell_as_string(cell, strict=True):
-    x = cell["userEnteredValue"]
+    x = cell.get("userEnteredValue")
+    if x is None:
+        return str()
+
     y = x.get("stringValue")
     if y is not None:
         return y
@@ -461,29 +689,51 @@ def is_cell_non_empty(cell):
 
 
 # pylint: disable-next=redefined-outer-name
-def get(spreadsheets, id, fields=None, ranges=None):
+def get(client, spreadsheet_id, fields=None, ranges=None):
     """
     Retrieve spreadsheet data using the 'get' API call.
 
     Arguments:
-    * spreadsheets: spreadsheets instance.
+    * client: spreadsheets client from googleapiclients.
     * id: Spreadsheet it.
     * fields: Field mask (string).
     * ranges: Iterable of ranges.
     """
     logger.debug(
-        f"Retrieving data of spreadsheet f{id} with fields {fields} and ranges {ranges}"
+        f"Retrieving data of spreadsheet f{spreadsheet_id}"
+        f" with fields {fields} and ranges {ranges}"
     )
 
-    return spreadsheets.get(
-        spreadsheetId=id,
+    return client.get(
+        spreadsheetId=spreadsheet_id,
         fields=fields,
         ranges=ranges,
     ).execute()
 
 
 # pylint: disable-next=redefined-outer-name
-def batch_update(spreadsheets, id, requests):
+def get_sheet_id_from_title(client, spreadsheet_id: str, title: str) -> int:
+    """
+    Resolve a sheet with given title in the given spreadsheet to an ID.
+    """
+    fields = "sheets(properties(sheetId,title))"
+    sheets = get(client, spreadsheet_id, fields=fields)["sheets"]
+    print(sheets)
+    for sheet in sheets:
+        match props := sheet["properties"]:
+            case {"sheetId": id, "title": title_}:
+                print(f"id {id}, title {title}")
+                if title_ == title:
+                    return id
+
+            case _:
+                raise ValueError(props)
+
+    raise ValueError(f"No sheet with title {title} in spreadsheet {spreadsheet_id}")
+
+
+# pylint: disable-next=redefined-outer-name
+def batch_update(client, id: str, requests: Iterable[Request]):
     requests = list(requests)
 
     def msg():
@@ -494,16 +744,28 @@ def batch_update(spreadsheets, id, requests):
 
     logger.debug(util.general.join_lines(msg()))
 
-    return spreadsheets.batchUpdate(
+    return client.batchUpdate(
         spreadsheetId=id,
         body={"requests": requests},
     ).execute()
 
 
+# pylint: disable-next=redefined-outer-name
+def batch_update_single(client, id: str, request: Request):
+    return batch_update(client, id, [request])
+
+
+# pylint: disable-next=redefined-outer-name
+def batch_update_only_nonempty(client, id: str, requests: Iterable[Request]) -> None:
+    requests = list(requests)
+    if requests:
+        batch_update(client, id, requests)
+
+
 class UpdateRequestBuffer:
     # pylint: disable-next=redefined-outer-name
-    def __init__(self, spreadsheets, id):
-        self.spreadsheets = spreadsheets
+    def __init__(self, client, id):
+        self.client = client
         self.id = id
         self.requests = []
 
@@ -515,14 +777,14 @@ class UpdateRequestBuffer:
 
     def flush(self):
         if self.non_empty():
-            batch_update(self.spreadsheets, self.id, self.requests)
+            batch_update(self.client, self.id, self.requests)
             self.requests = []
 
 
 # pylint: disable-next=redefined-outer-name
-def copy_to(spreadsheets, id_from, id_to, sheet_id):
+def copy_to(client, id_from, id_to, sheet_id):
     return (
-        spreadsheets.sheets()
+        client.sheets()
         .copyTo(
             spreadsheetId=id_from,
             sheetId=sheet_id,

@@ -153,7 +153,7 @@ class LabUpdateListener[GroupIdentifier](contextlib.AbstractContextManager):
     A listener for lab updates.
     """
 
-    def group_changed(self, id: GroupIdentifier):
+    def group_changed(self, id: GroupIdentifier) -> None:
         """
         Called when a change occurs in a group.
         Currently, these are:
@@ -1359,31 +1359,6 @@ class Lab[GroupIdentifier]:
             if group_ids is None
             else group_ids
         )
-
-    def include_group_in_grading_sheet(self, group, deadline=None):
-        """
-        We include a group in the grading sheet if it is a student group with a submission.
-        Extra groups to include can be configured in the grading sheet config using:
-        * include_groups_with_no_submission
-        """
-        if not group.is_known or group.is_solution:
-            return False
-
-        if deadline is None:
-            deadline = self.deadline
-
-        return (
-            list(group.submissions_relevant(deadline))
-            or self.course.config.grading_sheet.include_groups_with_no_submission
-            or group.non_empty()
-        )
-
-    @functools.cached_property
-    def grading_sheet_group_link(self):
-        if self.student_connector.gdpr_link_problematic():
-            return None
-
-        return lambda group_id: self.groups[group_id].project.get.web_url
 
     def update_grading_sheet(self, group_ids=None, deadline=None):
         """
