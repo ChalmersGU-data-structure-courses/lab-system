@@ -22,6 +22,10 @@ logger = logging.getLogger("google_tools.general")
 this_dir = Path(__file__).parent
 
 
+Request = util.general.JSONDict
+"""Type for a request with googleapiclient."""
+
+
 def scope_url(scope):
     return "https://www.googleapis.com/auth/" + urllib.parse.quote(scope)
 

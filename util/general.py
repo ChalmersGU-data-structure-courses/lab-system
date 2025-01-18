@@ -17,7 +17,7 @@ import time
 from collections import defaultdict, namedtuple
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from typing import Callable, Protocol
+from typing import Any, Callable, Protocol
 
 import more_itertools
 import requests
@@ -344,6 +344,10 @@ def doublequote(s):
 
 def parens(s):
     return f"({s})"
+
+
+JSONDict = dict[str, Any]
+"""Type for a JSON dictionary."""
 
 
 class JSONObject(SimpleNamespace):
@@ -676,6 +680,12 @@ Range = tuple[int, int]
 def range_of(xs) -> Range | None:
     xs = list(xs)
     return (min(xs), max(xs) + 1) if xs else None
+
+
+def range_of_strict(xs) -> Range:
+    r = range_of(xs)
+    assert r is not None
+    return r
 
 
 def len_range(range_: Range) -> int:
