@@ -277,7 +277,7 @@ outside_canvas = []
 name_corrections = {}
 
 _cid_to_gitlab_username = print_parse.from_dict([
-    ('Krasimir.Angelov', 'krasimir'),
+    ('krasimir', 'Krasimir.Angelov'),
 ])
 
 # Retrieve the Chalmers GitLab username for a user id on Chalmers/GU Canvas.
