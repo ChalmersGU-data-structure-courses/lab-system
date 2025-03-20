@@ -5,9 +5,9 @@ import dataclasses
 import functools
 import itertools
 import logging
-from collections.abc import Collection, Mapping
+from collections.abc import Mapping, Sequence
 from logging import Logger
-from typing import Any, Callable, Iterable, Iterator
+from typing import Callable, Iterable, Iterator
 
 import google.auth.credentials
 
@@ -17,143 +17,12 @@ import util.general
 import util.print_parse
 from util.print_parse import PrinterParser
 
+from .config import Comparable, Config, HeaderConfig, LabConfig
+
 
 logger_default = logging.getLogger(__name__)
 """Default logger for this module."""
 
-
-@dataclasses.dataclass(kw_only=True, frozen=True)
-class Config[LabIdentifier]:
-    """
-    Configuration of the grading spreadsheet.
-    See GradingSpreadsheet.
-    """
-
-    spreadsheet: str
-    """
-    Key (in base64) of grading spreadsheet on Google Sheets.
-    The grading spreadsheet keeps track of grading outcomes.
-    This is created by the user, but maintained by the lab script.
-    The key can be found in the URL of the spreadsheet.
-    Individual grading sheets for each lab are worksheets in this spreadsheet.
-    """
-
-    lab: PrinterParser[LabIdentifier, str]
-    """Printer-parser for submission outcomes formatted as cells."""
-
-
-@dataclasses.dataclass(kw_only=True, frozen=True)
-class HeaderConfig:
-    """
-    Configuration of grading sheet headers.
-    Used in LabConfig.
-    """
-
-    group: str = "Group"
-    """The header for the group column."""
-
-    submission: PrinterParser[int, str] = util.print_parse.compose(
-        util.print_parse.from_one,
-        util.print_parse.regex_int("Query #{}", regex="\\d+"),
-    )
-    """
-    The printer-parser for the header of a submission column.
-    Defaults to "Query #n" with 1-based numbering.
-    """
-
-    grader: str = "Grader"
-    """The header for a grader column."""
-
-    score: str = "0/1"
-    """The header of an outcome column."""
-
-
-@dataclasses.dataclass(kw_only=True, frozen=True)
-class LabConfig[GroupIdentifier, Outcome]:
-    """
-    Configuration of a lab worksheet in the grading spreadsheet.
-    See GradingSheet.
-
-    This worksheet has the following structure.
-
-    * The *group column* is the first column.
-    * The *header row* is the unique row with group cell `header.group`.
-    * The *group rows* are those following rows with group cell a parseable group identifier.
-
-    If there are no group rows, the lab system needs a placeholder row range for where to insert group rows.
-    This is the first continguous block of empty rows afrer the header row.
-
-    The remaining data is organized into query column groups.
-    A *query column group* is a contiguous range of three columns, appearing in the following order:
-
-    * The *query column* (or *submission column*).
-      Header `header.query.print(n)` for the query column group with index n.
-      Entries in this column specify submission requests.
-      They link to the commit in the student repository corresponding to the submission.
-
-    * The *grader column*.
-      Header `header.grader`.
-      Graders are encouraged to write their name here before they start grading.
-      This helps avoid other graders taking up the same submission.
-      When a grader creates a grading issue for this submission, the lab script fills this in with a link to the grading.
-      (See the the field graders_informal in the course configuration.)
-
-    * The *outcome column* (or *score column*).
-      Header `header.score`.
-      This should not be filled in by graders.
-      Instead, it is written by the lab script after the submission is graded.
-      Note that this is only for informational purposes.
-      It is not interpreted as input by the lab system for other tasks.
-
-    Additional query column groups are added dynamically by the lab system as needed.
-    The previous query column group is taken as template for this (TODO).
-
-    Data other than the above rows and columns is not interpreted by the lab system.
-    These extra rows and columns may be used for notes or formulas for submission statistics.
-    In particular, it is possible to have columns with headers other than the ones above.
-    """
-
-    template: tuple[str, int | str] | None = None
-    """
-    Pair of:
-    * spreadsheet key (base64) (as for spreadsheet in Config),
-    * sheet id or title of a worksheet in that spreadsheet.
-
-    Optional template worksheet for creating the grading worksheet for the lab.
-    If not specified, the worksheet of the previous lab is used as template.
-    In that case, the worksheet of the first lab must be created manually.
-    """
-
-    header: HeaderConfig = HeaderConfig()
-    """Configuration of the header row."""
-
-    group_identifier: PrinterParser[GroupIdentifier, str]
-    """
-    Configuration of group identifiers.
-    This determines how the group column is formatted and sorted.
-    """
-
-    outcome: PrinterParser[Outcome, str]
-    """Printer-parser for submission outcomes formatted as cells."""
-
-    ignore_rows: Collection[int] = frozenset()
-    """
-    Indices of rows to ignore when looking for the header row and group rows.
-    Bottom rows can be specified in Python style (negative integers, -1 for last row).
-    This can be used to embed grading-related information not touched by the lab system.
-    
-    TODO:
-    Maybe we do not need this?
-    It suffices to just leave the group cell blank.
-    """
-
-    include_groups_with_no_submission = True
-    """
-    By default, the lab system adds rows only for groups with at least one submission.
-    If this is set to false, it also includes groups with at least one group member.
-
-    This parameter is interpreted by the module lab instead of module grading_sheet.
-    """
 
 
 def _attempt_parse[I, O](pp: PrinterParser[I, O], value: O) -> I | None:
@@ -172,37 +41,53 @@ def _attempt_parse[I, O](pp: PrinterParser[I, O], value: O) -> I | None:
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
-class QueryDataclass[T]:
+class QueryDataclass[Submission, Grader, Score]:
     """
     Base class for query dataclasses.
     Derived classes determine what data is represented.
     """
 
-    submission: T
-    grader: T
-    score: T
+    submission: Submission
+    grader: Grader
+    score: Score
 
 
-class QueryColumnGroup(QueryDataclass[int]):
+class QueryDataclassSingleType[T](QueryDataclass[T, T, T], Sequence[T]):
+    """
+    Subclass of QueryDataclass with all fields of the same type.
+    """
+
+    @functools.cached_property
+    def _as_list(self) -> list[T]:
+        return list(self.__dict__.values())
+
+    def __getitem__(self, pos):
+        return self._as_list[pos]
+
+    def __len__(self):
+        return len(self._as_list)
+
+
+class QueryColumnGroup(QueryDataclassSingleType[int]):
     """
     The column indices of a query column group.
     """
 
 
-class QueryHeaders(QueryDataclass[str]):
+class QueryHeaders(QueryDataclassSingleType[str]):
     """
     The headers of a query column group.
     """
 
     def __init__(self, config: HeaderConfig, query_index: int):
         super().__init__(
-            submission=config.query.print(query_index),
+            submission=config.submission.print(query_index),
             grader=config.grader,
             score=config.score,
         )
 
 
-class Query[LabIdentifier, GroupIdentifier, Outcome]:
+class Query[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outcome]:
     """
     This class represents a query in a grading worksheet.
     This is parametrized by a group and query index.
@@ -232,7 +117,7 @@ class Query[LabIdentifier, GroupIdentifier, Outcome]:
         group_id: GroupIdentifier,
         query_index: int,
     ):
-        self.outer = grading_sheet
+        self.grading_sheet = grading_sheet
         self.group_id = group_id
         self.query_index = query_index
 
@@ -261,13 +146,12 @@ class Query[LabIdentifier, GroupIdentifier, Outcome]:
         """
         return self.grading_sheet.data.value(*self.cell_coords(field))
 
-    def query_cell_value(self, field) -> int | str:
+    def query_cell_value(self, field) -> str:
         """
         Get the cell value in the grading sheet for the given query field.
         """
-        return google_tools.sheets.extended_value_extract_primitive(
-            self.query_cell(field)
-        )
+        r = google_tools.sheets.extended_value_extract_primitive(self.query_cell(field))
+        return str(r)
 
     @property
     def submission(self) -> str:
@@ -281,16 +165,16 @@ class Query[LabIdentifier, GroupIdentifier, Outcome]:
     def score(self) -> Outcome:
         return self.config.outcome.parse(self.query_cell_value("score"))
 
-    def requests_write_query(
+    def requests_write_submission(
         self,
         query: str,
-        link: str = None,
+        link: str | None = None,
         force: bool = False,
     ) -> Iterable[google_tools.general.Request]:
         """Update the query/submission cell."""
         yield from self.grading_sheet.requests_write_cell(
             self.group_row,
-            self.query_column_group.query,
+            self.query_column_group.submission,
             query,
             link=link,
             force=force,
@@ -299,7 +183,7 @@ class Query[LabIdentifier, GroupIdentifier, Outcome]:
     def requests_write_grader(
         self,
         grader: str,
-        link: str = None,
+        link: str | None = None,
         force: bool = False,
     ) -> Iterable[google_tools.general.Request]:
         """Update the grader cell."""
@@ -314,7 +198,7 @@ class Query[LabIdentifier, GroupIdentifier, Outcome]:
     def requests_write_outcome(
         self,
         outcome: Outcome,
-        link: str = None,
+        link: str | None = None,
         force: bool = False,
     ) -> Iterable[google_tools.general.Request]:
         """Update the outcome/score cell."""
@@ -335,7 +219,7 @@ class SheetMissing(SheetParseException):
     """Raised when a sheet is missing."""
 
 
-class GradingSheetData[GroupIdentifier, Outcome]:
+class GradingSheetData[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outcome]:
     """
     Helper class for GradingSheet for parsing a grading sheet.
     Attributes are computed lazily and cached.
@@ -345,13 +229,16 @@ class GradingSheetData[GroupIdentifier, Outcome]:
     * the worksheet title (overriden by the title override of the grading sheet).
     """
 
-    grading_sheet: "GradingSheet"
+    grading_sheet: "GradingSheet[LabIdentifier, GroupIdentifier, Outcome]"
 
-    def __init__(self, grading_sheet: "GradingSheet[GroupIdentifier, Outcome]"):
+    def __init__(
+        self,
+        grading_sheet: "GradingSheet[LabIdentifier, GroupIdentifier, Outcome]",
+    ):
         self.grading_sheet = grading_sheet
 
     @property
-    def grading_spreadsheet(self) -> "GradingSpreadsheet":
+    def grading_spreadsheet(self) -> "GradingSpreadsheet[LabIdentifier]":
         return self.grading_sheet.grading_spreadsheet
 
     @property
@@ -474,25 +361,35 @@ class GradingSheetData[GroupIdentifier, Outcome]:
 
             value = self._parse_user_string(row, column)
             if not value == expected:
-                throw(column, found, expected)
+                throw(column, value, expected)
 
             return column
 
+        def parse_query(index) -> int:
+            while True:
+                try:
+                    column_submission = next(columns)
+                except StopIteration:
+                    return None
+                value = self._parse_user_string(row, column_submission)
+                if value is None:
+                    continue
+                index_parsed = _attempt_parse(self.config.header.submission, value)
+                if index_parsed is None:
+                    continue
+                if not index_parsed == index:
+                    throw(
+                        column_submission,
+                        value,
+                        self.config.header.submission.print(index),
+                    )
+                return column_submission
+
         found = False
         for index in itertools.count():
-            try:
-                column_submission = next(columns)
-            except StopIteration:
+            column_submission = parse_query(index)
+            if not column_submission:
                 break
-
-            value = self._parse_user_string(row, column_submission)
-            if value is None:
-                continue
-            index_parsed = _attempt_parse(self.config.header.query, value)
-            if index is None:
-                continue
-            if not index_parsed == index:
-                throw(column_submission, value, self.config.header.query.print(index))
 
             column_grader = consume(self.config.header.grader)
             column_score = consume(self.config.header.score)
@@ -505,7 +402,7 @@ class GradingSheetData[GroupIdentifier, Outcome]:
 
         if not found:
             raise SheetParseException(
-                "no query column groups found, expected at least one"
+                "no query column groups found, expected at least one" 
             )
 
     @functools.cached_property
@@ -615,10 +512,10 @@ class GradingSheetData[GroupIdentifier, Outcome]:
         if result is not None:
             return result
 
-        return self.empty_group_range
+        return self.empty_group_range()
 
 
-class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
+class GradingSheet[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outcome]:
     """
     This class represents a lab worksheet in the grading spreadsheet.
 
@@ -678,7 +575,7 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
         Does this worksheet exist?
         Parsed from the grading spreadsheet instance.
         """
-        return self.lab_id in self.grading_spreadsheet.data.keys()
+        return self.lab_id in self.grading_spreadsheet.data.lab_data.keys()
 
     @property
     def _lab_data(self):
@@ -691,7 +588,7 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
         Parsed from the grading spreadsheet instance.
         Raises KeyError if the worksheet does not exist.
         """
-        (sheet_id, _title, _index) = self._lab_data()
+        (sheet_id, _title, _index) = self._lab_data
         return sheet_id
 
     @property
@@ -709,7 +606,7 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
         if self._title_override is not None:
             return self._title_override
 
-        (_sheet_id, title, _index) = self._lab_data()
+        (_sheet_id, title, _index) = self._lab_data
         return title
 
     @property
@@ -719,7 +616,7 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
         Parsed from the grading spreadsheet instance.
         Raises KeyError if the worksheet does not exist.
         """
-        (_sheet_id, _title, index) = self._lab_data()
+        (_sheet_id, _title, index) = self._lab_data
         return index
 
     def _template_sheet(self) -> int:
@@ -727,6 +624,7 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
         The sheet ID of the template.
         Assumes that self.config.template is not None.
         """
+        assert self.config.template is not None
         (spreadsheet_id, sheet_id_or_title) = self.config.template
         if isinstance(sheet_id_or_title, int):
             return sheet_id_or_title
@@ -819,7 +717,7 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
         self,
         group_id: GroupIdentifier,
         query_index: int,
-    ) -> Query[GroupIdentifier, Outcome]:
+    ) -> Query[LabIdentifier, GroupIdentifier, Outcome]:
         """
         Get a Query instance for the specified group and query number.
         """
@@ -854,11 +752,11 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
             self.config.header,
             len(self.data.query_column_groups),
         )
-        offset = util.general.len_range(util.general.range_of(column_group))
+        offset = util.general.len_range(util.general.range_of_strict(column_group))
 
         # Pylint bug: https://github.com/pylint-dev/pylint/issues/2698#issuecomment-1133667061
         # pylint: disable-next=no-member
-        for field in Query.__dataclass_fields__.keys():
+        for field in QueryDataclass.__dataclass_fields__.keys():
             header = headers.__dict__[field]
             column = column_group.__dict__[field]
             column_new = column + offset
@@ -938,7 +836,7 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
     def requests_insert_groups(
         self,
         groups: Iterable[GroupIdentifier],
-        group_link: Callable[GroupIdentifier, str | None] = lambda: None,
+        group_link: Callable[[GroupIdentifier], str | None] = lambda _: None,
     ) -> Iterable[google_tools.general.Request]:
         """
         Iterable of requests for inserting groups.
@@ -956,12 +854,12 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
 
         # Are there no previous group rows?
         # In that case, self.group_range denotes a non-empty range of empty rows.
-        empty = self.data.group_rows
+        empty = not self.data.group_rows
         (groups_start, groups_end) = self.data.group_range
 
         # We maintain the ordering of the existing group rows.
         # They might not be sorted.
-        new = (id for id in groups if not id in self.data.group_rows.keys())
+        new = {id for id in groups if not id in self.data.group_rows.keys()}
         groups_old = sorted(self.data.group_rows.keys())
         groups_new = sorted(new)
 
@@ -970,7 +868,7 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
         # inherit the formatting from the following (False) or previous (True) row
         # to lists of pairs of a new group id and its final row index.
         insertions = collections.defaultdict(lambda: [])
-        for id in enumerate(groups_new):
+        for id in groups_new:
             if empty:
                 inherit_from_after = True
                 row = groups_start
@@ -1029,7 +927,7 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
     def setup_groups(
         self,
         groups: Iterable[GroupIdentifier],
-        group_link: Callable[GroupIdentifier, str | None] = lambda: None,
+        group_link: Callable[[GroupIdentifier], str | None] = lambda _: None,
         delete_previous: bool = False,
     ):
         """
@@ -1054,7 +952,7 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
 
         requests_ = list(requests())
         if requests_:
-            self.grading_spreadsheet.client_update(requests_)
+            self.grading_spreadsheet.client_update_many(requests_)
         self.data_clear()
         self.logger.info("setting up groups: done")
 
@@ -1067,7 +965,7 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
         Delete the lab worksheet.
         """
         self.logger.info(f"deleting grading sheet for {self.title_canonical}...")
-        if not self.exists():
+        if not self.exists:
             msg = f"worksheet for {self.title_canonical} does not exist"
             self.logger.debug(msg)
             if not exist_ok:
@@ -1075,7 +973,7 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
             return
 
         self.grading_spreadsheet.client_update(
-            google_tools.sheets.request_delete_sheet(self.sheet_id())
+            google_tools.sheets.request_delete_sheet(self.sheet_id)
         )
         if not skip_grading_spreadsheet_data_clear:
             self.grading_spreadsheet.data_clear()
@@ -1090,7 +988,7 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
     def create_and_setup_groups(
         self,
         group_ids: Iterable[GroupIdentifier] | None = None,
-        group_link: Callable[GroupIdentifier, str | None] = lambda: None,
+        group_link: Callable[[GroupIdentifier], str | None] = lambda _: None,
         exist_ok: bool = False,
     ) -> None:
         """
@@ -1102,7 +1000,7 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
         See `grading_sheets[lab_id].config.template`.
         """
         self.logger.info(f"creating grading sheet for {self.title_canonical}...")
-        if self.lab_id in self.data.lab_data.keys():
+        if self.exists:
             msg = f"worksheet for {self.title_canonical} already exists"
             self.logger.debug(msg)
             if not exist_ok:
@@ -1110,7 +1008,9 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
             return
 
         prec_lab_id = self.grading_spreadsheet.data.preceding_lab(self.lab_id)
-        index = self.grading_spreadsheet.data.following_index(self.lab_id)
+        index = self.grading_spreadsheet.data.following_index(prec_lab_id)
+
+        requests: list[google_tools.general.Request]
         requests = []
 
         # Determine template worksheet.
@@ -1126,7 +1026,7 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
             self.logger.debug(
                 f"using worksheet for {prec_grading_sheet.title} as template"
             )
-            template_sheet_id = prec_grading_sheet.sheet_id()
+            template_sheet_id = prec_grading_sheet.sheet_id
             same_spreadsheet = True
         else:
             (template_spreadsheet_id, template_sheet_id) = template
@@ -1142,11 +1042,11 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
         if same_spreadsheet:
             request = google_tools.sheets.request_duplicate_sheet(
                 template_sheet_id,
-                index,
-                self.title_canonical,
+                new_index = index,
+                new_name = self.title_canonical,
             )
             response = self.grading_spreadsheet.client_update(request)
-            sheet_id = response["duplicateSheet"]["sheetId"]
+            sheet_id = response["replies"][0]["duplicateSheet"]["properties"]["sheetId"]
         else:
             sheet_id = google_tools.sheets.copy_to(
                 self.grading_spreadsheet.client,
@@ -1179,10 +1079,11 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
             # We queue a group deletion request for the new sheet.
             # The mocked deleted data is suitable for parsing with new config.
             if template is None:
+                tmp: GradingSheet
                 tmp = GradingSheet(
-                    self,
-                    prec_lab_id,
-                    self.grading_spreadsheet.grading_sheets[prec_lab_id].config,
+                    self.grading_spreadsheet,
+                    prec_grading_sheet.lab_id,
+                    prec_grading_sheet.config,
                     logger=self.logger,
                     title_override=self.title_canonical,
                 )
@@ -1204,7 +1105,7 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
             self.logger.info(f"creating grading sheet for {self.title_canonical}: done")
         except Exception:
             self.grading_spreadsheet.client_update(
-                google_tools.sheets.request_delete_sheet(id)
+                google_tools.sheets.request_delete_sheet(sheet_id)
             )
             self.grading_spreadsheet.data_clear()
             self.data_clear()
@@ -1213,7 +1114,7 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
     def ensure_and_setup_groups(
         self,
         group_ids: Iterable[GroupIdentifier] | None = None,
-        group_link: Callable[GroupIdentifier, str | None] = lambda: None,
+        group_link: Callable[[GroupIdentifier], str | None] = lambda _: None,
         exist_ok: bool = False,
     ) -> None:
         """
@@ -1221,7 +1122,7 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
         But does not skip group setup if lab worksheet already exists.
         """
         self.logger.info(f"ensuring grading sheet for {self.title_canonical}...")
-        if self.exists():
+        if self.exists:
             if group_ids is not None:
                 self.setup_groups(group_ids, group_link=group_link)
         else:
@@ -1233,7 +1134,7 @@ class GradingSheet[LabIdentifier, GroupIdentifier, Outcome]:
         self.logger.info(f"ensuring grading sheet for {self.title_canonical}: done")
 
 
-class GradingSpreadsheetData[LabIdentifier]:
+class GradingSpreadsheetData[LabIdentifier: Comparable]:
     """
     Helper class for GradingSpreadsheet for parsing a grading spreadsheet.
     Attributes are computed lazily and cached.
@@ -1348,7 +1249,7 @@ class GradingSpreadsheetData[LabIdentifier]:
         return (properties_raw, sheet_data)
 
 
-class GradingSpreadsheet[LabIdentifier]:
+class GradingSpreadsheet[LabIdentifier: Comparable]:
     """
     This class represents a grading spreadsheet.
     This keeps track of which groups have been or are to be graded.
@@ -1381,7 +1282,7 @@ class GradingSpreadsheet[LabIdentifier]:
         self.config = config
         self.credentials = credentials
         self.grading_sheets = {
-            GradingSheet(self, lab_id, lab_config, logger=self.logger)
+            lab_id: GradingSheet(self, lab_id, lab_config, logger=logger)
             for (lab_id, lab_config) in lab_configs.items()
         }
         self.logger = logger
@@ -1408,10 +1309,7 @@ class GradingSpreadsheet[LabIdentifier]:
             fields=fields,
         ).execute()
 
-    def client_update_many(
-        self,
-        requests: Iterable[google_tools.general.Request],
-    ) -> list:
+    def client_update_many(self, requests: Iterable[google_tools.general.Request]):
         """
         Execute update requests in this spreadsheet.
         Does nothing if the given iterable of requests is empty.
@@ -1422,8 +1320,8 @@ class GradingSpreadsheet[LabIdentifier]:
             requests,
         )
 
-    def client_update(self, request: google_tools.general.Request) -> Any:
-        return self.client_update_many([request])[0]
+    def client_update(self, request: google_tools.general.Request):
+        return self.client_update_many([request])
 
     @functools.cached_property
     def data(self) -> GradingSpreadsheetData:
@@ -1452,7 +1350,7 @@ class GradingSpreadsheet[LabIdentifier]:
         if self.grading_sheets.values():
             try:
                 for grading_sheet in self.grading_sheets.values():
-                    grading_sheet.create(
+                    grading_sheet.delete(
                         exist_ok=exist_ok,
                         skip_grading_spreadsheet_data_clear=True,
                     )
@@ -1464,7 +1362,7 @@ class GradingSpreadsheet[LabIdentifier]:
         Create all lab worksheets.
         """
         for grading_sheet in self.grading_sheets.values():
-            grading_sheet.delete(exist_ok=exist_ok)
+            grading_sheet.create(exist_ok=exist_ok)
 
     def preload_grading_sheets(self) -> None:
         """
@@ -1472,6 +1370,6 @@ class GradingSpreadsheet[LabIdentifier]:
         Useful for making a future update faster.
         """
         for grading_sheet in self.grading_sheets.values():
-            if grading_sheet.exists():
+            if grading_sheet.exists:
                 # pylint: disable-next=pointless-statement
                 grading_sheet.data.sheet_data
