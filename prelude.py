@@ -14,15 +14,15 @@ logging.getLogger().setLevel(logging.INFO)
 #   Instantiate systemd_unit_file.service.template as e.g. <course code>/lab-system.service.
 
 # ACION: instantiate and uncomment below statements for concrete instance.
-# import <course code>.config as config
+import lp4.config as config
 
 # print('Defined variables:')
 
-# c = course.Course(config, '<course code>')
-# print(f"  c: Course <{c.dir}>")
+c = course.Course(config, 'lp4')
+print(f"  c: Course <{c.dir}>")
 
-# l = c.labs[1]
-# print(f"  l: Lab <{l.name}>")
+l = c.labs[1]
+print(f"  l: Lab <{l.name}>")
 
 # How to deploy a new lab:
 # 1. Make sure repository ~/labs is up to date.
