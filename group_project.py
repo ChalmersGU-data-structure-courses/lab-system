@@ -1297,7 +1297,8 @@ class GroupProject:
         self.logger.info(f"Hotfixing {target_branch} in {self.project.path}")
 
         target_ref = util.git.resolve(
-            self.repo, util.git.remote_branch(self.remote, target_branch)
+            self.repo,
+            util.git.remote_branch(self.remote, target_branch),
         )
 
         if problem is None:
@@ -1316,7 +1317,10 @@ class GroupProject:
                     ancestors,
                 ) from None
 
-        problem = util.git.resolve(self.repo, problem)
+        problem = util.git.resolve(
+            self.repo,
+            util.git.local_branch(problem),
+        )
 
         if problem_old is None:
             problem_old = self.repo.merge_base(
@@ -1329,7 +1333,8 @@ class GroupProject:
             return
 
         target_ref = util.git.resolve(
-            self.repo, util.git.remote_branch(self.remote, target_branch)
+            self.repo,
+            util.git.remote_branch(self.remote, target_branch),
         )
         if self.repo.is_ancestor(problem, target_ref):
             self.logger.info("Hotfixing: hotfix already applied")
