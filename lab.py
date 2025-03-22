@@ -866,7 +866,7 @@ class Lab:
         * notify_students: unimplemented [TODO]
         """
         for group_id in self.normalize_group_ids(group_ids):
-            self.groups[group_id].hotfix_problem(
+            self.groups[group_id].update_problem(
                 force=force,
                 notify_students=notify_students,
             )

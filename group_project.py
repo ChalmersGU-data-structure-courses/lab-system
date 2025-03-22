@@ -1141,7 +1141,8 @@ class GroupProject:
 
     def ancestral_tag(self, problem):
         return git_tools.normalize_tag(
-            git_tools.refs / "ancestral" / self.remote / problem
+            self.repo,
+            git_tools.refs / "ancestral" / self.remote / problem,
         )
 
     def update_problem(
@@ -1175,8 +1176,8 @@ class GroupProject:
             branch = git_tools.normalize_branch(self.lab.repo, problem).commit
             self.repo.remote(self.remote).push(
                 git_tools.refspec(
-                    problem.hexsha,
-                    branch,
+                    branch.hexsha,
+                    problem,
                     force=force,
                 )
             )
@@ -1262,7 +1263,8 @@ class GroupProject:
         self.logger.info(f"Hotfixing {target_branch} in {self.project.path}")
 
         target_ref = git_tools.resolve(
-            self.repo, git_tools.remote_branch(self.remote, target_branch)
+            self.repo,
+            git_tools.remote_branch(self.remote, target_branch),
         )
 
         if problem is None:
@@ -1281,7 +1283,10 @@ class GroupProject:
                     ancestors,
                 ) from None
 
-        problem = git_tools.resolve(self.repo, problem)
+        problem = git_tools.resolve(
+            self.repo,
+            git_tools.local_branch(problem),
+        )
 
         if problem_old is None:
             problem_old = self.repo.merge_base(
@@ -1294,7 +1299,8 @@ class GroupProject:
             return
 
         target_ref = git_tools.resolve(
-            self.repo, git_tools.remote_branch(self.remote, target_branch)
+            self.repo,
+            git_tools.remote_branch(self.remote, target_branch),
         )
         if self.repo.is_ancestor(problem, target_ref):
             self.logger.info("Hotfixing: hotfix already applied")
