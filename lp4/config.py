@@ -12,11 +12,13 @@ The default lab configuration is as needed for the data structures course cluste
 
 import datetime
 import dateutil
+import inflect
 from pathlib import PurePosixPath, Path
 import re
 from types import SimpleNamespace
 
 import gdpr_coding
+import general
 import gitlab_.tools
 import handlers.general
 import handlers.java
@@ -318,6 +320,41 @@ _pp_language = print_parse.from_dict([
     ('java', 'Java'),
     ('python', 'Python'),
 ])
+
+
+def _format_count(n):
+    p = inflect.engine()
+
+    def f():
+        ord = p.number_to_words(p.ordinal(n + 1))
+        yield f"This is your {ord} robograding."
+        if n < 3:
+            pass
+        elif n < 5:
+            yield "You can feel that Robograder is starting to overheat."
+            if n < 4:
+                pass
+            else:
+                yield "Maybe you should slow down and think things through?"
+        elif n < 6:
+            yield "You remember the advice of your old teacher: \"understand what causes the error before trying to fix it.\"."
+            yield "You feel guilty about resorting to Robograder once again."
+        elif n < 7:
+            yield "You are starting to feel nervous."
+            yield "Was it really necessary to invoke Robograder that often?"
+        elif n < 8:
+            yield "You feel a gaze from the sky."
+            yield "Are the gods displeased with your heavy use of Robograder?"
+        elif n < 9:
+            yield "Loud alarms ring from inside of Robograder after it prints your latest report."
+            yield "Run away before the guardian arrives!"
+            yield "You should probably not come back."
+        else:
+            yield "[insert scary message]"
+
+    return general.join_lines(f())
+
+handlers.general.RobogradingHandler.format_count = staticmethod(_format_count)
 
 
 # ACTION: configure this to your liking.
