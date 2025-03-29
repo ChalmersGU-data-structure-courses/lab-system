@@ -580,23 +580,23 @@ class GradingViaMergeRequest:
             return []
 
         # Block syncing if a review is happening.
-        if self.reviewer_current:
-            (reviewer, (start_id, start_date)) = self.reviewer_current
-            block_period = (
-                self.course.config.grading_via_merge_request.maximum_reserve_time
-            )
-            if not block_period or (
-                datetime.datetime.now(datetime.timezone.utc) < start_date + block_period
-            ):
-                self.logger.warn(
-                    self.with_merge_request_url(
-                        f"New submission(s) made in {self.group.name}"
-                        f"in {self.lab.name} while {self.reviewer_current[0]}"
-                        f" is reviewer (blocking push of {submissions[0].request_name}"
-                        " to submission branch):",
-                    )
-                )
-            return []
+        # if self.reviewer_current:
+        #     (reviewer, (start_id, start_date)) = self.reviewer_current
+        #     block_period = (
+        #         self.course.config.grading_via_merge_request.maximum_reserve_time
+        #     )
+        #     if not block_period or (
+        #         datetime.datetime.now(datetime.timezone.utc) < start_date + block_period
+        #     ):
+        #         self.logger.warn(
+        #             self.with_merge_request_url(
+        #                 f"New submission(s) made in {self.group.name}"
+        #                 f"in {self.lab.name} while {self.reviewer_current[0]}"
+        #                 f" is reviewer (blocking push of {submissions[0].request_name}"
+        #                 " to submission branch):",
+        #             )
+        #         )
+        #     return []
 
         for submission in submissions:
             self.logger.info(f"Syncing submission {submission.request_name}.")
