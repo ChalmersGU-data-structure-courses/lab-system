@@ -34,7 +34,7 @@ def write_group_membership_report(course):
     Argument path is interpreted relative to course.dir
     """
     with (course.dir / "groups.csv").open("w") as file:
-        writer = csv.DictWriter(file, report_headers(course), dialect=LadokDialect)
+        writer = csv.DictWriter(file, report_groups_headers(course), dialect=LadokDialect)
         writer.writeheader()
         for canvas_user in course.canvas_course.students:
             gitlab_username = course.gitlab_username_by_canvas_id(canvas_user.id)
