@@ -69,8 +69,8 @@ path_graders = path_course / '2025' / 'graders'
 
 # Relative paths to the repositories in each lab as described above.
 path_lab = SimpleNamespace(
-    official = 'primary',
-    grading = 'grading',
+    primary = 'primary',
+    collection = 'grading',
 )
 
 # Branch names
@@ -174,7 +174,7 @@ grading_sheet = SimpleNamespace(
     # This is created by the user, but maintained by the lab script.
     # The key (a base64 string) can be found in the URL of the spreadsheet.
     # Individual grading sheets for each lab are worksheets in this spreadsheet.
-    spreadsheet = '1bBpht2uKkYIbq5lgKjqVihjfy52X8FJbY_n_8tKibno',
+    spreadsheet = '1YzLUfXP89e7QHoO-eBQHoNrqM5GSzkdZmdpu3EeVKDs',
 
     # Have rows for non-empty groups that have not yet submitted?
     include_groups_with_no_submission = True,
