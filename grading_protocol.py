@@ -94,7 +94,11 @@ def write_report(course, path, entries):
 
 
 def prepare_requested_entries(
-    course, requested_entries, by_gitlab_username, examination_date=""
+    course,
+    requested_entries,
+    by_gitlab_username,
+    examination_date="",
+    format_score=None,
 ):
     """
     Takes a list of skeleton entries (containing at least a value for header_personnummer)
@@ -111,6 +115,7 @@ def prepare_requested_entries(
         This method mutates this map by popping used entries.
     * examination_date:
         Value to use for the key header_examination_date.
+    * format_score: A function formatting a score.
     """
 
     def f():
@@ -136,14 +141,14 @@ def prepare_requested_entries(
                 header_personnummer: entry[header_personnummer],
                 header_gitlab_username: gitlab_username,
                 header_name: entry[header_name],
-            } | course.grading_report_format_value(value) | {
+            } | course.grading_report_format_value(value, format_score=format_score) | {
                 header_examination_date: examination_date,
             }
 
     return list(f())
 
 
-def prepare_remaining_entries(course, by_gitlab_username):
+def prepare_remaining_entries(course, by_gitlab_username, format_score=None):
     """
     Returns a list of entries for the given grading report (with summary).
     Typically used on the map remaining after processing the requested entries with prepare_requested_entries.
@@ -152,6 +157,7 @@ def prepare_remaining_entries(course, by_gitlab_username):
     * course: Instance of Course.
     * by_gitlab_username:
         As returned by Course.grading_report_with_summary (and potentially modified by prepare_requested_entries).
+    * format_score: A function formatting a score.
     """
 
     def f(x):
@@ -164,7 +170,7 @@ def prepare_remaining_entries(course, by_gitlab_username):
                 header_gitlab_username: gitlab_username,
                 header_name: canvas_user.sortable_name if canvas_user else "",
             }
-            | course.grading_report_format_value(value)
+            | course.grading_report_format_value(value, format_score=format_score)
             | {
                 header_examination_date: "",
             }
@@ -174,7 +180,13 @@ def prepare_remaining_entries(course, by_gitlab_username):
 
 
 def report_course(
-    course, xs, path_extra, update_lab=True, summary=None, examination_date=""
+    course,
+    xs,
+    path_extra,
+    update_lab=True,
+    summary=None,
+    format_score=None,
+    examination_date="",
 ):
     """
     Prepare the assignment protocol for this course.
@@ -190,6 +202,8 @@ def report_course(
     * update_lab:
         Whether to update the lab in this function.
         TODO: make possible with less updates.
+    * summary: function combining lab scores into summary score.
+    * format_score: A function formatting a score.
     * path_extra:
         Path to an output file:
         a tab-separated CSV file containing lab grades for students not appearing in the input files requests.
@@ -214,10 +228,15 @@ def report_course(
             requested_entries,
             by_gitlab_username,
             examination_date=examination_date,
+            format_score=format_score,
         )
         write_report(course, path_filled_out, filled_out_entries)
 
-    extra_entries = prepare_remaining_entries(course, by_gitlab_username)
+    extra_entries = prepare_remaining_entries(
+        course,
+        by_gitlab_username,
+        format_score=format_score,
+    )
     write_report(course, path_extra, extra_entries)
 
 
