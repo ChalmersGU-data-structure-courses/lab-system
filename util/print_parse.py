@@ -697,3 +697,11 @@ class DataclassAsNamedTuple[S, T](PrinterParser[S, T]):
 
     def parse(self, y: T, /) -> S:
         return self.cls_source(**y._asdict())
+
+
+class StringAsPathSegment(PrinterParser):
+    def print(self, x, /):
+        return x.replace("%", "%%").replace("/", "%s")
+
+    def parse(self, y, /):
+        return y.replace("%s", "/").replace("%%", "%")
