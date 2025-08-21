@@ -733,3 +733,11 @@ def dataclass_json[
 def dataclass_field(pp):
     # pylint: disable=invalid-field-call
     return dataclasses.field(metadata={"pp": pp})
+
+
+class StringAsPathSegment(PrinterParser):
+    def print(self, x, /):
+        return x.replace('%', '%%').replace('/', '%s')
+
+    def parse(self, y, /):
+        return y.replace('%s', '/').replace('%%', '%')
