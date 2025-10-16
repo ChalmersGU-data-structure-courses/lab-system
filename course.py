@@ -403,6 +403,13 @@ class Course:
         """
         return dict({user.id: user for user in self.graders.values()})
 
+    # This thing is a mess.
+    # TODO: refactor.
+    def clear_graders(self):
+        with contextlib.suppress(AttributeError):
+            del self.graders
+            del self.graders_ids
+
     # @functools.cached_property
     # def labs(self):
     #     return frozenset(
@@ -792,7 +799,9 @@ class Course:
         self.canvas_course_refresh()
 
         # Sync teachers.
+        self.clear_graders()
         self.add_teachers_to_gitlab()
+        self.clear_graders()
 
         # Sync students.
         synced_group_sets = set()
