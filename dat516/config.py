@@ -236,9 +236,10 @@ class _LabConfig:
     def __init__(
         self,
         lab_number,
+        name_semantic,
         refresh_period,
     ):
-        self.path_source = _lab_repo,
+        self.name_semantic = name_semantic
         self.has_solution = False
         self.group_set = _group,
         self.grading_sheet = lab.name.print(lab_number)
@@ -279,9 +280,9 @@ def _lab_item(k, *args, **kwargs):
 #   For older labs, 30 minutes or one hour suffices.
 #   For recent labs, use 15 minutes.
 labs = dict([
-    _lab_item(1, datetime.timedelta(minutes=15)),
-    _lab_item(2, datetime.timedelta(minutes=40)),
-    _lab_item(3, datetime.timedelta(minutes=50)),
+    _lab_item(1, "TODO", datetime.timedelta(minutes=15)),
+    _lab_item(2, "TODO", datetime.timedelta(minutes=40)),
+    _lab_item(3, "TODO", datetime.timedelta(minutes=50)),
 ])
 
 # Students taking part in labs who are not registered on Canvas.
