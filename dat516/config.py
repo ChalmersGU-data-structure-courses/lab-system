@@ -18,6 +18,7 @@ from types import SimpleNamespace
 
 import gdpr_coding
 import gitlab_.tools
+import handlers.general
 import print_parse
 from this_dir import this_dir
 
@@ -230,23 +231,16 @@ _group = SimpleNamespace(
     )),
 )
 
-_pp_language = print_parse.from_dict([
-    ('java', 'Java'),
-    ('python', 'Python'),
-])
-
 # ACTION: configure this to your liking.
 class _LabConfig:
     def __init__(
         self,
         lab_number,
-        lab_folder,
         refresh_period,
-        group_set=_group,
     ):
-        self.path_source = _lab_repo / 'labs' / lab_folder
+        self.path_source = _lab_repo,
         self.has_solution = False
-        self.group_set = group_set
+        self.group_set = _group,
         self.grading_sheet = lab.name.print(lab_number)
         self.canvas_path_awaiting_grading = (
             PurePosixPath() / canvas.grading_path / '{}-to-be-graded.html'.format(
@@ -254,7 +248,7 @@ class _LabConfig:
             )
         )
 
-        self.request_handlers = {}
+        self.request_handlers = {'submission': handlers.general.SubmissionHandlerStub()}
         self.refresh_period = refresh_period
         self.multi_language = None # code checks if None rather than falsy
         self.grading_via_merge_request = True
@@ -263,7 +257,7 @@ class _LabConfig:
             0: gitlab_.tools.LabelSpec(name='incomplete', color='red'),
             1: gitlab_.tools.LabelSpec(name='pass', color='green'),
         }
-        self.merge_request_title = 'Grading for submission'
+        self.merge_request_title = print_parse.from_dict({None: 'Grading for submission'}.items()),
         self.branch_problem = 'problem'
 
     # Key of submission handler in the dictionary of request handlers.
@@ -285,9 +279,9 @@ def _lab_item(k, *args, **kwargs):
 #   For older labs, 30 minutes or one hour suffices.
 #   For recent labs, use 15 minutes.
 labs = dict([
-    _lab_item(1, 'information-extraction'           , datetime.timedelta(minutes=15)),
-    _lab_item(2, 'graphs-and-transport-networks'    , datetime.timedelta(minutes=40)),
-    _lab_item(3, 'web-application-for-tram-networks', datetime.timedelta(minutes=50)),
+    _lab_item(1, datetime.timedelta(minutes=15)),
+    _lab_item(2, datetime.timedelta(minutes=40)),
+    _lab_item(3, datetime.timedelta(minutes=50)),
 ])
 
 # Students taking part in labs who are not registered on Canvas.
