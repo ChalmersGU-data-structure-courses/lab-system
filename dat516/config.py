@@ -12,27 +12,14 @@ The default lab configuration is as needed for the data structures course cluste
 
 import datetime
 import dateutil
-import inflect
-from pathlib import PurePosixPath, Path
+from pathlib import PurePosixPath
 import re
 from types import SimpleNamespace
 
 import gdpr_coding
-import general
 import gitlab_.tools
-import handlers.general
-import handlers.java
-import handlers.python
-import handlers.language
 import print_parse
-import robograder_java
-import testers.podman
-import testers.java
 from this_dir import this_dir
-
-
-_ACTION_REPLACE_THIS = None
-
 
 # Time printing configuration.
 time = SimpleNamespace(
@@ -51,14 +38,14 @@ canvas = SimpleNamespace(
     url='chalmers.instructure.com',
 
     # Integer id found in Canvas course URL.
-    course_id=9614,
+    course_id=36887,
 
     # Path to (unpublished!) folder in Canvas course files.
     # This is where the script will upload submission reports.
     # This folder needs to exist.
     #
     # ACTION: create this folder and make sure it is unpublished.
-    grading_path='temp',
+    grading_path='lab-system',
 )
 
 # URL for Chalmers GitLab.
@@ -243,119 +230,10 @@ _group = SimpleNamespace(
     )),
 )
 
-# For tuning of timing tests.
-_machine_speed = 0.5
-
-# Example lab configuration (for purpose of documentation).
-_lab_config = SimpleNamespace(
-    # Filesystem path to the lab source.
-    # Initial lab skeleton is in subfolder 'problem'.
-    path_source=_lab_repo / 'labs' / 'goose-recognizer' / 'java',
-
-    # Whether the lab has a solution, in subfolder 'solution'.
-    has_solution=True,
-
-    # An optional group set to use.
-    # If None, the lab is individual.
-    group_set=_group,
-
-    # Worksheet identifier of the grading sheet for the lab.
-    # This can be of the following types:
-    # * int: worksheet id,
-    # * string: worksheet title.
-    # * tuple of a single int: worksheet index (zero-based).
-    grading_sheet='Lab N',
-
-    # Path in Canvas course where the live submissions table should be uploaded.
-    canvas_path_awaiting_grading=PurePosixPath('temp') / 'lab-N-awaiting-grading.html',
-
-    # Dictionary of request handlers.
-    # Its keys should be string-convertible.
-    # Its values are instances of the RequestHandler interface.
-    # The order of the dictionary determines the order in which the request matchers
-    # of the request handlers are tested on a student repository tag.
-    request_handlers={},
-
-    # Key of submission handler in the dictionary of request handlers.
-    # Its value must be an instance of SubmissionHandler.
-    submission_handler_key=None,
-
-    # Lab refresh period if the script is run in an event loop.
-    # The webhooks on GitLab may fail to trigger in some cases:
-    # * too many tags pushed at the same time,
-    # * transient network failure,
-    # * hook misconfiguration.
-    # For that reason, we reprocess the entire lab every so often.
-    # The period in which this happen is sepcified by this variable.
-    # If it is None, no period reprocessing happens.
-    #
-    # Some hints on choosing suitable values:
-    # * Not so busy labs can have longer refresh periods.
-    # * A lower bound is 15 minutes, even for very busy labs.
-    # * It is good if the refresh periods of
-    #   different labs are not very close to
-    #   each other and do not form simple ratios.
-    #   If they are identical, configure webhook.first_lab_refresh_delay
-    #   so that refreshes of different labs
-    #   are not scheduled for the same time.
-    #   This would cause a lack of responsiveness
-    #   for webhook-triggered updates.
-    # * Values of several hours are acceptable
-    #   if the webhook notifications work reliably.
-    refresh_period=datetime.timedelta(minutes=15),
-
-    # Whether new-style grading via merge requests should be used.
-    grading_via_merge_request=True,
-
-    # Only used in new-style grading via merge requests.
-    # The label spec for key None corresponds to the waiting-for-grading state.
-    outcome_labels={
-        None: gitlab_.tools.LabelSpec(name='waiting-for-grading', color='yellow'),
-        0: gitlab_.tools.LabelSpec(name='incomplete', color='red'),
-        1: gitlab_.tools.LabelSpec(name='pass', color='green'),
-    },
-)
-
 _pp_language = print_parse.from_dict([
     ('java', 'Java'),
     ('python', 'Python'),
 ])
-
-
-def _format_count(n):
-    p = inflect.engine()
-
-    def f():
-        ord = p.number_to_words(p.ordinal(n + 1))
-        yield f"This is your {ord} robograding."
-        if n < 3:
-            pass
-        elif n < 5:
-            yield "You can feel that Robograder is starting to overheat."
-            if n < 4:
-                pass
-            else:
-                yield "Maybe you should slow down and think things through?"
-        elif n < 6:
-            yield "You remember the advice of your old teacher: \"understand what causes the error before trying to fix it.\"."
-            yield "You feel guilty about resorting to Robograder once again."
-        elif n < 7:
-            yield "You are starting to feel nervous."
-            yield "Was it really necessary to invoke Robograder that often?"
-        elif n < 8:
-            yield "You feel a gaze from the sky."
-            yield "Are the gods displeased with your heavy use of Robograder?"
-        elif n < 9:
-            yield "Loud alarms ring from inside of Robograder after it prints your latest report."
-            yield "Run away before the guardian arrives!"
-            yield "You should probably not come back."
-        else:
-            yield "[insert scary message]"
-
-    return general.join_lines(f())
-
-handlers.general.RobogradingHandler.format_count = staticmethod(_format_count)
-
 
 # ACTION: configure this to your liking.
 class _LabConfig:
@@ -364,78 +242,29 @@ class _LabConfig:
         lab_number,
         lab_folder,
         refresh_period,
-        group_set=None,
-        robotester=False,
-        use_robograder_instead=False,
+        group_set=_group,
     ):
         self.path_source = _lab_repo / 'labs' / lab_folder
-        self.has_solution = True
+        self.has_solution = False
         self.group_set = group_set
         self.grading_sheet = lab.name.print(lab_number)
         self.canvas_path_awaiting_grading = (
-            PurePosixPath() / 'temp' / '{}-to-be-graded.html'.format(
+            PurePosixPath() / canvas.grading_path / '{}-to-be-graded.html'.format(
                 lab.full_id.print(lab_number)
             )
         )
 
-        def java_params():
-            yield ('dir_problem', Path() / 'problem' / 'java')
-            if robotester:
-                yield ('machine_speed', _machine_speed)
-                if use_robograder_instead:
-                    yield ('robograder_factory', robograder_java.factory)
-                    yield ('dir_robograder', Path() / 'robograder' / 'java')
-                else:
-                    yield ('tester_factory', testers.java.LabTester.factory)
-                    yield ('dir_tester', Path() / 'robotester' / 'java')
-
-        def python_params():
-            if robotester:
-                yield ('tester_factory', testers.podman.LabTester.factory)
-                yield ('dir_tester', Path() / 'robotester' / 'python')
-                yield ('machine_speed', _machine_speed)
-
-        def request_handlers():
-            def shared_columns():
-                if robotester:
-                    yield 'robograding'
-
-            yield ('submission', handlers.language.SubmissionHandler(sub_handlers={
-                'java': handlers.java.SubmissionHandler(**dict(java_params())),
-                'python': handlers.python.SubmissionHandler(**dict(python_params())),
-            }, shared_columns=list(shared_columns()), show_solution=True))
-
-            if robotester:
-                yield ('robograding', handlers.language.RobogradingHandler(
-                    sub_handlers={
-                        'java': (
-                            handlers.java.RobogradingHandler
-                            if use_robograder_instead else
-                            handlers.general.GenericTestingHandler
-                        )(**dict(java_params())),
-                        'python': handlers.general.GenericTestingHandler(
-                            **dict(python_params())
-                        ),
-                    }
-                ))
-
-        self.request_handlers = dict(request_handlers())
+        self.request_handlers = {}
         self.refresh_period = refresh_period
-        self.multi_language = True
+        self.multi_language = None # code checks if None rather than falsy
         self.grading_via_merge_request = True
         self.outcome_labels = {
             None: gitlab_.tools.LabelSpec(name='waiting-for-grading', color='yellow'),
             0: gitlab_.tools.LabelSpec(name='incomplete', color='red'),
             1: gitlab_.tools.LabelSpec(name='pass', color='green'),
         }
-        self.merge_request_title = print_parse.compose(
-            _pp_language,
-            print_parse.regex('Grading for {} submission', regex='[a-zA-Z]*'),
-        )
-        self.branch_problem = {
-            'python': 'problem-python',
-            'java': 'problem-java',
-        }
+        self.merge_request_title = 'Grading for submission'
+        self.branch_problem = 'problem'
 
     # Key of submission handler in the dictionary of request handlers.
     # Its value must be an instance of SubmissionHandler.
@@ -456,10 +285,9 @@ def _lab_item(k, *args, **kwargs):
 #   For older labs, 30 minutes or one hour suffices.
 #   For recent labs, use 15 minutes.
 labs = dict([
-    _lab_item(1, 'binary-search'       , datetime.timedelta(minutes=15), group_set=None  , robotester=True , use_robograder_instead=True ),  # noqa: E202, E203, E501
-    _lab_item(2, 'indexing'            , datetime.timedelta(minutes=15), group_set=_group, robotester=True , use_robograder_instead=False),  # noqa: E202, E203, E501
-    #_lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes=15), group_set=_group, robotester=True , use_robograder_instead=False),  # noqa: E202, E203, E501
-    #_lab_item(4, 'path-finder'         , datetime.timedelta(minutes=15), group_set=_group, robotester=True , use_robograder_instead=True ),  # noqa: E202, E203, E501
+    _lab_item(1, 'information-extraction'           , datetime.timedelta(minutes=15)),
+    _lab_item(2, 'graphs-and-transport-networks'    , datetime.timedelta(minutes=40)),
+    _lab_item(3, 'web-application-for-tram-networks', datetime.timedelta(minutes=50)),
 ])
 
 # Students taking part in labs who are not registered on Canvas.
@@ -499,7 +327,7 @@ def gitlab_username_from_canvas_user_id(course, user_id):
             # To resolve these, we use a PDB login configured in gitlab_config_personal.
             # If you do not have this, you can fall back to:
             #     cid = cid_from_canvas_id_via_login_id_or_ldap_name(user_id)
-            # Alternatively, pecify the translation manually in the above dictionary.
+            # Alternatively, specify the translation manually in the above dictionary.
             cid = course.cid_from_canvas_id_via_login_id_or_pdb(user_id)
         except LookupError:
             return None
@@ -525,7 +353,7 @@ def gitlab_username_from_canvas_user_id(course, user_id):
 #   while binding locally to (localhost, <local port>).
 webhook = SimpleNamespace(
     # Value doesn't matter, but should not be guessable.
-    secret_token='a not-so-well-chosen secret',
+    secret_token='z8WTvz8GV9zQGV9zQ',
 
     # Artificial delay to between the first scheduling of
     # lab refresh events for successive labs with lab refreshes.
