@@ -241,7 +241,7 @@ class _LabConfig:
     ):
         self.name_semantic = name_semantic
         self.has_solution = False
-        self.group_set = _group,
+        self.group_set = _group
         self.grading_sheet = lab.name.print(lab_number)
         self.canvas_path_awaiting_grading = (
             PurePosixPath() / canvas.grading_path / '{}-to-be-graded.html'.format(
@@ -258,7 +258,7 @@ class _LabConfig:
             0: gitlab_.tools.LabelSpec(name='incomplete', color='red'),
             1: gitlab_.tools.LabelSpec(name='pass', color='green'),
         }
-        self.merge_request_title = print_parse.from_dict({None: 'Grading for submission'}.items()),
+        self.merge_request_title = print_parse.from_dict({None: 'Grading for submission'}.items())
         self.branch_problem = 'problem'
 
     # Key of submission handler in the dictionary of request handlers.
@@ -280,9 +280,9 @@ def _lab_item(k, *args, **kwargs):
 #   For older labs, 30 minutes or one hour suffices.
 #   For recent labs, use 15 minutes.
 labs = dict([
-    _lab_item(1, "TODO", datetime.timedelta(minutes=15)),
-    _lab_item(2, "TODO", datetime.timedelta(minutes=40)),
-    _lab_item(3, "TODO", datetime.timedelta(minutes=50)),
+    _lab_item(1, "Information extraction", datetime.timedelta(minutes=15)),
+    _lab_item(2, "Graphs and transport networks", datetime.timedelta(minutes=40)),
+    _lab_item(3, "Web application for tram networks", datetime.timedelta(minutes=50)),
 ])
 
 # Students taking part in labs who are not registered on Canvas.
