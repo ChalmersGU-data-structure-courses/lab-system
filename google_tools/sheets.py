@@ -6,8 +6,7 @@ import logging
 import re
 import string
 import types
-from collections.abc import Iterable, Mapping
-from typing import Any, ClassVar, Type
+from collections.abc import Iterable
 
 import google.auth.credentials
 import googleapiclient.discovery
@@ -243,6 +242,7 @@ def request_update_cell_user_entered_value(sheet_id, row, column, value) -> Requ
     """
     return request_update_cell(sheet_id, row, column, [[value]], "userEnteredValue")
 
+
 Field = str
 """A field name in the Google API."""
 
@@ -252,13 +252,50 @@ A field mask in the Google API.
 The value None means everything (`*`).
 """
 
+
 def user_entered_value(value: str | int) -> tuple[tuple[Field, JSONDict], FieldMask]:
     value = extended_value_number_or_string(value)
     field = "userEnteredValue"
     return ((field, value), None)
 
 
-def text_format(link=Nonem) -> tuple[]:
+def extended_value_number(n):
+    return {"numberValue": n}
+
+
+def extended_value_string(s):
+    return {"stringValue": s}
+
+
+def extended_value_number_or_string(x):
+    if isinstance(x, int):
+        return extended_value_number(x)
+    if isinstance(x, str):
+        return extended_value_string(x)
+    raise TypeError(f"{x} is neither an integer nor a string")
+
+
+def extended_value_formula(s):
+    return {"formulaValue": s}
+
+
+def extended_value_extract_primitive(v):
+    n = v.get("numberValue")
+    if n is not None:
+        if not isinstance(n, int):
+            raise ValueError(f"Not an integer: {n}")
+        return n
+
+    s = v.get("stringValue")
+    if s is not None:
+        if not isinstance(s, str):
+            raise ValueError(f"Not a string: {s}")
+        return s
+
+    raise ValueError(f"Extended value is not a number or string: {v}")
+
+
+def text_format(link=None):
     """
     Produces a value for the API type TextFormat.
     Arguments:
@@ -281,14 +318,6 @@ def cell_format(text_format=None):
             yield ("textFormat", text_format)
 
     return dict(f())
-
-
-def cell_value_with_link(
-    ,
-    link: str | None = None,
-) -> tuple[JSONDict, str]:
-    value = extended_value_number_or_string(value)
-    fields = "userEnteredValue"
 
 
 def request_update_cell_value_with_link(
@@ -351,8 +380,8 @@ def request_delete_sheet(id) -> Request:
 
 def get_client(credentials: google.auth.credentials.Credentials):
     """
-    Get a spreadsheets client using googleapiclient.
-    """
+        Get a spreadsheets client using googleapiclient.
+    l"""
 
     # False positive.
     # pylint: disable-next=no-member
@@ -370,213 +399,6 @@ def redecode_json(s):
 
 
 SheetData = collections.namedtuple("Data", ["num_rows", "num_columns", "value"])
-
-
-def api_union_field(field: Field, type_: Type):
-     class R:
-        def print(value: type_):
-            return {field: value}
-
-        def parse_value(value) -> type_:
-            assert isinstance(value, type_)
-            return value
-
-        def parse(x) -> type_:
-            [(field_parsed, value)] = x.items()
-            assert field == field_parsed
-            return parse_value(value_parsed)
-
-    return R
-
-
-def annotate(cls, fields: Mapping[str, tuple[str, Type]], allow_empty: bool = False):
-    field_actions = {
-        name: api_union_field(field, type_)
-        for (name, (field, type_)) in fields.items():
-    }
-    cls.Field = StrEnum('Field', {field: field.upper() for field in fields.keys()})
-    for (name, field_action) in field_actions.items():
-        setattr(cls, f"print_{name}", field_action.print)
-        setattr(cls, f"parse_{name}", field_action.parse)
-    
-
-
-class api_union_type:
-    scaffold: SimpleNamespace
-
-    def unpack(x) -> tuple[Field, Any]:
-        [(field, value)] = v.items()
-        return (field, value)
-        
-    def __init__(self, fields: Mapping[str, tuple[str, Type]], allow_empty: bool = False,):
-        field_actions = {
-            name: api_union_field(field, type_)
-            for (name, (field, type_)) in fields.items():
-        }
-        self.allow_empty = allow_empty
-
-        self.scaffold = SimpleNamespace()
-        self.scaffold = 
-        for (name, field_action) in field_actions.items():
-            setattr(self.scaffold, f"print_{name}", field_action.print)
-            setattr(self.scaffold, f"parse_{name}", field_action.parse)
-
-
-    def __call__(cls: Type):
-        for (key, value) in self.scaffold.items():
-            setattr(cls, key, value)
-
-#"numberValue", "number", int | float, 
-
-
-
-
-class ExtendedValue:
-    numberValue: int | float
-
-    class Field(enum.StrEnum):
-        NUMBER = "numberValue"
-        STRING = "stringValue"
-        BOOL = "boolValue"
-        FORMULA = "formulaValue"
-
-    def empty() -> JSONDict:
-        return {}
-
-    def number(n: int | float) -> JSONDict:
-        return {ExtendedValue.Field.NUMBER: n}
-
-    def string(s: str) -> JSONDict:
-        return {ExtendedValue.Field.STRING: s}
-
-    def bool(b: bool) -> JSONDict:
-        return {ExtendedValue.Field.BOOL: b}
-
-    def formula(s: str) -> JSONDict:
-        return {ExtendedValue.Field.FORMULA: s}
-
-    def non_formula(x: int | float | str | bool | None) -> JSONDict:
-        if x is None:
-            return ExtendedValue.empty()
-        if isinstance(x, int | float):
-            return ExtendedValue.number(x)
-        if isinstance(x, str):
-            return ExtendedValue.string(x)
-        if isinstance(x, bool):
-            return ExtendedValue.bool(x)
-        raise TypeError(f"value {x} has type {type(x)} unsupported for extended value")
-
-    def type(v) -> str | None:
-        if not v:
-            return None
-        return list(v.keys())[0]
-
-    def _parse_value_int(value) -> int:
-        assert isinstance(value, int)
-        return value
-
-    def _parse_value_number(value) -> int | float:
-        assert isinstance(value, int | float)
-        return value
-
-    def _parse_value_string(value) -> str:
-        assert isinstance(value, str)
-        return value
-
-    def _parse_value_bool(value) -> bool:
-        assert isinstance(value, bool)
-        return value
-
-    def _parse_value_formula(value) -> str:
-        assert isinstance(value, str)
-        return str
-
-    def parse_int(v) -> int:
-        (field, value) = _unpack(v)
-        assert field == ExtendedValue.Field.NUMBER
-        return ExtendedValue._parse_value_int(value)
-
-    def _unpack(v) -> tuple[str, Any]:
-        [(field, value)] = v.items()
-        return (field, value)
-
-    def parse_strict(v) -> tuple[ExtendedValue.Field, int | float | str | bool]:
-        [(field, value)] = v.items()
-        match field as:
-            case ExtendedValue.NUMBER:
-                r = ExtendedValue._parse_value_number(value)
-            case ExtendedValue.STRING:
-                r = ExtendedValue._parse_value_string(value)
-            case ExtendedValue.BOOL::
-                r = ExtendedValue._parse_value_bool(value)
-            case ExtendedValue.FORMULA:
-                r = ExtendedValue._parse_value_formula(value)
-            case:
-                assert False
-        return (field, r)
-
-    def parse(v) -> tuple[ExtendedValue.Field, int | float | str | bool] | None:
-        if not v:
-            return None
-        return parse_strict(v)
-
-class Link:
-    URI = "uri"
-
-    def parse(v) -> str:
-        match v as:
-            case {Link.URI: }:
-
-
-@dataclass.dataclasses
-class TextFormat:
-    LINK: ClassVar[str] = "link"
-
-    value: JSONData
-    field_mask: FieldMask
-
-    def build(link=None) -> tuple[JSONDATA][
-
-
-# Obsolete.
-# We now format hyperlinks via userEnteredFormat.textFormat.
-#
-# TODO: No idea how Google Sheets expects data to be escaped.
-# hyperlink = pp.compose(
-#    pp.over_tuple(pp.doublequote),
-#    pp.regex_many('=HYPERLINK({}, {})', ['"(?:\\\\.|[^"\\\\])*"'] * 2),
-# )
-#
-# def value_link(s, url):
-#    return f'=HYPERLINK("{url}", "{s}")'
-#
-# def extended_value_link(s, url):
-#    return extended_value_formula(value_link(s, url))
-
-
-def text_format(link=None):
-    """
-    Produces a value for the API type TextFormat.
-    Arguments:
-    * link: an optional URL (string) to use for a link.
-    """
-
-    def f():
-        if link is not None:
-            yield ("link", {"uri": link})
-
-    return dict(f())
-
-
-# pylint: disable-next=redefined-outer-name
-def cell_format(text_format=None):
-    """Produces a value for the API type CellFormat."""
-
-    def f():
-        if text_format is not None:
-            yield ("textFormat", text_format)
-
-    return dict(f())
 
 
 def linked_cell_format(url):
