@@ -346,7 +346,10 @@ def parens(s):
     return f"({s})"
 
 
-JSONDict = dict[str, Any]
+JSON = Any
+"""A JSON type."""
+
+JSONDict = dict[str, JSON]
 """Type for a JSON dictionary."""
 
 
