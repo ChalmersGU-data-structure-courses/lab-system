@@ -618,9 +618,10 @@ class Lab:
     def groups(self):
         def group_ids():
             for project in gitlab_.tools.list_all(self.gitlab_group.lazy.projects):
-                id = self.group_slug_to_id(project.path)
-                if id is not None:
-                    yield id
+                if project.marked_for_deletion_at is None:
+                    id = self.group_slug_to_id(project.path)
+                    if id is not None:
+                        yield id
 
         return {id: group_project.GroupProject(self, id) for id in group_ids()}
 
