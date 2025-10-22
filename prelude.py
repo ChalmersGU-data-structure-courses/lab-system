@@ -14,12 +14,16 @@ logging.getLogger().setLevel(logging.INFO)
 #   Instantiate systemd_unit_file.service.template as e.g. <course code>/lab-system.service.
 
 # ACION: instantiate and uncomment below statements for concrete instance.
-# import <course code>.config as config
+import dat516.config as config
 
-# print('Defined variables:')
+print('Defined variables:')
 
-# c = course.Course(config, '<course code>')
-# print(f"  c: Course <{c.dir}>")
+c = course.Course(config, 'dat516')
+print(f"  c: {c}")
+(lab1, lab2, lab3) = c.labs.values()
+print(f"  lab1: {lab1}")
+print(f"  lab2: {lab2}")
+print(f"  lab3: {lab3}")
 
 # l = c.labs[1]
 # print(f"  l: Lab <{l.name}>")

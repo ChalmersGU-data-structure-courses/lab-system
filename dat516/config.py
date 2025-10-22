@@ -189,7 +189,7 @@ grading_via_merge_request = SimpleNamespace(
 )
 
 # Root of the lab repository.
-_lab_repo = this_dir.parent / 'labs'
+# _lab_repo = this_dir.parent / 'labs'
 
 # Parsing and printing of references to a lab group.
 _group = SimpleNamespace(
