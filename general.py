@@ -203,6 +203,13 @@ def starfilter(f, xs):
             yield x
 
 
+def bitwise_union(xs):
+    r = 0
+    for x in xs:
+        r = r | x
+    return r
+
+
 def sdict(xs, strict=True, format_value=None):
     r = {}
     for k, v in xs:
@@ -860,7 +867,7 @@ def now():
     return datetime.now(tz=timezone.utc)
 
 
-## # Network protocols
+# ## Network protocols
 
 
 # TODO: move elsewhere.

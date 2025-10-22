@@ -69,9 +69,15 @@ def closing_fd(fd):
 
 @contextlib.contextmanager
 def dir_fd(path, **kwargs):
-    dir_fd = os.open(path, flags=os.O_PATH | os.O_DIRECTORY | os.O_CLOEXEC, **kwargs)
-    with closing_fd(dir_fd):
-        yield dir_fd
+    def flags():
+        with contextlib.suppress(AttributeError):
+            yield os.O_PATH
+        yield os.O_DIRECTORY
+        yield os.O_CLOEXEC
+
+    fd = os.open(path, flags=general.bitwise_union(flags()), **kwargs)
+    with closing_fd(fd):
+        yield fd
 
 
 # ## File locking.
