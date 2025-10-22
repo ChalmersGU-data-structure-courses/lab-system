@@ -333,7 +333,7 @@ class CourseUsers:
 
     @staticmethod
     def has_some_role(user, roles):
-        return any(enrollment["role"] in roles for enrollment in user["enrollments"])
+        return any(enrollment.type in roles for enrollment in user["enrollments"])
 
     @classmethod
     def _is_student(cls, user):
