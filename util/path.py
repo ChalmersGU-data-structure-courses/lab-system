@@ -70,7 +70,13 @@ def closing_fd(fd):
 
 @contextlib.contextmanager
 def dir_fd(path, **kwargs):
-    fd = os.open(path, flags=os.O_PATH | os.O_DIRECTORY | os.O_CLOEXEC, **kwargs)
+    def flags():
+        with contextlib.suppress(AttributeError):
+            yield os.O_PATH
+        yield os.O_DIRECTORY
+        yield os.O_CLOEXEC
+
+    fd = os.open(path, flags=util.general.bitwise_union(flags()), **kwargs)
     with closing_fd(fd):
         yield fd
 

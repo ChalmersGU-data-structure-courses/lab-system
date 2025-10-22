@@ -221,6 +221,13 @@ def starfilter(f, xs):
             yield x
 
 
+def bitwise_union(xs):
+    r = 0
+    for x in xs:
+        r = r | x
+    return r
+
+
 class SDictException(ValueError):
     def __init__(self, key, value_a, value_b, format_value=None):
         self.key = key
@@ -911,7 +918,7 @@ def now():
     return datetime.now(tz=timezone.utc)
 
 
-## # Network protocols
+# ## Network protocols
 
 
 # TODO: move elsewhere.
