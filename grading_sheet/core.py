@@ -836,7 +836,7 @@ class GradingSheet[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outco
     def requests_insert_groups(
         self,
         groups: Iterable[GroupIdentifier],
-        group_link: Callable[[GroupIdentifier], str | None] = lambda _: None,
+        group_link: Callable[[GroupIdentifier], str | None] | None = None,
     ) -> Iterable[google_tools.general.Request]:
         """
         Iterable of requests for inserting groups.
@@ -851,6 +851,10 @@ class GradingSheet[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outco
           These are used to turn the added group cells into links.
         """
         self.logger.debug("creating rows for potentially new groups...")
+
+        if group_link is None:
+            def group_link(_id):
+                return None
 
         # Are there no previous group rows?
         # In that case, self.group_range denotes a non-empty range of empty rows.
@@ -927,7 +931,7 @@ class GradingSheet[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outco
     def setup_groups(
         self,
         groups: Iterable[GroupIdentifier],
-        group_link: Callable[[GroupIdentifier], str | None] = lambda _: None,
+        group_link: Callable[[GroupIdentifier], str | None] | None = None,
         delete_previous: bool = False,
     ):
         """
@@ -988,7 +992,7 @@ class GradingSheet[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outco
     def create_and_setup_groups(
         self,
         group_ids: Iterable[GroupIdentifier] | None = None,
-        group_link: Callable[[GroupIdentifier], str | None] = lambda _: None,
+        group_link: Callable[[GroupIdentifier], str | None] | None = None,
         exist_ok: bool = False,
     ) -> None:
         """
@@ -1114,7 +1118,7 @@ class GradingSheet[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outco
     def ensure_and_setup_groups(
         self,
         group_ids: Iterable[GroupIdentifier] | None = None,
-        group_link: Callable[[GroupIdentifier], str | None] = lambda _: None,
+        group_link: Callable[[GroupIdentifier], str | None] | None = None,
         exist_ok: bool = False,
     ) -> None:
         """
