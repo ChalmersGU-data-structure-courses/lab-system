@@ -148,18 +148,83 @@ class StudentConnectorGroupSet(StudentConnector):
         return True
 
 
-class LabUpdateListener[GroupIdentifier](contextlib.AbstractContextManager):
+class LabUpdateListener[GroupIdentifier]:
     """
     A listener for lab updates.
+    Currently, there are:
+    * new request,
+    * new response.
     """
 
-    def group_changed(self, id: GroupIdentifier) -> None:
+    def groups_changed_preparation(self, ids: list[GroupIdentifier]) -> None:
         """
-        Called when a change occurs in a group.
-        Currently, these are:
-        * new request
-        * new response
+        Called before the collection repository is pushed.
+        Use this to add tags.
         """
+
+    def groups_changed(self, ids: list[GroupIdentifier]) -> None:
+        """
+        Called after the collection repository is pushed.
+        Use this to update other systems.
+        """
+
+
+class LabUpdateManager[GroupIdentifier]:
+    lab: "Lab[GroupIdentifier]"
+    dirty: set[GroupIdentifier]
+    update_listeners: set[LabUpdateListener[GroupIdentifier]]
+
+    def __init__(self, lab):
+        self.lab = lab
+        self.read()
+        self.update_listeners = set()
+
+    @functools.cached_property
+    def pp(self) -> util.print_parse.PrintParse[set[GroupIdentifier], str]:
+        return util.print_parse.compose(
+            util.print_parse.SetAsList(),
+            util.print_parse.json_coding_nice,
+        )
+
+    @functools.cached_property
+    def path(self) -> Path:
+        return self.lab.dir / "update_groups.json"
+
+    def read(self):
+        try:
+            self.dirty = self.pp.parse(self.path.read_text())
+        except FileNotFoundError:
+            self.dirty = set()
+
+    def write(self):
+        if self.dirty:
+            self.path.write_text(self.pp.print(self.dirty))
+        else:
+            self.path.unlink(missing_ok=True)
+
+    def mark_dirty(self, ids: Iterable[GroupIdentifier]):
+        """
+        Called by RequestAndResponses.process_request().
+        Called in Lab upon response issues or grading merge request updates.
+        """
+        self.dirty.update(ids)
+        self.write()
+
+    def process(self, deadline=None):
+        # Clear group members cache.
+        for id in self.dirty:
+            self.lab.groups[id].members_clear()
+
+        for listener in self.update_listeners:
+            listener.groups_changed_prepare(list(self.dirty), deadline=deadline)
+
+        self.lab.repo_push()
+
+        for listener in self.update_listeners:
+            listener.groups_changed(list(self.dirty), deadline=deadline)
+
+        self.dirty.clear()
+        self.write()
 
 
 class Lab[LabIdentifier, GroupIdentifier]:
@@ -219,7 +284,7 @@ class Lab[LabIdentifier, GroupIdentifier]:
     The format of this argument is documented in gitlab.config.py.template under _lab_config.
     """
 
-    update_listeners: dict[int, LabUpdateListener[GroupIdentifier]]
+    update_listeners: set[LabUpdateListener[GroupIdentifier]]
     """
     Dictionary of registered update listeners.
     Keyed by their object identity.
@@ -246,12 +311,11 @@ class Lab[LabIdentifier, GroupIdentifier]:
             Local directory used as local copy of the collection repository.
             Only its parent directory has to exist.
         * deadline:
-            Optional deadline for submissioms.
+            Optional deadline for submissions.
             If set, submissions to consider for the grading sheet
             and live submissions table are limited by this deadline.
             It is up to lab handlers how they want to treat late submissions.
-            At the moment, all lab handler implementations
-            do not inspect the lab deadline.
+            At the moment, all lab handler implementations do not inspect the lab deadline.
         """
         self.logger = logger
         self.course = course
@@ -317,23 +381,7 @@ class Lab[LabIdentifier, GroupIdentifier]:
             util.print_parse.qualify_with_slash,
         )
 
-        # Listeners
-        self.update_listeners = {}
-
-    def update_listener_register(self, listener: GroupIdentifier) -> None:
-        """
-        Register an update listener.
-        """
-        key = id(listener)
-        if key in self.update_listeners:
-            raise ValueError(f"listener {key} is already registered")
-        self.update_listeners[key] = listener
-
-    def update_listener_unregister(self, listener: GroupIdentifier) -> None:
-        """
-        Unregister an update listener.
-        """
-        del self.update_listeners[id(listener)]
+        self.update_manager = LabUpdateManager(self)
 
     def solution_create_and_populate(self):
         """
@@ -1272,44 +1320,6 @@ class Lab[LabIdentifier, GroupIdentifier]:
             else group_ids
         )
 
-    def update_submission_systems(self, group_ids=None, deadline=None):
-        """
-        Update the submission systems for specified groups.
-        The submission systems are:
-        - collection project on Chalmers GitLab,
-        - live submissions table (if set up),
-        - grading sheet.
-
-        Arguments:
-        * group_ids:
-            Iterable for group_ids to restrict updates to.
-            Defaults to all groups.
-        * deadline:
-            Passed to update_grading_sheet.
-            If set, overrides self.deadline.
-        """
-        if group_ids is None:
-            group_ids = self.groups.keys()
-        group_ids = tuple(group_ids)
-
-        # Clear group members cache.
-        for id in group_ids:
-            self.groups[id].members_clear()
-
-        # Update submission systems.
-        if hasattr(self, "live_submissions_table"):
-            self.live_submissions_table.update_rows(group_ids=group_ids)
-        self.repo_push()
-        if group_ids:
-            if hasattr(self, "live_submissions_table"):
-                self.update_live_submissions_table()
-            self.update_grading_sheet(group_ids=group_ids, deadline=deadline)
-
-        for update_listener in self.update_listeners.values():
-            with update_listener:
-                for id in group_ids:
-                    update_listener.group_changed(id)
-
     def initial_run(self, deadline=None):
         """
         Does an initial run of processing everything.
@@ -1327,9 +1337,10 @@ class Lab[LabIdentifier, GroupIdentifier]:
             self.repo_fetch_all()
             self.parse_request_tags(False)
             self.process_requests()
-        self.update_submission_systems(deadline=deadline)
+        self.update_manager.mark_dirty(self.groups.keys())
+        self.update_manager.process(deadline=deadline)
 
-    def refresh_lab(self):
+    def refresh_lab(self, deadline=None):
         """
         Refresh group project requests and responses.
         Should be called regularly even if webhooks are in place.
@@ -1350,10 +1361,14 @@ class Lab[LabIdentifier, GroupIdentifier]:
         # Update submission system.
         self.logger.info(f"Groups with new submissions: {new_submissions}")
         self.logger.info(f"Groups with review updates: {review_updates}")
-        self.update_submission_systems(group_ids=review_updates | new_submissions)
+        self.update_manager.mark_dirty(review_updates)
+        self.update_manager.process(deadline=deadline)
 
     def refresh_group(
-        self, group, refresh_issue_responses=False, refresh_grading_merge_request=False
+        self,
+        group,
+        refresh_issue_responses=False,
+        refresh_grading_merge_request=False,
     ):
         """
         Refresh requests and responses in a single group in this lab.
@@ -1404,14 +1419,11 @@ class Lab[LabIdentifier, GroupIdentifier]:
             self.logger.info("New submissions received.")
         if grading_updates:
             self.logger.info("Grading updates received.")
-        self.update_submission_systems(
-            group_ids=filter(lambda _: grading_updates or new_submissions, [group.id])
-        )
 
-    def update_grading_sheet_and_live_submissions_table(self, deadline=None):
-        """Does what it says."""
-        self.setup(deadline=deadline)
-        self.initial_run(deadline=deadline)
+        if grading_updates:
+            self.update_manager.mark_dirty([group.id])
+            self.update_
+        self.update_submission_systems()
 
     def checkout_tag_hierarchy(self, dir):
         """
