@@ -9,7 +9,7 @@ import lab
 import live_submissions_table
 
 
-class LiveSubmissionsTable[LabId, GroupId](lab.LabUpdateListener[GroupId]):
+class LiveSubmissionsTableLabUpdateListener[LabId, GroupId](lab.LabUpdateListener[GroupId]):
     lab: lab.Lab[LabId, GroupId]
     logger: logging.Logger
     table: live_submissions_table.LiveSubmissionsTable

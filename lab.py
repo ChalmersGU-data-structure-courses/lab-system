@@ -18,10 +18,8 @@ import gitlab.v4.objects.tags
 import events
 import gitlab_.tools
 import google_tools.sheets
-import grading_sheet
 import grading_via_merge_request
 import group_project
-import live_submissions_table
 import util.general
 import util.git
 import util.path
@@ -263,22 +261,14 @@ class Lab[LabIdentifier, GroupIdentifier]:
     - repo_push
     - remote_tags
 
-    It also manages a grading sheet on Google Docs.
-    Related attributes and methods:
-    - grading_sheet
-    - update_grading_sheet
-
-    It also manages a live submissions table on Canvas.
-    Related attributes and methods:
-    - setup_live_submissions_table(self, deadline = None):
-    - self.live_submissions_table.update_rows()
-    - update_live_submissions_table(self):
+    It also optionally manages:
+    * a grading sheet on Google Docs.
+    * a live submissions table on Canvas.
+    See setup(self, use_grading_sheet, use_live_submissions_table).
 
     It also provides handling for events.LabEvent.
     Related attributes and methods:
     - handle_event
-
-    See update_grading_sheet_and_live_submissions_table for an example interaction.
 
     This class is configured by the config argument to its constructor.
     The format of this argument is documented in gitlab.config.py.template under _lab_config.
@@ -1043,16 +1033,12 @@ class Lab[LabIdentifier, GroupIdentifier]:
         for handler in self.config.request_handlers.values():
             handler.setup(self)
 
-    def setup_live_submissions_table(self, deadline=None):
-        """
-        Setup the live submissions table.
-        Takes an optional deadline parameter for limiting submissions to include.
-        If not set, we use self.deadline.
-        Request handlers should be set up before calling this method.
-        """
-        self.update_manager.listeners.add(LiveSubmissionsTable(self, deadline=deadline))
-
-    def setup(self, deadline=None, use_live_submissions_table=True):
+    def setup(
+        self,
+        deadline=None,
+        use_grading_sheet=True,
+        use_live_submissions_table=True,
+    ):
         """
         General setup method.
         Call before any request processing is started.
@@ -1061,16 +1047,31 @@ class Lab[LabIdentifier, GroupIdentifier]:
         * deadline:
             Passed to setup_live_submissions_table.
             If set, overrides self.deadline.
+        * use_grading_sheet:
+            Whether to maintain an overview sheet of submissions and their outcome
         * use_live_submissions_table:
             Whether to build and update a live submissions table
             of submissions needing reviews (by graders).
         """
+        from grading_sheet.listener import GradingSheetLabUpdateListener
+        from live_submissions_table.listener import (
+            LiveSubmissionsTableLabUpdateListener,
+        )
+
         if deadline is None:
             deadline = self.deadline
 
-        self.setup_request_handlers()
-        if use_live_submissions_table:
-            self.setup_live_submissions_table(deadline=self.deadline)
+        def listeners():
+            if use_grading_sheet:
+                yield GradingSheetLabUpdateListener(
+                    self,
+                    self.course.grading_spreadsheet,
+                    deadline=deadline,
+                )
+            if use_live_submissions_table:
+                LiveSubmissionsTable(self, deadline=deadline)
+
+        self.update_manager.listeners = set(listeners())
 
     def parse_request_tags(self, from_gitlab=True):
         """
@@ -1327,7 +1328,6 @@ class Lab[LabIdentifier, GroupIdentifier]:
 
         Arguments:
         * deadline:
-            Passed to update_grading_sheet.
             If set, overrides self.deadline.
         """
         with contextlib.ExitStack() as stack:
