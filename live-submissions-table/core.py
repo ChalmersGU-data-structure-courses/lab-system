@@ -1,5 +1,7 @@
 import abc
 import collections
+import dataclasses
+import datetime
 import logging
 import types
 from pathlib import Path
@@ -32,7 +34,7 @@ def format_url(text, url):
     return dominate.tags.a(text, href=url, target="_blank")
 
 
-path_data = Path(__file__).parent / "live-submissions-table"
+path_data = Path(__file__) / "live-submissions-table"
 path_data_default_css = path_data / "default.css"
 path_data_sort_js = path_data / "sort.js"
 path_data_sort_css = path_data / "sort.css"
@@ -645,12 +647,9 @@ def with_standard_columns(columns=None, with_solution=True, choose_solution=None
 #                     dominate.tags.attr(_class = 'grayed-out')
 
 
-Config = collections.namedtuple(
-    "Config",
-    ["deadline", "sort_order"],
-    defaults=[None, ["query-number", "date", "group"]],
-)
-Config.__doc__ = """
+@dataclasses.dataclass
+class Config:
+    """
     Configuration for a live submissions table.
     * deadline:
         The deadline to which to restrict submissions to.
@@ -664,6 +663,11 @@ Config.__doc__ = """
         Unknown column names are currently ignored,
         but this feature should not be relied upon.
     """
+
+    deadline: datetime.datetime | None = None
+    sort_order: list[str] = dataclasses.field(
+        default_factory=lambda: ["query-number", "date", "group"]
+    )
 
 
 class LiveSubmissionsTable:
