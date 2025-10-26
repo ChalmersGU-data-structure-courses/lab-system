@@ -162,7 +162,7 @@ class LabUpdateListener[GroupIdentifier](contextlib.AbstractContextManager):
         """
 
 
-class Lab[GroupIdentifier]:
+class Lab[LabIdentifier, GroupIdentifier]:
     """
     This class abstracts over a single lab in a course.
     Each instance is managed by an instance of course.Course.
@@ -228,7 +228,7 @@ class Lab[GroupIdentifier]:
     def __init__(
         self,
         course,
-        id,
+        id: LabIdentifier,
         config=None,
         dir=None,
         deadline=None,
