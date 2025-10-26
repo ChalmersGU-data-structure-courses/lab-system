@@ -146,27 +146,6 @@ class StudentConnectorGroupSet(StudentConnector):
         return True
 
 
-class LabUpdateListener[GroupIdentifier]:
-    """
-    A listener for lab updates.
-    Currently, there are:
-    * new request,
-    * new response.
-    """
-
-    def groups_changed_preparation(self, ids: list[GroupIdentifier]) -> None:
-        """
-        Called before the collection repository is pushed.
-        Use this to add tags.
-        """
-
-    def groups_changed(self, ids: list[GroupIdentifier]) -> None:
-        """
-        Called after the collection repository is pushed.
-        Use this to update other systems.
-        """
-
-
 class LabUpdateManager[GroupIdentifier]:
     lab: "Lab[GroupIdentifier]"
     dirty: set[GroupIdentifier]
