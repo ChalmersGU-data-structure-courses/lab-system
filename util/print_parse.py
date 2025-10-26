@@ -141,6 +141,14 @@ def on_parse[T](parse: Callable[[T], T]) -> PrinterParser[T, T]:
     )
 
 
+class SetAsList[X](PrinterParser[set[X], list[X]]):
+    def print(self, xs, /):
+        return list(xs)
+
+    def parse(self, xs, /):
+        return set(xs)
+
+
 lower = on_parse(str.lower)
 
 
