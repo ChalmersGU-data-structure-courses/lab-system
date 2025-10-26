@@ -286,13 +286,6 @@ class Lab[LabIdentifier, GroupIdentifier]:
         # Whether we have updated the repository and it needs to be pushed.
         self.repo_updated = False
 
-        # Other local data.
-        self.file_live_submissions_table = self.dir / "live-submissions-table.html"
-        self.file_live_submissions_table_staging = util.path.add_suffix(
-            self.file_live_submissions_table,
-            ".staging",
-        )
-
         if self.config.grading_via_merge_request:
             if self.config.multi_language is None:
                 self.grading_via_merge_request_setup_data = (
@@ -1009,20 +1002,7 @@ class Lab[LabIdentifier, GroupIdentifier]:
         If not set, we use self.deadline.
         Request handlers should be set up before calling this method.
         """
-        if deadline is None:
-            deadline = self.deadline
-        config = live_submissions_table.Config(deadline=deadline)
-
-        # TODO:
-        # Find better architecture that avoids late assignments.
-        # Currently, we rely on ugly checks hasattr(self, "live_submissions_table").
-        # These decide if a live submissions table is enabled.
-        # pylint: disable-next=attribute-defined-outside-init
-        self.live_submissions_table = live_submissions_table.LiveSubmissionsTable(
-            self,
-            config=config,
-            column_types=self.submission_handler.grading_columns,
-        )
+        self.update_manager.listeners.add(LiveSubmissionsTable(self, deadline=deadline))
 
     def setup(self, deadline=None, use_live_submissions_table=True):
         """
@@ -1257,74 +1237,6 @@ class Lab[LabIdentifier, GroupIdentifier]:
         for group in self.groups_known():
             if group.submission_current(deadline=deadline) is not None:
                 yield group.id
-
-    @contextlib.contextmanager
-    def live_submissions_table_staging_manager(self):
-        try:
-            yield
-        finally:
-            self.file_live_submissions_table_staging.unlink(missing_ok=True)
-
-    def update_live_submissions_table(self, group_ids=None):
-        """
-        Updates the live submissions table on Canvas.
-        Before calling this method, all group rows in the
-        live submissions table need to have been updated.
-
-        See LiveSubmissionsTable.build for argument descriptions.
-        """
-        self.logger.info("Updating live submissions table")
-        with self.live_submissions_table_staging_manager():
-            self.live_submissions_table.build(
-                self.file_live_submissions_table_staging,
-                group_ids=group_ids,
-            )
-            if util.path.file_content_eq(
-                self.file_live_submissions_table_staging,
-                self.file_live_submissions_table,
-                missing_ok_b=True,
-            ):
-                self.logger.debug(
-                    "Live submissions table has not changed,"
-                    " skipping upload to Canvas."
-                )
-                self.file_live_submissions_table_staging.unlink()
-            else:
-                # with util.path.temp_dir() as dir:
-                #     shutil.copyfile(self.file_live_submissions_table_staging, 'index.html')
-                #     tree = util.git.create_tree_from_dir(dir)
-                #     try:
-                #         parents = [self.repo.heads[self.head_live_submissions_table].commit]
-                #     except IndexError:
-                #         parents = []
-                #     commit = git.Commit.create_from_tree(
-                #         self.repo,
-                #         tree,
-                #         'Update live submissions table.',
-                #         parents,
-                #     )
-                #     self.repo.create_head(self.head_live_submissions_table, commit, force = True)
-                #     self.repo_updated = True
-                #     self.repo_push()
-                self.logger.info("Posting live submissions table to Canvas")
-                target = self.config.canvas_path_awaiting_grading
-                folder_id = self.course.canvas_course.get_folder_by_path(
-                    target.parent
-                ).id
-                # self.course.canvas_course.post_file(
-                #     self.file_live_submissions_table_staging,
-                #     folder_id,
-                #     target.name,
-                # )
-                # Workaround for https://github.com/instructure/canvas-lms/issues/2309:
-                with util.path.temp_file() as path:
-                    data = self.file_live_submissions_table_staging.read_text()
-                    data = data + "<!-- " + str(random.randbytes(16)) + " -->"
-                    path.write_text(data)
-                    self.course.canvas_course.post_file(path, folder_id, target.name)
-                self.file_live_submissions_table_staging.replace(
-                    self.file_live_submissions_table,
-                )
 
     def parse_issue(self, issue):
         request_types = self.config.request.__dict__
