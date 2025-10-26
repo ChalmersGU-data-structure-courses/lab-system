@@ -7,20 +7,20 @@ import google_tools.sheets
 import gitlab_.tools
 
 
-class GradingSheetLabUpdateListener[LabIdentifier, GroupIdentifier, Outcome](
-    lab_.LabUpdateListener[GroupIdentifier]
+class GradingSheetLabUpdateListener[LabId, GroupId, Outcome](
+    lab_.LabUpdateListener[GroupId]
 ):
-    lab: lab_.Lab[LabIdentifier, GroupIdentifier]
-    spreadsheet: grading_sheet.GradingSpreadsheet[LabIdentifier]
-    sheet: grading_sheet.GradingSheet[GroupIdentifier, Outcome]
+    lab: lab_.Lab[LabId, GroupId]
+    spreadsheet: grading_sheet.GradingSpreadsheet[LabId]
+    sheet: grading_sheet.GradingSheet[GroupId, Outcome]
 
-    ids: set[GroupIdentifier]
+    ids: set[GroupId]
     needed_num_queries: int
 
     def __init__(
         self,
-        lab: lab_.Lab[LabIdentifier, GroupIdentifier],
-        grading_spreadsheet: grading_sheet.GradingSpreadsheet[GroupIdentifier, Outcome],
+        lab: lab_.Lab[LabId, GroupId],
+        grading_spreadsheet: grading_sheet.GradingSpreadsheet[GroupId, Outcome],
         deadline=None,
     ):
         self.lab = lab
@@ -31,7 +31,7 @@ class GradingSheetLabUpdateListener[LabIdentifier, GroupIdentifier, Outcome](
         self.id = set()
         self.needed_num_queries = 0
 
-    def group_changed(self, id: GroupIdentifier) -> None:
+    def group_changed(self, id: GroupId) -> None:
         self.ids.add(id)
 
     def __enter__(self):
@@ -43,7 +43,7 @@ class GradingSheetLabUpdateListener[LabIdentifier, GroupIdentifier, Outcome](
 
         self.ids = set()
 
-    def include_group(self, id: GroupIdentifier) -> bool:
+    def include_group(self, id: GroupId) -> bool:
         """
         We include a group in the grading sheet if it is a student group with a submission.
         Extra groups to include can be configured in the grading sheet config using:
@@ -59,13 +59,13 @@ class GradingSheetLabUpdateListener[LabIdentifier, GroupIdentifier, Outcome](
             or group.non_empty()
         )
 
-    def group_link(self, id: GroupIdentifier) -> str | None:
+    def group_link(self, id: GroupId) -> str | None:
         if self.lab.student_connector.gdpr_link_problematic():
             return None
 
         return self.lab.groups[id].project.get.web_url
 
-    def update(self, ids: Iterable[GroupIdentifier]) -> None:
+    def update(self, ids: Iterable[GroupId]) -> None:
         """
         Update the grading sheet.
 
