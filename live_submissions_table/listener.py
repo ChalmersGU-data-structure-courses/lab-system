@@ -6,10 +6,13 @@ import random
 import util.path
 
 import lab
+import lab_interfaces
 import live_submissions_table
 
 
-class LiveSubmissionsTableLabUpdateListener[LabId, GroupId](lab.LabUpdateListener[GroupId]):
+class LiveSubmissionsTableLabUpdateListener[LabId, GroupId](
+    lab_interfaces.LabUpdateListener[GroupId]
+):
     lab: lab.Lab[LabId, GroupId]
     logger: logging.Logger
     table: live_submissions_table.LiveSubmissionsTable

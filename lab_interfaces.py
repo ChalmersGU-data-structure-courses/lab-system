@@ -174,3 +174,24 @@ class HandlingException(Exception, util.markdown.Markdown):
     Raised for errors caused by a problems with a submission.
     Should be reportable in issues in student repositories.
     """
+
+
+class LabUpdateListener[GroupId]:
+    """
+    A listener for lab updates.
+    Currently, these are:
+    * new request,
+    * new response.
+    """
+
+    def groups_changed_preparation(self, ids: list[GroupId]) -> None:
+        """
+        Called before the collection repository is pushed.
+        Use this to add tags.
+        """
+
+    def groups_changed(self, ids: list[GroupId]) -> None:
+        """
+        Called after the collection repository is pushed.
+        Use this to update other systems.
+        """
