@@ -1,32 +1,31 @@
 from collections.abc import Iterable
-from typing import Callable
 
-import lab
+import lab as lab_
 import grading_sheet
 import util.general
 import google_tools.sheets
 import gitlab_.tools
 
 
-class GradingSheetLabUpdateListener[GroupIdentifier, Outcome](
-    lab.LabUpdateListener[GroupIdentifier]
+class GradingSheetLabUpdateListener[LabIdentifier, GroupIdentifier, Outcome](
+    lab_.LabUpdateListener[GroupIdentifier]
 ):
-    grading_spreadsheet: grading_sheet.GradingSpreadsheet[GroupIdentifier, Outcome]
-    lab: lab.Lab[GroupIdentifier]
-
-    grading_sheet: grading_sheet.GradingSheet[GroupIdentifier, Outcome]
+    lab: lab_.Lab[LabIdentifier, GroupIdentifier]
+    spreadsheet: grading_sheet.GradingSpreadsheet[LabIdentifier]
+    sheet: grading_sheet.GradingSheet[GroupIdentifier, Outcome]
 
     ids: set[GroupIdentifier]
     needed_num_queries: int
 
     def __init__(
         self,
-        lab: lab.Lab[GroupIdentifier],
+        lab: lab_.Lab[LabIdentifier, GroupIdentifier],
         grading_spreadsheet: grading_sheet.GradingSpreadsheet[GroupIdentifier, Outcome],
         deadline=None,
     ):
         self.lab = lab
-        self.grading_sheet = grading_sheet
+        self.spreadsheet = grading_spreadsheet
+        self.sheet = self.spreadsheet.grading_sheets[self.lab.id]
         self.deadline = deadline
 
         self.id = set()
@@ -50,21 +49,21 @@ class GradingSheetLabUpdateListener[GroupIdentifier, Outcome](
         Extra groups to include can be configured in the grading sheet config using:
         * include_groups_with_no_submission
         """
-        group = lab.groups[id]
+        group = self.lab.groups[id]
         if not group.is_known or group.is_solution:
             return False
 
         return (
             list(group.submissions_relevant(self.deadline))
-            or self.grading_sheet.config.include_groups_with_no_submission
+            or self.sheet.config.include_groups_with_no_submission
             or group.non_empty()
         )
 
-    def group_link(self, id: GroupIdentifier) -> str:
+    def group_link(self, id: GroupIdentifier) -> str | None:
         if self.lab.student_connector.gdpr_link_problematic():
             return None
 
-        return self.labs.groups[id].project.get.web_url
+        return self.lab.groups[id].project.get.web_url
 
     def update(self, ids: Iterable[GroupIdentifier]) -> None:
         """
@@ -73,26 +72,25 @@ class GradingSheetLabUpdateListener[GroupIdentifier, Outcome](
         Arguments:
         * ids: groups to update.
         """
-        ids = [id for id in ids if self.include_group_in_grading_sheet(id)]
-        groups = [self.labs.groups[id] for id in ids]
+        ids = {id for id in ids if self.include_group(id)}
+        groups = [self.lab.groups[id] for id in ids]
 
         # Refresh grading sheet cache.
-        self.grading_sheet.clear_cache()
+        self.sheet.clear_cache()
 
-        # Ensure grading sheet has rows for all required groups.
-        self.grading_sheet.setup_groups(
-            groups=ids,
-            group_link=self.grading_sheet_group_link,
-        )
+        # Setup groups.
+        self.sheet.setup_groups(groups=ids, group_link=self.group_link)
 
         # Ensure grading sheet has sufficient query group columns.
-        it = (
+        query_counts = (
             util.general.ilen(group.submissions_relevant(self.deadline))
             for group in groups
         )
-        self.grading_sheet.ensure_num_queries(max(it, default=0))
+        num_queries = max(query_counts, default=0)
+        self.sheet.ensure_num_queries(num_queries)
 
-        request_buffer = self.grading_spreadsheet.create_request_buffer()
+        # Update the grading sheet.
+        request_buffer = self.spreadsheet.create_request_buffer()
         for group in groups:
             for query, submission in enumerate(
                 group.submissions_relevant(self.deadline)
@@ -111,11 +109,11 @@ class GradingSheetLabUpdateListener[GroupIdentifier, Outcome](
                         submission.link,
                     )
 
-                self.grading_sheet.write_query(
+                self.sheet.write_query(
                     request_buffer,
                     group.id,
                     query,
-                    grading_sheet.Query(
+                    self.sheet.Query(
                         submission=google_tools.sheets.cell_link_with_fields(
                             submission.request_name,
                             gitlab_.tools.url_tag_name(
