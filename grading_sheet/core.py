@@ -439,7 +439,7 @@ class GradingSheetData[LabId: Comparable, GroupId: Comparable, Outcome]:
                     if value is None:
                         continue
 
-                    id = _attempt_parse(self.config.group_identifier, value)
+                    id = _attempt_parse(self.config.gdpr_coding.identifier, value)
                     if id is None:
                         continue
 
@@ -451,7 +451,7 @@ class GradingSheetData[LabId: Comparable, GroupId: Comparable, Outcome]:
             format_row = google_tools.sheets.numeral_unbounded.print
             raise SheetParseException(
                 f"duplicate rows {format_row(e.value_a)} and {format_row(e.value_b)}"
-                f" for group {self.config.group_identifier.print(e.key)}"
+                f" for group {self.config.gdpr_coding.identifier.print(e.key)}"
             ) from None
 
     def relevant_columns(self) -> Iterable[int]:
@@ -724,7 +724,7 @@ class GradingSheet[LabId: Comparable, GroupId: Comparable, Outcome]:
 
     def _format_group(self, id: GroupId, link: str | None):
         value = google_tools.sheets.extended_value_string(
-            self.config.group_identifier.print(id)
+            self.config.gdpr_coding.identifier.print(id)
         )
         format = None if link is None else google_tools.sheets.linked_cell_format(link)
         return google_tools.sheets.cell_data(
@@ -864,8 +864,9 @@ class GradingSheet[LabId: Comparable, GroupId: Comparable, Outcome]:
         # We maintain the ordering of the existing group rows.
         # They might not be sorted.
         new = {id for id in groups if not id in self.data.group_rows.keys()}
-        groups_old = sorted(self.data.group_rows.keys())
-        groups_new = sorted(new)
+        sort_key = self.config.gdpr_coding.sort_key
+        groups_old = sorted(self.data.group_rows.keys(), key=sort_key)
+        groups_new = sorted(new, key=sort_key)
 
         # Compute the insertion locations for the new group rows.
         # Sends pairs of an insertion location and a boolean indicating whether to
@@ -891,12 +892,12 @@ class GradingSheet[LabId: Comparable, GroupId: Comparable, Outcome]:
 
         # Compute the requests for inserting rows and setting group column values.
         counter = 0
-        for (row, inherit_from_after), new_ids in sorted(insertions_sorted):
+        for (row, inherit_from_after), new_ids in insertions_sorted:
             row += counter
             for i, id in enumerate(new_ids):
                 self.logger.debug(
                     f"adding row {row + i} for group"
-                    f" {self.config.group_identifier.print(id)}"
+                    f" {self.config.gdpr_coding.identifier.print(id)}"
                 )
 
             range_ = util.general.range_from_size(row, len(new_ids))

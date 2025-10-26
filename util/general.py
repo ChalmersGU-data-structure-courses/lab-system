@@ -165,6 +165,14 @@ def defaulting_to(default, value, key=None):
     return default if value == key else value
 
 
+class Comparable[T](Protocol):
+    """Protocol for a comparable type."""
+
+    @abc.abstractmethod
+    def __lt__(self: T, other: T) -> bool:
+        pass
+
+
 # Bug in pyflakes (TODO: report):
 # ./util.general.py:102:28 local variable 'last' defined in enclosing scope on line 70 referenced before assignment
 # ./util.general.py:106:9 local variable 'last' is assigned to but never used

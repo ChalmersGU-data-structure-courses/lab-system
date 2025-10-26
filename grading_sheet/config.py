@@ -3,16 +3,10 @@ import dataclasses
 from typing import Protocol
 from collections.abc import Collection
 
+import util.general
+import util.gdpr_coding
 import util.print_parse
 from util.print_parse import PrinterParser
-
-
-class Comparable[T](Protocol):
-    """Protocol for a comparable type."""
-
-    @abc.abstractmethod
-    def __lt__(self: T, other: T) -> bool:
-        pass
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
@@ -76,7 +70,7 @@ TEMPLATE_SHEET_TITLES = [
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
-class LabConfig[GroupIdentifier: Comparable, Outcome]:
+class LabConfig[GroupIdentifier, Outcome]:
     """
     Configuration of a lab worksheet in the grading spreadsheet.
     See GradingSheet.
@@ -134,10 +128,9 @@ class LabConfig[GroupIdentifier: Comparable, Outcome]:
     header: HeaderConfig = HeaderConfig()
     """Configuration of the header row."""
 
-    group_identifier: PrinterParser[GroupIdentifier, str]
+    gdpr_coding: util.gdpr_coding.GDPRCoding[GroupIdentifier]
     """
-    Printer-parser for group identifiers.
-    This determines how the group column is formatted.
+    How to format and sort group identifiers in the grading sheet.
     """
 
     outcome: PrinterParser[Outcome, str]
