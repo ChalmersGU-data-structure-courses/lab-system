@@ -24,7 +24,6 @@ logger_default = logging.getLogger(__name__)
 """Default logger for this module."""
 
 
-
 def _attempt_parse[I, O](pp: PrinterParser[I, O], value: O) -> I | None:
     """
     Attempt to parse a value.
@@ -87,7 +86,7 @@ class QueryHeaders(QueryDataclassSingleType[str]):
         )
 
 
-class Query[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outcome]:
+class Query[LabId: Comparable, GroupId: Comparable, Outcome]:
     """
     This class represents a query in a grading worksheet.
     This is parametrized by a group and query index.
@@ -107,14 +106,14 @@ class Query[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outcome]:
     See GradingSheet.requests_write_cell for details.
     """
 
-    grading_sheet: "GradingSheet[LabIdentifier, GroupIdentifier, Outcome]"
-    group_id: GroupIdentifier
+    grading_sheet: "GradingSheet[LabId, GroupId, Outcome]"
+    group_id: GroupId
     query_index: int
 
     def __init__(
         self,
-        grading_sheet: "GradingSheet[LabIdentifier, GroupIdentifier, Outcome]",
-        group_id: GroupIdentifier,
+        grading_sheet: "GradingSheet[LabId, GroupId, Outcome]",
+        group_id: GroupId,
         query_index: int,
     ):
         self.grading_sheet = grading_sheet
@@ -122,7 +121,7 @@ class Query[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outcome]:
         self.query_index = query_index
 
     @property
-    def config(self) -> LabConfig[GroupIdentifier, Outcome]:
+    def config(self) -> LabConfig[GroupId, Outcome]:
         return self.grading_sheet.config
 
     @property
@@ -219,7 +218,7 @@ class SheetMissing(SheetParseException):
     """Raised when a sheet is missing."""
 
 
-class GradingSheetData[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outcome]:
+class GradingSheetData[LabId: Comparable, GroupId: Comparable, Outcome]:
     """
     Helper class for GradingSheet for parsing a grading sheet.
     Attributes are computed lazily and cached.
@@ -229,20 +228,20 @@ class GradingSheetData[LabIdentifier: Comparable, GroupIdentifier: Comparable, O
     * the worksheet title (overriden by the title override of the grading sheet).
     """
 
-    grading_sheet: "GradingSheet[LabIdentifier, GroupIdentifier, Outcome]"
+    grading_sheet: "GradingSheet[LabId, GroupId, Outcome]"
 
     def __init__(
         self,
-        grading_sheet: "GradingSheet[LabIdentifier, GroupIdentifier, Outcome]",
+        grading_sheet: "GradingSheet[LabId, GroupId, Outcome]",
     ):
         self.grading_sheet = grading_sheet
 
     @property
-    def grading_spreadsheet(self) -> "GradingSpreadsheet[LabIdentifier]":
+    def grading_spreadsheet(self) -> "GradingSpreadsheet[LabId]":
         return self.grading_sheet.grading_spreadsheet
 
     @property
-    def config(self) -> LabConfig[GroupIdentifier, Outcome]:
+    def config(self) -> LabConfig[GroupId, Outcome]:
         return self.grading_sheet.config
 
     def mock_delete_groups(self):
@@ -402,7 +401,7 @@ class GradingSheetData[LabIdentifier: Comparable, GroupIdentifier: Comparable, O
 
         if not found:
             raise SheetParseException(
-                "no query column groups found, expected at least one" 
+                "no query column groups found, expected at least one"
             )
 
     @functools.cached_property
@@ -426,7 +425,7 @@ class GradingSheetData[LabIdentifier: Comparable, GroupIdentifier: Comparable, O
         return len(self.query_column_groups)
 
     @functools.cached_property
-    def group_rows(self) -> dict[GroupIdentifier, int]:
+    def group_rows(self) -> dict[GroupId, int]:
         """
         Mapping from group identifiers to row indices.
         This represents the rows corresponding to groups.
@@ -515,7 +514,7 @@ class GradingSheetData[LabIdentifier: Comparable, GroupIdentifier: Comparable, O
         return self.empty_group_range()
 
 
-class GradingSheet[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outcome]:
+class GradingSheet[LabId: Comparable, GroupId: Comparable, Outcome]:
     """
     This class represents a lab worksheet in the grading spreadsheet.
 
@@ -529,8 +528,8 @@ class GradingSheet[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outco
     Beware that loading sheet data depends on this attribute.
     """
 
-    grading_spreadsheet: "GradingSpreadsheet[LabIdentifier]"
-    lab_id: LabIdentifier
+    grading_spreadsheet: "GradingSpreadsheet[LabId]"
+    lab_id: LabId
     config: LabConfig
     logger: Logger
 
@@ -538,8 +537,8 @@ class GradingSheet[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outco
 
     def __init__(
         self,
-        grading_spreadsheet: "GradingSpreadsheet[LabIdentifier]",
-        lab_id: LabIdentifier,
+        grading_spreadsheet: "GradingSpreadsheet[LabId]",
+        lab_id: LabId,
         config: LabConfig,
         logger: Logger = logger_default,
         title_override: str | None = None,
@@ -715,15 +714,15 @@ class GradingSheet[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outco
 
     def query(
         self,
-        group_id: GroupIdentifier,
+        group_id: GroupId,
         query_index: int,
-    ) -> Query[LabIdentifier, GroupIdentifier, Outcome]:
+    ) -> Query[LabId, GroupId, Outcome]:
         """
         Get a Query instance for the specified group and query number.
         """
         return Query(self, group_id, query_index)
 
-    def _format_group(self, id: GroupIdentifier, link: str | None):
+    def _format_group(self, id: GroupId, link: str | None):
         value = google_tools.sheets.extended_value_string(
             self.config.group_identifier.print(id)
         )
@@ -835,8 +834,8 @@ class GradingSheet[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outco
 
     def requests_insert_groups(
         self,
-        groups: Iterable[GroupIdentifier],
-        group_link: Callable[[GroupIdentifier], str | None] | None = None,
+        groups: Iterable[GroupId],
+        group_link: Callable[[GroupId], str | None] | None = None,
     ) -> Iterable[google_tools.general.Request]:
         """
         Iterable of requests for inserting groups.
@@ -853,6 +852,7 @@ class GradingSheet[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outco
         self.logger.debug("creating rows for potentially new groups...")
 
         if group_link is None:
+
             def group_link(_id):
                 return None
 
@@ -930,8 +930,8 @@ class GradingSheet[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outco
 
     def setup_groups(
         self,
-        groups: Iterable[GroupIdentifier],
-        group_link: Callable[[GroupIdentifier], str | None] | None = None,
+        groups: Iterable[GroupId],
+        group_link: Callable[[GroupId], str | None] | None = None,
         delete_previous: bool = False,
     ):
         """
@@ -991,8 +991,8 @@ class GradingSheet[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outco
 
     def create_and_setup_groups(
         self,
-        group_ids: Iterable[GroupIdentifier] | None = None,
-        group_link: Callable[[GroupIdentifier], str | None] | None = None,
+        group_ids: Iterable[GroupId] | None = None,
+        group_link: Callable[[GroupId], str | None] | None = None,
         exist_ok: bool = False,
     ) -> None:
         """
@@ -1046,8 +1046,8 @@ class GradingSheet[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outco
         if same_spreadsheet:
             request = google_tools.sheets.request_duplicate_sheet(
                 template_sheet_id,
-                new_index = index,
-                new_name = self.title_canonical,
+                new_index=index,
+                new_name=self.title_canonical,
             )
             response = self.grading_spreadsheet.client_update(request)
             sheet_id = response["replies"][0]["duplicateSheet"]["properties"]["sheetId"]
@@ -1117,8 +1117,8 @@ class GradingSheet[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outco
 
     def ensure_and_setup_groups(
         self,
-        group_ids: Iterable[GroupIdentifier] | None = None,
-        group_link: Callable[[GroupIdentifier], str | None] | None = None,
+        group_ids: Iterable[GroupId] | None = None,
+        group_link: Callable[[GroupId], str | None] | None = None,
         exist_ok: bool = False,
     ) -> None:
         """
@@ -1138,7 +1138,7 @@ class GradingSheet[LabIdentifier: Comparable, GroupIdentifier: Comparable, Outco
         self.logger.info(f"ensuring grading sheet for {self.title_canonical}: done")
 
 
-class GradingSpreadsheetData[LabIdentifier: Comparable]:
+class GradingSpreadsheetData[LabId: Comparable]:
     """
     Helper class for GradingSpreadsheet for parsing a grading spreadsheet.
     Attributes are computed lazily and cached.
@@ -1150,10 +1150,10 @@ class GradingSpreadsheetData[LabIdentifier: Comparable]:
         self.grading_spreadsheet = grading_spreadsheet
 
     @property
-    def config(self) -> Config[LabIdentifier]:
+    def config(self) -> Config[LabId]:
         return self.grading_spreadsheet.config
 
-    def _sheet_props(self) -> Iterable[tuple[int, str, LabIdentifier, int]]:
+    def _sheet_props(self) -> Iterable[tuple[int, str, LabId, int]]:
         fields = "sheets(properties(sheetId,title,index))"
         sheets = self.grading_spreadsheet.client_get(fields=fields)["sheets"]
         for sheet in sheets:
@@ -1169,11 +1169,11 @@ class GradingSpreadsheetData[LabIdentifier: Comparable]:
                     raise ValueError(props)
 
     @functools.cached_property
-    def _sheet_props_list(self) -> list[tuple[int, str, LabIdentifier, int]]:
+    def _sheet_props_list(self) -> list[tuple[int, str, LabId, int]]:
         return list(self._sheet_props())
 
     @functools.cached_property
-    def lab_data(self) -> dict[LabIdentifier, tuple[int, str, int]]:
+    def lab_data(self) -> dict[LabId, tuple[int, str, int]]:
         """
         The metadata for the lab worksheets.
         Mapping from lab id to a tuple
@@ -1199,7 +1199,7 @@ class GradingSpreadsheetData[LabIdentifier: Comparable]:
             raise SheetParseException(msg) from None
 
     @functools.cached_property
-    def lab_by_sheet_id(self) -> dict[int, LabIdentifier]:
+    def lab_by_sheet_id(self) -> dict[int, LabId]:
         """
         Mapping from lab worksheet id to lab id.
         """
@@ -1209,7 +1209,7 @@ class GradingSpreadsheetData[LabIdentifier: Comparable]:
         )
 
     @functools.cached_property
-    def lab_by_index(self) -> dict[int, LabIdentifier]:
+    def lab_by_index(self) -> dict[int, LabId]:
         """
         Mapping from lab worksheet index to lab id.
         """
@@ -1218,7 +1218,7 @@ class GradingSpreadsheetData[LabIdentifier: Comparable]:
             for (sheet_id, _title, lab_id, index) in self._sheet_props_list
         )
 
-    def preceding_lab(self, lab_id: LabIdentifier) -> LabIdentifier | None:
+    def preceding_lab(self, lab_id: LabId) -> LabId | None:
         """
         The maximal lab id with a worksheet smaller than the specified one.
         None if no such lab exists.
@@ -1230,7 +1230,7 @@ class GradingSpreadsheetData[LabIdentifier: Comparable]:
         except IndexError:
             return None
 
-    def following_index(self, lab_id: LabIdentifier | None) -> int:
+    def following_index(self, lab_id: LabId | None) -> int:
         """
         Compute the index following the given lab identifier.
         If None, the result is 0.
@@ -1253,7 +1253,7 @@ class GradingSpreadsheetData[LabIdentifier: Comparable]:
         return (properties_raw, sheet_data)
 
 
-class GradingSpreadsheet[LabIdentifier: Comparable]:
+class GradingSpreadsheet[LabId: Comparable]:
     """
     This class represents a grading spreadsheet.
     This keeps track of which groups have been or are to be graded.
@@ -1261,16 +1261,16 @@ class GradingSpreadsheet[LabIdentifier: Comparable]:
     Call update_titles before parsing any sheet data.
     """
 
-    config: Config[LabIdentifier]
-    grading_sheets: Mapping[LabIdentifier, GradingSheet]
+    config: Config[LabId]
+    grading_sheets: Mapping[LabId, GradingSheet]
     credentials: google.auth.credentials.Credentials
     logger: Logger
 
     def __init__(
         self,
-        config: Config[LabIdentifier],
+        config: Config[LabId],
         credentials: google.auth.credentials.Credentials,
-        lab_configs: Mapping[LabIdentifier, LabConfig],
+        lab_configs: Mapping[LabId, LabConfig],
         logger: Logger = logger_default,
     ):
         """
