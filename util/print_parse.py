@@ -56,6 +56,27 @@ class PrinterParser[I, O](Protocol):
 PrintParse = collections.namedtuple("PrintParse", ["print", "parse"])
 
 
+class Composition(PrinterParser):
+    """
+    The composition an iterable of printer parsers.
+    Composes the printers in forward order and the parsers in reverse order.
+    """
+
+    # type: ignore
+    def __init__(self, *pps: PrinterParser):
+        self.pps = pps
+        self.print = compose(*(pp.print for pp in self.pps))  # type: ignore
+        self.parse = compose(*(pp.parse for pp in reversed(self.pps)))  # type: ignore
+
+
+class Inverse(PrinterParser):
+    """The inverse of a printer-parser."""
+
+    def __init__(self, pp: PrinterParser):
+        self.print = pp.parse  # type: ignore
+        self.parse = pp.print  # type: ignore
+
+
 identity = PrintParse(
     print=util.general.identity,
     parse=util.general.identity,
@@ -123,9 +144,10 @@ def on_parse[T](parse: Callable[[T], T]) -> PrinterParser[T, T]:
 lower = on_parse(str.lower)
 
 
-def on[
-    A, B
-](lens: util.general.Lens[A, B], pp: PrinterParser[B, B]) -> PrinterParser[A, A]:
+def on[A, B](
+    lens: util.general.Lens[A, B],
+    pp: PrinterParser[B, B],
+) -> PrinterParser[A, A]:
     return PrintParse(
         print=util.general.on(lens, pp.print),
         parse=util.general.on(lens, pp.parse),
@@ -183,9 +205,9 @@ def over_tuple(pp: PrinterParser) -> PrinterParser[tuple, tuple]:
     )
 
 
-def over_dict[
-    K, VI, VO
-](pp: PrinterParser[VI, VO]) -> PrinterParser[dict[K, VI], dict[K, VO]]:
+def over_dict[K, VI, VO](
+    pp: PrinterParser[VI, VO],
+) -> PrinterParser[dict[K, VI], dict[K, VO]]:
     return PrintParse(
         print=lambda vs: {key: pp.print(v) for (key, v) in vs.items()},
         parse=lambda vs: {key: pp.parse(v) for (key, v) in vs.items()},
@@ -199,18 +221,21 @@ def maybe[I, O](pp: PrinterParser[I, O]) -> PrinterParser[I | None, O | None]:
     )
 
 
-def with_special_case[
-    I, O
-](pp: PrinterParser[I, O], value: I, value_printed: O) -> PrinterParser[I, O]:
+def with_special_case[I, O](
+    pp: PrinterParser[I, O],
+    value: I,
+    value_printed: O,
+) -> PrinterParser[I, O]:
     return PrintParse(
         print=util.general.with_special_case(pp.print, value, value_printed),
         parse=util.general.with_special_case(pp.parse, value_printed, value),
     )
 
 
-def with_none[
-    I, O
-](pp: PrinterParser[I, O], none_printed: O) -> PrinterParser[I | None, O]:
+def with_none[I, O](
+    pp: PrinterParser[I, O],
+    none_printed: O,
+) -> PrinterParser[I | None, O]:
     return with_special_case(pp, None, none_printed)  # type: ignore
 
 
@@ -281,17 +306,20 @@ def int_str(format="") -> PrinterParser[int, str]:
     )
 
 
-# pylint: disable-next=redefined-outer-name
-def regex_parser(regex: str, keyed: bool = False, **kwargs) -> Callable:
-    pattern = re.compile(regex, **kwargs)
+class RegexParser:
+    def __init__(
+        self,
+        # pylint: disable-next=redefined-outer-name
+        regex: str,
+        **kwargs,
+    ):
+        self.pattern = re.compile(regex, **kwargs)
 
-    def f(s):
-        match = pattern.fullmatch(s)
-        if not match:
-            raise ValueError("no parse")
-        return match.groupdict() if keyed else match.groups()
-
-    return f
+    def __call__(self, s: str) -> re.Match:
+        m = self.pattern.fullmatch(s)
+        if not m:
+            raise ValueError(f"does not match {self.pattern.pattern}: {s}")
+        return m
 
 
 def regex_non_canonical(
@@ -302,32 +330,52 @@ def regex_non_canonical(
 ) -> PrinterParser[str, str]:
     return compose(
         singleton,
-        regex_non_canonical_many(holed_string, regex, **kwargs),
+        RegexNoncanonicalMany(holed_string, regex, **kwargs),
     )
 
 
-def regex_non_canonical_many(
-    holed_string: str,
-    # pylint: disable-next=redefined-outer-name
-    regex: str,
-    **kwargs,
-) -> PrinterParser[Sequence[str], str]:
-    return PrintParse(
-        print=lambda args: holed_string.format(*args),
-        parse=regex_parser(regex, **kwargs),
-    )
+@dataclasses.dataclass
+class RegexNoncanonicalMany(PrinterParser[Sequence[str], str]):
+    holed_string: str
+    regex_parser: RegexParser
+
+    def __init__(
+        self,
+        holed_string: str,
+        # pylint: disable-next=redefined-outer-name
+        regex: str,
+        **kwargs,
+    ):
+        self.holed_string = holed_string
+        self.regex_parser = RegexParser(regex, **kwargs)
+
+    def print(self, args: Sequence[str], /) -> str:
+        return self.holed_string.format(*args)
+
+    def parse(self, s: str, /) -> Sequence[str]:
+        return self.regex_parser(s).groups()
 
 
-def regex_non_canonical_keyed(
-    holed_string: str,
-    # pylint: disable-next=redefined-outer-name
-    regex: str,
-    **kwargs,
-) -> PrinterParser[dict[str, str], str]:
-    return PrintParse(
-        print=lambda args: holed_string.format(**args),
-        parse=regex_parser(regex, keyed=True, **kwargs),
-    )
+@dataclasses.dataclass
+class RegexNoncanonicalKeyed(PrinterParser[dict[str, str], str]):
+    holed_string: str
+    regex_parser: RegexParser
+
+    def __init__(
+        self,
+        holed_string: str,
+        # pylint: disable-next=redefined-outer-name
+        regex: str,
+        **kwargs,
+    ):
+        self.holed_string = holed_string
+        self.regex_parser = RegexParser(regex, **kwargs)
+
+    def print(self, args: dict[str, str], /) -> str:
+        return self.holed_string.format(**args)
+
+    def parse(self, s: str, /) -> dict[str, str]:
+        return self.regex_parser(s).groupdict()
 
 
 # pylint: disable-next=redefined-outer-name
@@ -353,7 +401,7 @@ def regex_many(
     regexes: Iterable[str],
     **kwargs,
 ) -> PrinterParser[Sequence[str], str]:
-    return regex_non_canonical_many(
+    return RegexNoncanonicalMany(
         holed_string,
         regex_escaping_formatter.format(
             holed_string, *(f"({regex})" for regex in regexes)
@@ -367,7 +415,7 @@ def regex_keyed(
     holed_string: str,
     **kwargs,
 ) -> PrinterParser[dict[str, str], str]:
-    return regex_non_canonical_keyed(
+    return RegexNoncanonicalKeyed(
         holed_string,
         regex_escaping_formatter.format(
             holed_string,
@@ -404,78 +452,82 @@ braces: PrinterParser[str, str]
 braces = regex_non_canonical("{{{}}}", r"\{(.*)\}")
 
 
-def join(
-    sep: str | None = None,
-    maxsplit: int = -1,
-) -> PrinterParser[Iterable[str], str]:
-    _sep = " " if sep is None else sep
-    return PrintParse(
-        print=_sep.join,
-        parse=lambda s: s.split(sep, maxsplit),
-    )
+@dataclasses.dataclass
+class Join(PrinterParser[list[str], str]):
+    sep: str | None = None
+    maxsplit: int = -1
+
+    def print(self, x: Iterable[str], /) -> str:
+        _sep = " " if self.sep is None else self.sep
+        return _sep.join(x)
+
+    def parse(self, y: str, /) -> list[str]:
+        return y.split(self.sep, self.maxsplit)
 
 
-def join_bytes(
-    sep: bytes | None = None,
-    maxsplit: int = -1,
-) -> PrinterParser[Iterable[bytes], bytes]:
-    _sep = b" " if sep is None else sep
-    return PrintParse(
-        print=_sep,
-        parse=lambda s: s.split(sep, maxsplit),
-    )
+@dataclasses.dataclass
+class JoinBytes(PrinterParser[list[bytes], bytes]):
+    sep: bytes | None = None
+    maxsplit: int = -1
+
+    def print(self, x: Iterable[bytes], /) -> str:
+        _sep = b" " if self.sep is None else self.sep
+        return _sep.join(x)
+
+    def parse(self, y: str, /) -> list[str]:
+        return y.split(self.sep, self.maxsplit)
 
 
-def from_dict[
-    I, O
-](
-    xs: Iterable[tuple[I, O]],
-    print_strict: bool = True,
-    parse_strict: bool = True,
-) -> PrinterParser[I, O]:
+class Dict[I, O](PrinterParser[I, O]):
     """
-    Takes an iterable of (value, printed) pairs.
+    Printer-parser based on a dictionary of (value, printed) pairs.
     The default semantics is strict, assuming that values and printings are unique.
-    If duplicates are allowed, use strict = False.
+    If duplicates are allowed, use print_strict = False or parse_strict = False, respectively.
     """
-    xs = tuple(xs)
-    return PrintParse(
-        print=util.general.sdict(
-            ((x, y) for (x, y) in xs),
-            strict=print_strict,
-        ).__getitem__,
-        parse=util.general.sdict(
-            ((y, x) for (x, y) in xs),
-            strict=parse_strict,
-        ).__getitem__,
-    )
+
+    def __init__(
+        self,
+        xs: Iterable[tuple[I, O]],
+        print_strict: bool = True,
+        parse_strict: bool = True,
+    ):
+        xs = tuple(xs)
+        self.u = util.general.sdict(((x, y) for (x, y) in xs), strict=print_strict)
+        self.v = util.general.sdict(((y, x) for (x, y) in xs), strict=parse_strict)
+
+    def print(self, x: I, /) -> O:
+        return self.u[x]
+
+    def parse(self, y: O, /) -> I:
+        return self.v[y]
 
 
-def add(k: int) -> PrinterParser[int, int]:
-    return PrintParse(
-        print=lambda x: x + k,
-        parse=lambda x: x - k,
-    )
+@dataclasses.dataclass
+class Add(PrinterParser[int, int]):
+    increment: int
+
+    def print(self, x: int, /) -> int:
+        return x + self.increment
+
+    def parse(self, y: int, /) -> int:
+        return y - self.increment
 
 
 from_one: PrinterParser[int, int]
-from_one = add(1)
+from_one = Add(1)
 
 
-def skip_natural(n: int) -> PrinterParser[int, int]:
-    # pylint: disable-next=redefined-builtin
-    def print(i):
-        return i if i < n else i + 1
+@dataclasses.dataclass
+class SkipNatural(PrinterParser[int, int]):
+    n: int
 
-    def parse(i):
-        if i == n:
-            raise ValueError(f"value {i} is forbidden")
-        return i if i < n else i - 1
+    def print(self, x: int, /) -> int:
+        return x if x < self.n else x + 1
 
-    return PrintParse(
-        print=print,
-        parse=parse,
-    )
+    def parse(self, y: int, /) -> int:
+        if y == self.n:
+            raise ValueError(f"value {y} is forbidden")
+        return y if y < self.n else y - 1
 
 
 def _singleton_range_parse(range_):
@@ -561,19 +613,18 @@ def _netloc_print(netloc: NetLoc) -> str:
 _safe_regex: str
 _safe_regex = "[\\w\\.\\-\\~]*"
 
-_netloc_regex_parser: Callable[[str], dict[str, str]]
-_netloc_regex_parser = regex_parser(
+_netloc_regex_parser: RegexParser
+_netloc_regex_parser = RegexParser(
     (
         f"(?:(?P<user>{_safe_regex})(?::(?P<password>{_safe_regex}))?@)?"
         f"(?P<host>{_safe_regex})(?::(?P<port>\\d+))?"
     ),
-    keyed=True,
     flags=re.ASCII,
 )
 
 
 def _netloc_parse(s: str) -> NetLoc:
-    return NetLoc(**_netloc_regex_parser(s))
+    return NetLoc(**_netloc_regex_parser(s).groupdict())
 
 
 netloc: PrinterParser[NetLoc, str]
@@ -722,9 +773,10 @@ def dataclass_dict[T: Dataclass](cls: Type[T]) -> Type[T]:
     return cls
 
 
-def dataclass_json[
-    T: Dataclass
-](cls: Type[T], nice: bool = False,) -> Type[T]:
+def dataclass_json[T: Dataclass](
+    cls: Type[T],
+    nice: bool = False,
+) -> Type[T]:
     dataclass_dict(cls)
     cls.pp_json = compose(cls.pp_dict, json_coding_nice if nice else json)  # type: ignore
     return cls

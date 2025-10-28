@@ -37,7 +37,7 @@ def grading_response_for_outcome(outcome_name):
     """The standard grading response printer-parser for a given outcome name printer-parser."""
     return util.print_parse.compose(
         util.print_parse.on(util.general.component("outcome"), outcome_name),
-        util.print_parse.regex_non_canonical_keyed(
+        util.print_parse.RegexNoncanonicalKeyed(
             "Grading for {tag}: {outcome}",
             "grading\\s+(?:for|of)\\s+(?P<tag>[^: ]*)\\s*:\\s*(?P<outcome>[^:\\.!]*)[\\.!]*",
             flags=re.IGNORECASE,
@@ -47,13 +47,13 @@ def grading_response_for_outcome(outcome_name):
 
 submission_failure_response_key = "submission_failure"
 
-submission_failure_title = util.print_parse.regex_non_canonical_keyed(
+submission_failure_title = util.print_parse.RegexNoncanonicalKeyed(
     "Your submission {tag} was not accepted",
     "Your submission (?P<tag>[^: ]*) was not accepted",
     flags=re.IGNORECASE,
 )
 
-language_failure_title = util.print_parse.regex_non_canonical_keyed(
+language_failure_title = util.print_parse.RegexNoncanonicalKeyed(
     "Your submission {tag} was not accepted: language detection failure",
     "Your submission (?P<tag>[^: ]*) was not accepted: language detection failure",
     flags=re.IGNORECASE,

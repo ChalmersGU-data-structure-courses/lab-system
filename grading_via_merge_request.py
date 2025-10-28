@@ -21,7 +21,7 @@ class SetupData:
 
     @functools.cached_property
     def label_pp(self):
-        return util.print_parse.from_dict(
+        return util.print_parse.Dict(
             (outcome, label_spec.name)
             for (outcome, label_spec) in self.lab.config.outcome_labels.items()
         )

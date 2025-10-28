@@ -235,7 +235,7 @@ def request_update_cell_user_entered_value(value, sheet_id, row, column):
 def requests_duplicate_dimension(sheet_id, dimension, copy_from, copy_to):
     dr = dimension_range(sheet_id, dimension, *util.general.range_singleton(copy_from))
     yield request_insert_dimension(dr)
-    yield request_move_dimension(dr, pp.skip_natural(copy_from).print(copy_to))
+    yield request_move_dimension(dr, pp.SkipNatural(copy_from).print(copy_to))
 
     def selection(i):
         return grid_range(
@@ -597,7 +597,7 @@ a1_notation = pp.compose(
 # Formats a (zero-based) range as a silly inclusive one-based range.
 range_as_one_based_inclusive = pp.compose(
     pp.over_tuple(pp.maybe(pp.from_one)),
-    pp.on(util.general.component_tuple(1), pp.maybe(pp.add(-1))),
+    pp.on(util.general.component_tuple(1), pp.maybe(pp.Add(-1))),
 )
 
 # Formats a pair of (zero-based) ranges as a range in (potentially unbounded) A1 notation.

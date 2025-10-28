@@ -113,7 +113,7 @@ outcome = SimpleNamespace(
     # Full name.
     # Used in interactions with students
     name=print_parse.compose(
-        print_parse.from_dict(_outcomes.items()),
+        print_parse.Dict(_outcomes.items()),
         print_parse.lower,
     ),
 )
@@ -150,7 +150,7 @@ lab = SimpleNamespace(
 # This is usually fine, except if:
 # * a grader wants to go by a different informal name,
 # * there are two graders with the same first name.
-names_informal = print_parse.from_dict([
+names_informal = print_parse.Dict([
 ])
 
 # Configuration exclusively related to grading sheets.
@@ -314,7 +314,7 @@ _lab_config = SimpleNamespace(
     },
 )
 
-_pp_language = print_parse.from_dict([
+_pp_language = print_parse.Dict([
     ('java', 'Java'),
     ('python', 'Python'),
 ])
@@ -437,7 +437,7 @@ outside_canvas = []
 # Giving a value of 'None' means that the student should be ignored.
 name_corrections = {}
 
-_cid_to_gitlab_username = print_parse.from_dict([
+_cid_to_gitlab_username = print_parse.Dict([
     ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
 ])
 
