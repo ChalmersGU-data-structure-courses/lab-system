@@ -15,6 +15,7 @@ import git
 import util.general
 import util.path
 import util.print_parse
+import util.url
 import util.watchdog
 
 
@@ -129,11 +130,8 @@ class ServerAlive:
             yield from arg_option("ServerAliveMaxCount", self.max_count)
 
 
-_netloc_empty = util.print_parse.NetLoc(host="")
-
-
 def cmd_ssh(
-    netloc=None,
+    netloc: util.url.NetLoc = None,
     args=None,
     *,
     allocate_terminal=True,
@@ -147,10 +145,8 @@ def cmd_ssh(
     """
     Arguments:
     * netloc:
-        A tuple convertible to util.print_parse.NetLoc.
         Network location to connect to.
-        If None or netloc.host is None,
-        the produced SSH call misses its destination argument.
+        If None or netloc.host is None, the produced SSH call misses its destination argument.
         This is useful when giving an SSH invocation template to another program.
         A example of this is git and the environment variable GIT_SSH_COMMAND.
     * args:
@@ -194,9 +190,7 @@ def cmd_ssh(
 
     # Process net location options.
     if netloc is not None:
-        netloc = util.print_parse.netloc_normalize(netloc)
-        if netloc.host is not None:
-            yield netloc.host
+        yield netloc.host
         if netloc.user is not None:
             yield from ["-l", netloc.user]
         if netloc.port is not None:
@@ -231,7 +225,7 @@ def cmd_ssh(
         yield util.print_parse.command_line.print(args)
 
 
-def cmd_ssh_master(netloc, control_path, **kwargs):
+def cmd_ssh_master(netloc: util.url.NetLoc, control_path, **kwargs):
     """
     SSH command line for a control master.
     Further keyword arguments are passed to cmd_ssh.
@@ -383,7 +377,6 @@ def shutdown_control_master(control_path, check=True, force=False):
     )
     cmd = list(
         cmd_ssh(
-            util.print_parse.NetLoc(host=""),
             control=Control(
                 path=control_path,
                 command="exit" if force else "stop",
@@ -438,7 +431,7 @@ class ConnectionMaster:
     class CommandFailure(LateFailure):
         pass
 
-    def __init__(self, netloc, **_kwargs):
+    def __init__(self, netloc: util.url.NetLoc, **_kwargs):
         """
         Initialize an SSH connection control master to the given net location.
         Further keyword arguments are passed to cmd_ssh.
@@ -580,8 +573,8 @@ class Multiplexer:
         The multiplexer may then attempt to reestablish the connection and retry the command.
         """
 
-    def __init__(self, netloc):
-        self.netloc = util.print_parse.netloc_normalize(netloc)
+    def __init__(self, netloc: util.url.NetLoc):
+        self.netloc = netloc
         self.connection_master = None
 
         self.startup_failures = collections.deque(maxlen=50)
@@ -599,10 +592,10 @@ class Multiplexer:
                 self.startup_failures.append((datetime.datetime.now(), e))
 
         logger.error(
-            f"SSH connection to {util.print_parse.netloc.print(self.netloc)} "
+            f"SSH connection to {self.netloc} "
             f"could not be established in {self.max_startup_attempts} attempts."
         )
-        raise ValueError("No SSH connection to {util.print_parse.netloc.print(netloc)}")
+        raise ValueError(f"No SSH connection to {self.netloc}")
 
     def close(self):
         """Swallows any shutdown exceptions of the control master."""
@@ -642,12 +635,12 @@ class Multiplexer:
                 self.close()
                 if k + 1 == self.max_callback_attempts:
                     logger.error(
-                        f"SSH connection to {util.print_parse.netloc.print(self.netloc)} "
+                        f"SSH connection to {self.netloc} "
                         f"failed {self.max_callback_attempts} times in a row "
                         "while attempting to execute a command"
                     )
                     raise ValueError(
-                        f"SSH connection to {util.print_parse.netloc.print(self.netloc)} "
+                        f"SSH connection to {self.netloc} "
                         f"failed {self.max_callback_attempts} times in a row "
                     ) from e
 

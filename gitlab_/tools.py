@@ -630,7 +630,7 @@ def parse_label_event_action(action):
 @dataclasses.dataclass
 class HookSpec:
     project: Any
-    netloc: util.print_parse.NetLoc
+    netloc: util.url.NetLoc
     events: Tuple[str]
     secret_token: str
 
@@ -643,7 +643,7 @@ def hooks_get(project):
 
     def f():
         for hook in list_all(project.hooks):
-            url = util.print_parse.url.parse(hook.url)
+            url = util.url.url_formatter.parse(hook.url)
             yield (url.netloc, hook)
 
     return util.general.multidict(f())
@@ -653,7 +653,6 @@ def hook_create(spec: HookSpec):
     """
     Create webhook in the given project with the specified net location, events, and secret token.
     Hook callbacks are made via SSL, with certificate verification disabled.
-    The argument netloc is an instance of util.print_parse.NetLoc.
 
     Arguments:
     * project: Project in which to create the webhook.
@@ -663,7 +662,7 @@ def hook_create(spec: HookSpec):
 
     Note: Due to a GitLab bug, the webhook is not called when an issue is deleted.
     """
-    url = util.print_parse.url.print(util.print_parse.URL_HTTPS(spec.netloc))
+    url = util.url.url_formatter.print(util.url.URL_HTTPS(spec.netloc))
     logger.debug(f"Creating project webhook with url {url} in {spec.project.web_url}.")
 
     try:
@@ -681,7 +680,7 @@ def hook_create(spec: HookSpec):
     except gitlab.exceptions.GitlabCreateError as e:
         if e.response_code == 422 and e.error_message == "Invalid url given":
             raise ValueError(
-                f"Invalid net location {util.print_parse.netloc.print(spec.netloc)} "
+                f"Invalid net location {spec.netloc} "
                 f"for a webhook in {spec.project.web_url}."
             ) from e
         raise
@@ -695,10 +694,9 @@ def hook_delete(project, hook):
     hook.delete()
 
 
-def hooks_delete_all(project, hooks=None, except_for=None):
+def hooks_delete_all(project, hooks=None, netloc_keep: util.url.NetLoc | None = None):
     """
     Delete webhooks in the given project.
-    The argument netloc is an instance of util.print_parse.NetLoc.
     You should use this:
     * when manually creating and deleting hooks in separate program invocations,
     * when using hook_manager:
@@ -707,15 +705,13 @@ def hooks_delete_all(project, hooks=None, except_for=None):
 
     Arguments:
     * hooks: Optional hook dictionary to use (as returned by hooks_get)
-    * except_for: When set to a netloc, skip deleting hooks that match.
+    * netloc_keep: When set, skip deleting hooks that match.
     """
-    if except_for is None:
+    if netloc_keep is None:
         logger.debug("Deleting all project hooks")
     else:
-        netloc_keep = util.print_parse.netloc_normalize(except_for)
         logger.debug(
-            "Deleting all project hooks but those with"
-            f" net location {util.print_parse.netloc.print(netloc_keep)}"
+            f"Deleting all project hooks but those with net location {netloc_keep}"
         )
 
     if hooks is None:
@@ -723,7 +719,7 @@ def hooks_delete_all(project, hooks=None, except_for=None):
 
     for netloc, hook_list in hooks.items():
         for hook in hook_list:
-            if not (except_for is not None and netloc_keep == netloc):
+            if not (netloc_keep is not None and netloc == netloc_keep):
                 hook_delete(project, hook)
 
 
@@ -736,22 +732,16 @@ def hook_check(spec: HookSpec, hooks):
     """
     for netloc_key, hook_list in hooks.items():
         if not netloc_key == spec.netloc:
-            raise ValueError(
-                f"hook for incorrect netloc {util.print_parse.netloc.print(netloc_key)}"
-            )
+            raise ValueError(f"hook for incorrect netloc {netloc_key}")
 
     hook_list = hooks.get(spec.netloc)
     if not hook_list:
-        raise ValueError(
-            f"hook missing for given netloc {util.print_parse.netloc.print(spec.netloc)}"
-        )
+        raise ValueError(f"hook missing for given netloc {spec.netloc}")
 
     try:
         [hook] = hook_list
     except ValueError:
-        raise ValueError(
-            f"more than one hook given netloc {util.print_parse.netloc.print(spec.netloc)}"
-        ) from None
+        raise ValueError(f"more than one hook given netloc {spec.netloc}") from None
 
     for event in spec.events:
         if not hasattr(hook, f"{event}_events"):

@@ -8,6 +8,7 @@ from pathlib import PurePosixPath
 import util.openssl
 import util.path
 import util.print_parse
+import util.url
 
 
 logger_default = logging.getLogger(__name__)
@@ -42,7 +43,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 @contextlib.contextmanager
-def server_manager(netloc, secret_token, callback, logger=logger_default):
+def server_manager(
+    netloc: util.url.NetLoc,
+    secret_token,
+    callback,
+    logger=logger_default,
+):
     """
     Context manager for an HTTP server that processes webhook notifications from GitLab.
     Only notifications with the correct secret token are considered.
@@ -63,7 +69,6 @@ def server_manager(netloc, secret_token, callback, logger=logger_default):
 
     This method does not return.
     """
-    netloc = util.print_parse.netloc_normalize(netloc)
     address = (netloc.host, netloc.port)
 
     with util.path.temp_dir() as dir:

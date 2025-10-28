@@ -25,11 +25,10 @@ def retrieve_all_from_cursor(callback, cursor=None):
 
 
 class Query:
-    def __init__(self, query):
-        self.query = query
+    def __init__(self, query_):
+        self.query = query_
         self.result = None
 
-    
 
 class ClientBase:
     def __init__(self, transport, path_schema):

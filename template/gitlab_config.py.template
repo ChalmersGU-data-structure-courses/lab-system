@@ -22,10 +22,11 @@ import handlers.general
 import handlers.java
 import handlers.python
 import handlers.language
-import print_parse
 import robograder_java
 import testers.podman
 import testers.java
+import util.print_parse
+import util.url
 from this_dir import this_dir
 
 
@@ -64,9 +65,9 @@ gitlab_url = 'https://git.chalmers.se'
 
 # SSH configuration for Chalmers GitLab.
 gitlab_ssh = SimpleNamespace(
-    # Instance of print_parse.NetLoc.
+    # Instance of util.url.NetLoc.
     # Usually, the host is as in gitlab_url and the user is 'git'.
-    netloc=print_parse.NetLoc(host='git.chalmers.se', user='git'),
+    netloc=util.url.NetLoc(host='git.chalmers.se', user='git'),
 
     # Maximum number of parallel jobs to use for git fetches and pushes.
     # The sshd config for Chalmers GitLab seems to have MaxSessions=5 (checked 2021-12).
@@ -112,9 +113,9 @@ _outcomes = {
 outcome = SimpleNamespace(
     # Full name.
     # Used in interactions with students
-    name=print_parse.compose(
-        print_parse.Dict(_outcomes.items()),
-        print_parse.lower,
+    name=util.print_parse.compose(
+        util.print_parse.Dict(_outcomes.items()),
+        util.print_parse.lower,
     ),
 )
 outcomes = _outcomes.keys()
@@ -122,21 +123,21 @@ outcomes = _outcomes.keys()
 # Format the outcome for use in a spreadsheet cell.
 # An integer or a string.
 # The below definition is the identity, but checks the domain is correct.
-outcome.as_cell = print_parse.compose(outcome.name, print_parse.invert(outcome.name))
+outcome.as_cell = util.print_parse.compose(outcome.name, util.print_parse.invert(outcome.name))
 
 # Parsing and printing of references to a lab.
 lab = SimpleNamespace(
     # Human-readable id.
-    id=print_parse.int_str(),
+    id=util.print_parse.int_str(),
 
     # Used as relative path on Chalmers GitLab.
-    full_id=print_parse.regex_int('lab-{}'),
+    full_id=util.print_parse.regex_int('lab-{}'),
 
     # Used as prefix for projects on Chalmers GitLab.
-    prefix=print_parse.regex_int('lab{}-'),
+    prefix=util.print_parse.regex_int('lab{}-'),
 
     # Actual name.
-    name=print_parse.regex_int('Lab {}', flags=re.IGNORECASE),
+    name=util.print_parse.regex_int('Lab {}', flags=re.IGNORECASE),
 
     # May be used for sorting in the future.
     sort_key=lambda id: id,
@@ -150,7 +151,7 @@ lab = SimpleNamespace(
 # This is usually fine, except if:
 # * a grader wants to go by a different informal name,
 # * there are two graders with the same first name.
-names_informal = print_parse.Dict([
+names_informal = util.print_parse.Dict([
 ])
 
 # Configuration exclusively related to grading sheets.
@@ -159,9 +160,9 @@ grading_sheet = SimpleNamespace(
     # A header is the unique row where the first cell is equal to `header.group`.
     header=SimpleNamespace(
         group='Group',
-        query=print_parse.compose(
-            print_parse.from_one,  # 1-based numbering
-            print_parse.regex_int('Query #{}', regex='\\d{1,2}'),
+        query=util.print_parse.compose(
+            util.print_parse.from_one,  # 1-based numbering
+            util.print_parse.regex_int('Query #{}', regex='\\d{1,2}'),
         ),
         grader='Grader',
         score='0/1',
@@ -206,15 +207,15 @@ _group = SimpleNamespace(
     # Human-readable id.
     # Typical use case: values in a column of group identifiers.
     # Used in the grading sheet and the Canvas submission table.
-    id=print_parse.int_str(),
+    id=util.print_parse.int_str(),
 
     # Used for group project paths.
     # Used as part of tag names in collection repository.
-    full_id=print_parse.regex_int('group-{}'),
+    full_id=util.print_parse.regex_int('group-{}'),
 
     # Full human-readable name.
     # Used in Canvas group set.
-    name=print_parse.regex_int('Lab group {}', flags=re.IGNORECASE),
+    name=util.print_parse.regex_int('Lab group {}', flags=re.IGNORECASE),
 
     # Name of Canvas group set where students sign up for lab groups.
     # We recommend to use a zero-based numerical naming scheme:
@@ -235,9 +236,9 @@ _group = SimpleNamespace(
     # Instance of GDPRCoding.
     # For use in the grading spreadsheet.
     # Must raise an exception on cell items not belonging to the group range.
-    gdpr_coding=gdpr_coding.GDPRCoding(identifier=print_parse.compose(
-        print_parse.int_str(),
-        print_parse.invert(print_parse.int_str()),
+    gdpr_coding=gdpr_coding.GDPRCoding(identifier=util.print_parse.compose(
+        util.print_parse.int_str(),
+        util.print_parse.invert(util.print_parse.int_str()),
     )),
 )
 
@@ -314,7 +315,7 @@ _lab_config = SimpleNamespace(
     },
 )
 
-_pp_language = print_parse.Dict([
+_pp_language = util.print_parse.Dict([
     ('java', 'Java'),
     ('python', 'Python'),
 ])
@@ -391,9 +392,9 @@ class _LabConfig:
             0: gitlab_.tools.LabelSpec(name='incomplete', color='red'),
             1: gitlab_.tools.LabelSpec(name='pass', color='green'),
         }
-        self.merge_request_title = print_parse.compose(
+        self.merge_request_title = util.print_parse.compose(
             _pp_language,
-            print_parse.regex('Grading for {} submission', regex='[a-zA-Z]*'),
+            util.print_parse.regex('Grading for {} submission', regex='[a-zA-Z]*'),
         )
         self.branch_problem = {
             'java': 'java',
@@ -437,7 +438,7 @@ outside_canvas = []
 # Giving a value of 'None' means that the student should be ignored.
 name_corrections = {}
 
-_cid_to_gitlab_username = print_parse.Dict([
+_cid_to_gitlab_username = util.print_parse.Dict([
     ('REDACTED_CID', 'REDACTED_CID_WITH_SUFFIX_1'),
 ])
 

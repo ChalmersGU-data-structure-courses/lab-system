@@ -36,6 +36,7 @@ import util.ldap
 import util.print_parse
 import util.subsuming_queue
 import util.threading
+import util.url
 import webhook_listener
 
 
@@ -339,8 +340,8 @@ class Course:
 
     @property
     def gitlab_netloc(self):
-        return util.print_parse.NetLoc(
-            host=util.print_parse.url.parse(self.config.gitlab_url).netloc.host,
+        return util.url.NetLoc(
+            host=util.url.url_formatter.parse(self.config.gitlab_url).netloc.host,
             # TODO: determine port from self.config.gitlab_url.
             port=443,
         )
@@ -640,8 +641,8 @@ class Course:
             yield from lab.groups.values()
 
     @functools.cached_property
-    def hook_netloc_default(self):
-        return util.print_parse.NetLoc(
+    def hook_netloc_default(self) -> util.url.NetLoc:
+        return util.url.NetLoc(
             host=util.ip.get_local_ip_routing_to(self.gitlab_netloc),
             port=self.config.webhook.local_port,
         )
@@ -656,7 +657,7 @@ class Course:
         """
         if netloc is None:
             netloc = self.hook_netloc_default
-        return util.print_parse.netloc_normalize(netloc)
+        return netloc
 
     def hook_specs(self, netloc=None) -> Iterable[gitlab_.tools.HookSpec]:
         for lab in self.labs.values():
@@ -669,15 +670,16 @@ class Course:
 
         return list(f())
 
-    def hooks_delete_all(self, netloc=None, except_for=None):
+    def hooks_delete_all(self, netloc=None, netloc_keep=None):
         """
-        Delete all webhooks in all group project in all labs set up with the given netloc on GitLab.
+        Delete all webhooks in all group project in all labs on GitLab.
         See gitlab_.tools.hooks_delete_all.
+        TODO: make use of netloc argument to only delete matching hooks.
         """
         self.logger.info("Deleting all project hooks in all labs")
         netloc = self.hook_normalize_netloc(netloc)
         for spec in self.hook_specs(netloc):
-            gitlab_.tools.hooks_delete_all(spec.project, except_for=except_for)
+            gitlab_.tools.hooks_delete_all(spec.project, netloc_keep=netloc_keep)
 
     def hooks_ensure(self, netloc=None, sample_size=10):
         """

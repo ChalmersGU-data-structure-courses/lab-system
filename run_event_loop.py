@@ -252,6 +252,7 @@ args = p.parse_args()
 # Argument parsing is done: expensive initialization can start now.
 # pylint: disable=wrong-import-order,wrong-import-position
 import contextlib
+import dataclasses
 import datetime
 import importlib
 import logging
@@ -262,6 +263,7 @@ import event_loop
 import util.general
 import util.ip
 import util.print_parse
+import util.url
 
 
 # Configure logging.
@@ -333,17 +335,17 @@ else:
         "GitLab network location",
         lambda c: c.gitlab_netloc,
     )
-    netloc_listen = util.print_parse.NetLoc(
+    netloc_listen = util.url.NetLoc(
         host=util.ip.get_local_ip_routing_to(gitlab_netloc),
         port=args.port,
     )
     netloc_specify = (
         netloc_listen
         if args.netloc is None
-        else util.print_parse.netloc.parse(args.netloc)
+        else util.url.netloc_formatter.parse(args.netloc)
     )
-    if netloc_specify is None:
-        netloc_specify = netloc_specify._replace(port=netloc_listen.port)
+    if netloc_specify.port is None:
+        netloc_specify = dataclasses.replace(netloc_specify, port=netloc_listen.port)
     webhook_config = event_loop.WebhookConfig(
         netloc_listen=netloc_listen,
         netloc_specify=netloc_specify,

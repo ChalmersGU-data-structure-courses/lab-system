@@ -544,16 +544,6 @@ singleton_range = PrintParse(
 )
 
 
-def url_quote(safe: str = "/") -> PrinterParser[str, str]:
-    return PrintParse(
-        print=lambda s: urllib.parse.quote(s, safe=safe),
-        parse=urllib.parse.unquote,
-    )
-
-
-url_quote_no_safe: PrinterParser[str, str]
-url_quote_no_safe = url_quote(safe="")
-
 pure_posix_path: PrinterParser[pathlib.PurePosixPath, str]
 pure_posix_path = PrintParse(
     print=str,
@@ -582,103 +572,6 @@ search_path: PrinterParser[Iterable[str], str]
 search_path = PrintParse(
     print=util.path.search_path_join,
     parse=util.path.search_path_split,
-)
-
-NetLoc = collections.namedtuple(
-    "NetLoc", ["host", "port", "user", "password"], defaults=[None, None, None]
-)
-NetLoc.__doc__ = """
-A network location.
-Reference: Section 3.1 of RFC 1738
-"""
-
-
-def netloc_normalize(it) -> NetLoc:
-    """Normalize an iterable into a net location."""
-    return NetLoc(*it)
-
-
-# Exercise.
-# Merge _netloc_print and _netloc_regex_parse into a nice printer-parser network.
-# pylint: disable-next=redefined-outer-name
-def _netloc_print(netloc: NetLoc) -> str:
-    def password() -> str:
-        return "" if netloc.password is None else ":" + netloc.password
-
-    login = "" if netloc.user is None else netloc.user + password() + "@"
-    port = "" if netloc.port is None else ":" + netloc.port
-    return login + netloc.host + port
-
-
-_safe_regex: str
-_safe_regex = "[\\w\\.\\-\\~]*"
-
-_netloc_regex_parser: RegexParser
-_netloc_regex_parser = RegexParser(
-    (
-        f"(?:(?P<user>{_safe_regex})(?::(?P<password>{_safe_regex}))?@)?"
-        f"(?P<host>{_safe_regex})(?::(?P<port>\\d+))?"
-    ),
-    flags=re.ASCII,
-)
-
-
-def _netloc_parse(s: str) -> NetLoc:
-    return NetLoc(**_netloc_regex_parser(s).groupdict())
-
-
-netloc: PrinterParser[NetLoc, str]
-netloc = compose(
-    combine_namedtuple(
-        NetLoc(
-            host=url_quote_no_safe,
-            port=maybe(int_str()),
-            user=maybe(url_quote_no_safe),
-            password=maybe(url_quote_no_safe),
-        )
-    ),
-    PrintParse(
-        print=_netloc_print,
-        parse=_netloc_parse,
-    ),
-)
-"""String representation of network locations."""
-
-query: PrinterParser[str, str]
-query = PrintParse(
-    print=lambda query: urllib.parse.urlencode(
-        query,
-        doseq=True,
-    ),
-    parse=lambda query_string: urllib.parse.parse_qs(
-        query_string,
-        keep_blank_values=True,
-        strict_parsing=True,
-    ),
-)
-
-URL = collections.namedtuple(
-    "URL", ["scheme", "netloc", "path", "query", "fragments"], defaults=["", {}, None]
-)
-
-URL_HTTP = functools.partial(URL, "http")
-URL_HTTPS = functools.partial(URL, "https")
-
-url: PrinterParser[URL, str]
-url = compose(
-    combine_namedtuple(
-        urllib.parse.SplitResult(
-            identity,  # type: ignore
-            netloc,  # type: ignore
-            pure_posix_path,  # type: ignore
-            query,  # type: ignore
-            identity,  # type: ignore
-        )
-    ),
-    PrintParse(
-        print=urllib.parse.urlunsplit,
-        parse=urllib.parse.urlsplit,
-    ),
 )
 
 command_line: PrinterParser[Iterable[str], str]
@@ -785,3 +678,22 @@ def dataclass_json[T: Dataclass](
 def dataclass_field(pp):
     # pylint: disable=invalid-field-call
     return dataclasses.field(metadata={"pp": pp})
+
+
+def named_tuple_from_dataclass(cls):
+    return collections.namedtuple(
+        cls.__name__,
+        [field.name for field in dataclasses.fields(cls)],
+    )
+
+
+@dataclasses.dataclass
+class DataclassAsNamedTuple[S, T](PrinterParser[S, T]):
+    cls_source: Type[S]
+    cls_target: Type[T]
+
+    def print(self, x: S, /) -> T:
+        return self.cls_target(**x.__dict__)
+
+    def parse(self, y: T, /) -> S:
+        return self.cls_source(**y._asdict())

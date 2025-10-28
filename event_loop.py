@@ -12,6 +12,7 @@ import util.print_parse
 import util.ssh
 import util.subsuming_queue
 import util.threading
+import util.url
 import webhook_listener
 
 
@@ -19,10 +20,10 @@ import webhook_listener
 class WebhookConfig:
     """Configuration for webhooks."""
 
-    netloc_listen: util.print_parse.NetLoc
+    netloc_listen: util.url.NetLoc
     """The local net location to listen at for webhook notifications."""
 
-    netloc_specify: util.print_parse.NetLoc
+    netloc_specify: util.url.NetLoc
     """The net location to specify in the webhook configuration."""
 
     secret_token: str
