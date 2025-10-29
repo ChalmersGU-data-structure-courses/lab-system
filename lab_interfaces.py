@@ -1,7 +1,14 @@
 import abc
+import dataclasses
 import re
+from typing import Self
+from pathlib import Path
+import tomllib
 
-import util.markdown
+import util.gdpr_coding
+import util.print_parse
+import util.url
+import chalmers_pdb
 
 
 class RequestMatcher:
@@ -174,6 +181,88 @@ class HandlingException(Exception, util.markdown.Markdown):
     Raised for errors caused by a problems with a submission.
     Should be reportable in issues in student repositories.
     """
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class CourseAuth:
+    """
+    Authentication used by the Course class.
+    If some authentication is not provided, functions depending on them cannot be used.
+
+    SSH authentication for connecting to Chalmers GitLab uses the system configuration (".ssh" folder).
+    """
+
+    canvas_auth_token: str | None = None
+    """
+    Canvas authentication token.
+    Used for synchronization with the Canvas course.
+    """
+
+    gitlab_private_token: str | None = None
+    """
+    Chalmers GitLab private token.
+    Used for managing the labs.
+    """
+
+    gitlab_webhook_secret_token: str | None = None
+    """
+    Secret token to set and check for webhook notifications.
+    The value does not matter, but must be consistent over multiple invocations that use the same webhooks.
+
+    TODO: compute dynamically and cache?
+    """
+
+    google_credentials: dict[str, str] | None = None
+    """
+    Google credentials.
+    Recommended to be for a service account.
+    Used for maintaining the grading overview spreadsheet.
+    """
+
+    pdb: chalmers_pdb.Auth | None = None
+    """
+    Credentials for Chalmers PDB.
+    Used for translating a personnummer to a CID (used for GU students).
+    Format: (username, password)
+    """
+
+    @classmethod
+    def from_secrets(cls, path: Path) -> Self:
+        """
+        Load authentication data from secrets file.
+        See template/secrets.toml for the format.
+        """
+        with path.open("rb") as file:
+            secrets = tomllib.load(file)
+
+        def args():
+            canvas = secrets.get("canvas")
+            if canvas:
+                yield ("canvas_auth_token", canvas["auth_token"])
+
+            gitlab = secrets.get("gitlab")
+            if gitlab:
+                yield ("gitlab_private_token", gitlab["private_token"])
+
+                gitlab_webhook_secret_token = gitlab.get("webhook_secret_token")
+                if gitlab_webhook_secret_token:
+                    yield ("gitlab_webhook_secret_token", gitlab_webhook_secret_token)
+
+            google = secrets.get("google")
+            if google:
+                yield ("google_credentials", google["credentials"])
+
+            pdb = secrets.get("pdb")
+            if pdb:
+                yield (
+                    "pdb_login",
+                    chalmers_pdb.Auth(
+                        username=pdb["username"],
+                        password=pdb["password"],
+                    ),
+                )
+
+        return cls(**dict(args()))
 
 
 class LabUpdateListener[GroupId]:
