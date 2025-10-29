@@ -154,7 +154,7 @@ class LabUpdateManager[GroupIdentifier]:
     def __init__(self, lab):
         self.lab = lab
         self.read()
-        self.update_listeners = set()
+        self.listeners = set()
 
     @functools.cached_property
     def pp(self) -> util.print_parse.PrintParse[set[GroupIdentifier], str]:
@@ -192,12 +192,12 @@ class LabUpdateManager[GroupIdentifier]:
         for id in self.dirty:
             self.lab.groups[id].members_clear()
 
-        for listener in self.update_listeners:
+        for listener in self.listeners:
             listener.groups_changed_prepare(list(self.dirty), deadline=deadline)
 
         self.lab.repo_push()
 
-        for listener in self.update_listeners:
+        for listener in self.listeners:
             listener.groups_changed(list(self.dirty), deadline=deadline)
 
         self.dirty.clear()
@@ -1048,7 +1048,7 @@ class Lab[LabIdentifier, GroupIdentifier]:
                     deadline=deadline,
                 )
             if use_live_submissions_table:
-                LiveSubmissionsTable(self, deadline=deadline)
+                yield LiveSubmissionsTableLabUpdateListener(self, deadline=deadline)
 
         self.update_manager.listeners = set(listeners())
 
@@ -1401,8 +1401,7 @@ class Lab[LabIdentifier, GroupIdentifier]:
 
         if grading_updates:
             self.update_manager.mark_dirty([group.id])
-            self.update_
-        self.update_submission_systems()
+        self.update_manager.process()
 
     def checkout_tag_hierarchy(self, dir):
         """
