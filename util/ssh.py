@@ -93,7 +93,8 @@ class Control:
         if self.force:
             yield from arg_option("ControlMaster", value_bool(self.master))
             yield from arg_option(
-                "ControlPath", "none" if self.path is None else value_path(self.path)
+                "ControlPath",
+                "none" if self.path is None else value_path(self.path),
             )
         else:
             if self.master:

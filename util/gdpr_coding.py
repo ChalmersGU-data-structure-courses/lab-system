@@ -13,7 +13,7 @@ import util.print_parse
 logger = logging.getLogger(__name__)
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class GDPRCoding[GroupId]:
     # Printer-parser that encodes identifiers for use in non-GDPR-cleared documents.
     # The most common example is Google Sheets.

@@ -100,7 +100,7 @@ def generate_from_template_document(
     """
     Generate documents of various file types from the template document with given id.
 
-    token is a Goolge OAuth2 token with scopes for drives and documents.
+    token is a Google OAuth2 token with scopes for drives and documents.
 
     output_paths is a map from file types to generated (specified by suffix) to output paths.
 
