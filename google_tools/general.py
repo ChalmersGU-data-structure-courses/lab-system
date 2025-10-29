@@ -17,7 +17,7 @@ from .documents import Documents
 from .drive import Drive, TemporaryFile
 
 
-logger = logging.getLogger("google_tools.general")
+logger = logging.getLogger(__name__)
 
 this_dir = Path(__file__).parent
 
@@ -42,9 +42,9 @@ def is_service_account(secrets):
 
 
 def get_token_for_scopes(
-    scopes,
-    credentials=this_dir / "credentials.json",
-    cached_token=this_dir / "token.pickle",
+    scopes: list[str],
+    credentials: dict[str, str],
+    cached_token: Path | None = None,
     prefix_url=True,
 ):
     """
@@ -57,10 +57,9 @@ def get_token_for_scopes(
     if prefix_url:
         scopes = list(map(scope_url, scopes))
 
-    creds = load_secrets(credentials)
-    if is_service_account(creds):
+    if is_service_account(credentials):
         return google.oauth2.service_account.Credentials.from_service_account_info(
-            info=creds,
+            info=credentials,
             scopes=scopes,
         )
 

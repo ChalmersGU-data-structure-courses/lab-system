@@ -28,6 +28,7 @@ import gitlab_.users_cache
 import google_tools.sheets
 import grading_sheet
 import group_set
+import lab_interfaces
 import util.gdpr_coding
 import util.general
 import util.instance_cache
@@ -91,6 +92,7 @@ class Course:
     def __init__(
         self,
         config,
+        auth: lab_interfaces.CourseAuth,
         dir=None,
         *,
         timeout=30,
@@ -99,6 +101,7 @@ class Course:
         """
         Arguments:
         * config: Course configuration, as documented in gitlab_config.py.template.
+        * auth: Authentication secrets.
         * dir: Local directory used by the Course and Lab objects for storing information.
                Each local lab repository will be created as a subdirectory with full id as name (e.g. lab-3).
                Only needed by certain methods that depend on state not recorded on Canvas or GitLab.
@@ -106,6 +109,7 @@ class Course:
         """
         self.logger = logger
         self.config = config
+        self.auth = auth
         self.dir = None if dir is None else Path(dir)
         self.gitlab_path = self.config.path_course
 
@@ -144,10 +148,18 @@ class Course:
         return gs
 
     @functools.cached_property
+    def google_credentials(self):
+        return google_tools.general.get_token_for_scopes(
+            google_tools.sheets.default_scopes,
+            credentials=self.auth.google_credentials,
+            cached_token=self.dir / "google-token",
+        )
+
+    @functools.cached_property
     def canvas(self):
         return canvas.Canvas(
             self.config.canvas.url,
-            auth_token=self.config.canvas_auth_token,
+            auth_token=self.auth.canvas_auth_token,
         )
 
     def canvas_course_get(self, use_cache):
@@ -324,6 +336,10 @@ class Course:
         user_details = self.canvas_course.user_details[user_id]
         return self.cid_from_ldap_name(user_details.name)
 
+    @functools.cached_property
+    def chalmers_pdb(self) -> chalmers_pdb.Client:
+        return chalmers_pdb.Client(auth=self.auth.pdb)
+
     @util.instance_cache.instance_cache
     def cid_from_canvas_id_via_login_id_or_pdb(self, user_id):
         """
@@ -336,7 +352,7 @@ class Course:
             return cid
 
         user_details = self.canvas_course.user_details[user_id]
-        return chalmers_pdb.tools.personnummer_to_cid(user_details.sis_user_id)
+        return self.chalmers_pdb.personnummer_to_cid(user_details.sis_user_id)
 
     @property
     def gitlab_netloc(self):
@@ -347,15 +363,11 @@ class Course:
         )
 
     @functools.cached_property
-    def gitlab_token(self):
-        return gitlab_.tools.read_private_token(self.config.gitlab_private_token)
-
-    @functools.cached_property
     def gl(self):
         r = gitlab.Gitlab(
             self.config.gitlab_url,
-            private_token=self.gitlab_token,
-            timeout=self.timeout,
+            private_token=self.auth.gitlab_token,
+            timeout=self.config.timeout.total_seconds(),
         )
         r.auth()
         return r
@@ -422,7 +434,7 @@ class Course:
     def gitlab_graphql_client(self):
         return gitlab_.graphql.Client(
             domain="git.chalmers.se",
-            token=self.gitlab_token,
+            token=self.auth.gitlab_private_token,
         )
 
     @functools.cached_property
@@ -1033,8 +1045,7 @@ class Course:
         A context manager for reporting program errors via a Google sheet.
         Use change notifications on Google sheets to get notifications on failure.
         """
-        # Shortcut
-        spreadsheets = grading_sheet.GradingSpreadsheet(self.config, self.labs).google
+        spreadsheets = google_tools.sheets.get_client(self.google_credentials)
 
         try:
             yield
