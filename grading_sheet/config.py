@@ -1,7 +1,6 @@
-import abc
 import dataclasses
-from typing import Protocol
 from collections.abc import Collection
+from typing import Self
 
 import util.general
 import util.gdpr_coding
@@ -10,23 +9,38 @@ from util.print_parse import PrinterParser
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
-class Config[LabIdentifier: Comparable]:
+class ConfigExternal[LabId]:
     """
     Configuration of the grading spreadsheet.
-    See GradingSpreadsheet.
+    The grading spreadsheet keeps track of grading outcomes.
+    Individual grading sheets for each lab are worksheets in this spreadsheet.
+    This is created by the user, but maintained by the lab script.
+    See grading_sheet.core.GradingSpreadsheet.
     """
 
     spreadsheet: str
     """
     Key (in base64) of grading spreadsheet on Google Sheets.
-    The grading spreadsheet keeps track of grading outcomes.
-    This is created by the user, but maintained by the lab script.
     The key can be found in the URL of the spreadsheet.
-    Individual grading sheets for each lab are worksheets in this spreadsheet.
     """
 
-    lab: PrinterParser[LabIdentifier, str]
-    """Printer-parser for submission outcomes formatted as cells."""
+
+@dataclasses.dataclass(kw_only=True, frozen=True)
+class ConfigInternal[LabId]:
+    lab: PrinterParser[LabId, str]
+    """Printer-parser for lab ids formatted as sheet names."""
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True)
+class Config[LabId](ConfigExternal, ConfigInternal[LabId]):
+    pass
+
+
+config: Config[str]
+config = Config(
+    spreadsheet="asd",
+    lab=None,
+)
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
@@ -70,7 +84,7 @@ TEMPLATE_SHEET_TITLES = [
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
-class LabConfig[GroupIdentifier, Outcome]:
+class LabConfigExternal:
     """
     Configuration of a lab worksheet in the grading spreadsheet.
     See GradingSheet.
@@ -114,7 +128,10 @@ class LabConfig[GroupIdentifier, Outcome]:
     In particular, it is possible to have columns with headers other than the ones above.
     """
 
-    template: tuple[str, int | str] | None = None
+    template: tuple[str, int | str] | None = (
+        "1phOUdj_IynVKPiEU6KtNqI3hOXwNgIycc-bLwgChmUs",
+        "Template",
+    )
     """
     Pair of:
     * spreadsheet key (base64) (as for spreadsheet in Config),
@@ -127,14 +144,6 @@ class LabConfig[GroupIdentifier, Outcome]:
 
     header: HeaderConfig = HeaderConfig()
     """Configuration of the header row."""
-
-    gdpr_coding: util.gdpr_coding.GDPRCoding[GroupIdentifier]
-    """
-    How to format and sort group identifiers in the grading sheet.
-    """
-
-    outcome: PrinterParser[Outcome, str]
-    """Printer-parser for submission outcomes formatted as cells."""
 
     ignore_rows: Collection[int] = frozenset()
     """
@@ -155,3 +164,26 @@ class LabConfig[GroupIdentifier, Outcome]:
     TODO:
     This parameter is interpreted by the module lab instead of module grading_sheet.
     """
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True)
+class LabConfigInternal[GroupId, Outcome]:
+    gdpr_coding: util.gdpr_coding.GDPRCoding[GroupId]
+    """How to format and sort group identifiers in the grading sheet."""
+
+    outcome: PrinterParser[Outcome, str]
+    """Printer-parser for submission outcomes formatted as cells."""
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True)
+class LabConfig[GroupId, Outcome](
+    LabConfigExternal,
+    LabConfigInternal[GroupId, Outcome],
+):
+    @classmethod
+    def build(
+        cls,
+        external: LabConfigExternal,
+        internal: LabConfigInternal[GroupId, Outcome],
+    ) -> Self:
+        return cls(**vars(external), **vars(internal))
