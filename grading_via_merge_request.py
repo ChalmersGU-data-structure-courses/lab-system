@@ -15,9 +15,9 @@ import util.print_parse
 
 
 class SetupData:
-    def __init__(self, lab, language=None):
+    def __init__(self, lab, variant=None):
         self.lab = lab
-        self.language = language
+        self.variant = variant
 
     @functools.cached_property
     def label_pp(self):
@@ -32,19 +32,19 @@ class SetupData:
 
     @functools.cached_property
     def title(self):
-        return self.title_pp.print(self.language)
+        return self.title_pp.print(self.variant)
 
     # TODO: remove hard-coding
     @functools.cached_property
     def source_branch(self):
-        if self.language is None:
+        if self.variant is None:
             return "submission"
 
-        return f"submission-{self.language}"
+        return f"submission-{self.variant}"
 
     @functools.cached_property
     def target_branch(self):
-        return self.lab.branch_problem(language=self.language)
+        return self.lab.branch_problem(variant=self.variant)
 
 
 class GradingViaMergeRequest:

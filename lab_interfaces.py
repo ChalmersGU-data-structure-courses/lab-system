@@ -77,16 +77,16 @@ class RequestHandler:
         The domains of the printer-parsers are string-valued dictionaries
         that must include the key 'tag' for the name of the associated request.
 
-    Required for multi-language labs:
-    * language_failure_key:
-        Key in self.response_titles identifying language detection failure issues.
+    Required for multi-variant labs:
+    * variant_failure_key:
+        Key in self.response_titles identifying variant detection failure issues.
         If there is not a unique problem commit ancestor, the lab system rejects the submission with such an issue.
         This happens before the request handler handles the request.
 
         Its associated issue-title printer-parser must have printer-parser with domain ditionaries containing no extra keys.
 
-        If this attribute does not exist or is None, it is up to the request handler to deal with language detection failure.
-        For this, use the list request_and_responses.languages of detected language candidates.
+        If this attribute does not exist or is None, it is up to the request handler to deal with variant detection failure.
+        For this, use the list request_and_responses.variants of detected variant candidates.
     """
 
     def setup(self, lab):

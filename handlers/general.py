@@ -29,8 +29,8 @@ submission_request = lab_interfaces.RegexRequestMatcher(
 review_response_key = "grading"
 """The standard response key for a submission review."""
 
-language_failure_key = "grading"
-"""The standard response key for a language detection failure."""
+variant_failure_key = "grading"
+"""The standard response key for a variant detection failure."""
 
 
 def grading_response_for_outcome(outcome_name):
@@ -53,9 +53,9 @@ submission_failure_title = util.print_parse.RegexNoncanonicalKeyed(
     flags=re.IGNORECASE,
 )
 
-language_failure_title = util.print_parse.RegexNoncanonicalKeyed(
-    "Your submission {tag} was not accepted: language detection failure",
-    "Your submission (?P<tag>[^: ]*) was not accepted: language detection failure",
+variant_failure_title = util.print_parse.RegexNoncanonicalKeyed(
+    "Your submission {tag} was not accepted: variant detection failure",
+    "Your submission (?P<tag>[^: ]*) was not accepted: variant detection failure",
     flags=re.IGNORECASE,
 )
 
@@ -92,9 +92,9 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
     In addition to those of the base class:
     * grading_response_for_outcome (replacing response_titles):
         Function taking an outcome printer-parser and returning the grading response printer-parser.
-    * language_failure_title:
-        Response title printer-parser for language detection failure.
-        Used if language_failure_key is set.
+    * variant_failure_title:
+        Response title printer-parser for variant detection failure.
+        Used if variant_failure_key is set.
     * submission_failure:
         Optional Key-value pair for response_titles for submissions that fail to be accepted.
 
@@ -105,8 +105,8 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
     request_matcher = submission_request
     review_response_key = review_response_key
     grading_response_for_outcome = grading_response_for_outcome
-    language_failure_key = language_failure_key
-    language_failure_title = language_failure_title
+    variant_failure_key = variant_failure_key
+    variant_failure_title = variant_failure_title
     submission_failure = (submission_failure_response_key, submission_failure_title)
 
     @functools.cached_property
@@ -122,8 +122,8 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
             )
             if self.submission_failure is not None:
                 yield self.submission_failure
-            if self.language_failure_key is not None:
-                yield (self.language_failure_key, self.language_failure_title)
+            if self.variant_failure_key is not None:
+                yield (self.variant_failure_key, self.variant_failure_title)
 
         return dict(f())
 
@@ -199,9 +199,9 @@ class RobogradingHandler(lab_interfaces.RequestHandler):
     In addition to those of the base class:
     * response_key: The robograding response key (only used internally).
     * response_title: The robograding response printer-parser.
-    * language_failure_title:
-        Response title printer-parser for language detection failure.
-        Used if language_failure_key is set.
+    * variant_failure_title:
+        Response title printer-parser for variant detection failure.
+        Used if variant_failure_key is set.
     * format_count:
         An optional function taking a natural number.
         Returns an optional Markdown message on the number of previous attempts.
@@ -216,16 +216,16 @@ class RobogradingHandler(lab_interfaces.RequestHandler):
     request_matcher = testing_request
     response_key = generic_response_key
     response_title = robograder_response_title
-    language_failure_key = language_failure_key
-    language_failure_title = language_failure_title
+    variant_failure_key = variant_failure_key
+    variant_failure_title = variant_failure_title
     format_count = None
 
     @functools.cached_property
     def response_titles(self):
         def f():
             yield (self.response_key, self.response_title)
-            if self.language_failure_key is not None:
-                yield (self.language_failure_key, self.language_failure_title)
+            if self.variant_failure_key is not None:
+                yield (self.variant_failure_key, self.variant_failure_title)
 
         return dict(f())
 
@@ -380,14 +380,14 @@ class SubmissionTesting:
                         if self.lab.config.has_solution:
                             with dominate.tags.p():
                                 group_solution = self.lab.groups[self_outer.solution]
-                                if self.lab.config.multi_language is None:
+                                if self.lab.config.multi_variant is None:
                                     submission_solution = (
                                         group_solution.submission_current()
                                     )
                                 else:
                                     # TODO: remove hard-coding.
                                     submission_solution = group_solution.submission_handler_data.requests_and_responses[
-                                        f"submission-solution-{submission_current.language}"
+                                        f"submission-solution-{submission_current.variant}"
                                     ]
 
                                 live_submissions_table.format_url(
