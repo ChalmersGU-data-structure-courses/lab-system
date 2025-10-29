@@ -10,12 +10,12 @@ import json as module_json
 import pathlib
 import re
 import shlex
-import urllib.parse
 from typing import Any, Callable, ClassVar, Protocol, Type
 from collections.abc import Iterable, Sequence
 
 import util.general
 import util.path
+from util.path import PurePosixPath
 from util.escaping_formatter import regex_escaping_formatter
 
 
@@ -139,6 +139,19 @@ def on_parse[T](parse: Callable[[T], T]) -> PrinterParser[T, T]:
         print=util.general.identity,
         parse=parse,
     )
+
+
+@dataclasses.dataclass
+class CheckType[X](PrinterParser[X, X]):
+    type: Type[X]
+
+    def print(self, x, /):
+        return x
+
+    def parse(self, y, /):
+        if not isinstance(y, self.type):
+            raise ValueError(f"not of type {self.type}: {y}")
+        return y
 
 
 class SetAsList[X](PrinterParser[set[X], list[X]]):
@@ -552,10 +565,10 @@ singleton_range = PrintParse(
 )
 
 
-pure_posix_path: PrinterParser[pathlib.PurePosixPath, str]
+pure_posix_path: PrinterParser[PurePosixPath, str]
 pure_posix_path = PrintParse(
     print=str,
-    parse=pathlib.PurePosixPath,
+    parse=PurePosixPath,
 )
 
 pure_path: PrinterParser[pathlib.PurePath, str]
@@ -654,9 +667,10 @@ def dataclass_dict[T: Dataclass](cls: Type[T]) -> Type[T]:
 
     def pp_field(field):
         # Don't use exceptions because this may lie on the critical path.
+        default = CheckType(field.type)
         if field.metadata is None:
-            return identity
-        return field.metadata.get("pp", identity)
+            return default
+        return field.metadata.get("pp", default)
 
     # pylint: disable-next=redefined-builtin
     def print(x):
