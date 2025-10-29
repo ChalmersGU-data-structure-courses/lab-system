@@ -17,7 +17,7 @@ import util.general
 import util.print_parse
 from util.print_parse import PrinterParser
 
-from .config import Comparable, Config, HeaderConfig, LabConfig
+from .config import Config, HeaderConfig, LabConfig
 
 
 logger_default = logging.getLogger(__name__)
@@ -86,7 +86,7 @@ class QueryHeaders(QueryDataclassSingleType[str]):
         )
 
 
-class Query[LabId: Comparable, GroupId: Comparable, Outcome]:
+class Query[LabId, GroupId, Outcome]:
     """
     This class represents a query in a grading worksheet.
     This is parametrized by a group and query index.
@@ -218,7 +218,7 @@ class SheetMissing(SheetParseException):
     """Raised when a sheet is missing."""
 
 
-class GradingSheetData[LabId: Comparable, GroupId: Comparable, Outcome]:
+class GradingSheetData[LabId, GroupId, Outcome]:
     """
     Helper class for GradingSheet for parsing a grading sheet.
     Attributes are computed lazily and cached.
@@ -514,7 +514,7 @@ class GradingSheetData[LabId: Comparable, GroupId: Comparable, Outcome]:
         return self.empty_group_range()
 
 
-class GradingSheet[LabId: Comparable, GroupId: Comparable, Outcome]:
+class GradingSheet[LabId, GroupId, Outcome]:
     """
     This class represents a lab worksheet in the grading spreadsheet.
 
@@ -1139,7 +1139,7 @@ class GradingSheet[LabId: Comparable, GroupId: Comparable, Outcome]:
         self.logger.info(f"ensuring grading sheet for {self.title_canonical}: done")
 
 
-class GradingSpreadsheetData[LabId: Comparable]:
+class GradingSpreadsheetData[LabId]:
     """
     Helper class for GradingSpreadsheet for parsing a grading spreadsheet.
     Attributes are computed lazily and cached.
@@ -1254,7 +1254,7 @@ class GradingSpreadsheetData[LabId: Comparable]:
         return (properties_raw, sheet_data)
 
 
-class GradingSpreadsheet[LabId: Comparable]:
+class GradingSpreadsheet[LabId]:
     """
     This class represents a grading spreadsheet.
     This keeps track of which groups have been or are to be graded.
@@ -1270,8 +1270,8 @@ class GradingSpreadsheet[LabId: Comparable]:
     def __init__(
         self,
         config: Config[LabId],
-        credentials: google.auth.credentials.Credentials,
         lab_configs: Mapping[LabId, LabConfig],
+        credentials: google.auth.credentials.Credentials,
         logger: Logger = logger_default,
     ):
         """
