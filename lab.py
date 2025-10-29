@@ -146,10 +146,10 @@ class StudentConnectorGroupSet(StudentConnector):
         return True
 
 
-class LabUpdateManager[GroupIdentifier]:
-    lab: "Lab[GroupIdentifier]"
-    dirty: set[GroupIdentifier]
-    update_listeners: set[LabUpdateListener[GroupIdentifier]]
+class LabUpdateManager[GroupId]:
+    lab: "Lab[GroupId]"
+    dirty: set[GroupId]
+    listeners: set[lab_interfaces.LabUpdateListener[GroupId]]
 
     def __init__(self, lab):
         self.lab = lab
@@ -157,7 +157,7 @@ class LabUpdateManager[GroupIdentifier]:
         self.listeners = set()
 
     @functools.cached_property
-    def pp(self) -> util.print_parse.PrintParse[set[GroupIdentifier], str]:
+    def pp(self) -> util.print_parse.PrintParse[set[GroupId], str]:
         return util.print_parse.compose(
             util.print_parse.SetAsList(),
             util.print_parse.json_coding_nice,
@@ -179,7 +179,7 @@ class LabUpdateManager[GroupIdentifier]:
         else:
             self.path.unlink(missing_ok=True)
 
-    def mark_dirty(self, ids: Iterable[GroupIdentifier]):
+    def mark_dirty(self, ids: Iterable[GroupId]):
         """
         Called by RequestAndResponses.process_request().
         Called in Lab upon response issues or grading merge request updates.
@@ -204,7 +204,7 @@ class LabUpdateManager[GroupIdentifier]:
         self.write()
 
 
-class Lab[LabIdentifier, GroupIdentifier]:
+class Lab[LabId, GroupId]:
     """
     This class abstracts over a single lab in a course.
     Each instance is managed by an instance of course.Course.
@@ -253,7 +253,7 @@ class Lab[LabIdentifier, GroupIdentifier]:
     The format of this argument is documented in gitlab.config.py.template under _lab_config.
     """
 
-    update_listeners: set[LabUpdateListener[GroupIdentifier]]
+    update_listeners: set[LabUpdateListener[GroupId]]
     """
     Dictionary of registered update listeners.
     Keyed by their object identity.
@@ -262,11 +262,11 @@ class Lab[LabIdentifier, GroupIdentifier]:
     def __init__(
         self,
         course,
-        id: LabIdentifier,
-        config=None,
-        dir=None,
-        deadline=None,
-        logger=logging.getLogger(__name__),
+        id: LabId,
+        config: lab_interfaces.LabConfig = None,
+        dir: Path = None,
+        deadline: datetime.datetime = None,
+        logger: logging.Logger = logging.getLogger(__name__),
     ):
         """
         Initialize lab manager.
