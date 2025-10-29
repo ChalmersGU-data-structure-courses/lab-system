@@ -27,9 +27,9 @@ url_strict_safe_strict: str
 url_strict_safe_strict = "[\\w_\\.\\-\\~]*"
 
 
-@dataclass
+@dataclass(frozen=True)
 class NetLoc:
-    host: str
+    host: str | None = None
     port: int | None = None
     user: str | None = None
     password: str | None = None
@@ -114,7 +114,7 @@ class QueryFormatter(PrinterParser[Query, str]):
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class URL:
     scheme: str
     netloc: NetLoc

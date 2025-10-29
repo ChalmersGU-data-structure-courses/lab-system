@@ -36,13 +36,6 @@ class Config[LabId](ConfigExternal, ConfigInternal[LabId]):
     pass
 
 
-config: Config[str]
-config = Config(
-    spreadsheet="asd",
-    lab=None,
-)
-
-
 @dataclasses.dataclass(kw_only=True, frozen=True)
 class HeaderConfig:
     """

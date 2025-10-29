@@ -333,7 +333,7 @@ if args.disable_webhooks:
 else:
     gitlab_netloc = get_value_from_courses(
         "GitLab network location",
-        lambda c: c.gitlab_netloc,
+        lambda c: c.config.gitlab.web_netloc,
     )
     netloc_listen = util.url.NetLoc(
         host=util.ip.get_local_ip_routing_to(gitlab_netloc),
@@ -363,7 +363,7 @@ else:
     # We assume all courses share the same labs.
     # TODO: if we want to continue supporting multiple courses in this script, find way of passing lab-specific config.
     canvas_sync_config = event_loop.CanvasSyncConfig(
-        labs_to_sync=tuple(map(course_.config.lab.id.parse, args.sync_from_canvas)),
+        labs_to_sync=tuple(map(course_.config.lab_id.id.parse, args.sync_from_canvas)),
         sync_interval=(
             None
             if args.sync_period is None

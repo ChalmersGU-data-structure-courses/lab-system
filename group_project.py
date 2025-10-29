@@ -407,7 +407,7 @@ class RequestAndResponses:
                     self.grader_username
                 ]
             except KeyError as e:
-                if self.grader_username in self.course.config.gitlab_lab_system_users:
+                if self.grader_username in self.course.config.gitlab.lab_system_users:
                     return "Lab system"
                 raise ValueError(
                     f"Unknown GitLab grader username {self.grader_username}. "
@@ -635,7 +635,7 @@ class RequestAndResponses:
             self.logger.debug(util.general.join_lines(["Handler result:", str(result)]))
 
         def checks():
-            yield self.lab.config.grading_via_merge_request
+            yield bool(self.lab.config.grading_via_merge_request)
             yield self.group
             yield self.handler_data.is_submission_handler
             yield result["accepted"]
@@ -999,9 +999,7 @@ class GroupProject:
         )
         if self.is_solution:
             # hash = commit.hexsha[:8]
-            tag_name = (
-                "submission" if variant is None else f"submission-{variant}"
-            )
+            tag_name = "submission" if variant is None else f"submission-{variant}"
             with util.git.with_tag(self.lab.repo, tag_name, commit) as tag:
                 self.lab.repo.remote(self.remote).push(tag, force=True)
 
