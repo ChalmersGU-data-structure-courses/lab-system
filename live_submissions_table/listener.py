@@ -17,6 +17,10 @@ class LiveSubmissionsTableLabUpdateListener[LabId, GroupId](
     logger: logging.Logger
     table: live_submissions_table.LiveSubmissionsTable
 
+    @property
+    def course(self):
+        return self.lab.course
+
     @functools.cached_property
     def path(self):
         return self.lab.dir / "live-submissions-table.html"
@@ -42,10 +46,6 @@ class LiveSubmissionsTableLabUpdateListener[LabId, GroupId](
             config=live_submissions_table.Config(deadline=deadline),
             column_types=self.lab.submission_handler.grading_columns,
         )
-
-    @property
-    def course(self):
-        return self.lab.course
 
     @contextlib.contextmanager
     def staging_manager(self):
@@ -75,13 +75,11 @@ class LiveSubmissionsTableLabUpdateListener[LabId, GroupId](
                 self.path_staging.unlink()
             else:
                 self.logger.info("Posting live submissions table to Canvas")
-                target = self.lab.config.canvas_path_awaiting_grading
-                folder_id = self.lab.course.canvas_course.get_folder_by_path(
-                    target.parent
-                ).id
+                target = self.lab.config.live_submissions_table_canvas_path
+                folder = self.course.canvas_course.get_folder_by_path(target.parent)
                 # self.course.canvas_course.post_file(
                 #     self.file_live_submissions_table_staging,
-                #     folder_id,
+                #     folder.id,
                 #     target.name,
                 # )
                 # Workaround for https://github.com/instructure/canvas-lms/issues/2309:
@@ -89,7 +87,7 @@ class LiveSubmissionsTableLabUpdateListener[LabId, GroupId](
                     data = self.path_staging.read_text()
                     data = data + "<!-- " + str(random.randbytes(16)) + " -->"
                     path.write_text(data)
-                    self.course.canvas_course.post_file(path, folder_id, target.name)
+                    self.course.canvas_course.post_file(path, folder.id, target.name)
                 self.path_staging.replace(self.path)
 
     def groups_changed_preparation(self, ids: list[GroupId]) -> None:

@@ -379,9 +379,7 @@ def request_delete_sheet(id) -> Request:
 
 
 def get_client(credentials: google.auth.credentials.Credentials):
-    """
-        Get a spreadsheets client using googleapiclient.
-    l"""
+    """Get a spreadsheets client using googleapiclient."""
 
     # False positive.
     # pylint: disable-next=no-member
