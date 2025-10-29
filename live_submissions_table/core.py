@@ -567,7 +567,7 @@ class SubmissionDiffSolutionColumn(SubmissionDiffColumn):
     def base_ref(self, group):
         if self.choose_solution is None:
             try:
-                if self.lab.config.multi_language is None:
+                if not self.lab.config.variants:
                     return (
                         "solution",
                         self.lab.groups["solution"].submission_current().repo_tag(),
@@ -581,7 +581,7 @@ class SubmissionDiffSolutionColumn(SubmissionDiffColumn):
                 submission_solution = self.lab.groups[
                     "solution"
                 ].submission_handler_data.requests_and_responses[
-                    f"submission-solution-{submission_current.language}"
+                    f"submission-solution-{submission_current.variant}"
                 ]
                 return ("solution", submission_solution.repo_tag(), None)
             except (KeyError, AttributeError) as e:

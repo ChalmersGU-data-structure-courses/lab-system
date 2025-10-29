@@ -358,9 +358,9 @@ class Lab[LabId, GroupId]:
         """
         assert self.config.has_solution is True
         group = self.group_create("solution")
-        if self.config.multi_language:
-            for language in self.config.branch_problem.keys():
-                group.upload_solution(language=language)
+        if self.config.variants:
+            for variant in self.config.variants.variants:
+                group.upload_solution(variant=variant)
         else:
             group.upload_solution()
 
@@ -436,12 +436,12 @@ class Lab[LabId, GroupId]:
 
         On creation, the project is empty.
 
-        For a single-problem lab, there should be:
-        * a branch self.config.branch_problem with the initial lab problem,
+        For a standard lab (without variants), there should be:
+        * a branch <self.config.repository.problem> (default "problem") with the initial lab problem,
         * a default branch main branch pointing to the same commit.
 
-        For a multi-problem lab, there should be:
-        * problem branches according to the values of the dictionary self.config.branch_problem,
+        For a lab with variants, there should be:
+        * problem branches <self.config.branch_problem(variant)> (default "problem-<variant>") for each variant,
         * main branch pointing to the default problem.
 
         In both cases, you can use Lab.primary_project_problem_branches_create for this.
@@ -545,18 +545,18 @@ class Lab[LabId, GroupId]:
 
         Arguments:
         * branches is optionally:
-          - an instance of ProblemSpecification for non-multi-language labs,
-          - a dictionary from languages to instances of ProblemSpecification for multi-language labs.
+          - an instance of ProblemSpecification for non-multi-variant labs,
+          - a dictionary from variants to instances of ProblemSpecification for multi-variant labs.
           If the attribute path_source is None, attempts to use a subfolder of the configured lab source:
-          - 'problem' for non-multi-language labs,
-          - 'problem/<language>' for multi-language labs.
+          - 'problem' for non-multi-variant labs,
+          - 'problem/<variant>' for multi-variant labs.
           If the attribute message is None, uses a sensible default.
           If branch_specs is None, uses these defaults for all problem branches.
-        * default specified the language that should be used for the main branch.
-          Only used for multi-language labs.
+        * default specified the variant that should be used for the main branch.
+          Only used for multi-variant labs.
           Defaults to the first key of self.config.branch_problem.
         """
-        if self.config.multi_language is None:
+        if self.config.multi_variant is None:
             if branch_specs is None:
                 branch_specs = Lab.ProblemSpecification()
 
@@ -576,8 +576,8 @@ class Lab[LabId, GroupId]:
         else:
             if branch_specs is None:
                 branch_specs = {
-                    language: Lab.ProblemSpecification(path_source=None, message=None)
-                    for language in self.config.branch_problem.keys()
+                    variant: Lab.ProblemSpecification(path_source=None, message=None)
+                    for variant in self.config.branch_problem.keys()
                 }
 
             assert branch_specs.keys() == self.config.branch_problem.keys()
@@ -585,21 +585,21 @@ class Lab[LabId, GroupId]:
             if default is None:
                 default = next(iter(self.config.branch_problem.keys()))
 
-            def process_language(language, make_main):
-                spec = branch_specs[language]
+            def process_variant(variant, make_main):
+                spec = branch_specs[variant]
 
                 def branches():
                     if make_main:
                         yield self.course.config.branch.master
-                    yield self.config.branch_problem[language]
+                    yield self.config.branch_problem[variant]
 
                 source = spec.path_source
                 if source is None:
-                    source = self.config.path_source / "problem" / language
+                    source = self.config.path_source / "problem" / variant
 
                 message = spec.message
                 if message is None:
-                    message = f"Initial {language.capitalize()} version."
+                    message = f"Initial {variant.capitalize()} version."
 
                 self.primary_project_branch_create(
                     source=source,
@@ -607,10 +607,10 @@ class Lab[LabId, GroupId]:
                     message=message,
                 )
 
-            process_language(default, True)
-            for language in self.config.branch_problem.keys():
-                if language != default:
-                    process_language(language, False)
+            process_variant(default, True)
+            for variant in self.config.branch_problem.keys():
+                if variant != default:
+                    process_variant(variant, False)
 
     @functools.cached_property
     def collection_project(self):
@@ -769,9 +769,9 @@ class Lab[LabId, GroupId]:
                 c.add_value("advice", "detachedHead", "false")
 
             # Configure and fetch primary repository.
-            # TODO: add language problem branches.
+            # TODO: add variant problem branches.
             def fetch_branches():
-                if self.config.multi_language is None:
+                if self.config.multi_variant is None:
                     yield "problem"  # self.course.config.branch.master  # TODO: fix in config.
                 else:
                     yield from self.config.branch_problem.values()
@@ -1123,7 +1123,7 @@ class Lab[LabId, GroupId]:
                 for group in self.groups_known():
                     if group.parse_grading_merge_request_responses():
                         yield group.id
-                    if self.config.multi_language is None:
+                    if self.config.multi_variant is None:
                         stack.enter_context(
                             group.grading_via_merge_request.notes_suppress_cache_clear()
                         )
@@ -1209,28 +1209,28 @@ class Lab[LabId, GroupId]:
                 yield (src, bin)
 
     @functools.cached_property
-    def language_problem_names(self) -> Mapping[str | None, str]:
+    def variant_problem_names(self) -> Mapping[str | None, str]:
         """
-        The mapping from language names to problem branch names.
-        If not a multi-language lab, uses None as unique language name.
+        The mapping from variant names to problem branch names.
+        If not a multi-variant lab, uses None as unique variant name.
         """
-        if self.config.multi_language is None:
+        if self.config.multi_variant is None:
             return {None: self.config.branch_problem}
 
         return self.config.branch_problem
 
-    def branch_problem(self, language=None):
-        return self.language_problem_names[language]
+    def branch_problem(self, variant=None):
+        return self.variant_problem_names[variant]
 
-    def head_problem(self, language=None):
+    def head_problem(self, variant=None):
         return util.git.normalize_branch(
             self.repo,
-            self.branch_problem(language=language),
+            self.branch_problem(variant=variant),
         )
 
     @property
     def heads_problem(self):
-        if self.config.multi_language is None:
+        if self.config.multi_variant is None:
             return [self.config.branch_problem]
 
         return self.config.branch_problem.values()
@@ -1242,17 +1242,17 @@ class Lab[LabId, GroupId]:
         return self.config.compiler
 
     # TODO: unused?
-    def checkout_problem(self, language=None):
+    def checkout_problem(self, variant=None):
         """A context manager for the checked out problem head (path.Path)."""
         return util.git.checkout_manager(
-            self.repo, self.head_problem(language=language)
+            self.repo, self.head_problem(variant=variant)
         )
 
     # TODO: unused?
     @contextlib.contextmanager
-    def checkout_and_compile_problem(self, language=None):
+    def checkout_and_compile_problem(self, variant=None):
         with self.checkout_with_empty_bin_manager(
-            self.head_problem(language=language)
+            self.head_problem(variant=variant)
         ) as (src, bin):
             if self.compiler is not None:
                 self.compiler.compile(src, bin)
@@ -1377,7 +1377,7 @@ class Lab[LabId, GroupId]:
                     )
                     if x:
                         self.logger.info("found merge request update")
-                        if self.config.multi_language is None:
+                        if self.config.multi_variant is None:
                             stack.enter_context(
                                 group.grading_via_merge_request.notes_suppress_cache_clear()
                             )

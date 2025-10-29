@@ -13,27 +13,27 @@ class LanguageColumn(live_submissions_table.Column):
 
     def get_value(self, group):
         submission = group.submission_current(deadline=self.config.deadline)
-        language = submission.handled_result.get("language", "")
-        return live_submissions_table.StandardColumnValue(language)
+        variant = submission.handled_result.get("variant", "")
+        return live_submissions_table.StandardColumnValue(variant)
 
 
 def wrap_column_types(column_types):
     """
-    Takes a dictionary of column classes indexed by language.
-    Wraps them into a column class that dispatches according to the submission language.
+    Takes a dictionary of column classes indexed by variant.
+    Wraps them into a column class that dispatches according to the submission variant.
     """
 
     class ColumnWrapper(live_submissions_table.Column):
         """
-        A column dispatching according to the submission language.
-        Header cell is taken from first language in given dictionary.
+        A column dispatching according to the submission variant.
+        Header cell is taken from first variant in given dictionary.
         """
 
         def __init__(self, table):
             super().__init__(table)
             self.columns = {
-                language: column_type(table)
-                for (language, column_type) in column_types.items()
+                variant: column_type(table)
+                for (variant, column_type) in column_types.items()
             }
             self.sortable = all(column.sortable for column in self.columns.values())
 
@@ -43,9 +43,9 @@ def wrap_column_types(column_types):
 
         def get_value(self, group):
             submission = group.submission_current(deadline=self.config.deadline)
-            language = submission.handled_result.get("language")
+            variant = submission.handled_result.get("variant")
             try:
-                column = self.columns[language]
+                column = self.columns[variant]
             except KeyError:
                 return live_submissions_table.StandardColumnValue()
 
@@ -58,7 +58,7 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
     def __init__(self, sub_handlers, shared_columns, show_solution=True):
         """
         Arguments:
-        * sub_handlers: dictionary mapping languages to subhandlers.
+        * sub_handlers: dictionary mapping variants to subhandlers.
         * shared_columns:
             Iterable of strings.
             Columns in the live submission table that should be dispatched to sub handlers.
@@ -74,11 +74,11 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
             sub_handler.setup(lab)
 
         def columns():
-            yield ("language", LanguageColumn)
+            yield ("variant", LanguageColumn)
             for column in self.shared_columns:
                 column_types = {
-                    language: sub_handler.grading_columns[column]
-                    for (language, sub_handler) in self.sub_handlers.items()
+                    variant: sub_handler.grading_columns[column]
+                    for (variant, sub_handler) in self.sub_handlers.items()
                 }
                 yield (column, wrap_column_types(column_types))
 
@@ -89,13 +89,13 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
         )
 
     def handle_request(self, request_and_responses):
-        sub_handler = self.sub_handlers[request_and_responses.language]
+        sub_handler = self.sub_handlers[request_and_responses.variant]
         return sub_handler.handle_request(request_and_responses)
 
 
 class RobogradingHandler(handlers.general.RobogradingHandler):
     def __init__(self, sub_handlers):
-        """Takes a dictionary mapping languages to sub-handlers."""
+        """Takes a dictionary mapping variants to sub-handlers."""
         self.sub_handlers = sub_handlers
 
     def setup(self, lab):
@@ -104,5 +104,5 @@ class RobogradingHandler(handlers.general.RobogradingHandler):
             sub_handler.setup(lab)
 
     def handle_request(self, request_and_responses):
-        sub_handler = self.sub_handlers[request_and_responses.language]
+        sub_handler = self.sub_handlers[request_and_responses.variant]
         return sub_handler.handle_request(request_and_responses)

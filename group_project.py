@@ -39,8 +39,8 @@ class RequestAndResponses:
     They are reconstructed every time request tags or response issues are refreshed.
     """
 
-    _language: str | None
-    languages: list[str] | None
+    _variant: str | None
+    variants: list[str] | None
     request_name: str
 
     def __init__(self, lab, handler_data, request_name, tag_data):
@@ -305,28 +305,28 @@ class RequestAndResponses:
         return issue
 
     @functools.cached_property
-    def language(self):
+    def variant(self):
         with contextlib.suppress(AttributeError):
-            return self._language
+            return self._variant
 
-        if self.lab.config.multi_language is None:
+        if self.lab.config.multi_variant is None:
             return None
 
-        return self.handled_result["language"]
+        return self.handled_result["variant"]
 
     @functools.cached_property
     def grading_merge_request(self):
         if not self.lab.config.grading_via_merge_request:
             return None
 
-        if self.lab.config.multi_language is None:
+        if self.lab.config.multi_variant is None:
             return self.group.grading_via_merge_request
 
-        return self.group.grading_via_merge_request[self.language]
+        return self.group.grading_via_merge_request[self.variant]
 
     @functools.cached_property
     def head_problem(self):
-        return self.lab.head_problem(language=self.language)
+        return self.lab.head_problem(variant=self.variant)
 
     def outcome_link_grader_from_grading_merge_request_acc(self, accumulative=False):
         """None unless grading via merge requests has been configured"""
@@ -539,19 +539,19 @@ class RequestAndResponses:
         self.responses[response_key] = issue_data
         self.handler_data.responses[response_key][self.request_name] = issue_data
 
-    def post_language_failure_issue(self, response_key, title_data=None):
-        assert self.languages is not None
+    def post_variant_failure_issue(self, response_key, title_data=None):
+        assert self.variants is not None
 
         # TODO: change get to lazy once web_url is confirmed to exist there.
         project = self.group.project.get
 
         def problems():
-            for language in self.languages:
-                yield self.lab.language_problem_names[language]
+            for variant in self.variants:
+                yield self.lab.variant_problem_names[variant]
 
         url = gitlab_.tools.url_tag_name(project, self.request_name)
         ref = f"[{self.request_name}]({url})"
-        if not self.languages:
+        if not self.variants:
             reason = "does not have a problem stub"
         else:
             reason = f"has multiple problem stubs ({", ".join(problems())})"
@@ -563,7 +563,7 @@ class RequestAndResponses:
         )
 
         def all_problems():
-            for problem in self.lab.language_problem_names.values():
+            for problem in self.lab.variant_problem_names.values():
                 url = gitlab_.tools.url_tree(project, problem, False)
                 yield f"* [{problem}]({url})"
 
@@ -589,22 +589,22 @@ class RequestAndResponses:
         )
 
         # If a submission failure already exists, we are happy.
-        language_failure_key = None
+        variant_failure_key = None
         with contextlib.suppress(AttributeError):
-            language_failure_key = self.handler_data.handler.language_failure_key
-        if language_failure_key in self.responses:
+            variant_failure_key = self.handler_data.handler.variant_failure_key
+        if variant_failure_key in self.responses:
             return {"accepted": False}
 
-        # Attempt to detect language.
-        self._language = None
-        self.languages = None
+        # Attempt to detect variant.
+        self._variant = None
+        self.variants = None
         try:
-            self._language = self.group.detect_language(self.repo_remote_commit)
+            self._variant = self.group.detect_variant(self.repo_remote_commit)
         except util.general.UniquenessError as e:
-            self.languages = list(e.iterator)
+            self.variants = list(e.iterator)
             self.logger.warn(
                 util.general.text_from_lines(
-                    f"Language detection failure: (candidates {self.languages}).",
+                    f"Language detection failure: (candidates {self.variants}).",
                     f"* {self.lab.name}",
                     f"* {self.group.name}",
                     f"* {self.request_name}",
@@ -618,10 +618,10 @@ class RequestAndResponses:
                 ) from e
 
             if (
-                language_failure_key is not None
-                and self.lab.config.multi_language is not None
+                variant_failure_key is not None
+                and self.lab.config.multi_variant is not None
             ):
-                self.post_language_failure_issue(language_failure_key, {})
+                self.post_variant_failure_issue(variant_failure_key, {})
                 return {"accepted": False}
 
         # Call handler with this object as argment.
@@ -642,18 +642,18 @@ class RequestAndResponses:
             yield result["review_needed"]
 
         if all(checks()):
-            if self.lab.config.multi_language is not None:
-                if self._language is None:
+            if self.lab.config.multi_variant is not None:
+                if self._variant is None:
                     msg = "Language detection failed, but submission handler successed."
                     self.logger.error(msg)
                     raise ValueError(msg)
 
-                # Hacky workaround to an issue in redesign of language handling.
+                # Hacky workaround to an issue in redesign of variant handling.
                 if result is None:
                     result = {}
 
                 assert isinstance(result, dict)
-                result["language"] = self._language
+                result["variant"] = self._variant
 
             self.grading_merge_request.sync_submission(self)
 
@@ -966,7 +966,7 @@ class GroupProject:
         return r
 
     # TODO: parametrize over submission tag printing.
-    def upload_solution(self, path=None, language=None, force=False):
+    def upload_solution(self, path=None, variant=None, force=False):
         """
         If path is None, we look for a solution in 'solution' or 'solution/<id>' relative to the lab sources.
         We include a prefix of the hash of the submission so that reuploads will be reprocessed by the submission system.
@@ -979,8 +979,8 @@ class GroupProject:
                 raise ValueError("not solution project")
 
         if path is None:
-            if language is not None:
-                path = PurePosixPath() / "solution" / language
+            if variant is not None:
+                path = PurePosixPath() / "solution" / variant
             elif self.id in self.lab.solutions.keys() and self.id != "solution":
                 path = PurePosixPath() / "solution" / self.id
             else:
@@ -995,12 +995,12 @@ class GroupProject:
             else "Solution in student project"
         ) + "."
         commit = git.Commit.create_from_tree(
-            self.lab.repo, tree, msg, [self.lab.head_problem(language=language).commit]
+            self.lab.repo, tree, msg, [self.lab.head_problem(variant=variant).commit]
         )
         if self.is_solution:
             # hash = commit.hexsha[:8]
             tag_name = (
-                "submission" if language is None else f"submission-solution-{language}"
+                "submission" if variant is None else f"submission-{variant}"
             )
             with util.git.with_tag(self.lab.repo, tag_name, commit) as tag:
                 self.lab.repo.remote(self.remote).push(tag, force=True)
@@ -1190,7 +1190,7 @@ class GroupProject:
         * notify_students: unimplemented [TODO, see hotfix_branch],
         * ensure_ancestral:
             If set, ensure there is a local tag ancestral/<group remote>/<problem> with the previous group problem or earlier.
-            This can be used for language detection in merge_problem_into_branch.
+            This can be used for variant detection in merge_problem_into_branch.
 
             If this complains it cannot find the remote problem head, the fix is to run self.repo_fetch().
             If you are updating the problem for all the groups, it is more efficient to run l.repo_fetch_all().
@@ -1217,23 +1217,23 @@ class GroupProject:
                 )
             )
 
-    def detect_language(self, commit):
+    def detect_variant(self, commit):
         """
-        Find out which language problem a commit derives from.
-        The language will be None for labs that are not multi-language.
+        Find out which variant problem a commit derives from.
+        The variant will be None for labs that are not multi-variant.
         """
         return util.git.find_unique_ancestor(
             self.repo,
             commit,
             {
-                language: util.git.normalize_branch(self.lab.repo, problem)
-                for (language, problem) in self.lab.language_problem_names.items()
+                variant: util.git.normalize_branch(self.lab.repo, problem)
+                for (variant, problem) in self.lab.variant_problem_names.items()
             },
         )
 
     def detect_ancestor_problem_for_merge(self, commit, ancestor_override=None):
         """
-        Find out which language problem a commit derives from in the situation of a hotfix.
+        Find out which variant problem a commit derives from in the situation of a hotfix.
         There, the problem branches in the student project have already been updated.
 
         Arguments:
@@ -1423,18 +1423,18 @@ class GroupProject:
 
     @functools.cached_property
     def grading_via_merge_request(self):
-        if self.lab.config.multi_language is None:
+        if self.lab.config.multi_variant is None:
             return grading_via_merge_request.GradingViaMergeRequest(
                 self.lab.grading_via_merge_request_setup_data,
                 self,
             )
 
         return {
-            language: grading_via_merge_request.GradingViaMergeRequest(
-                self.lab.grading_via_merge_request_setup_data[language],
+            variant: grading_via_merge_request.GradingViaMergeRequest(
+                self.lab.grading_via_merge_request_setup_data[variant],
                 self,
             )
-            for language in self.lab.config.branch_problem.keys()
+            for variant in self.lab.config.branch_problem.keys()
         }
 
     def tags_from_gitlab(self):
@@ -1631,7 +1631,7 @@ class GroupProject:
         return False
 
     def parse_grading_merge_request_responses(self):
-        if self.lab.config.multi_language is None:
+        if self.lab.config.multi_variant is None:
             return self.grading_via_merge_request.update_outcomes()
 
         def f():
