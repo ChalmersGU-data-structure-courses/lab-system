@@ -253,11 +253,95 @@ class Lab[LabId, GroupId]:
     The format of this argument is documented in gitlab.config.py.template under _lab_config.
     """
 
-    update_listeners: set[LabUpdateListener[GroupId]]
+    logger: logging.Logger
+    course: Any
+    id: LabId
+    config: lab_interfaces.LabConfig
+    dir: Path
+    deadline: datetime.datetime
+
+    repo_updated: bool
     """
-    Dictionary of registered update listeners.
-    Keyed by their object identity.
+    Whether we have updated the local collection repository and it needs to be pushed.
     """
+
+    update_manager: LabUpdateManager[GroupId]
+    """
+    Manages listeners for lab updates.
+    Add listeners to update_manager.listeners.
+    """
+
+    @functools.cached_property
+    def id_str(self) -> str:
+        return self.course.config.lab_id.id.print(self.id)
+
+    @functools.cached_property
+    def name(self) -> str:
+        return self.course.config.lab_id.name.print(self.id)
+
+    @functools.cached_property
+    def name_semantic(self) -> str:
+        return self.config.name_semantic
+
+    @functools.cached_property
+    def name_full(self) -> str:
+        return f"{self.name} — {self.name_semantic}"
+
+    @functools.cached_property
+    def group_prefix(self) -> str:
+        return self.course.config.lab_id.prefix.print(self.id)
+
+    @functools.cached_property
+    def student_connector(self) -> StudentConnector:
+        if self.config.group_set:
+            group_set = self.course.get_group_set(self.config.group_set)
+            return StudentConnectorGroupSet(group_set)
+
+        return StudentConnectorIndividual(self.course)
+
+    @functools.cached_property
+    def dir_repo(self) -> Path:
+        """
+        Local collection repository.
+        """
+        return self.dir / "repo"
+
+    @functools.cached_property
+    def gitlab_path(self) -> PurePosixPath:
+        """
+        Path of the lab folder on Chalmers GitLab.
+        """
+        return self.course.gitlab_path / self.course.config.lab_id.full_id.print(self.id)
+
+    @functools.cached_property
+    def grading_via_merge_request_setup_data(
+        self,
+    ) -> (
+        grading_via_merge_request.SetupData
+        | dict[str, grading_via_merge_request.SetupData]
+    ):
+        """
+        Only used if self.config.grading_via_merge_request is set.
+        """
+        if self.config.variants:
+            return {
+                variant: grading_via_merge_request.SetupData(
+                    self,
+                    variant=variant,
+                )
+                for variant in self.config.variants.variants
+            }
+
+        return grading_via_merge_request.SetupData(self)
+
+    @functools.cached_property
+    def dir_status_repos(self) -> Path:
+        """
+        Only used if self.config.grading_via_merge_request is set.
+        """
+        result = self.dir / "status-repos"
+        result.mkdir(exist_ok=True)
+        return result
 
     def __init__(
         self,
@@ -289,67 +373,14 @@ class Lab[LabId, GroupId]:
         self.logger = logger
         self.course = course
         self.id = id
+        self.config = self.course.config.labs[id] if config is None else config
         self.deadline = deadline
 
         self.dir = None if dir is None else Path(dir)
         if self.dir:
             self.dir.mkdir(exist_ok=True)
 
-        self.config = self.course.config.labs[id] if config is None else config
-
-        # Naming config
-        self.id_str = self.course.config.lab.id.print(self.id)
-        self.name = self.course.config.lab.name.print(self.id)
-        self.name_semantic = (self.config.path_source / "name").read_text().strip()
-        self.name_full = f"{self.name} — {self.name_semantic}"
-        self.group_prefix = self.course.config.lab.prefix.print(self.id)
-
-        # Student connector
-        if self.config.group_set:
-            group_set = self.course.get_group_set(self.config.group_set)
-            self.student_connector = StudentConnectorGroupSet(group_set)
-        else:
-            self.student_connector = StudentConnectorIndividual(self.course)
-
-        # Gitlab config
-        self.path = self.course.path / self.course.config.lab.full_id.print(self.id)
-
-        # Local collection repository config.
-        self.dir_repo = None if self.dir is None else self.dir / "repo"
-        # Whether we have updated the repository and it needs to be pushed.
         self.repo_updated = False
-
-        if self.config.grading_via_merge_request:
-            if self.config.multi_language is None:
-                self.grading_via_merge_request_setup_data = (
-                    grading_via_merge_request.SetupData(self)
-                )
-            else:
-                self.grading_via_merge_request_setup_data = {
-                    language: grading_via_merge_request.SetupData(
-                        self,
-                        language=language,
-                    )
-                    for language in self.config.branch_problem.keys()
-                }
-
-            self.dir_status_repos = (
-                None if self.dir is None else self.dir / "status-repos"
-            )
-            if self.dir_status_repos:
-                self.dir_status_repos.mkdir(exist_ok=True)
-
-        # Qualify a request by the full group id.
-        # Used as tag names in the collection repository of each lab.
-        # TODO: unused?
-        self.qualify_request = util.print_parse.compose(
-            util.print_parse.on(
-                util.general.component_tuple(0),
-                self.student_connector.gitlab_group_slug_pp(),
-            ),
-            util.print_parse.qualify_with_slash,
-        )
-
         self.update_manager = LabUpdateManager(self)
 
     def solution_create_and_populate(self):
@@ -413,7 +444,7 @@ class Lab[LabId, GroupId]:
         r = gitlab_.tools.CachedGroup(
             gl=self.gl,
             logger=self.logger,
-            path=self.path,
+            path=self.gitlab_path,
             name=self.name,
         )
 
@@ -425,7 +456,6 @@ class Lab[LabId, GroupId]:
             )
 
         r.create = create
-
         return r
 
     @functools.cached_property
@@ -452,7 +482,7 @@ class Lab[LabId, GroupId]:
         r = gitlab_.tools.CachedProject(
             gl=self.gl,
             logger=self.logger,
-            path=self.path / self.course.config.path_lab.primary,
+            path=self.gitlab_path / self.course.config.primary,
             name="Primary repository",
         )
 
@@ -621,7 +651,7 @@ class Lab[LabId, GroupId]:
         r = gitlab_.tools.CachedProject(
             gl=self.gl,
             logger=self.logger,
-            path=self.path / self.course.config.path_lab.collection,
+            path=self.gitlab_path / self.course.config.path_lab.collection,
             name="Collection repository",
         )
 
@@ -1032,6 +1062,7 @@ class Lab[LabId, GroupId]:
             Whether to build and update a live submissions table
             of submissions needing reviews (by graders).
         """
+        # pylint: disable=import-outside-toplevel
         from grading_sheet.listener import GradingSheetLabUpdateListener
         from live_submissions_table.listener import (
             LiveSubmissionsTableLabUpdateListener,

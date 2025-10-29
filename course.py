@@ -107,7 +107,7 @@ class Course:
         self.logger = logger
         self.config = config
         self.dir = None if dir is None else Path(dir)
-        self.path = self.config.path_course
+        self.gitlab_path = self.config.path_course
 
         self.timeout = timeout
 
@@ -378,7 +378,7 @@ class Course:
     def course_group(self):
         return gitlab_.tools.CachedGroup(
             **self.entity_cached_params,
-            path=self.path,
+            path=self.gitlab_path,
             name="Course Name (TODO)",
         )
 
@@ -414,7 +414,7 @@ class Course:
     # @functools.cached_property
     # def labs(self):
     #     return frozenset(
-    #         self.config.lab.id_gitlab.parse(lab.path)
+    #         self.config.lab.id_gitlab.parse(lab.gitlab_path)
     #         for lab in gitlab_.tools.list_all(self.labs_group.lazy.subgroups)
     #     )
 
