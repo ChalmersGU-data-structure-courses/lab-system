@@ -95,7 +95,6 @@ class Course:
         auth: lab_interfaces.CourseAuth,
         dir=None,
         *,
-        timeout=30,
         logger=logging.getLogger(__name__),
     ):
         """
@@ -111,9 +110,6 @@ class Course:
         self.config = config
         self.auth = auth
         self.dir = None if dir is None else Path(dir)
-        self.gitlab_path = self.config.path_course
-
-        self.timeout = timeout
 
         self.ssh_multiplexer = None
 
@@ -128,7 +124,7 @@ class Course:
             if self.dir is None:
                 return None
 
-            return self.dir / self.config.lab.full_id.print(lab_id)
+            return self.dir / self.config.lab_id.full_id.print(lab_id)
 
         self.labs = {
             lab_id: lab.Lab(self, lab_id, dir=lab_dir(lab_id))
@@ -158,14 +154,14 @@ class Course:
     @functools.cached_property
     def canvas(self):
         return canvas.Canvas(
-            self.config.canvas.url,
+            self.config.canvas_domain,
             auth_token=self.auth.canvas_auth_token,
         )
 
     def canvas_course_get(self, use_cache):
         return canvas.Course(
             self.canvas,
-            self.config.canvas.course_id,
+            self.config.canvas_course_id,
             use_cache=use_cache,
         )
 
@@ -354,18 +350,10 @@ class Course:
         user_details = self.canvas_course.user_details[user_id]
         return self.chalmers_pdb.personnummer_to_cid(user_details.sis_user_id)
 
-    @property
-    def gitlab_netloc(self):
-        return util.url.NetLoc(
-            host=util.url.url_formatter.parse(self.config.gitlab_url).netloc.host,
-            # TODO: determine port from self.config.gitlab_url.
-            port=443,
-        )
-
     @functools.cached_property
     def gl(self):
         r = gitlab.Gitlab(
-            self.config.gitlab_url,
+            self.config.gitlab.url,
             private_token=self.auth.gitlab_token,
             timeout=self.config.timeout.total_seconds(),
         )
@@ -376,7 +364,7 @@ class Course:
     def lab_system_users(self):
         return {
             self.gitlab_users_cache.id_from_username[username]: username
-            for username in self.config.gitlab_lab_system_users
+            for username in self.config.gitlab.lab_system_users
         }
 
     @functools.cached_property
@@ -390,7 +378,7 @@ class Course:
     def course_group(self):
         return gitlab_.tools.CachedGroup(
             **self.entity_cached_params,
-            path=self.gitlab_path,
+            path=self.config.gitlab_path,
             name="Course Name (TODO)",
         )
 
@@ -398,14 +386,15 @@ class Course:
     def graders_group(self):
         return gitlab_.tools.CachedGroup(
             **self.entity_cached_params,
-            path=self.config.path_graders,
+            path=self.config.gitlab_path_graders,
             name="Graders",
         )
 
     @functools.cached_property
     def graders(self):
         return gitlab_.tools.members_from_access(
-            self.graders_group.lazy, [gitlab.const.OWNER_ACCESS]
+            self.graders_group.lazy,
+            [gitlab.const.OWNER_ACCESS],
         )
 
     @functools.cached_property
@@ -426,7 +415,7 @@ class Course:
     # @functools.cached_property
     # def labs(self):
     #     return frozenset(
-    #         self.config.lab.id_gitlab.parse(lab.gitlab_path)
+    #         self.config.lab_id.id_gitlab.parse(lab.gitlab_path)
     #         for lab in gitlab_.tools.list_all(self.labs_group.lazy.subgroups)
     #     )
 
@@ -655,7 +644,7 @@ class Course:
     @functools.cached_property
     def hook_netloc_default(self) -> util.url.NetLoc:
         return util.url.NetLoc(
-            host=util.ip.get_local_ip_routing_to(self.gitlab_netloc),
+            host=util.ip.get_local_ip_routing_to(self.config.gitlab.git_netloc),
             port=self.config.webhook.local_port,
         )
 
@@ -785,7 +774,30 @@ class Course:
 
     @functools.cached_property
     def grading_spreadsheet(self):
-        return grading_sheet.GradingSpreadsheet(self.config, self.labs)
+        if not self.config.grading_sheet:
+            raise RuntimeError("no grading spreadsheet configured")
+
+        config = grading_sheet.Config.build(
+            external=self.config.grading_sheet,
+            internal=grading_sheet.ConfigInternal(
+                lab=self.config.lab_id.name,
+            ),
+        )
+        lab_configs = {
+            lab.id: grading_sheet.LabConfig.build(
+                external=lab.config.grading_sheet,
+                internal=grading_sheet.LabConfigInternal(
+                    gdpr_coding=lab.student_connector.gdpr_coding(),
+                    outcome=lab.config.outcomes.as_cell,
+                ),
+            )
+            for lab in self.labs.values()
+        }
+        return grading_sheet.GradingSpreadsheet(
+            config,
+            lab_configs,
+            credentials=self.google_credentials,
+        )
 
     # def grading_template_issue_parser(self, parsed_issues):
     #     """Specialization of parse_issues for the grading template issue."""

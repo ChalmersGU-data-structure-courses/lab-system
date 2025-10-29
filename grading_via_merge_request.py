@@ -23,7 +23,7 @@ class SetupData:
     def label_pp(self):
         return util.print_parse.Dict(
             (outcome, label_spec.name)
-            for (outcome, label_spec) in self.lab.config.outcome_labels.items()
+            for (outcome, label_spec) in self.lab.config.outcomes.labels.items()
         )
 
     @property
@@ -108,7 +108,7 @@ class GradingViaMergeRequest:
         * problem: lab problem stub,
         * submission: branch tracking submission tags in the student project,
         """
-        for label_spec in self.lab.config.outcome_labels.values():
+        for label_spec in self.lab.config.outcomes.labels.values():
             with gitlab_.tools.exist_ok():
                 label_data = {
                     "name": label_spec.name,
@@ -521,7 +521,7 @@ class GradingViaMergeRequest:
                         return None
 
                     return util.markdown.link(
-                        self.course.config.outcome.name.print(outcome),
+                        self.lab.config.outcomes.name.print(outcome),
                         link,
                     )
 
@@ -603,7 +603,7 @@ class GradingViaMergeRequest:
         if self.reviewer_current:
             (_reviewer, (_start_id, start_date)) = self.reviewer_current
             block_period = (
-                self.course.config.grading_via_merge_request.maximum_reserve_time
+                self.lab.config.grading_via_merge_request.maximum_reserve_time
             )
             if not block_period or (
                 datetime.datetime.now(datetime.timezone.utc) < start_date + block_period

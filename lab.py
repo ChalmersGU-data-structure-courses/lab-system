@@ -1,14 +1,14 @@
 import abc
 import contextlib
 import dataclasses
+import datetime
 import functools
 import logging
 import os
-import random
 import shutil
 from collections.abc import Mapping
-from pathlib import Path
-from typing import Iterable, Optional
+from pathlib import Path, PurePosixPath
+from typing import Any, Iterable, Optional
 
 import dateutil.parser
 import git
@@ -17,9 +17,9 @@ import gitlab.v4.objects.tags
 
 import events
 import gitlab_.tools
-import google_tools.sheets
 import grading_via_merge_request
 import group_project
+import lab_interfaces
 import util.general
 import util.git
 import util.path
@@ -250,7 +250,7 @@ class Lab[LabId, GroupId]:
     - handle_event
 
     This class is configured by the config argument to its constructor.
-    The format of this argument is documented in gitlab.config.py.template under _lab_config.
+    This is documented in lab_interfaces.
     """
 
     logger: logging.Logger
@@ -311,7 +311,9 @@ class Lab[LabId, GroupId]:
         """
         Path of the lab folder on Chalmers GitLab.
         """
-        return self.course.gitlab_path / self.course.config.lab_id.full_id.print(self.id)
+        return self.course.config.gitlab_path / self.course.config.lab_id.full_id.print(
+            self.id
+        )
 
     @functools.cached_property
     def grading_via_merge_request_setup_data(
@@ -356,12 +358,12 @@ class Lab[LabId, GroupId]:
         Initialize lab manager.
         Arguments:
         * course: course manager.
-        * id: lab id, typically used as key in a lab configuration dictionary (see 'gitlab_config.py.template')
+        * id: lab id, typically used as key in a lab configuration dictionary (see lab_interfaces.LabIdConfig)
         * config:
             lab configuration, typically the value in a lab configuration dictionary.
             If None, will be taken from labs dictionary in course configuration.
         * dir:
-            Local directory used as local copy of the collection repository.
+            Local directory used to process and store data about the lab.
             Only its parent directory has to exist.
         * deadline:
             Optional deadline for submissions.
@@ -561,7 +563,7 @@ class Lab[LabId, GroupId]:
                     util.git.refspec(util.git.head, branch, force=True),
                 )
 
-        if delete_protected_main and self.course.config.branch.master in branches:
+        if delete_protected_main and self.config.repository.master in branches:
             gitlab_.tools.delete_protected_branches(self.primary_project.get)
 
     @dataclasses.dataclass
@@ -578,8 +580,8 @@ class Lab[LabId, GroupId]:
           - an instance of ProblemSpecification for non-multi-variant labs,
           - a dictionary from variants to instances of ProblemSpecification for multi-variant labs.
           If the attribute path_source is None, attempts to use a subfolder of the configured lab source:
-          - 'problem' for non-multi-variant labs,
-          - 'problem/<variant>' for multi-variant labs.
+          - '<problem>' for non-multi-variant labs,
+          - '<problem>/<variant>' for multi-variant labs.
           If the attribute message is None, uses a sensible default.
           If branch_specs is None, uses these defaults for all problem branches.
         * default specified the variant that should be used for the main branch.
@@ -592,7 +594,7 @@ class Lab[LabId, GroupId]:
 
             path_source = branch_specs.path_source
             if path_source is None:
-                path_source = self.config.path_source / "problem"
+                path_source = self.config.path_source / self.config.repository.problem
 
             message = branch_specs.message
             if message is None:
@@ -600,32 +602,36 @@ class Lab[LabId, GroupId]:
 
             self.primary_project_branch_create(
                 source=path_source,
-                branches=[self.course.config.branch.master, "problem"],
+                branches=[
+                    self.config.repository.master,
+                    self.config.repository.problem,
+                ],
                 message=message,
             )
         else:
             if branch_specs is None:
                 branch_specs = {
                     variant: Lab.ProblemSpecification(path_source=None, message=None)
-                    for variant in self.config.branch_problem.keys()
+                    for variant in self.config.variants.variants
                 }
 
-            assert branch_specs.keys() == self.config.branch_problem.keys()
-
-            if default is None:
-                default = next(iter(self.config.branch_problem.keys()))
+            assert branch_specs.keys() == self.config.variants.variants
 
             def process_variant(variant, make_main):
                 spec = branch_specs[variant]
 
                 def branches():
                     if make_main:
-                        yield self.course.config.branch.master
-                    yield self.config.branch_problem[variant]
+                        yield self.config.repository.master
+                    yield self.config.branch_problem.print(variant)
 
                 source = spec.path_source
                 if source is None:
-                    source = self.config.path_source / "problem" / variant
+                    source = (
+                        self.config.path_source
+                        / self.config.repository.problem
+                        / str(variant)
+                    )
 
                 message = spec.message
                 if message is None:
@@ -637,9 +643,9 @@ class Lab[LabId, GroupId]:
                     message=message,
                 )
 
-            process_variant(default, True)
-            for variant in self.config.branch_problem.keys():
-                if variant != default:
+            process_variant(self.config.variants.default, True)
+            for variant in self.config.variants.variants:
+                if variant != self.config.variants.default:
                     process_variant(variant, False)
 
     @functools.cached_property
@@ -651,7 +657,7 @@ class Lab[LabId, GroupId]:
         r = gitlab_.tools.CachedProject(
             gl=self.gl,
             logger=self.logger,
-            path=self.gitlab_path / self.course.config.path_lab.collection,
+            path=self.gitlab_path / self.config.collection,
             name="Collection repository",
         )
 
@@ -802,12 +808,13 @@ class Lab[LabId, GroupId]:
             # TODO: add variant problem branches.
             def fetch_branches():
                 if self.config.multi_variant is None:
-                    yield "problem"  # self.course.config.branch.master  # TODO: fix in config.
+                    yield self.config.repository.problem
                 else:
-                    yield from self.config.branch_problem.values()
+                    for variant in self.config.variants.variants:
+                        yield self.config.branch_problem.print(variant)
 
             self.repo_add_remote(
-                self.course.config.path_lab.primary,
+                self.config.primary,
                 self.primary_project.get,
                 fetch_branches=[
                     (util.git.Namespacing.local, branch) for branch in fetch_branches()
@@ -817,7 +824,7 @@ class Lab[LabId, GroupId]:
             self.repo_fetch_primary()
 
             self.repo_add_remote(
-                self.course.config.path_lab.collection,
+                self.config.collection,
                 self.collection_project.get,
                 push_branches=fetch_branches(),
                 push_tags=[util.git.wildcard],
@@ -844,7 +851,7 @@ class Lab[LabId, GroupId]:
         def command():
             yield "fetch"
             yield "--update-head-ok"
-            yield from ["--jobs", str(self.course.config.gitlab_ssh.max_sessions)]
+            yield from ["--jobs", str(self.course.config.gitlab.ssh_max_sessions)]
             yield from ["--multiple", *remotes]
 
         self.repo_remote_command(repo, list(command()))
@@ -868,7 +875,7 @@ class Lab[LabId, GroupId]:
         Fetch main branch from the offical repository on Chalmers GitLab to the local collection repository.
         """
         self.logger.info("Fetching from primary repository.")
-        self.repo_command_fetch(self.repo, [self.course.config.path_lab.primary])
+        self.repo_command_fetch(self.repo, [self.config.primary])
 
     def repo_push(self, force=False):
         """
@@ -877,7 +884,7 @@ class Lab[LabId, GroupId]:
         """
         if self.repo_updated or force:
             self.logger.info("Pushing to collection repository.")
-            self.repo_command_push(self.repo, self.course.config.path_lab.collection)
+            self.repo_command_push(self.repo, self.config.collection)
             self.repo_updated = False
 
     def configure_student_project(self, project, is_solution):
@@ -984,7 +991,7 @@ class Lab[LabId, GroupId]:
         self.logger.info("Fetching from primary project and student projects.")
 
         def remotes():
-            yield self.course.config.path_lab.primary
+            yield self.config.primary
             for group in self.groups_known():
                 yield group.remote
 
@@ -1131,7 +1138,7 @@ class Lab[LabId, GroupId]:
     @contextlib.contextmanager
     def parse_grading_merge_request_responses(self):
         """
-        This method assumes self.config.grading_via_merge_request is true.
+        This method assumes self.config.grading_via_merge_request is set.
         Parse grading merge request responses for group projects on in this lab.
         This calls parse_grading_merge_request_responses in each contained group project.
         Cost: two HTTP calls per group.
@@ -1275,9 +1282,7 @@ class Lab[LabId, GroupId]:
     # TODO: unused?
     def checkout_problem(self, variant=None):
         """A context manager for the checked out problem head (path.Path)."""
-        return util.git.checkout_manager(
-            self.repo, self.head_problem(variant=variant)
-        )
+        return util.git.checkout_manager(self.repo, self.head_problem(variant=variant))
 
     # TODO: unused?
     @contextlib.contextmanager

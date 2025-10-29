@@ -12,7 +12,7 @@ import util.general
 import util.markdown
 import util.path
 import util.print_parse
-
+from util.print_parse import PrinterParser
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ variant_failure_key = "grading"
 """The standard response key for a variant detection failure."""
 
 
-def grading_response_for_outcome(outcome_name):
+def grading_response_for_outcome[Outcome](outcome_name: PrinterParser[Outcome, str]):
     """The standard grading response printer-parser for a given outcome name printer-parser."""
     return util.print_parse.compose(
         util.print_parse.on(util.general.component("outcome"), outcome_name),
@@ -115,7 +115,7 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
             yield (
                 self.review_response_key,
                 (
-                    grading_response_for_outcome(self.lab.course.config.outcome.name)
+                    grading_response_for_outcome(self.lab.config.outcomes.name)
                     if hasattr(self, "lab")
                     else None
                 ),
