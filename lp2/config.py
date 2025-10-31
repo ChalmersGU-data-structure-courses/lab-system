@@ -55,7 +55,7 @@ canvas = SimpleNamespace(
     # This is where the script will upload submission reports.
     # This folder needs to exist.
     #
-    grading_path='temp',
+    grading_path='lab-grading',
 )
 
 # URL for Chalmers GitLab.
@@ -263,7 +263,7 @@ _lab_config = SimpleNamespace(
     grading_sheet='Lab N',
 
     # Path in Canvas course where the live submissions table should be uploaded.
-    canvas_path_awaiting_grading=PurePosixPath('temp') / 'lab-N-awaiting-grading.html',
+    canvas_path_awaiting_grading=PurePosixPath('lab-grading') / 'lab-N-awaiting-grading.html',
 
     # Dictionary of request handlers.
     # Its keys should be string-convertible.
@@ -334,7 +334,7 @@ class _LabConfig:
         self.group_set = group_set
         self.grading_sheet = lab.name.print(lab_number)
         self.canvas_path_awaiting_grading = (
-            PurePosixPath() / 'temp' / '{}-to-be-graded.html'.format(
+            PurePosixPath() / 'lab-grading' / '{}-to-be-graded.html'.format(
                 lab.full_id.print(lab_number)
             )
         )
