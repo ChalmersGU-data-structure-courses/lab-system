@@ -212,7 +212,7 @@ _group = SimpleNamespace(
 
     # Full human-readable name.
     # Used in Canvas group set.
-    name=print_parse.regex_int('Lab Group {}', flags=re.IGNORECASE),
+    name=print_parse.regex_int('Lab-group {}', flags=re.IGNORECASE),
 
     # Name of Canvas group set where students sign up for lab groups.
     # We recommend to use a zero-based numerical naming scheme:
