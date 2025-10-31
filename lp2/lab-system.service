@@ -9,7 +9,7 @@ Restart=always
 RestartSec=900s
 KillSignal=SIGINT
 WorkingDirectory=/home/lp2-data-structures/lab-system
-ExecStart=%h/lab-system/run_event_loop.py --verbose --dir lp2 --port 4418 --sync-from-canvas 1 --start-with-sync --sync-period 900 --error-spreadsheet 133BqSfN_vpQ_LsRYRM9Z0xXDk6iejP4OZxOP9M6zNpQ --log-file lp2/log run
+ExecStart=%h/lab-system/run_event_loop.py --verbose --dir lp2 --port 4418 --sync-from-canvas 1 --start-with-sync --sync-period 900 --error-spreadsheet 1Mx2K4Tl3hgw7cww0cKHFoAP-tNNdXPF2LlhTWa35KeA --log-file lp2/log run
 
 # Use this for debugging to disable student sync and error notification spam
 #ExecStart=%h/lab-system/run_event_loop.py -d lp2 -p 4418 -l lp2/log -v run
