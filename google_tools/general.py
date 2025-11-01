@@ -77,7 +77,7 @@ def get_token_for_scopes(
         return token
 
     token = google_auth_oauthlib.flow.InstalledAppFlow.from_client_config(
-        creds,
+        credentials,
         scopes=scopes,
     ).run_local_server(port=0)
     if cached_token:

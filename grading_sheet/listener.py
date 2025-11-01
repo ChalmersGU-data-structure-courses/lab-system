@@ -1,6 +1,6 @@
 from collections.abc import Iterable
 
-import lab as lab_
+import lab as lab_module
 import lab_interfaces
 import grading_sheet
 import util.general
@@ -11,7 +11,7 @@ import gitlab_.tools
 class GradingSheetLabUpdateListener[LabId, GroupId, Outcome](
     lab_interfaces.LabUpdateListener[GroupId]
 ):
-    lab: lab_.Lab[LabId, GroupId]
+    lab: lab_module.Lab[LabId, GroupId]
     spreadsheet: grading_sheet.GradingSpreadsheet[LabId]
     sheet: grading_sheet.GradingSheet[GroupId, Outcome]
 
@@ -20,7 +20,7 @@ class GradingSheetLabUpdateListener[LabId, GroupId, Outcome](
 
     def __init__(
         self,
-        lab: lab_.Lab[LabId, GroupId],
+        lab: lab_module.Lab[LabId, GroupId],
         grading_spreadsheet: grading_sheet.GradingSpreadsheet[GroupId, Outcome],
         deadline=None,
     ):

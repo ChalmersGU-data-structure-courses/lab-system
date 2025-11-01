@@ -6,14 +6,12 @@ import functools
 import logging
 import os
 import shutil
-from collections.abc import Mapping
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable, Optional
 
 import dateutil.parser
 import git
 import gitlab
-import gitlab.v4.objects.tags
 
 import events
 import gitlab_.tools
