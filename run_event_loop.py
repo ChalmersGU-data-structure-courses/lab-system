@@ -81,6 +81,18 @@ the collection repository on GitLab Chalmers.
 """,
 ).completer = complete_local_dir
 
+g.add_argument(
+    "-a",
+    "--auth",
+    type=Path,
+    dest="log_file",
+    default=Path("secrets.toml"),
+    help="""
+Authentication credentials and secrets for the various subsystems.
+See template/secrets.toml.
+""",
+)
+
 g = p.add_argument_group(title="webhooks")
 
 g.add_argument(
@@ -260,6 +272,7 @@ import logging.handlers
 
 import course
 import event_loop
+import lab_interfaces
 import util.general
 import util.ip
 import util.print_parse
@@ -299,6 +312,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# Read authentication.
+auth = lab_interfaces.CourseAuth.from_secrets(args.auth)
+
+
 # Build course instances.
 def courses():
     for dir in args.local_dir:
@@ -307,7 +324,7 @@ def courses():
         )
         config = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(config)
-        c = course.Course(config, dir)
+        c = course.Course(config, auth=auth, dir=dir)
         yield (dir, c)
 
 
