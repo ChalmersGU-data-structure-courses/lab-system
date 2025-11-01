@@ -6,6 +6,7 @@ import google_tools.general
 import util.general
 import util.print_parse
 from util.print_parse import PrinterParser
+import util.gdpr_coding
 
 from grading_sheet.config import (
     Config,
@@ -13,7 +14,7 @@ from grading_sheet.config import (
     TEMPLATE_SPREADSHEET_ID,
     TEMPLATE_SHEET_TITLES,
 )
-from grading_sheet.core import Query, GradingSheet, GradingSpreadsheet
+from grading_sheet.core import GradingSpreadsheet
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.DEBUG)
@@ -25,6 +26,8 @@ lab_group = util.print_parse.regex_int("Lab group {}", flags=re.IGNORECASE)
 
 lab_grupp: PrinterParser[int, str]
 lab_grupp = util.print_parse.regex_int("lab grupp {}", flags=re.IGNORECASE)
+
+gdpr_coding = util.gdpr_coding.GDPRCoding(identifier=lab_group)
 
 lab: PrinterParser[int, str]
 lab = util.print_parse.regex_int("lab {}", flags=re.IGNORECASE)
@@ -45,17 +48,17 @@ lab_configs: dict[int, LabConfig]
 lab_configs = {
     1: LabConfig(
         template=(TEMPLATE_SPREADSHEET_ID, TEMPLATE_SHEET_TITLES[0]),
-        group_identifier=lab_group,
+        gdpr_coding=lab_group,
         outcome=util.print_parse.int_str,
     ),
     2: LabConfig(
         template=None,
-        group_identifier=lab_grupp,
+        gdpr_coding=lab_grupp,
         outcome=util.print_parse.int_str,
     ),
     3: LabConfig(
         template=(TEST_SPREADSHEET_ID, "Test template"),
-        group_identifier=lab_group,
+        gdpr_coding=lab_group,
         outcome=util.print_parse.int_str,
     ),
 }

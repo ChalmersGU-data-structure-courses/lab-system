@@ -134,8 +134,8 @@ class Course:
         if self.config.ssh_use_multiplexer:
             self.ssh_multiplexer = util.ssh.Multiplexer(self.config.gitlab.ssh_netloc)
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.exit_stack.__exit__(exc_type, exc_value, traceback)
+    def __exit__(self, exc_type, exc_value, traceback_):
+        self.exit_stack.__exit__(exc_type, exc_value, traceback_)
 
     def format_datetime(self, x):
         return x.astimezone(self.config.time.zone).strftime(self.config.time.format)
