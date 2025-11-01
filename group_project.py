@@ -93,7 +93,11 @@ class RequestAndResponses:
     def repo_tag_create(self, segments=None, ref=None, **kwargs):
         """Forwards to self.group.repo_tag_create."""
         return GroupProject.repo_tag_create(
-            self.group, self.request_name, segments, ref, **kwargs
+            self.group,
+            self.request_name,
+            segments,
+            ref,
+            **kwargs,
         )
 
     def repo_tag_delete(self, segments=None):
@@ -308,9 +312,6 @@ class RequestAndResponses:
     def variant(self):
         with contextlib.suppress(AttributeError):
             return self._variant
-
-        if self.lab.config.multi_variant is None:
-            return None
 
         return self.handled_result["variant"]
 
@@ -547,7 +548,7 @@ class RequestAndResponses:
 
         def problems():
             for variant in self.variants:
-                yield self.lab.variant_problem_names[variant]
+                yield self.lab.config.branch_problem.print(variant)
 
         url = gitlab_.tools.url_tag_name(project, self.request_name)
         ref = f"[{self.request_name}]({url})"
@@ -563,7 +564,8 @@ class RequestAndResponses:
         )
 
         def all_problems():
-            for problem in self.lab.variant_problem_names.values():
+            for variant in self.lab.config.variants.variants:
+                problem = self.lab.config.branch_problem.print(variant)
                 url = gitlab_.tools.url_tree(project, problem, False)
                 yield f"* [{problem}]({url})"
 
@@ -604,23 +606,20 @@ class RequestAndResponses:
             self.variants = list(e.iterator)
             self.logger.warn(
                 util.general.text_from_lines(
-                    f"Language detection failure: (candidates {self.variants}).",
+                    f"Variant detection failure: (candidates {self.variants}).",
                     f"* {self.lab.name}",
                     f"* {self.group.name}",
                     f"* {self.request_name}",
                 )
             )
 
-            # Language detection failure for official solution is not allowed.
+            # Variant detection failure for official solution is not allowed.
             if self.group.is_solution:
                 raise ValueError(
-                    "Language detection failure in official solution."
+                    "Variant detection failure in official solution."
                 ) from e
 
-            if (
-                variant_failure_key is not None
-                and self.lab.config.multi_variant is not None
-            ):
+            if variant_failure_key is not None:
                 self.post_variant_failure_issue(variant_failure_key, {})
                 return {"accepted": False}
 
@@ -642,18 +641,17 @@ class RequestAndResponses:
             yield result["review_needed"]
 
         if all(checks()):
-            if self.lab.config.multi_variant is not None:
-                if self._variant is None:
-                    msg = "Language detection failed, but submission handler successed."
-                    self.logger.error(msg)
-                    raise ValueError(msg)
+            if self.variants is not None:
+                msg = "Variant detection failed, but submission handler successed."
+                self.logger.error(msg)
+                raise ValueError(msg)
 
-                # Hacky workaround to an issue in redesign of variant handling.
-                if result is None:
-                    result = {}
+            # Hacky workaround to an issue in redesign of variant handling.
+            if result is None:
+                result = {}
 
-                assert isinstance(result, dict)
-                result["variant"] = self._variant
+            assert isinstance(result, dict)
+            result["variant"] = self._variant
 
             self.grading_merge_request.sync_submission(self)
 
@@ -968,10 +966,10 @@ class GroupProject:
     # TODO: parametrize over submission tag printing.
     def upload_solution(self, path=None, variant=None, force=False):
         """
-        If path is None, we look for a solution in 'solution' or 'solution/<id>' relative to the lab sources.
+        If path is None, we look for a solution in <self.lab.config.branch_solution(self, variant)> relative to the lab sources.
         We include a prefix of the hash of the submission so that reuploads will be reprocessed by the submission system.
 
-        BUG: Solution reprocessing does not work if  solution commits starts with the same prefix.
+        BUG: Solution reprocessing does not work if solution commits start with the same prefix.
         """
         if not self.is_solution:
             self.logger.warn("Uploading solution to student project.")
@@ -979,15 +977,11 @@ class GroupProject:
                 raise ValueError("not solution project")
 
         if path is None:
-            if variant is not None:
-                path = PurePosixPath() / "solution" / variant
-            elif self.id in self.lab.solutions.keys() and self.id != "solution":
-                path = PurePosixPath() / "solution" / self.id
-            else:
-                path = PurePosixPath() / "solution"
+            path = PurePosixPath() / self.lab.config.branch_solution(self, variant)
 
         tree = util.git.create_tree_from_dir(
-            self.lab.repo, self.lab.config.path_source / path
+            self.lab.repo,
+            self.lab.config.path_source / path,
         )
         msg = (
             self.lab.solutions[self.id]
@@ -995,11 +989,15 @@ class GroupProject:
             else "Solution in student project"
         ) + "."
         commit = git.Commit.create_from_tree(
-            self.lab.repo, tree, msg, [self.lab.head_problem(variant=variant).commit]
+            self.lab.repo,
+            tree,
+            msg,
+            [self.lab.head_problem(variant=variant).commit],
         )
         if self.is_solution:
-            # hash = commit.hexsha[:8]
-            tag_name = "submission" if variant is None else f"submission-{variant}"
+            solution = self.lab.config.solution_branch(variant)
+            # hash_ = commit.hexsha[:8]
+            tag_name = f"submission-{solution}"
             with util.git.with_tag(self.lab.repo, tag_name, commit) as tag:
                 self.lab.repo.remote(self.remote).push(tag, force=True)
 
@@ -1197,7 +1195,8 @@ class GroupProject:
             Then no fetch is needed (as long as run with the same local course directory).
         """
         self.logger.info(f"Updating problem branches in {self.project.path}")
-        for problem in self.lab.heads_problem:
+        for variant in self.lab.config.variants.variants:
+            problem = self.lab.config.head_problem(variant)
             if ensure_ancestral:
                 tag = self.ancestral_tag(problem)
                 if not util.git.tag_exist(tag):
@@ -1216,42 +1215,43 @@ class GroupProject:
             )
 
     def detect_variant(self, commit):
-        """
-        Find out which variant problem a commit derives from.
-        The variant will be None for labs that are not multi-variant.
-        """
-        return util.git.find_unique_ancestor(
-            self.repo,
-            commit,
-            {
-                variant: util.git.normalize_branch(self.lab.repo, problem)
-                for (variant, problem) in self.lab.variant_problem_names.items()
-            },
-        )
+        """Find out which variant problem a commit derives from."""
+        problem_branches = {
+            variant: util.git.normalize_branch(
+                self.lab.repo,
+                self.lab.config.branch_problem(variant),
+            )
+            for variant in self.lab.config.variants.variants
+        }
+        return util.git.find_unique_ancestor(self.repo, commit, problem_branches)
 
-    def detect_ancestor_problem_for_merge(self, commit, ancestor_override=None):
+    def detect_ancestor_variant_for_merge(self, commit, ancestor_override=None):
         """
         Find out which variant problem a commit derives from in the situation of a hotfix.
         There, the problem branches in the student project have already been updated.
 
         Arguments:
         * ancestors_override:
-            Optional map of optional entries from problem branch names to commits.
+            Optional map of optional entries from variants to commits.
             For missing entries, we use the ancestral tag ancestral/<group remote>/<problem>.
         """
         if ancestor_override is None:
             ancestor_override = {}
 
-        def get_commit(problem):
+        def get_commit(variant):
+            problem = self.lab.config.branch_problem(variant)
             try:
-                return ancestor_override[problem]
+                return ancestor_override[variant]
             except KeyError:
                 return self.ancestral_tag(problem).commit
 
         return util.git.find_unique_ancestor(
             self.repo,
             commit,
-            {problem: get_commit(problem) for problem in self.lab.heads_problem},
+            {
+                variant: get_commit(variant)
+                for variant in self.lab.config.variants.variants
+            },
         )
 
     # TODO.
@@ -1277,7 +1277,7 @@ class GroupProject:
         Arguments:
         * problem:
             Problem commit to merge into the target branch.
-            If not specified, it will be automatically detected using detect_ancestor_problem_for_merge.
+            If not specified, it will be automatically detected using detect_ancestor_variant_for_merge.
         * problem_old:
             Previous problem commit, ancestor of both the problem commit and the target branch.
             If unspecified, computed using the git merge base.
@@ -1302,7 +1302,7 @@ class GroupProject:
 
         if problem is None:
             try:
-                problem = self.detect_ancestor_problem_for_merge(target_ref)
+                variant = self.detect_ancestor_variant_for_merge(target_ref)
             except util.general.UniquenessError as e:
                 ancestors = list(e.iterator)
                 self.logger.error(
@@ -1312,9 +1312,9 @@ class GroupProject:
                 if not fail_on_problem:
                     return
                 raise RuntimeError(
-                    "could not detect ancestor problem",
-                    ancestors,
+                    "could not detect ancestor problem", ancestors
                 ) from None
+            problem = self.lab.config.branch_problem(variant)
 
         problem = util.git.resolve(
             self.repo,
@@ -1421,18 +1421,12 @@ class GroupProject:
 
     @functools.cached_property
     def grading_via_merge_request(self):
-        if self.lab.config.multi_variant is None:
-            return grading_via_merge_request.GradingViaMergeRequest(
-                self.lab.grading_via_merge_request_setup_data,
-                self,
-            )
-
         return {
             variant: grading_via_merge_request.GradingViaMergeRequest(
                 self.lab.grading_via_merge_request_setup_data[variant],
                 self,
             )
-            for variant in self.lab.config.branch_problem.keys()
+            for variant in self.lab.config.variants.variants
         }
 
     def tags_from_gitlab(self):
@@ -1629,9 +1623,6 @@ class GroupProject:
         return False
 
     def parse_grading_merge_request_responses(self):
-        if self.lab.config.multi_variant is None:
-            return self.grading_via_merge_request.update_outcomes()
-
         def f():
             for m in self.grading_via_merge_request.values():
                 yield m.update_outcomes()

@@ -379,7 +379,7 @@ class VariantsConfig[Variant]:
     variants: set[Variant]
     """
     The available lab variants.
-    A singleton set containing the empty tuple denotes a variants-free lab.
+    A singleton set containing None denotes a variants-free lab.
     See VariantsConfig.smart_no_variants.
     """
 
@@ -406,8 +406,8 @@ class VariantsConfig[Variant]:
     """
 
     def __bool__(self) -> bool:
-        """Checks whether multiple variants are configured."""
-        return not len(self.variants) == 1
+        """Checks whether variants are configured."""
+        return not self.variants == {()}
 
     @dataclasses.dataclass(frozen=True, kw_only=True)
     class VariantSpec:

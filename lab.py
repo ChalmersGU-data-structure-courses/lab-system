@@ -204,7 +204,7 @@ class LabUpdateManager[GroupId]:
         self.write()
 
 
-class Lab[LabId, GroupId]:
+class Lab[LabId, GroupId, Variant]:
     """
     This class abstracts over a single lab in a course.
     Each instance is managed by an instance of course.Course.
@@ -325,16 +325,10 @@ class Lab[LabId, GroupId]:
         """
         Only used if self.config.grading_via_merge_request is set.
         """
-        if self.config.variants:
-            return {
-                variant: grading_via_merge_request.SetupData(
-                    self,
-                    variant=variant,
-                )
-                for variant in self.config.variants.variants
-            }
-
-        return grading_via_merge_request.SetupData(self)
+        return {
+            variant: grading_via_merge_request.SetupData(self, variant=variant)
+            for variant in self.config.variants.variants
+        }
 
     @functools.cached_property
     def dir_status_repos(self) -> Path:
@@ -391,11 +385,8 @@ class Lab[LabId, GroupId]:
         """
         assert self.config.has_solution is True
         group = self.group_create("solution")
-        if self.config.variants:
-            for variant in self.config.variants.variants:
-                group.upload_solution(variant=variant)
-        else:
-            group.upload_solution()
+        for variant in self.config.variants.variants:
+            group.upload_solution(variant=variant)
 
     def deploy(self):
         """
@@ -588,65 +579,45 @@ class Lab[LabId, GroupId]:
           Only used for multi-variant labs.
           Defaults to the first key of self.config.branch_problem.
         """
-        if self.config.multi_variant is None:
-            if branch_specs is None:
-                branch_specs = Lab.ProblemSpecification()
+        if branch_specs is None:
+            branch_specs = {
+                variant: Lab.ProblemSpecification(path_source=None, message=None)
+                for variant in self.config.variants.variants
+            }
 
-            path_source = branch_specs.path_source
-            if path_source is None:
-                path_source = self.config.path_source / self.config.repository.problem
+        def process_variant(variant, make_main):
+            spec = branch_specs[variant]
 
-            message = branch_specs.message
-            if message is None:
-                message = "Initial version."
+            def branches():
+                if make_main:
+                    yield self.config.repository.master
+                yield self.config.branch_problem.print(variant)
 
-            self.primary_project_branch_create(
-                source=path_source,
-                branches=[
-                    self.config.repository.master,
-                    self.config.repository.problem,
-                ],
-                message=message,
-            )
-        else:
-            if branch_specs is None:
-                branch_specs = {
-                    variant: Lab.ProblemSpecification(path_source=None, message=None)
-                    for variant in self.config.variants.variants
-                }
-
-            assert branch_specs.keys() == self.config.variants.variants
-
-            def process_variant(variant, make_main):
-                spec = branch_specs[variant]
-
-                def branches():
-                    if make_main:
-                        yield self.config.repository.master
-                    yield self.config.branch_problem.print(variant)
-
-                source = spec.path_source
-                if source is None:
-                    source = (
-                        self.config.path_source
-                        / self.config.repository.problem
-                        / str(variant)
-                    )
-
-                message = spec.message
-                if message is None:
-                    message = f"Initial {variant.capitalize()} version."
-
-                self.primary_project_branch_create(
-                    source=source,
-                    branches=branches(),
-                    message=message,
+            source = spec.path_source
+            if source is None:
+                source = (
+                    self.config.path_source
+                    / self.config.repository.problem
+                    / str(variant)
                 )
 
-            process_variant(self.config.variants.default, True)
-            for variant in self.config.variants.variants:
-                if variant != self.config.variants.default:
-                    process_variant(variant, False)
+            msg = spec.message
+            if msg is None:
+                if self.config.variants:
+                    msg = f"Initial {self.config.variants.name.print(variant)} version."
+                else:
+                    msg = "Initial version."
+
+            self.primary_project_branch_create(
+                source=source,
+                branches=branches(),
+                message=msg,
+            )
+
+        process_variant(self.config.variants.default, True)
+        for variant in self.config.variants.variants:
+            if variant != self.config.variants.default:
+                process_variant(variant, False)
 
     @functools.cached_property
     def collection_project(self):
@@ -807,11 +778,8 @@ class Lab[LabId, GroupId]:
             # Configure and fetch primary repository.
             # TODO: add variant problem branches.
             def fetch_branches():
-                if self.config.multi_variant is None:
-                    yield self.config.repository.problem
-                else:
-                    for variant in self.config.variants.variants:
-                        yield self.config.branch_problem.print(variant)
+                for variant in self.config.variants.variants:
+                    yield self.config.branch_problem.print(variant)
 
             self.repo_add_remote(
                 self.config.primary,
@@ -911,8 +879,8 @@ class Lab[LabId, GroupId]:
 
         self.logger.debug("Setting up protected branches")
         gitlab_.tools.delete_protected_branches(project)
-        for problem in self.heads_problem:
-            gitlab_.tools.protect_branch(project, problem)
+        for variant in self.config.variants.variants:
+            gitlab_.tools.protect_branch(project, self.config.branch_problem(variant))
 
     def unprotect_main_branches(self):
         for g in self.groups.values():
@@ -1161,13 +1129,8 @@ class Lab[LabId, GroupId]:
                 for group in self.groups_known():
                     if group.parse_grading_merge_request_responses():
                         yield group.id
-                    if self.config.multi_variant is None:
-                        stack.enter_context(
-                            group.grading_via_merge_request.notes_suppress_cache_clear()
-                        )
-                    else:
-                        for m in group.grading_via_merge_request.values():
-                            stack.enter_context(m.notes_suppress_cache_clear())
+                    for m in group.grading_via_merge_request.values():
+                        stack.enter_context(m.notes_suppress_cache_clear())
 
             yield frozenset(f())
 
@@ -1246,32 +1209,11 @@ class Lab[LabId, GroupId]:
             with util.path.temp_dir() as bin:
                 yield (src, bin)
 
-    @functools.cached_property
-    def variant_problem_names(self) -> Mapping[str | None, str]:
-        """
-        The mapping from variant names to problem branch names.
-        If not a multi-variant lab, uses None as unique variant name.
-        """
-        if self.config.multi_variant is None:
-            return {None: self.config.branch_problem}
-
-        return self.config.branch_problem
-
-    def branch_problem(self, variant=None):
-        return self.variant_problem_names[variant]
-
     def head_problem(self, variant=None):
         return util.git.normalize_branch(
             self.repo,
-            self.branch_problem(variant=variant),
+            self.config.branch_problem.print(variant),
         )
-
-    @property
-    def heads_problem(self):
-        if self.config.multi_variant is None:
-            return [self.config.branch_problem]
-
-        return self.config.branch_problem.values()
 
     @functools.cached_property
     def compiler(self):
@@ -1413,13 +1355,8 @@ class Lab[LabId, GroupId]:
                     )
                     if x:
                         self.logger.info("found merge request update")
-                        if self.config.multi_variant is None:
-                            stack.enter_context(
-                                group.grading_via_merge_request.notes_suppress_cache_clear()
-                            )
-                        else:
-                            for m in group.grading_via_merge_request.values():
-                                stack.enter_context(m.notes_suppress_cache_clear())
+                        for m in group.grading_via_merge_request.values():
+                            stack.enter_context(m.notes_suppress_cache_clear())
                         yield x
 
             grading_updates = any(f())
