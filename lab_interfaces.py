@@ -219,6 +219,13 @@ class GitlabConfig:
     TODO: derive from url.
     """
 
+    ssh_use_multiplexer: bool = True
+    """
+    Whether to use a multiplexer to share a single SSH connection for multiple remote git operations.
+    Recommended as it speeds things up considerably.
+    Also, SSH connections to git.chalmers.se from outside the Chalmers network are subject to strict rate limiting.
+    """
+
     ssh_netloc: util.url.NetLoc = util.url.NetLoc(host="git.chalmers.se", user="git")
     """Usually, the host is shared with web_netloc and the user is 'git'."""
 
