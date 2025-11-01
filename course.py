@@ -79,27 +79,25 @@ class Course:
     via Chalmers GitLab and optionally Canvas for group sign-up.
 
     This class manages instances of lab.Lab (see the attribute labs).
-
-    This class is configured by the config argument to its constructor.
-    The format of this argument is a module as documented in gitlab.config.py.template.
-
-    Settable attributes:
-    * ssh_multiplexer:
-        An optional instance of util.ssh.Multiplexer.
-        Used for executing git commands for Chalmers GitLab over SSH.
     """
+
+    logger: logging.Logger
+    config: lab_interfaces.CourseConfig
+    auth: lab_interfaces.CourseAuth
+    path: Path | None
+    ssh_multiplexer: util.ssh.Multiplexer | None
 
     def __init__(
         self,
-        config,
+        config: lab_interfaces.CourseConfig,
         auth: lab_interfaces.CourseAuth,
-        dir=None,
+        dir: Path | None = None,
         *,
         logger=logging.getLogger(__name__),
     ):
         """
         Arguments:
-        * config: Course configuration, as documented in gitlab_config.py.template.
+        * config: Course configuration.
         * auth: Authentication secrets.
         * dir: Local directory used by the Course and Lab objects for storing information.
                Each local lab repository will be created as a subdirectory with full id as name (e.g. lab-3).
@@ -109,9 +107,7 @@ class Course:
         self.logger = logger
         self.config = config
         self.auth = auth
-        self.dir = None if dir is None else Path(dir)
-
-        self.ssh_multiplexer = None
+        self.dir = dir
 
         # Map from group set names on Canvas to instances of group_set.GroupSet.
         self.group_sets = {}
@@ -130,6 +126,16 @@ class Course:
             lab_id: lab.Lab(self, lab_id, dir=lab_dir(lab_id))
             for lab_id in self.config.labs
         }
+
+        self.exit_stack = contextlib.ExitStack()
+        self.ssh_multiplexer = None
+
+    def __enter__(self):
+        if self.config.ssh_use_multiplexer:
+            self.ssh_multiplexer = util.ssh.Multiplexer(self.config.gitlab.ssh_netloc)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.exit_stack.__exit__(exc_type, exc_value, traceback)
 
     def format_datetime(self, x):
         return x.astimezone(self.config.time.zone).strftime(self.config.time.format)

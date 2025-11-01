@@ -99,18 +99,6 @@ def run(
         # Context managers for threads we create.
         thread_managers = []
 
-        # Configure SSH multiplexers.
-        # Ideally, all courses connect to the same SSH server.
-        def f():
-            for ssh_netloc in set(c.config.gitlab.ssh_netloc for c in courses):
-                multiplexer = util.ssh.Multiplexer(ssh_netloc)
-                exit_stack.enter_context(contextlib.closing(multiplexer))
-                yield (ssh_netloc, multiplexer)
-
-        ssh_multiplexers = dict(f())
-        for c in courses:
-            c.ssh_multiplexer = ssh_multiplexers[c.config.gitlab.ssh_netloc]
-
         # Set up courses.
         for c in courses:
             c.setup()
