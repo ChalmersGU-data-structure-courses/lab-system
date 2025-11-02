@@ -267,9 +267,11 @@ class Course:
         return ldap.initialize("ldap://ldap.chalmers.se")
 
     @util.instance_cache.instance_cache
-    def cid_from_ldap_name(self, name):
+    def cid_from_ldap_name(self, name: str) -> str:
         """
-        Raises a LookupError if the given name cannot be uniquely resolved to a CID.
+        Look up the Chalmers id given the name of a person.
+
+        Raises a LookupError if the name cannot be uniquely resolved.
         """
         results = util.ldap.search_people_by_name(self.ldap_client, name)
         try:
@@ -509,9 +511,7 @@ class Course:
 
     @functools.cached_property
     def canvas_user_by_gitlab_username(self):
-        """
-        A dictionary mapping usernames on Chalmers GitLab to Canvas users.
-        """
+        """A dictionary mapping usernames on Chalmers GitLab to Canvas users."""
         self.logger.debug(
             "Creating dictionary mapping GitLab usernames to Canvas users"
         )

@@ -259,9 +259,7 @@ class Lab[LabId, GroupId, Variant]:
     deadline: datetime.datetime
 
     repo_updated: bool
-    """
-    Whether we have updated the local collection repository and it needs to be pushed.
-    """
+    """Whether we have updated the local collection repository and it needs to be pushed."""
 
     update_manager: LabUpdateManager[GroupId]
     """
@@ -299,19 +297,13 @@ class Lab[LabId, GroupId, Variant]:
 
     @functools.cached_property
     def dir_repo(self) -> Path:
-        """
-        Local collection repository.
-        """
+        """Local collection repository."""
         return self.dir / "repo"
 
     @functools.cached_property
     def gitlab_path(self) -> PurePosixPath:
-        """
-        Path of the lab folder on Chalmers GitLab.
-        """
-        return self.course.config.gitlab_path / self.course.config.lab_id.full_id.print(
-            self.id
-        )
+        """Path of the lab folder on Chalmers GitLab."""
+        return self.course.config.gitlab_path / self.full_id
 
     @functools.cached_property
     def grading_via_merge_request_setup_data(
@@ -320,9 +312,7 @@ class Lab[LabId, GroupId, Variant]:
         grading_via_merge_request.SetupData
         | dict[str, grading_via_merge_request.SetupData]
     ):
-        """
-        Only used if self.config.grading_via_merge_request is set.
-        """
+        """Only used if self.config.grading_via_merge_request is set."""
         return {
             variant: grading_via_merge_request.SetupData(self, variant=variant)
             for variant in self.config.variants.variants
@@ -330,9 +320,7 @@ class Lab[LabId, GroupId, Variant]:
 
     @functools.cached_property
     def dir_status_repos(self) -> Path:
-        """
-        Only used if self.config.grading_via_merge_request is set.
-        """
+        """Only used if self.config.grading_via_merge_request is set."""
         result = self.dir / "status-repos"
         result.mkdir(exist_ok=True)
         return result
@@ -378,18 +366,14 @@ class Lab[LabId, GroupId, Variant]:
         self.update_manager = LabUpdateManager(self)
 
     def solution_create_and_populate(self):
-        """
-        Currently only supports a single solution project.
-        """
+        """Currently only supports a single solution project."""
         assert self.config.has_solution is True
         group = self.group_create("solution")
         for variant in self.config.variants.variants:
             group.upload_solution(variant=variant)
 
     def deploy(self):
-        """
-        If this method goes wrong, you can use self.delete() to start from scratch.
-        """
+        """If this method goes wrong, you can use self.delete() to start from scratch."""
         self.gitlab_group.create()
         self.primary_project.create()
         self.primary_project_problem_branches_create()
@@ -405,9 +389,7 @@ class Lab[LabId, GroupId, Variant]:
         )
 
     def remove(self, *, force: bool = False):
-        """
-        Deletes lab remotely on GitLab and locally
-        """
+        """Deletes lab remotely on GitLab and locally."""
         if not force:
             self.logger.warn(
                 util.general.text_from_lines(
@@ -429,9 +411,7 @@ class Lab[LabId, GroupId, Variant]:
 
     @functools.cached_property
     def gitlab_group(self):
-        """
-        The group for this lab on Chalmers GitLab.
-        """
+        """The group for this lab on Chalmers GitLab."""
         r = gitlab_.tools.CachedGroup(
             gl=self.gl,
             logger=self.logger,
@@ -872,7 +852,10 @@ class Lab[LabId, GroupId, Variant]:
         # Protected tags are inherited from primary project by forking.
         self.logger.debug("Protecting tags")
         gitlab_.tools.protect_tags(
-            self.gl, project.id, patterns(), delete_existing=is_solution
+            self.gl,
+            project.id,
+            patterns(),
+            delete_existing=is_solution,
         )
 
         self.logger.debug("Setting up protected branches")
@@ -951,9 +934,7 @@ class Lab[LabId, GroupId, Variant]:
             )
 
     def repo_fetch_all(self):
-        """
-        Fetch from the primary repository and all student repositories.
-        """
+        """Fetch from the primary repository and all student repositories."""
         self.logger.info("Fetching from primary project and student projects.")
 
         def remotes():
@@ -1235,9 +1216,7 @@ class Lab[LabId, GroupId, Variant]:
                 yield (src, bin)
 
     def groups_with_live_submissions(self, deadline=None):
-        """
-        A generator for groups with live submissions for the given optional deadline.
-        """
+        """A generator for groups with live submissions for the given optional deadline."""
         for group in self.groups_known():
             if group.submission_current(deadline=deadline) is not None:
                 yield group.id
