@@ -1,6 +1,7 @@
 import abc
 import dataclasses
 import datetime
+import enum
 import re
 from types import MappingProxyType
 from typing import Callable, ClassVar, Mapping
@@ -296,6 +297,9 @@ class GroupSetConfig[GroupId]:
     """
 
 
+DefaultGroupId = int
+
+
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class OutcomeSpec:
     name: str
@@ -404,6 +408,12 @@ class OutcomesConfig[Outcome]:
         )
 
 
+class StandardVariant(enum.Enum):
+    """Variant type for a lab without variants."""
+
+    UNIQUE = enum.auto()
+
+
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class VariantSpec:
     name: str
@@ -459,41 +469,47 @@ class VariantsConfig[Variant]:
 
     def __bool__(self) -> bool:
         """Checks whether variants are configured."""
-        return not self.variants == {()}
+        return not self.variants != set(StandardVariant)
 
     @classmethod
-    def no_variants(cls) -> "VariantsConfig[tuple[()]]":
+    def no_variants(
+        cls,
+        submission_grading_title: str = "Grading for submission",
+    ) -> "VariantsConfig[StandardVariant]":
         """Smart constuctor for a variant-free lab."""
 
-        class NoVariantsBranchPrinterParser(PrinterParser[tuple[str, tuple[()]], str]):
+        class NoVariantsBranchPrinterParser(
+            PrinterParser[tuple[str, StandardVariant], str]
+        ):
             def print(self, x, /):
                 (y, ()) = x
                 return y
 
             def parse(self, y, /):
-                return (y, ())
+                return (y, StandardVariant.UNIQUE)
 
         return cls(
-            variants={()},
-            default=(),
-            name=util.print_parse.Dict([((), "<no variants configured>")]),
+            variants=frozenset(StandardVariant),
+            default=StandardVariant.UNIQUE,
+            name=util.print_parse.Dict(
+                [(StandardVariant.UNIQUE, "<standard variant>")]
+            ),
             branch=NoVariantsBranchPrinterParser,
             submission_grading_title=util.print_parse.Dict(
-                [((), "Grading for submission")]
+                [(StandardVariant.UNIQUE, submission_grading_title)]
             ),
         )
 
-    default_format_sub_name: ClassVar[PrinterParser[str, str]] = util.print_parse.regex(
-        "Grading for {} submission"
-    )
+    default_submission_grading_title_holed = "Grading for {} submission"
+    default_name_key = str.lower
 
     @classmethod
     def from_mapping[Variant](
         cls,
         variants: Mapping[Variant, VariantSpec],
         default: Variant | None = None,
-        format_submission_name: PrinterParser[str, str] = default_format_sub_name,
-        name_key: Callable[[str], str] = str.lower,
+        submission_grading_title_holed: str = default_submission_grading_title_holed,
+        name_key: Callable[[str], str] = default_name_key,
     ) -> "VariantsConfig[Variant]":
         """
         Smart constructor with sensible defaults.
@@ -519,7 +535,7 @@ class VariantsConfig[Variant]:
             ),
             submission_grading_title=util.print_parse.compose(
                 name,
-                format_submission_name,
+                util.print_parse.regex(submission_grading_title_holed),
             ),
         )
 
@@ -527,8 +543,8 @@ class VariantsConfig[Variant]:
     def from_enum_spec[X: util.enum.EnumSpec[VariantSpec]](
         cls,
         enum_type: type[X],
-        format_submission_name: PrinterParser[str, str] = default_format_sub_name,
-        name_key: Callable[[str], str] = str.lower,
+        submission_grading_title_holed: str = default_submission_grading_title_holed,
+        name_key: Callable[[str], str] = default_name_key,
     ) -> "OutcomesConfig[X]":
         """
         Smart constructor with sensible defaults.
@@ -537,7 +553,7 @@ class VariantsConfig[Variant]:
         """
         return cls.from_mapping(
             {value: value.value for value in enum_type},
-            format_submission_name=format_submission_name,
+            submission_grading_title_holed=submission_grading_title_holed,
             name_key=name_key,
         )
 
@@ -709,6 +725,9 @@ class LabConfig[GroupId, Outcome]:
         return self.variants.branch.print((self.repository.solution, variant))
 
 
+DefaultLabId = int
+
+
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class LabIdConfig[LabId]:
     """Configuration of parsing and printing of references to a lab."""
@@ -749,7 +768,7 @@ class CourseConfig[LabId]:
     The authentication tokens provided in gitlab_config_personal.
     """
 
-    canvas_domain: str = "chalmers.instructure.com"
+    canvas_domain: str
     """
     The Canvas domain.
     Standard values:
@@ -770,7 +789,7 @@ class CourseConfig[LabId]:
     This folder needs to exist and should not be published.
     """
 
-    gitlab: GitlabConfig
+    gitlab: GitlabConfig = GitlabConfig()
     """Non-course specific configuration of Chalmers GitLab."""
 
     gitlab_path: PurePosixPath
