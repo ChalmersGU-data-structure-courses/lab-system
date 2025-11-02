@@ -2,7 +2,7 @@ from collections.abc import Iterable
 
 import lab as lab_module
 import lab_interfaces
-import grading_sheet
+import grading_sheet.core
 import util.general
 import google_tools.sheets
 import gitlab_.tools
@@ -12,8 +12,8 @@ class GradingSheetLabUpdateListener[LabId, GroupId, Outcome](
     lab_interfaces.LabUpdateListener[GroupId]
 ):
     lab: lab_module.Lab[LabId, GroupId]
-    spreadsheet: grading_sheet.GradingSpreadsheet[LabId]
-    sheet: grading_sheet.GradingSheet[GroupId, Outcome]
+    spreadsheet: grading_sheet.core.GradingSpreadsheet[LabId]
+    sheet: grading_sheet.core.GradingSheet[GroupId, Outcome]
 
     ids: set[GroupId]
     needed_num_queries: int
@@ -21,7 +21,7 @@ class GradingSheetLabUpdateListener[LabId, GroupId, Outcome](
     def __init__(
         self,
         lab: lab_module.Lab[LabId, GroupId],
-        grading_spreadsheet: grading_sheet.GradingSpreadsheet[GroupId, Outcome],
+        grading_spreadsheet: grading_sheet.core.GradingSpreadsheet[GroupId, Outcome],
         deadline=None,
     ):
         self.lab = lab

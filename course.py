@@ -837,23 +837,23 @@ class Course:
         if not self.config.grading_sheet:
             raise RuntimeError("no grading spreadsheet configured")
 
-        config = grading_sheet.Config.build(
+        config = grading_sheet.config.Config.build(
             external=self.config.grading_sheet,
-            internal=grading_sheet.ConfigInternal(
+            internal=grading_sheet.config.ConfigInternal(
                 lab=self.config.lab_id.name,
             ),
         )
         lab_configs = {
-            lab.id: grading_sheet.LabConfig.build(
+            lab.id: grading_sheet.config.LabConfig.build(
                 external=lab.config.grading_sheet,
-                internal=grading_sheet.LabConfigInternal(
+                internal=grading_sheet.config.LabConfigInternal(
                     gdpr_coding=lab.student_connector.gdpr_coding(),
                     outcome=lab.config.outcomes.as_cell,
                 ),
             )
             for lab in self.labs.values()
         }
-        return grading_sheet.GradingSpreadsheet(
+        return grading_sheet.core.GradingSpreadsheet(
             config,
             lab_configs,
             credentials=self.google_credentials,

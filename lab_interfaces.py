@@ -9,7 +9,7 @@ import tomllib
 
 import dateutil.tz
 
-import grading_sheet as module_grading_sheet
+import grading_sheet.config as grading_sheet_config
 import util.gdpr_coding
 import util.markdown
 import util.print_parse
@@ -596,7 +596,7 @@ class LabConfig[GroupId, Outcome]:
     If set, a pseudo-group "solution" represents the official solution on Chalmers GitLab.
     """
 
-    request_handlers: MappingProxyType[str, RequestHandler]
+    request_handlers: Mapping[str, RequestHandler]
     """
     Dictionary of request handlers.
     Its keys should be string-convertible.
@@ -641,8 +641,8 @@ class LabConfig[GroupId, Outcome]:
     Highly recommended.
     """
 
-    grading_sheet: module_grading_sheet.LabConfigExternal | None = (
-        module_grading_sheet.LabConfigExternal()
+    grading_sheet: grading_sheet_config.LabConfigExternal | None = (
+        grading_sheet_config.LabConfigExternal()
     )
     """
     Configuration of the grading sheet for this lab.
@@ -731,7 +731,7 @@ class CourseConfig[LabId]:
     gitlab_path_graders: PurePosixPath
     """Path to the graders group on Chalmers GitLab."""
 
-    grading_spreadsheet: module_grading_sheet.ConfigExternal | None = None
+    grading_spreadsheet: grading_sheet_config.ConfigExternal | None = None
     """
     Set to enable the grading spreadsheet.
     The grading spreadsheet keeps track of grading outcomes.
@@ -741,7 +741,7 @@ class CourseConfig[LabId]:
     lab_ids: LabIdConfig[LabId]
     """Configuration of formatting references to labs."""
 
-    labs: MappingProxyType[LabId, LabConfig]
+    labs: Mapping[LabId, LabConfig]
     """The labs configured in this course."""
 
     initial_lab_refresh_delay: datetime.timedelta = datetime.timedelta(minutes=3)
@@ -805,7 +805,7 @@ class CourseAuth:
     TODO: compute dynamically and cache?
     """
 
-    google_credentials: dict[str, str] | None = None
+    google_credentials: Mapping[str, str] | None = None
     """
     Google credentials.
     Recommended to be for a service account.
@@ -820,7 +820,7 @@ class CourseAuth:
     """
 
     @classmethod
-    def from_secrets(cls, path: Path) -> Self:
+    def from_secrets(cls, path: Path) -> "CourseAuth":
         """
         Load authentication data from secrets file.
         See template/secrets.toml for the format.
