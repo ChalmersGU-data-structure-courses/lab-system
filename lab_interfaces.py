@@ -3,13 +3,14 @@ import dataclasses
 import datetime
 import re
 from types import MappingProxyType
-from typing import Callable, ClassVar, Iterable, Self
+from typing import Callable, ClassVar, Mapping
 from pathlib import Path, PurePosixPath
 import tomllib
 
 import dateutil.tz
 
 import grading_sheet.config as grading_sheet_config
+import util.enum
 import util.gdpr_coding
 import util.markdown
 import util.print_parse
@@ -302,6 +303,43 @@ class GroupSetConfig[GroupId]:
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
+class OutcomeSpec:
+    name: str
+    label: gitlab_.tools.LabelSpec | None = None
+    as_cell: str | int | None = None
+
+    @classmethod
+    def smart(
+        cls,
+        name: str,
+        color: str | None = None,
+        as_cell: str | int | None = None,
+    ) -> "OutcomeSpec":
+        return cls(
+            name=name,
+            label=(
+                None
+                if color is None
+                else gitlab_.tools.LabelSpec(name=name, color=color)
+            ),
+            as_cell=as_cell,
+        )
+
+
+class DefaultOutcome(util.enum.EnumSpec[OutcomeSpec]):
+    INCOMPLETE = OutcomeSpec.smart(
+        name="incomplete",
+        color="red",
+        as_cell=0,
+    )
+    PASS = OutcomeSpec.smart(
+        name="pass",
+        color="green",
+        as_cell=1,
+    )
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
 class OutcomesConfig[Outcome]:
     """
     Configuration of grading outcomes in a lab.
@@ -316,62 +354,75 @@ class OutcomesConfig[Outcome]:
     """Formats an outcome as a student-readable string."""
 
     as_cell: PrinterParser[Outcome, int | str]
-    """
-    Formats the outcome for use in a spreadsheet cell.
-    The default implementation is the identity, but checks the domain is correct.
-    """
+    """Formats the outcome for use in a spreadsheet cell."""
 
-    labels: MappingProxyType[Outcome | None, gitlab_.tools.LabelSpec]
+    labels: Mapping[Outcome | None, gitlab_.tools.LabelSpec]
     """
     Labels to use for outcomes in new-style grading via merge requests.
     The label specification for key None corresponds to the waiting-for-grading state.
     """
 
-    @dataclasses.dataclass(frozen=True, kw_only=True)
-    class OutcomeSpec:
-        name: str
-        label: gitlab_.tools.LabelSpec | None = None
-
-        @classmethod
-        def smart(cls, name: str, color: str | None) -> "OutcomesConfig.OutcomeSpec":
-            return cls(
-                name=name,
-                label=(
-                    None
-                    if color is None
-                    else gitlab_.tools.LabelSpec(name=name, color=color)
-                ),
-            )
-
-    default_outcome_specs: ClassVar[MappingProxyType[Outcome | None, OutcomeSpec]] = {
-        None: OutcomeSpec.smart("waiting-for-grading", "yellow"),
-        0: OutcomeSpec.smart("incomplete", "red"),
-        1: OutcomeSpec.smart("pass", "green"),
-    }
+    default_waiting_for_grading: ClassVar[OutcomeSpec] = OutcomeSpec.smart(
+        "waiting-for-grading", "yellow"
+    )
 
     @classmethod
-    def smart(
+    def from_mapping(
         cls,
-        outcomes: dict[Outcome | None, OutcomeSpec] = MappingProxyType(
-            default_outcome_specs
-        ),
+        outcomes: Mapping[Outcome, OutcomeSpec],
+        waiting_for_grading: OutcomeSpec = default_waiting_for_grading,
     ) -> "OutcomesConfig[Outcome]":
         """
         Smart constructor.
-        The key None corresponds to the waiting-for-grading state.
-        (This is only used with new-style grading merge requests.)
+        Assumes the names are in lower case.
         """
-        outcome_names = ((outcome, spec.name) for outcome, spec in outcomes.items())
-        name = util.print_parse.compose(
-            util.print_parse.Dict(outcome_names),
-            util.print_parse.lower,
-        )
         return cls(
-            outcomes=set(outcomes.keys()) - {None},
-            name=name,
-            as_cell=util.print_parse.compose(name, util.print_parse.invert(name)),
-            outcome_labels={outcome: spec.label for outcome, spec in outcomes.items()},
+            outcomes=frozenset(outcomes.keys()),
+            name=util.print_parse.compose(
+                util.print_parse.Dict(
+                    (outcome, spec.name)
+                    for outcome, spec in outcomes.items()
+                    if outcome is not None
+                ),
+                util.print_parse.on_parse(str.lower),
+            ),
+            as_cell=util.print_parse.Dict(
+                (outcome, spec.as_cell) for outcome, spec in outcomes.items()
+            ),
+            labels={outcome: spec.label for outcome, spec in outcomes.items()}
+            | {None: waiting_for_grading},
         )
+
+    @classmethod
+    def from_enum_spec[X: util.enum.EnumSpec[OutcomeSpec]](
+        cls,
+        enum_type: type[X] = DefaultOutcome,
+        waiting_for_grading: OutcomeSpec = default_waiting_for_grading,
+    ) -> "OutcomesConfig[X]":
+        """
+        Smart constructor.
+        Takes a specification enumeration.
+        See from_mapping for remaining arguments.
+        """
+        return cls.from_mapping(
+            {value: value.value for value in enum_type},
+            waiting_for_grading=waiting_for_grading,
+        )
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class VariantSpec:
+    name: str
+    branch: str
+
+    @classmethod
+    def smart(cls, name: str) -> "VariantSpec":
+        """
+        Smart constructor.
+        Name should match "[a-zA-Z ]*"
+        Branch is dashification of name.
+        """
+        return cls(name=name, branch=util.general.dashify(name))
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -386,8 +437,8 @@ class VariantsConfig[Variant]:
     variants: set[Variant]
     """
     The available lab variants.
-    A singleton set containing None denotes a variants-free lab.
-    See VariantsConfig.smart_no_variants.
+    A singleton set containing the empty tuple denotes a variants-free lab.
+    See VariantsConfig.no_variants.
     """
 
     default: Variant
@@ -402,7 +453,7 @@ class VariantsConfig[Variant]:
     branch: PrinterParser[tuple[str, Variant], str]
     """
     Format a branch and variant as a branch.
-    For example: ("problem", "java") may become "problem-java"
+    For example: ("problem", "java") may become "problem-java".
     """
 
     submission_grading_title: PrinterParser[Variant, str]
@@ -416,21 +467,8 @@ class VariantsConfig[Variant]:
         """Checks whether variants are configured."""
         return not self.variants == {()}
 
-    @dataclasses.dataclass(frozen=True, kw_only=True)
-    class VariantSpec:
-        variant: str
-        name: str
-
-        @classmethod
-        def smart(cls, variant: str) -> "VariantsConfig.VariantSpec":
-            """
-            Takes a lower-case variant key made of letter a-z.
-            Name is capitalization of variant key.
-            """
-            return cls(variant=variant, name=variant.capitalize())
-
     @classmethod
-    def smart_no_variants(cls) -> "VariantsConfig[tuple[()]]":
+    def no_variants(cls) -> "VariantsConfig[tuple[()]]":
         """Smart constuctor for a variant-free lab."""
 
         class NoVariantsBranchPrinterParser(PrinterParser[tuple[str, tuple[()]], str]):
@@ -444,52 +482,70 @@ class VariantsConfig[Variant]:
         return cls(
             variants={()},
             default=(),
-            name=util.print_parse.Dict([]),  # no print/parse allowed
+            name=util.print_parse.Dict([((), "<no variants configured>")]),
             branch=NoVariantsBranchPrinterParser,
             submission_grading_title=util.print_parse.Dict(
                 [((), "Grading for submission")]
             ),
         )
 
+    default_format_sub_name: ClassVar[PrinterParser[str, str]] = util.print_parse.regex(
+        "Grading for {} submission"
+    )
+
     @classmethod
-    def smart_variants(cls, variants: Iterable[VariantSpec]) -> "VariantsConfig[str]":
+    def from_mapping[Variant](
+        cls,
+        variants: Mapping[Variant, VariantSpec],
+        default: Variant | None = None,
+        format_submission_name: PrinterParser[str, str] = default_format_sub_name,
+        name_key: Callable[[str], str] = str.lower,
+    ) -> "VariantsConfig[Variant]":
         """
-        Smart constuctor for lab variants based on lower-case string keys.
-        The student-readable names are given by capitalization.
-        The first variant is the default.
+        Smart constructor with sensible defaults.
+        If the default is not specified, it defaults to the first entry of 'variants'.
+        The name_key argument is used for normalizing names.
+        It should be injective on names.
         """
-        variants = list(variants)
-        pp_check = util.print_parse.Dict((l.variant, l.variant) for l in variants)
         name = util.print_parse.compose(
-            util.print_parse.Dict((l.variant, l.name) for l in variants),
-            util.print_parse.lower,
+            util.print_parse.Dict((v, spec.name) for v, spec in variants.items()),
+            util.print_parse.on_parse_normalize(
+                (spec.name for spec in variants.values()),
+                name_key,
+            ),
         )
+        branch_part = util.print_parse.Dict((v, s.branch) for v, s in variants.items())
         return cls(
-            variants={l.variant for l in variants},
-            default=variants[0].variant,
+            variants=frozenset(variants.keys()),
+            default=default,
             name=name,
             branch=util.print_parse.compose(
-                util.print_parse.on(util.general.component_tuple(1), pp_check),
-                util.print_parse.regex_many("{}-{}", ["[\\-]*", "[a-z]*"]),
+                util.print_parse.on(util.general.component_tuple(1), branch_part),
+                util.print_parse.regex_many("{}-{}", ["[\\-]*", ".*"]),
             ),
             submission_grading_title=util.print_parse.compose(
                 name,
-                util.print_parse.regex("Grading for {} submission", regex="[a-zA-Z]*"),
+                format_submission_name,
             ),
         )
 
     @classmethod
-    def smart(
+    def from_enum_spec[X: util.enum.EnumSpec[VariantSpec]](
         cls,
-        variants: Iterable[VariantSpec] | None = None,
-    ) -> "VariantsConfig[tuple[()]] | VariantsConfig[str]":
+        enum_type: type[X],
+        format_submission_name: PrinterParser[str, str] = default_format_sub_name,
+        name_key: Callable[[str], str] = str.lower,
+    ) -> "OutcomesConfig[X]":
         """
-        Smart constuctor.
-        Dispatches to smart_no_variants or smart_variants.
+        Smart constructor with sensible defaults.
+        Takes a specification enumeration.
+        See from_mapping for remaining arguments.
         """
-        if variants is None:
-            return cls.smart_no_variants()
-        return cls.smart_variants(variants)
+        return cls.from_mapping(
+            {value: value.value for value in enum_type},
+            format_submission_name=format_submission_name,
+            name_key=name_key,
+        )
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -573,10 +629,10 @@ class LabConfig[GroupId, Outcome]:
     repository: RepositoryConfig = RepositoryConfig()
     """Configuration of git repositories used for the lab."""
 
-    outcomes: OutcomesConfig[Outcome] = OutcomesConfig.smart()
+    outcomes: OutcomesConfig[Outcome] = OutcomesConfig.from_enum_spec(DefaultOutcome)
     """Configuration of the possible grading outcomes of submissions."""
 
-    variants: VariantsConfig = VariantsConfig.smart()
+    variants: VariantsConfig = VariantsConfig.no_variants()
     """
     Optional configuration of lab variants.
     Use this to configure multi-language labs.

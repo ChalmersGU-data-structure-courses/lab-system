@@ -2,7 +2,6 @@ import enum
 import typing
 
 
-# pylint: disable=protected-access
 def patch_enum_type_params():
     """
     Patch enum metaclass to allow for type parameters in enums.
@@ -11,6 +10,7 @@ def patch_enum_type_params():
     We could instead have created a metaclass inheriting from enum.EnumType.
     But that might mess with the integration of enumerations in type checkers.
     """
+    # pylint: disable=protected-access
     # Make patching idempotent.
     if hasattr(enum.EnumType, "_get_mixins_orig_"):
         return
