@@ -966,7 +966,7 @@ class GroupProject:
     # TODO: parametrize over submission tag printing.
     def upload_solution(self, path=None, variant=None, force=False):
         """
-        If path is None, we look for a solution in <self.lab.config.branch_solution(self, variant)> relative to the lab sources.
+        If path is None, we look for a solution as specified by self.lab.config.variants.source relative to the lab path.
         We include a prefix of the hash of the submission so that reuploads will be reprocessed by the submission system.
 
         BUG: Solution reprocessing does not work if solution commits start with the same prefix.
@@ -977,12 +977,12 @@ class GroupProject:
                 raise ValueError("not solution project")
 
         if path is None:
-            path = PurePosixPath() / self.lab.config.branch_solution(self, variant)
+            path = self.lab.config.path_source / self.lab.config.variants.source(
+                self.lab.config.repository.solution,
+                variant,
+            )
 
-        tree = util.git.create_tree_from_dir(
-            self.lab.repo,
-            self.lab.config.path_source / path,
-        )
+        tree = util.git.create_tree_from_dir(self.lab.repo, path)
         msg = (
             self.lab.solutions[self.id]
             if self.is_solution

@@ -460,6 +460,13 @@ class VariantsConfig[Variant]:
     For example: ("problem", "java") may become "problem-java".
     """
 
+    source: Callable[[str, Variant], Path]
+    """
+    Obtain the path of the sources for a branch and variant.
+    This is relative to the path of the lab.
+    For example: ("problem", "java") may become Path("problem", "java").
+    """
+
     submission_grading_title: PrinterParser[Variant, str]
     """
     Format a variant as a title for a submission grading.
@@ -488,6 +495,9 @@ class VariantsConfig[Variant]:
             def parse(self, y, /):
                 return (y, StandardVariant.UNIQUE)
 
+        def source(branch: str, _: StandardVariant) -> Path:
+            return Path(branch)
+
         return cls(
             variants=frozenset(StandardVariant),
             default=StandardVariant.UNIQUE,
@@ -495,6 +505,7 @@ class VariantsConfig[Variant]:
                 [(StandardVariant.UNIQUE, "<standard variant>")]
             ),
             branch=NoVariantsBranchPrinterParser,
+            source=source,
             submission_grading_title=util.print_parse.Dict(
                 [(StandardVariant.UNIQUE, submission_grading_title)]
             ),
@@ -525,6 +536,10 @@ class VariantsConfig[Variant]:
             ),
         )
         branch_part = util.print_parse.Dict((v, s.branch) for v, s in variants.items())
+
+        def source(branch: str, variant: Variant) -> Path:
+            return Path(branch, branch_part.print(variant))
+
         return cls(
             variants=frozenset(variants.keys()),
             default=default,
@@ -533,6 +548,7 @@ class VariantsConfig[Variant]:
                 util.print_parse.on(util.general.component_tuple(1), branch_part),
                 util.print_parse.regex_many("{}-{}", ["[\\-]*", ".*"]),
             ),
+            source=source,
             submission_grading_title=util.print_parse.compose(
                 name,
                 util.print_parse.regex(submission_grading_title_holed),

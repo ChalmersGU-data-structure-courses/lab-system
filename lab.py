@@ -550,22 +550,26 @@ class Lab[LabId, GroupId, Variant]:
 
         Arguments:
         * branches is optionally:
-          - an instance of ProblemSpecification for non-multi-variant labs,
           - a dictionary from variants to instances of ProblemSpecification for multi-variant labs.
-          If the attribute path_source is None, attempts to use a subfolder of the configured lab source:
+          If the attribute path_source is None, we look for a sources as
+          specified by self.lab.config.variants.source relative to the lab path.
+          Typically, this is:
           - '<problem>' for non-multi-variant labs,
-          - '<problem>/<variant>' for multi-variant labs.
+          - '<problem>/<variant-branch>' for multi-variant labs.
           If the attribute message is None, uses a sensible default.
           If branch_specs is None, uses these defaults for all problem branches.
-        * default specified the variant that should be used for the main branch.
+        * default specifies the variant that should be used for the main branch.
           Only used for multi-variant labs.
-          Defaults to the first key of self.config.branch_problem.
+          Defaults to self.config.variants.default/
         """
         if branch_specs is None:
             branch_specs = {
                 variant: Lab.ProblemSpecification(path_source=None, message=None)
                 for variant in self.config.variants.variants
             }
+
+        if default is None:
+            default = self.config.variants.default
 
         def process_variant(variant, make_main):
             spec = branch_specs[variant]
@@ -577,10 +581,9 @@ class Lab[LabId, GroupId, Variant]:
 
             source = spec.path_source
             if source is None:
-                source = (
-                    self.config.path_source
-                    / self.config.repository.problem
-                    / str(variant)
+                source = self.config.path_source / self.config.variants.source(
+                    self.config.repository.problem,
+                    variant,
                 )
 
             msg = spec.message
@@ -596,9 +599,9 @@ class Lab[LabId, GroupId, Variant]:
                 message=msg,
             )
 
-        process_variant(self.config.variants.default, True)
+        process_variant(default, True)
         for variant in self.config.variants.variants:
-            if variant != self.config.variants.default:
+            if variant != default:
                 process_variant(variant, False)
 
     @functools.cached_property
@@ -618,7 +621,6 @@ class Lab[LabId, GroupId, Variant]:
             gitlab_.tools.CachedProject.create(r, self.gitlab_group.get)
 
         r.create = create
-
         return r
 
     @functools.cached_property
