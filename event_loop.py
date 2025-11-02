@@ -17,23 +17,6 @@ import webhook_listener
 
 
 @dataclasses.dataclass
-class WebhookConfig:
-    """Configuration for webhooks."""
-
-    netloc_listen: util.url.NetLoc
-    """The local net location to listen at for webhook notifications."""
-
-    netloc_specify: util.url.NetLoc
-    """The net location to specify in the webhook configuration."""
-
-    secret_token: str
-    """
-    Secret token to use for webhook authentication.
-    The value does not matter, but it should not be guessable.
-    """
-
-
-@dataclasses.dataclass
 class CanvasSyncConfig:
     """Configuration for synchronizing teachers, students, and groups from Canvas to GitLab."""
 
@@ -58,9 +41,9 @@ logger = logging.getLogger(__name__)
 
 def run(
     courses,
-    run_time: Optional[datetime.timedelta] = None,
-    webhook_config: Optional[WebhookConfig] = None,
-    canvas_sync_config: Optional[CanvasSyncConfig] = None,
+    enable_webhooks: bool = None,
+    run_time: datetime.timedelta | None = None,
+    canvas_sync_config: CanvasSyncConfig | None = None,
 ):
     """
     Run the event loop.
@@ -76,12 +59,12 @@ def run(
         Collection of instances of course.Course.
         The courses to run the event loop for.
         This function takes care of calling setup.
+    * enable_webhooks:
+        Whether to enable webhooks.
+        If set, configured webhooks for courses where they are configured.
     * run_time:
         If set, the event loop will exit after this period has elapsed.
         This is the only way for this function to return.
-    * webhook_config:
-        Configuration for webhook notifications from GitLab Chalmers.
-        Set to None to disable the webhook mechanism in the event loop.
     * canvas_sync_config:
         Configuration for the mechanism synchronizing graders, students, and groups from Canvas to GitLab.
         Set to None to disable.
@@ -104,55 +87,71 @@ def run(
             c.setup()
 
         # Configure webhooks.
-        if webhook_config is not None:
-            for c in courses:
-                c.hooks_ensure(netloc=webhook_config.netloc_specify)
-
-            courses_by_groups_path = {c.config.path_course: c for c in courses}
-
-            def add_webhook_event(hook_event):
-                for result in webhook_listener.parse_hook_event(
-                    courses_by_groups_path=courses_by_groups_path,
-                    hook_event=hook_event,
-                    strict=False,
-                ):
-                    event_queue.add(result)
-
-            webhook_listener_manager = webhook_listener.server_manager(
-                webhook_config.netloc_listen,
-                webhook_config.secret_token,
-                add_webhook_event,
+        if enable_webhooks:
+            courses_by_netloc = util.general.multidict(
+                (c.webhook_netloc_listen, c) for c in courses if c.webhooks_enabled
             )
-            webhook_server = exit_stack.enter_context(webhook_listener_manager)
-
-            def webhook_server_run():
+            for netloc, cs in courses_by_netloc.items():
+                netloc_str = util.url.netloc_formatter.print(netloc)
                 try:
-                    webhook_server.serve_forever()
-                finally:
-                    shutdown()
+                    secret = util.general.from_singleton(
+                        {c.auth.gitlab_webhook_secret_token for c in cs}
+                    )
+                except util.general.UniquenessError as e:
+                    raise ValueError(
+                        f"Courses with webhook_netloc_listen {netloc_str} "
+                        "have incompatible gitlab_webhook_secret_token."
+                    ) from e
 
-            def webhook_server_shutdown():
-                webhook_server.shutdown()
+                for c in cs:
+                    c.hooks_ensure()
 
-            webhook_server_thread = threading.Thread(
-                target=webhook_server_run,
-                name="webhook-server-listener",
-            )
-            thread_managers.append(
-                util.general.add_cleanup(
-                    util.threading.thread_manager(webhook_server_thread),
-                    webhook_server_shutdown,
+                def add_webhook_event(
+                    hook_event,
+                    courses_by_groups_path={c.config.path_course: c for c in cs},
+                ):
+                    for result in webhook_listener.parse_hook_event(
+                        courses_by_groups_path=courses_by_groups_path,
+                        hook_event=hook_event,
+                        strict=False,
+                    ):
+                        event_queue.add(result)
+
+                webhook_listener_manager = webhook_listener.server_manager(
+                    netloc,
+                    secret,
+                    add_webhook_event,
                 )
-            )
+                webhook_server = exit_stack.enter_context(webhook_listener_manager)
 
-        # Set up program termination timer.
-        if run_time is not None:
-            shutdown_timer = util.threading.Timer(
-                run_time,
-                shutdown,
-                name="shutdown-timer",
-            )
-            thread_managers.append(util.threading.timer_manager(shutdown_timer))
+                def webhook_server_run(webhook_server=webhook_server):
+                    try:
+                        webhook_server.serve_forever()
+                    finally:
+                        shutdown()
+
+                def webhook_server_shutdown(webhook_server=webhook_server):
+                    webhook_server.shutdown()
+
+                webhook_server_thread = threading.Thread(
+                    target=webhook_server_run,
+                    name=f"webhook-server-listener-{netloc_str}",
+                )
+                thread_managers.append(
+                    util.general.add_cleanup(
+                        util.threading.thread_manager(webhook_server_thread),
+                        webhook_server_shutdown,
+                    )
+                )
+
+            # Set up program termination timer.
+            if run_time is not None:
+                shutdown_timer = util.threading.Timer(
+                    run_time,
+                    shutdown,
+                    name="shutdown-timer",
+                )
+                thread_managers.append(util.threading.timer_manager(shutdown_timer))
 
         # Set up Canvas sync event timers and add potential initial sync.
         def sync_from_canvas(course):
@@ -198,17 +197,15 @@ def run(
             for lab in c.labs.values():
                 refresh_lab(lab)
                 if lab.config.refresh_period is not None:
-                    lab.refresh_timer = util.threading.Timer(
+                    refresh_timer = util.threading.Timer(
                         lab.config.refresh_period + delay,
                         refresh_lab,
                         args=[lab],
                         name=f"lab-refresh-timer<{c.config.path_course}, {lab.name}>",
                         repeat=True,
                     )
-                    thread_managers.append(
-                        util.threading.timer_manager(lab.refresh_timer)
-                    )
-                    delay += c.config.webhook.first_lab_refresh_delay
+                    thread_managers.append(util.threading.timer_manager(refresh_timer))
+                    delay += c.config.first_lab_refresh_delay
 
         # Start the threads.
         for manager in thread_managers:

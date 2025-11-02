@@ -661,7 +661,7 @@ class LabConfig[GroupId, Outcome]:
     Its value must be an instance of SubmissionHandler.
     """
 
-    refresh_period: datetime.timedelta = datetime.timedelta(minutes=15)
+    refresh_period: datetime.timedelta | None = datetime.timedelta(minutes=60)
     """
     Lab refresh period if the script is run in an event loop.
     The webhooks on GitLab may fail to trigger in some cases:
@@ -822,6 +822,47 @@ class CourseConfig[LabId]:
 
     chalmers_id_to_gitlab_username_override: Mapping[str, str] = MappingProxyType({})
     """Override for the translation from Chalmers ids to Chalmers GitLab id."""
+
+    machine_speed: float = 1
+    """
+    Relative machine speed to timing tests.
+    A value of 1 corresponds to a decent 2013 desktop machine.
+    """
+
+    first_lab_refresh_delay: datetime.timedelta = datetime.timedelta(minutes=3)
+    """
+    Artificial delay to between the first scheduling of
+    lab refresh events for successive labs with lab refreshes.
+    The k-th lab with lab refreshed is scheduled for a refresh after:
+        lab_refresh_period + k * first_lab_refresh_delay.
+    Useful to avoid processing whole labs contiguously,
+    causing longer response periods for webhook-triggered updates.
+    """
+
+    webhook_netloc_listen: util.url.NetLoc | None = None
+    """
+    The local net location to listen at for webhook notifications.
+    Components:
+    * host: if omitted, determined at runtime from routing table.
+    * port: mandatory
+    """
+
+    webhook_netloc_specify: util.url.NetLoc | None = None
+    """
+    The net location to specify in the webhook configuration.
+    Defaults to webhook_listen.
+    Components default to those of webhook_listen.
+
+    This option is useful if you are behind network address translation (NAT).
+    In that case, you can:
+    * specify a public network location on some server you have access to,
+    * and use SSH port forwarding,
+    to forward connections to webhook_netloc_listen.
+    """
+
+    @property
+    def webhooks_enabled(self) -> bool:
+        return self.webhook_netloc_listen is not None
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)

@@ -2,6 +2,7 @@ import contextlib
 import http.server
 import json
 import logging
+import shlex
 import ssl
 from pathlib import PurePosixPath
 
@@ -182,10 +183,7 @@ def parse_hook_event(
                 ),
             )
         else:
-            msg = (
-                "unknown course with student"
-                "groups path {shlex.quote(str(path_groups))}"
-            )
+            msg = f"unknown course with student groups path {shlex.quote(str(path_groups))}"
             if strict:
                 raise ValueError(msg)
 

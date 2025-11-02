@@ -1404,19 +1404,18 @@ class GroupProject:
                 lazy=True,
             ).comments.create({"note": self.append_mentions(notify_students)})
 
-    def hook_specs(self, netloc=None) -> Iterable[gitlab_.tools.HookSpec]:
+    def hook_specs(self) -> Iterable[gitlab_.tools.HookSpec]:
         def events_gen():
             yield "issues"
             yield "tag_push"
             if self.lab.config.grading_via_merge_request:
                 yield "merge_requests"
 
-        netloc = self.course.hook_normalize_netloc(netloc=netloc)
         yield gitlab_.tools.HookSpec(
             project=self.project.lazy,
-            netloc=netloc,
+            netloc=self.course.hook_netloc_specify,
             events=tuple(events_gen()),
-            secret_token=self.course.config.webhook.secret_token,
+            secret_token=self.course.auth.gitlab_webhook_secret_token,
         )
 
     @functools.cached_property

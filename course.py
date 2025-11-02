@@ -1,6 +1,7 @@
 import collections
 import contextlib
 import datetime
+import dataclasses
 import enum
 import functools
 import json
@@ -702,47 +703,59 @@ class Course:
             yield from lab.groups.values()
 
     @functools.cached_property
-    def hook_netloc_default(self) -> util.url.NetLoc:
-        return util.url.NetLoc(
-            host=util.ip.get_local_ip_routing_to(self.config.gitlab.git_netloc),
-            port=self.config.webhook.local_port,
-        )
+    def hooks_enabled(self) -> bool:
+        return self.config.webhooks_enabled
 
-    def hook_normalize_netloc(self, netloc=None):
-        """
-        Normalize the given net location.
+    @functools.cached_property
+    def hook_netloc_listen(self) -> util.url.NetLoc:
+        """The local net location to listen at for webhook notifications."""
+        if not self.hooks_enabled:
+            raise RuntimeError("Webhook configuration missing")
 
-        If netloc is not given, it is set as follows:
-        * ip address: address of the local interface routing to git.chalmers.se,
-        * port: as configured in course configuration.
-        """
-        if netloc is None:
-            netloc = self.hook_netloc_default
+        netloc = self.config.webhook_netloc_listen
+        assert netloc is not None
+        if netloc.host is None:
+            netloc = dataclasses.replace(
+                netloc,
+                host=util.ip.get_local_ip_routing_to(self.config.gitlab.web_netloc),
+            )
         return netloc
 
-    def hook_specs(self, netloc=None) -> Iterable[gitlab_.tools.HookSpec]:
-        for lab in self.labs.values():
-            yield from lab.hook_specs(netloc)
+    @functools.cached_property
+    def hook_netloc_specify(self) -> util.url.NetLoc:
+        """The net location to specify in the webhook configuration."""
+        netloc = self.config.webhook_netloc_specify
+        if netloc is None:
+            netloc = self.hook_netloc_listen
+        else:
+            if netloc.host is None:
+                netloc = dataclasses.replace(netloc, host=self.hook_netloc_listen.host)
+            if netloc.port is None:
+                netloc = dataclasses.replace(netloc, port=self.hook_netloc_listen.port)
+        return netloc
 
-    def hooks_create(self, netloc=None):
+    def hook_specs(self) -> Iterable[gitlab_.tools.HookSpec]:
+        for lab in self.labs.values():
+            yield from lab.hook_specs()
+
+    def hooks_create(self):
         def f():
-            for spec in self.hook_specs(netloc):
+            for spec in self.hook_specs():
                 yield gitlab_.tools.hook_create(spec)
 
         return list(f())
 
-    def hooks_delete_all(self, netloc=None, netloc_keep=None):
+    def hooks_delete_all(self, netloc_keep=None):
         """
         Delete all webhooks in all group project in all labs on GitLab.
         See gitlab_.tools.hooks_delete_all.
         TODO: make use of netloc argument to only delete matching hooks.
         """
         self.logger.info("Deleting all project hooks in all labs")
-        netloc = self.hook_normalize_netloc(netloc)
-        for spec in self.hook_specs(netloc):
+        for spec in self.hook_specs():
             gitlab_.tools.hooks_delete_all(spec.project, netloc_keep=netloc_keep)
 
-    def hooks_ensure(self, netloc=None, sample_size=10):
+    def hooks_ensure(self, sample_size=10):
         """
         Ensure that all hooks for student projects in this course are correctly configured.
         By default, only a random sample is checked.
@@ -752,12 +765,11 @@ class Course:
         If sample_size is None, checks all student projects.
         """
         self.logger.info("Ensuring webhook configuration.")
-        netloc = self.hook_normalize_netloc(netloc)
         if sample_size is None:
-            for spec in self.hook_specs(netloc):
+            for spec in self.hook_specs():
                 gitlab_.tools.hook_ensure(spec)
         else:
-            specs = list(self.hook_specs(netloc))
+            specs = list(self.hook_specs())
             specs_selection = random.sample(specs, min(len(specs), sample_size))
             try:
                 for spec in specs_selection:
@@ -767,10 +779,10 @@ class Course:
                     f"Live webhook(s) do(es) not match hook configuration {spec}: {str(e)}"
                 )
                 self.hooks_delete_all()
-                self.hooks_create(netloc=netloc)
+                self.hooks_create()
 
     @contextlib.contextmanager
-    def hooks_manager(self, netloc=None):
+    def hooks_manager(self):
         """
         A context manager for installing GitLab web hooks for all student projects in all lab.
         This is an expensive operation, setting up and cleaning up costs one HTTP call per project.
@@ -780,7 +792,7 @@ class Course:
         self.logger.info("Creating project hooks in all labs")
         try:
             with util.general.traverse_managers_iterable(
-                gitlab_.tools.hook_manager(spec) for spec in self.hook_specs(netloc)
+                gitlab_.tools.hook_manager(spec) for spec in self.hook_specs()
             ) as it:
                 yield list(it)
         finally:
@@ -904,7 +916,7 @@ class Course:
         for lab in self.labs.values():
             lab.initial_run()
 
-    def run_event_loop(self, netloc=None):
+    def run_event_loop(self, run_time: datetime.timedelta | None = None):
         """
         Run the event loop.
 
@@ -913,11 +925,6 @@ class Course:
 
         The event loop starts with processing of all labs.
         So it is unnecessary to prefix it with a call to initial_run.
-
-        Arguments:
-        * netloc:
-            The local net location to listen to for webhook notifications.
-            If 'netloc' is None, uses the configured default (see Course.hook_normalize_netloc).
         """
         # List of context managers for managing threads we create.
         thread_managers = []
@@ -931,16 +938,15 @@ class Course:
         # Set up the server for listening for group project events.
         def add_webhook_event(hook_event):
             for result in webhook_listener.parse_hook_event(
-                courses_by_groups_path={self.config.path_groups: self},
+                courses_by_groups_path={self.config.path_course: self},
                 hook_event=hook_event,
                 strict=False,
             ):
                 event_queue.add(result)
 
-        netloc = self.hook_normalize_netloc(netloc)
         webhook_listener_manager = webhook_listener.server_manager(
-            netloc,
-            self.config.webhook.secret_token,
+            self.hook_netloc_listen,
+            self.auth.gitlab_webhook_secret_token,
             add_webhook_event,
         )
         with webhook_listener_manager as webhook_server:
@@ -963,9 +969,9 @@ class Course:
             )
 
             # Set up program termination timer.
-            if self.config.webhook.event_loop_runtime is not None:
+            if run_time is not None:
                 shutdown_timer = util.threading.Timer(
-                    self.config.webhook.event_loop_runtime,
+                    run_time,
                     shutdown,
                     name="shutdown-timer",
                 )
@@ -981,22 +987,20 @@ class Course:
                 )
 
             delays = more_itertools.iterate(
-                lambda x: x + self.config.webhook.first_lab_refresh_delay,
+                lambda x: x + self.config.first_lab_refresh_delay,
                 datetime.timedelta(),
             )
             for lab in self.labs.values():
                 if lab.config.refresh_period is not None:
                     refresh_lab(lab)
-                    lab.refresh_timer = util.threading.Timer(
+                    refresh_timer = util.threading.Timer(
                         lab.config.refresh_period + next(delays),
                         refresh_lab,
                         args=[lab],
                         name=f"lab-refresh-timer<{lab.name}>",
                         repeat=True,
                     )
-                    thread_managers.append(
-                        util.threading.timer_manager(lab.refresh_timer)
-                    )
+                    thread_managers.append(util.threading.timer_manager(refresh_timer))
 
             # Start the threads.
             with contextlib.ExitStack() as stack:

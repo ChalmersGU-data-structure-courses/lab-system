@@ -264,7 +264,6 @@ args = p.parse_args()
 # Argument parsing is done: expensive initialization can start now.
 # pylint: disable=wrong-import-order,wrong-import-position
 import contextlib
-import dataclasses
 import datetime
 import importlib
 import logging
@@ -345,33 +344,9 @@ def get_value_from_courses(name, selector):
 
 # Parse webhook configuration.
 if args.disable_webhooks:
-    webhook_config = None
     logger.debug("Webhooks are disabled.")
 else:
-    gitlab_netloc = get_value_from_courses(
-        "GitLab network location",
-        lambda c: c.config.gitlab.web_netloc,
-    )
-    netloc_listen = util.url.NetLoc(
-        host=util.ip.get_local_ip_routing_to(gitlab_netloc),
-        port=args.port,
-    )
-    netloc_specify = (
-        netloc_listen
-        if args.netloc is None
-        else util.url.netloc_formatter.parse(args.netloc)
-    )
-    if netloc_specify.port is None:
-        netloc_specify = dataclasses.replace(netloc_specify, port=netloc_listen.port)
-    webhook_config = event_loop.WebhookConfig(
-        netloc_listen=netloc_listen,
-        netloc_specify=netloc_specify,
-        secret_token=get_value_from_courses(
-            "webhook.secret_token",
-            lambda c: c.config.webhook.secret_token,
-        ),
-    )
-    logger.debug(f"Webhook config: {webhook_config}")
+    logger.debug("Webhooks are enabled.")
 
 # Parse Canvas sync configuration.
 if not args.start_with_sync and args.sync_period is None:
@@ -392,12 +367,12 @@ else:
 
 def create_webhooks():
     for c in courses.values():
-        c.hooks_create(netloc=webhook_config.netloc_specify)
+        c.hooks_create()
 
 
 def delete_webhooks():
     for c in courses.values():
-        c.hooks_delete_all(netloc=webhook_config.netloc_specify)
+        c.hooks_delete_all()
 
 
 def run():
@@ -409,10 +384,10 @@ def run():
     with exit_stack:
         event_loop.run(
             courses=courses.values(),
+            enable_webhooks=not args.disable_webhooks,
             run_time=util.general.with_default(
                 lambda x: datetime.timedelta(hours=x), args.run_time
             ),
-            webhook_config=webhook_config,
             canvas_sync_config=canvas_sync_config,
         )
 

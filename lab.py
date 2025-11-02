@@ -978,9 +978,9 @@ class Lab[LabId, GroupId, Variant]:
         refs = util.git.references_hierarchy(self.repo)
         return refs[util.git.refs.name][util.git.tags.name]
 
-    def hook_specs(self, netloc=None) -> Iterable[gitlab_.tools.HookSpec]:
+    def hook_specs(self) -> Iterable[gitlab_.tools.HookSpec]:
         for group in self.groups_known():
-            yield from group.hook_specs(netloc)
+            yield from group.hook_specs()
 
     # Alternative implementation
     # @contextlib.contextmanager
