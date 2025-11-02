@@ -77,6 +77,7 @@ ignore-paths = [
   '_2020_lp2_orig/',
   '_2021_lp3/',
   'chalmers_pdb/new_rpcc_client.py',
+  'google_tools/sheets_future.py',
   'old/',
   '.venv/',  # Not tracked.
 ]
