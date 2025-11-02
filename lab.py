@@ -272,6 +272,10 @@ class Lab[LabId, GroupId, Variant]:
         return self.course.config.lab_id.id.print(self.id)
 
     @functools.cached_property
+    def full_id(self) -> str:
+        return self.course.config.lab_id.id.print(self.id)
+
+    @functools.cached_property
     def name(self) -> str:
         return self.course.config.lab_id.name.print(self.id)
 

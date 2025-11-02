@@ -2,10 +2,11 @@ import contextlib
 import functools
 import logging
 import random
+from pathlib import Path, PurePosixPath
 
 import util.path
 
-import lab
+import lab as module_lab
 import lab_interfaces
 import live_submissions_table
 
@@ -13,7 +14,7 @@ import live_submissions_table
 class LiveSubmissionsTableLabUpdateListener[LabId, GroupId](
     lab_interfaces.LabUpdateListener[GroupId]
 ):
-    lab: lab.Lab[LabId, GroupId]
+    lab: module_lab.Lab[LabId, GroupId]
     logger: logging.Logger
     table: live_submissions_table.LiveSubmissionsTable
 
@@ -22,21 +23,25 @@ class LiveSubmissionsTableLabUpdateListener[LabId, GroupId](
         return self.lab.course
 
     @functools.cached_property
-    def path(self):
+    def path(self) -> Path:
         return self.lab.dir / "live-submissions-table.html"
 
     @functools.cached_property
-    def path_staging(self):
+    def path_staging(self) -> Path:
         return util.path.add_suffix(self.path, ".staging")
 
-    def __init__(self, lab_: lab.Lab, deadline=None):
+    @property
+    def canvas_path(self) -> PurePosixPath:
+        return self.course.config.canvas_grading_path / self.lab.full_id
+
+    def __init__(self, lab: module_lab.Lab, deadline=None):
         """
         Setup the live submissions table.
         Takes an optional deadline parameter for limiting submissions to include.
         If not set, we use self.deadline.
         Request handlers should be set up before calling this method.
         """
-        self.lab = lab_
+        self.lab = lab
         self.logger = self.lab.logger
 
         if deadline is None:
@@ -76,7 +81,10 @@ class LiveSubmissionsTableLabUpdateListener[LabId, GroupId](
             else:
                 self.logger.info("Posting live submissions table to Canvas")
                 target = self.lab.config.live_submissions_table_canvas_path
-                folder = self.course.canvas_course.get_folder_by_path(target.parent)
+                folder_path = self.canvas_path.parent
+                folder = self.course.canvas_course.get_folder_by_path(folder_path)
+                if folder is None:
+                    raise ValueError(f"No folder {folder_path} on Canvas.")
                 # self.course.canvas_course.post_file(
                 #     self.file_live_submissions_table_staging,
                 #     folder.id,
@@ -87,7 +95,11 @@ class LiveSubmissionsTableLabUpdateListener[LabId, GroupId](
                     data = self.path_staging.read_text()
                     data = data + "<!-- " + str(random.randbytes(16)) + " -->"
                     path.write_text(data)
-                    self.course.canvas_course.post_file(path, folder.id, target.name)
+                    self.course.canvas_course.post_file(
+                        path,
+                        folder.id,
+                        self.canvas_path.parent.name,
+                    )
                 self.path_staging.replace(self.path)
 
     def groups_changed_preparation(self, ids: list[GroupId]) -> None:

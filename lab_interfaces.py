@@ -705,12 +705,6 @@ class LabConfig[GroupId, Outcome]:
     Required if the grading spreadsheet is enabled in the course configuration.
     """
 
-    live_submissions_table_canvas_path: Path | None = None
-    """
-    Required for live submissions table.
-    Path in Canvas course where the live submissions table should be uploaded.
-    """
-
     def branch_problem(self, variant) -> str:
         return self.variants.branch.print((self.repository.problem, variant))
 
@@ -729,7 +723,11 @@ class LabIdConfig[LabId]:
     """Human-readable id."""
 
     full_id: PrinterParser[LabId, str] = util.print_parse.regex_int("lab-{}")
-    """Used as relative path on Chalmers GitLab."""
+    """
+    Used:
+    * as relative path on Chalmers GitLab,
+    * as filename for live submissions table on Canvas.
+    """
 
     prefix: PrinterParser[LabId, str] = util.print_parse.regex_int("lab{}-")
     """Used as prefix for projects on Chalmers GitLab."""
