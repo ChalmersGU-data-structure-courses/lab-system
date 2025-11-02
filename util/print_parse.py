@@ -143,14 +143,14 @@ def on_parse[T](parse: Callable[[T], T]) -> PrinterParser[T, T]:
 
 @dataclasses.dataclass
 class CheckType[X](PrinterParser[X, X]):
-    type: type[X]
+    type_: type[X]
 
     def print(self, x, /):
         return x
 
     def parse(self, y, /):
-        if not isinstance(y, self.type):
-            raise ValueError(f"not of type {self.type}: {y}")
+        if not isinstance(y, self.type_):
+            raise ValueError(f"not of type {self.type_}: {y}")
         return y
 
 
