@@ -685,37 +685,6 @@ class LabIdConfig[LabId]:
     """Actual name."""
 
 
-_cid_to_gitlab_username = util.print_parse.Dict(
-    [
-        ("REDACTED_CID", "REDACTED_CID_WITH_SUFFIX_1"),
-    ]
-)
-
-_canvas_id_to_gitlab_username_override = {}
-
-
-@staticmethod
-def _gitlab_username_from_canvas_user_id(course, user_id):
-    try:
-        cid = _canvas_id_to_gitlab_username_override[user_id]
-    except KeyError:
-        try:
-            # ACTION:
-            # For GU students, the login id does not give the CID.
-            # To resolve these, we use a PDB login configured in gitlab_config_personal.
-            # If you do not have this, you can fall back to:
-            #     cid = cid_from_canvas_id_via_login_id_or_ldap_name(user_id)
-            # Alternatively, pecify the translation manually in the above dictionary.
-            cid = course.cid_from_canvas_id_via_login_id_or_pdb(user_id)
-        except LookupError:
-            return None
-
-    try:
-        return _cid_to_gitlab_username.print(cid)
-    except KeyError:
-        return course.rectify_cid_to_gitlab_username(cid)
-
-
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class CourseConfig[LabId]:
     """
@@ -800,17 +769,11 @@ class CourseConfig[LabId]:
     * there are two graders with the same first name.
     """
 
-    gitlab_username_from_canvas_user_id: Callable[["course.Course", int], str] = (
-        _gitlab_username_from_canvas_user_id
-    )
-    """
-    Retrieve the Chalmers GitLab username for a user id on Chalmers/GU Canvas.
-    This is needed to:
-    * add teachers as retrieved from Canvas to the grader group on GitLab,
-    * add students as retrieved from Canvas to groups or projects on GitLab.
-    Return None if not possible.
-    Takes the course object and the Canvas user object as arguments.
-    """
+    canvas_id_to_chalmers_id_override: Mapping[int, str] = MappingProxyType({})
+    """Override for the translation from Canvas user ids to Chalmers ids."""
+
+    chalmers_id_to_gitlab_username_override: Mapping[str, str] = MappingProxyType({})
+    """Override for the translation from Chalmers ids to Chalmers GitLab id."""
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)

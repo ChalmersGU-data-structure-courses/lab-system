@@ -466,13 +466,60 @@ class Course:
 
         return cid
 
+    def internal_chalmers_id_from_canvas_user_id(self, user_id: int) -> str:
+        """
+        Translate a Canvas user id to a Chalmers id.
+        Resolves GU students using PDB if configured and LDAP if not.
+        Raises LookupError on failure.
+
+        Uses the following override from CourseConfig:
+        * canvas_id_to_chalmers_id_override
+        """
+        chalmers_id = self.config.canvas_id_to_chalmers_id_override.get(user_id)
+        if chalmers_id is not None:
+            return chalmers_id
+
+        if self.auth.pdb:
+            return self.cid_from_canvas_id_via_login_id_or_pdb(user_id)
+
+        return self.cid_from_canvas_id_via_login_id_or_ldap_name(user_id)
+
+    def internal_gitlab_username_from_chalmers_id(self, cid: str) -> str:
+        """
+        Translate a Chalmers id to Canvas user ids to GitLab usernames.
+        Raises LookupError on failure.
+
+        Uses the following override from CourseConfig:
+        * chalmers_id_to_gitlab_username_override
+        """
+        gitlab_username = self.config.chalmers_id_to_gitlab_username_override.get(cid)
+        if gitlab_username is not None:
+            return gitlab_username
+
+        return self.rectify_cid_to_gitlab_username(cid)
+
+    def internal_gitlab_username_from_canvas_user_id(self, user_id: int) -> str:
+        """
+        Translates Canvas user ids to GitLab usernames.
+        Raises LookupError on failure.
+
+        This goes via the Chalmers id.
+        Therefore, see:
+        * internal_gitlab_username_from_chalmers_id,
+        * internal_chalmers_id_from_canvas_user_id.
+        """
+        cid = self.internal_chalmers_id_from_canvas_user_id(user_id)
+        return self.internal_gitlab_username_from_chalmers_id(cid)
+
     @functools.cached_property
     def gitlab_username_by_canvas_user_id(self):
         """
         A dictionary mapping Canvas user ids to Chalmers GitLab usernames.
 
-        Currently, the only place where self.config.gitlab_username_from_canvas_user_id is called.
+        Currently, the only place where self.internal_gitlab_username_from_canvas_user_id is called.
         So that function does not have to be cached.
+
+        We suppress lookup errors (TODO: handle properly).
         """
 
         def f():
@@ -481,11 +528,18 @@ class Course:
                 yield from self.canvas_course.teacher_details.values()
 
             for canvas_user in canvas_users():
-                gitlab_username = self.config.gitlab_username_from_canvas_user_id(
-                    self,
-                    canvas_user.id,
-                )
-                if gitlab_username is not None:
+                try:
+                    gitlab_username = self.internal_gitlab_username_from_canvas_user_id(
+                        canvas_user.id
+                    )
+                except LookupError as e:
+                    self.logger.warn(
+                        util.general.join_lines(
+                            "Unable to lookup GitLab username for Canvas user {}",
+                            str(e),
+                        )
+                    )
+                else:
                     yield (canvas_user.id, gitlab_username)
 
         return util.general.sdict(f(), strict=False)
