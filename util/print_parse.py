@@ -141,6 +141,15 @@ def on_parse[T](parse: Callable[[T], T]) -> PrinterParser[T, T]:
     )
 
 
+def on_parse_normalize[X, Y](
+    values: Iterable[X],
+    key: Callable[[X], Y],
+    debug: bool = True,
+) -> PrinterParser[X, X]:
+    """See util.general.Normalizer."""
+    return on_parse(util.general.Normalizer(values, key, debug))
+
+
 @dataclasses.dataclass
 class CheckType[X](PrinterParser[X, X]):
     type_: type[X]
@@ -160,9 +169,6 @@ class SetAsList[X](PrinterParser[set[X], list[X]]):
 
     def parse(self, xs, /):
         return set(xs)
-
-
-lower = on_parse(str.lower)
 
 
 def on[A, B](

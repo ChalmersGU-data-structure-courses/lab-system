@@ -17,7 +17,7 @@ import time
 from collections import defaultdict, namedtuple
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from typing import Any, Callable, Mapping, Protocol
+from typing import Any, Callable, Iterable, Mapping, Protocol
 
 import more_itertools
 import requests
@@ -961,10 +961,39 @@ def mapping_lookup[K, V](mapping: Mapping[K, V], key: K, debug: bool = True):
     try:
         return mapping[key]
     except LookupError as e:
-        if use:
+        if debug:
             if mapping.keys():
                 msg = "Valid keys: " + ", ".join(str(k) for k in mapping.keys())
             else:
                 msg = "The mapping is empty."
             e.add_note(msg)
         raise
+
+
+@dataclasses.dataclass
+class Normalizer[X, Y](Callable[[X], X]):
+    """Normalizer based on an injective key function."""
+
+    def __init__(self, values: Iterable[X], key: Callable[[X], Y], debug: bool = True):
+        """The key function must be injective."""
+        self.key = key
+        self.mapping = sdict((self.key(value), value) for value in values)
+        self.debug = debug
+
+    def __call__(self, x: X) -> X:
+        """Normalize the given value."""
+        return mapping_lookup(self.mapping, self.key(x), debug=self.debug)
+
+
+def dashify(x: str):
+    """
+    Generates a lower case string with spaces replaced by dashes.
+    Valid to use as a filename.
+    For example, "Python experiment" becomes "python-experiment".
+
+    Warning: not injective.
+    """
+    x = x.lower()
+    x = re.sub(r"\s+", "-", x)
+    x = re.sub(r"\:|/", "", x)
+    return x
