@@ -262,6 +262,7 @@ class GroupSetConfig[GroupId]:
     """
     Used for group project paths.
     Used as part of tag names in collection repository.
+    Note that many special characters are forbidden in GitLab group names.
     """
 
     name: PrinterParser[GroupId, str] = util.print_parse.regex_int(
@@ -271,27 +272,20 @@ class GroupSetConfig[GroupId]:
     """
     Full human-readable name.
     Used in Canvas group set.
-    """
-
-    group_set_name: str = "Lab group"
-    """
-    Name of Canvas group set where students sign up for lab groups.
-    We recommend to use a zero-based numerical naming scheme:
+    Why not use use a zero-based numerical naming scheme:
     * Lab group 0,
     * Lab group 1,
-    * ....
-    If you allow students to create their own group name,
-    you define further down how this should translate to group names on Chalmers GitLab.
-    Note that many special characters are forbidden in GitLab group names.
+    * ...?
+    """
 
-    Needs to be a unique key for this group set configuration.
+    group_set_name: str = "Lab groups"
+    """
+    Name of the group set on Canvas.
+    Students sign up for lab groups here.
     """
 
     gdpr_coding: util.gdpr_coding.GDPRCoding = util.gdpr_coding.GDPRCoding(
-        identifier=util.print_parse.compose(
-            util.print_parse.int_str(),
-            util.print_parse.invert(util.print_parse.int_str()),
-        )
+        identifier=util.print_parse.on_parse(int)
     )
     """
     How to pseudonymously format and sort group identifiers.
