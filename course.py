@@ -36,6 +36,7 @@ import util.instance_cache
 import util.ip
 import util.ldap
 import util.print_parse
+import util.ssh
 import util.subsuming_queue
 import util.threading
 import util.url
@@ -86,7 +87,15 @@ class Course:
     config: lab_interfaces.CourseConfig
     auth: lab_interfaces.CourseAuth
     path: Path | None
+
+    exit_stack: contextlib.ExitStack
+    """Used by this context manager."""
+
     ssh_multiplexer: util.ssh.Multiplexer | None
+    """Optional SSH multiplexer, managed by this context manager."""
+
+    group_sets: dict[str, group_set.GroupSet]
+    """Map from group set names on Canvas to instances of group_set.GroupSet."""
 
     def __init__(
         self,
@@ -110,7 +119,8 @@ class Course:
         self.auth = auth
         self.dir = dir
 
-        # Map from group set names on Canvas to instances of group_set.GroupSet.
+        self.exit_stack = contextlib.ExitStack()
+        self.ssh_multiplexer = None
         self.group_sets = {}
 
         # Avoid cyclic import.
@@ -128,12 +138,10 @@ class Course:
             for lab_id in self.config.labs
         }
 
-        self.exit_stack = contextlib.ExitStack()
-        self.ssh_multiplexer = None
-
     def __enter__(self):
         if self.config.ssh_use_multiplexer:
             self.ssh_multiplexer = util.ssh.Multiplexer(self.config.gitlab.ssh_netloc)
+            self.exit_stack.enter_context(contextlib.closing(self.ssh_multiplexer))
 
     def __exit__(self, exc_type, exc_value, traceback_):
         self.exit_stack.__exit__(exc_type, exc_value, traceback_)
@@ -949,7 +957,7 @@ class Course:
             self.auth.gitlab_webhook_secret_token,
             add_webhook_event,
         )
-        with webhook_listener_manager as webhook_server:
+        with self, webhook_listener_manager as webhook_server:
 
             def webhook_server_run():
                 try:

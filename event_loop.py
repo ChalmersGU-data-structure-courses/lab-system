@@ -86,6 +86,17 @@ def run(
         for c in courses:
             c.setup()
 
+        # HACK: enable at most one SSH multiplexer.
+        # This does not really belong to course config.
+        # But at the moment, we do not have higher-level config.
+        def enable_ssh_multiplexer():
+            for c in courses:
+                if c.config.gitlab.ssh_use_multiplexer:
+                    exit_stack.enter_context(c)
+                    return
+
+        enable_ssh_multiplexer()
+
         # Configure webhooks.
         if enable_webhooks:
             courses_by_netloc = util.general.multidict(
