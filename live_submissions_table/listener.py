@@ -80,7 +80,6 @@ class LiveSubmissionsTableLabUpdateListener[LabId, GroupId](
                 self.path_staging.unlink()
             else:
                 self.logger.info("Posting live submissions table to Canvas")
-                target = self.lab.config.live_submissions_table_canvas_path
                 folder_path = self.canvas_path.parent
                 folder = self.course.canvas_course.get_folder_by_path(folder_path)
                 if folder is None:
