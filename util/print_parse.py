@@ -10,7 +10,7 @@ import json as module_json
 import pathlib
 import re
 import shlex
-from typing import Any, Callable, ClassVar, Protocol, Type
+from typing import Any, Callable, ClassVar, Protocol
 from collections.abc import Iterable, Sequence
 
 import util.general
@@ -143,7 +143,7 @@ def on_parse[T](parse: Callable[[T], T]) -> PrinterParser[T, T]:
 
 @dataclasses.dataclass
 class CheckType[X](PrinterParser[X, X]):
-    type: Type[X]
+    type: type[X]
 
     def print(self, x, /):
         return x
@@ -662,7 +662,7 @@ class Dataclass(Protocol):
     __dataclass_fields__: ClassVar[dict[str, Any]]
 
 
-def dataclass_dict[T: Dataclass](cls: Type[T]) -> Type[T]:
+def dataclass_dict[T: Dataclass](cls: type[T]) -> type[T]:
     fields = cls.__dataclass_fields__
 
     def pp_field(field):
@@ -689,9 +689,9 @@ def dataclass_dict[T: Dataclass](cls: Type[T]) -> Type[T]:
 
 
 def dataclass_json[T: Dataclass](
-    cls: Type[T],
+    cls: type[T],
     nice: bool = False,
-) -> Type[T]:
+) -> type[T]:
     dataclass_dict(cls)
     cls.pp_json = compose(cls.pp_dict, json_coding_nice if nice else json)  # type: ignore
     return cls
@@ -711,8 +711,8 @@ def named_tuple_from_dataclass(cls):
 
 @dataclasses.dataclass
 class DataclassAsNamedTuple[S, T](PrinterParser[S, T]):
-    cls_source: Type[S]
-    cls_target: Type[T]
+    cls_source: type[S]
+    cls_target: type[T]
 
     def print(self, x: S, /) -> T:
         return self.cls_target(**x.__dict__)
