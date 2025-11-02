@@ -17,7 +17,7 @@ import time
 from collections import defaultdict, namedtuple
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from typing import Any, Callable, Protocol
+from typing import Any, Callable, Mapping, Protocol
 
 import more_itertools
 import requests
@@ -548,6 +548,7 @@ class Lens[A, B](Protocol):
     """
     Protocol for a lens.
     """
+
     def get(self, _a: A, /) -> B:
         """
         Get the target attribute from _a.
@@ -950,3 +951,20 @@ class BearerAuth(requests.auth.AuthBase):
     def __call__(self, r):
         r.headers["Authorization"] = f"Bearer {self.token}"
         return r
+
+
+def mapping_lookup[K, V](mapping: Mapping[K, V], key: K, debug: bool = True):
+    """
+    Mapping lookup with a more helpful exception message.
+    If the lookup fails and use is set, adds a note with the valid keys.
+    """
+    try:
+        return mapping[key]
+    except LookupError as e:
+        if use:
+            if mapping.keys():
+                msg = "Valid keys: " + ", ".join(str(k) for k in mapping.keys())
+            else:
+                msg = "The mapping is empty."
+            e.add_note(msg)
+        raise

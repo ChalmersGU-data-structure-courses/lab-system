@@ -511,16 +511,20 @@ class Dict[I, O](PrinterParser[I, O]):
         xs: Iterable[tuple[I, O]],
         print_strict: bool = True,
         parse_strict: bool = True,
+        print_debug: bool = True,
+        parse_debug: bool = True,
     ):
         xs = tuple(xs)
         self.u = util.general.sdict(((x, y) for (x, y) in xs), strict=print_strict)
         self.v = util.general.sdict(((y, x) for (x, y) in xs), strict=parse_strict)
+        self.print_debug = print_debug
+        self.parse_debug = parse_debug
 
     def print(self, x: I, /) -> O:
-        return self.u[x]
+        return util.general.mapping_lookup(self.u, x, debug=self.print_debug)
 
     def parse(self, y: O, /) -> I:
-        return self.v[y]
+        return util.general.mapping_lookup(self.v, y, debug=self.parse_debug)
 
 
 @dataclasses.dataclass
