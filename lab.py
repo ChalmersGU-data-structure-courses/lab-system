@@ -8,7 +8,7 @@ import logging
 import os
 import shutil
 from pathlib import Path, PurePosixPath
-from typing import Any, Optional
+from typing import Any, Optional, TYPE_CHECKING
 
 import dateutil.parser
 import git
@@ -24,6 +24,10 @@ import util.git
 import util.path
 import util.print_parse
 import webhook_listener
+
+if TYPE_CHECKING:
+    import course as module_course
+    import group_set as module_group_set
 
 
 class StudentConnector(abc.ABC):
@@ -64,7 +68,9 @@ class StudentConnector(abc.ABC):
 
 
 class StudentConnectorIndividual(StudentConnector):
-    def __init__(self, course):
+    course: module_course.Course
+
+    def __init__(self, course: module_course.Course):
         self.course = course
 
     def desired_groups(self):
@@ -105,7 +111,9 @@ class StudentConnectorIndividual(StudentConnector):
 
 
 class StudentConnectorGroupSet(StudentConnector):
-    def __init__(self, group_set):
+    group_set: module_group_set.GroupSet
+
+    def __init__(self, group_set: module_group_set.GroupSet):
         self.group_set = group_set
 
     def desired_groups(self):
@@ -150,7 +158,7 @@ class LabUpdateManager[GroupId]:
     dirty: set[GroupId]
     listeners: set[lab_interfaces.LabUpdateListener[GroupId]]
 
-    def __init__(self, lab):
+    def __init__(self, lab: "Lab[GroupId]"):
         self.lab = lab
         self.read()
         self.listeners = set()
@@ -332,7 +340,7 @@ class Lab[LabId, GroupId, Variant]:
 
     def __init__(
         self,
-        course,
+        course: module_course.Course,
         id: LabId,
         config: lab_interfaces.LabConfig = None,
         dir: Path = None,

@@ -14,6 +14,7 @@ import threading
 import traceback
 import types
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import atomicwrites
 import gitlab
@@ -41,6 +42,9 @@ import util.subsuming_queue
 import util.threading
 import util.url
 import webhook_listener
+
+if TYPE_CHECKING:
+    import lab as module_lab
 
 
 # ===============================================================================
@@ -87,6 +91,8 @@ class Course:
     config: lab_interfaces.CourseConfig
     auth: lab_interfaces.CourseAuth
     path: Path | None
+
+    labs: dict[LabId, module_lab.Lab]
 
     exit_stack: contextlib.ExitStack
     """Used by this context manager."""
