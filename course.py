@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 import collections
 import contextlib
 import datetime
@@ -13,7 +14,6 @@ import threading
 import traceback
 import types
 from pathlib import Path
-from typing import Iterable
 
 import atomicwrites
 import gitlab

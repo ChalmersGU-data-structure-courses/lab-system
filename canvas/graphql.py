@@ -1,12 +1,12 @@
 # False positives: _type and _id.
 # pylint: disable=protected-access
+from collections.abc import Iterable
 import base64
 import dataclasses
 import functools
 import itertools
 import logging
 from pathlib import Path
-from typing import Iterable
 
 import gql
 import more_itertools

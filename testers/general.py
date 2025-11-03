@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 import abc
 import argparse
 import contextlib
@@ -9,7 +10,7 @@ import os
 import signal
 import subprocess
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Optional
 
 import util.general
 import util.markdown

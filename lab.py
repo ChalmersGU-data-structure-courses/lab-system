@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 import abc
 import contextlib
 import dataclasses
@@ -7,7 +8,7 @@ import logging
 import os
 import shutil
 from pathlib import Path, PurePosixPath
-from typing import Any, Iterable, Optional
+from typing import Any, Optional
 
 import dateutil.parser
 import git

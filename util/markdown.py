@@ -1,7 +1,8 @@
+from collections.abc import Iterable
 import dataclasses
 import enum
 import re
-from typing import Iterable, Sequence
+from typing import Sequence
 
 import more_itertools
 

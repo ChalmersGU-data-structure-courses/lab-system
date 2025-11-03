@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 import bisect
 import collections
 import contextlib
@@ -7,7 +8,7 @@ import itertools
 import logging
 from collections.abc import Mapping, Sequence
 from logging import Logger
-from typing import Callable, Iterable, Iterator
+from typing import Callable, Iterator
 
 import google.auth.credentials
 

@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # PYTHON_ARGCOMPLETE_OK
+from collections.abc import Iterable
 import contextlib
 import dataclasses
 import inspect
 import logging
 import os
 from pathlib import Path
-from typing import Iterable, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import lab_interfaces
 import submission_java

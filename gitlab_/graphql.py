@@ -1,8 +1,9 @@
+from collections.abc import Iterable
 import dataclasses
 import datetime
 import functools
 import logging
-from typing import Iterable, Optional, Tuple
+from typing import Optional, Tuple
 
 from gql.transport.requests import RequestsHTTPTransport
 

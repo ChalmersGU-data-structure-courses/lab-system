@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 import abc
 import contextlib
 import functools
@@ -6,7 +7,7 @@ import platform
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Iterable, Union
+from typing import Union
 
 import util.general
 import util.path

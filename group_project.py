@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 import contextlib
 import functools
 import itertools
@@ -6,7 +7,6 @@ import logging
 import shlex
 import subprocess
 from pathlib import PurePosixPath
-from typing import Iterable
 
 import git
 import gitlab

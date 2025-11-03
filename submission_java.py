@@ -1,8 +1,9 @@
 # Tools for handling a Java submission.
+from collections.abc import Iterable
 import contextlib
 import logging
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import lab_interfaces
 import util.check_symlinks
