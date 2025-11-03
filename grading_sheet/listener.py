@@ -105,8 +105,8 @@ class GradingSheetLabUpdateListener[LabId, GroupId](
                 for query, submission in enumerate(
                     group.submissions_relevant(self.deadline)
                 ):
-                    query = self.sheet.query(group.id, query)
-                    yield query.requests_write_submission(
+                    q = self.sheet.query(group.id, query)
+                    yield q.requests_write_submission(
                         submission.request_name,
                         gitlab_.tools.url_tag_name(
                             group.project.get,
@@ -114,13 +114,9 @@ class GradingSheetLabUpdateListener[LabId, GroupId](
                         ),
                     )
                     if submission.outcome is not None:
-                        yield query.requests_write_grader(
-                            submission.grader_informal_name
-                        )
-                        yield query.requests_write_outcome(
-                            self.course.config.outcome.as_cell.print(
-                                submission.outcome
-                            ),
+                        yield q.requests_write_grader(submission.grader_informal_name)
+                        yield q.requests_write_outcome(
+                            self.lab.config.outcome.as_cell.print(submission.outcome),
                             submission.link,
                         )
 
