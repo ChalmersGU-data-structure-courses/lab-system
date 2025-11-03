@@ -45,7 +45,7 @@ canvas = SimpleNamespace(
     # * 'chalmers.instructure.com' for Chalmers courses
     url="chalmers.instructure.com",
     # Integer id found in Canvas course URL.
-    course_id=31854,
+    course_id=36705,
     # Path to (unpublished!) folder in Canvas course files.
     # This is where the script will upload submission reports.
     # This folder needs to exist.
@@ -77,7 +77,7 @@ gitlab_lab_system_users = ["lab-system"]
 # This also applies to the content of the name file for each lab.
 # This is because it is used to form the full name of a lab on Chalmers Gitlab.
 
-path_course = PurePosixPath() / "courses" / "dat151" / "2024"
+path_course = PurePosixPath() / "courses" / "dat151" / "2025"
 
 # ACTION: if you have multiple instances using the same graders group, specify it here.
 path_graders = path_course / "graders"
@@ -164,12 +164,12 @@ grading_sheet = SimpleNamespace(
     # This is created by the user, but maintained by the lab script.
     # The key (a base64 string) can be found in the URL of the spreadsheet.
     # Individual grading sheets for each lab are worksheets in this spreadsheet.
-    spreadsheet="152uCn7_X7bSnbsppXotSi8xwfdYqrRkxXiFqwtQ8jHA",
+    spreadsheet="1_W8blDH-TTdiQ1Utfg8CeK8llR_U7--OMz6m8Yl9qT4",
     # Template grading sheet on Google Sheets.
     # If the lab script has access to this, it can create initial grading worksheets.
     # Pair of a spreadsheet key and worksheet identifier.
     # The worksheet identifier is formatted as for 'grading_sheet' in lab configuration.
-    template=("152uCn7_X7bSnbsppXotSi8xwfdYqrRkxXiFqwtQ8jHA", "Template"),
+    template=("1_W8blDH-TTdiQ1Utfg8CeK8llR_U7--OMz6m8Yl9qT4", "Template"),
     # Have rows for non-empty groups that have not yet submitted?
     include_groups_with_no_submission=True,
 )
@@ -385,10 +385,10 @@ def _lab_item(k, *args):
 # Dictionary sending lab identifiers to lab configurations.
 labs = dict(
     [
-        _lab_item(1, datetime.timedelta(minutes=60), True),
-        _lab_item(2, datetime.timedelta(minutes=60), True),
-        _lab_item(3, datetime.timedelta(minutes=60), True),
-        _lab_item(4, datetime.timedelta(minutes=60), True),
+#        _lab_item(1, datetime.timedelta(minutes=60), True),
+#        _lab_item(2, datetime.timedelta(minutes=60), True),
+#        _lab_item(3, datetime.timedelta(minutes=60), True),
+#        _lab_item(4, datetime.timedelta(minutes=60), True),
     ]
 )
 
@@ -418,7 +418,7 @@ _cid_to_gitlab_username = print_parse.from_dict(
 # Return None if not possible.
 # Takes the course object and the Canvas user object as arguments.
 _canvas_id_to_gitlab_username_override = {
-    122370000000244304: "ekavol",
+#    122370000000244304: "ekavol",
 }
 
 
