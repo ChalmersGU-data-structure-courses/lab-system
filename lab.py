@@ -164,10 +164,6 @@ class Lab:
     - groups_create_desired()
 
     All-in-one methods:
-    - deploy_lab:
-      Upload problem and solutions.
-      Does not yet talk to Canvas.
-      This is left to the event loop.
     - deploy_via_lab_sources_and_canvas: do all steps to deploy a lab for the first time
       (needs lab sources to be prepared and testing docker image built).
       Includes forking the student projects.
@@ -315,27 +311,6 @@ class Lab:
                 group.upload_solution(language=language)
         else:
             group.upload_solution()
-
-    def deploy(self):
-        """
-        If this method goes wrong, you can use self.delete() to start from scratch.
-        """
-        self.gitlab_group.create()
-        self.primary_project.create()
-        if self.config.multi_language is None:
-            self.primary_project_problem_branch_create()
-        else:
-            self.primary_project_problem_branches_create()
-        self.collection_project.create()
-        if self.config.has_solution is True:
-            self.solution_create_and_populate()
-        self.logger.info(
-            general.text_from_lines(
-                "Next steps:",
-                "* Restart event loop.",
-                "* Check robograding/-testing output for solution submissions in live submissions table.",
-            )
-        )
 
     def remove(self, *, force: bool = False):
         """
@@ -1938,13 +1913,21 @@ class Lab:
         self.logger.info('=== Creating "collection" project for lab ===')
         self.collection_project.create()
 
+        self.logger.info('=== Uploading official solution ===')
+        if self.config.has_solution is True:
+            self.solution_create_and_populate()
+
         self.logger.info("=== Forking student projects from primary project ===")
         self.groups_create_desired()
 
         self.logger.info(
             """
             Note: students are not yet added/invited to lab projects.
-            Run 'sync_students_to_gitlab()' when ready.
+            Optionally run 'sync_students_to_gitlab()' when ready.
+
+            Next steps:
+            * Restart event loop.
+            * Check robograding/-testing output for solution submissions in live submissions table.
             """
         )
         # Or you could also call sync_students_to_gitlab.
