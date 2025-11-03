@@ -10,4 +10,4 @@ logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 
 c = course.Course(config, dir = this_dir / 'dat151')
-
+l = c.labs[1]
