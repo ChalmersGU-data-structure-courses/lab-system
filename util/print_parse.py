@@ -497,11 +497,11 @@ class JoinBytes(PrinterParser[list[bytes], bytes]):
     sep: bytes | None = None
     maxsplit: int = -1
 
-    def print(self, x: Iterable[bytes], /) -> str:
+    def print(self, x: Iterable[bytes], /) -> bytes:
         _sep = b" " if self.sep is None else self.sep
         return _sep.join(x)
 
-    def parse(self, y: str, /) -> list[str]:
+    def parse(self, y: bytes, /) -> list[bytes]:
         return y.split(self.sep, self.maxsplit)
 
 

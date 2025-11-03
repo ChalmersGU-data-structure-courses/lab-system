@@ -17,10 +17,10 @@ logger = logging.getLogger(__name__)
 class GDPRCoding[GroupId]:
     # Printer-parser that encodes identifiers for use in non-GDPR-cleared documents.
     # The most common example is Google Sheets.
-    identifier: util.print_parse.PrintParse[GroupId, int | str]
+    identifier: util.print_parse.PrinterParser[GroupId, int | str]
 
     # Sort key to use for the encoded identifiers.
-    sort_key: Callable[GroupId, util.general.Comparable] = lambda x: x
+    sort_key: Callable[[GroupId], util.general.Comparable] = lambda x: x
 
 
 class NameCoding:

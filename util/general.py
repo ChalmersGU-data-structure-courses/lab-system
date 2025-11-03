@@ -971,7 +971,7 @@ def mapping_lookup[K, V](mapping: Mapping[K, V], key: K, debug: bool = True):
 
 
 @dataclasses.dataclass
-class Normalizer[X, Y](Callable[[X], X]):
+class Normalizer[X, Y]:
     """Normalizer based on an injective key function."""
 
     def __init__(self, values: Iterable[X], key: Callable[[X], Y], debug: bool = True):

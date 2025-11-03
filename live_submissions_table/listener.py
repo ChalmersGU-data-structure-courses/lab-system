@@ -3,6 +3,7 @@ import functools
 import logging
 import random
 from pathlib import Path, PurePosixPath
+from typing import Any
 
 import util.path
 
@@ -14,7 +15,7 @@ import live_submissions_table
 class LiveSubmissionsTableLabUpdateListener[LabId, GroupId](
     lab_interfaces.LabUpdateListener[GroupId]
 ):
-    lab: module_lab.Lab[LabId, GroupId]
+    lab: module_lab.Lab[LabId, GroupId, Any]
     logger: logging.Logger
     table: live_submissions_table.LiveSubmissionsTable
 

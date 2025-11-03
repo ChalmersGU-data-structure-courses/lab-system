@@ -1,3 +1,4 @@
+from collections.abc import Collection
 import abc
 import dataclasses
 import datetime
@@ -237,7 +238,7 @@ class GitlabConfig:
     The sshd config for Chalmers GitLab seems to have MaxSessions=5 (checked 2021-12).
     """
 
-    lab_system_users: set[str] = frozenset({"lab-system"})
+    lab_system_users: Collection[str] = frozenset({"lab-system"})
     """Usernames on Chalmers GitLab that are recognized as acting as the lab system."""
 
 
@@ -325,16 +326,8 @@ class OutcomeSpec:
 
 
 class DefaultOutcome(util.enum.EnumSpec[OutcomeSpec]):
-    INCOMPLETE = OutcomeSpec.smart(
-        name="incomplete",
-        color="red",
-        as_cell=0,
-    )
-    PASS = OutcomeSpec.smart(
-        name="pass",
-        color="green",
-        as_cell=1,
-    )
+    INCOMPLETE = OutcomeSpec.smart(name="incomplete", color="red", as_cell=0)
+    PASS = OutcomeSpec.smart(name="pass", color="green", as_cell=1)
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -345,7 +338,7 @@ class OutcomesConfig[Outcome]:
     See OutcomesConfig.default_outcome_specs for its default argument.
     """
 
-    outcomes: set[Outcome]
+    outcomes: Collection[Outcome]
     """The set of possible outcomes."""
 
     name: PrinterParser[Outcome, str]
@@ -438,7 +431,7 @@ class VariantsConfig[Variant]:
     The students can choose which variant to work with.
     """
 
-    variants: set[Variant]
+    variants: Collection[Variant]
     """
     The available lab variants.
     A singleton set containing the empty tuple denotes a variants-free lab.

@@ -154,17 +154,17 @@ class StudentConnectorGroupSet(StudentConnector):
 
 
 class LabUpdateManager[GroupId]:
-    lab: "Lab[GroupId]"
+    lab: "Lab[GroupId, Any, Any]"
     dirty: set[GroupId]
     listeners: set[lab_interfaces.LabUpdateListener[GroupId]]
 
-    def __init__(self, lab: "Lab[GroupId]"):
+    def __init__(self, lab: "Lab[GroupId, Any, Any]"):
         self.lab = lab
         self.read()
         self.listeners = set()
 
     @functools.cached_property
-    def pp(self) -> util.print_parse.PrintParse[set[GroupId], str]:
+    def pp(self) -> util.print_parse.PrinterParser[set[GroupId], str]:
         return util.print_parse.compose(
             util.print_parse.SetAsList(),
             util.print_parse.json_coding_nice,
@@ -265,7 +265,7 @@ class Lab[LabId, GroupId, Variant]:
     id: LabId
     config: lab_interfaces.LabConfig
     dir: Path
-    deadline: datetime.datetime
+    deadline: datetime.datetime | None
 
     repo_updated: bool
     """Whether we have updated the local collection repository and it needs to be pushed."""
@@ -342,9 +342,9 @@ class Lab[LabId, GroupId, Variant]:
         self,
         course: module_course.Course,
         id: LabId,
-        config: lab_interfaces.LabConfig = None,
-        dir: Path = None,
-        deadline: datetime.datetime = None,
+        config: lab_interfaces.LabConfig | None = None,
+        dir: Path | None = None,
+        deadline: datetime.datetime | None = None,
         logger: logging.Logger = logging.getLogger(__name__),
     ):
         """

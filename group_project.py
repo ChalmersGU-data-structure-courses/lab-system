@@ -1165,7 +1165,7 @@ class GroupProject:
         self.lab.delete_tag(GroupProject.repo_tag(self, request_name, segments).name)
         self.repo_tag_mark_repo_updated()
 
-    def ancestral_tag(self, problem):
+    def ancestral_tag(self, problem: str):
         return util.git.normalize_tag(
             self.repo,
             util.git.refs / "ancestral" / self.remote / problem,
@@ -1173,9 +1173,9 @@ class GroupProject:
 
     def update_problem(
         self,
-        force=False,
-        notify_students: str = None,  # pylint: disable=unused-argument
-        ensure_ancestral=True,
+        force: bool = False,
+        notify_students: str | None = None,  # pylint: disable=unused-argument
+        ensure_ancestral: bool = True,
     ):
         """
         Update problem branch(es) in student repositories to the problem commit in the primary repository.

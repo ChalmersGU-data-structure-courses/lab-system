@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+from typing import Any
 
 import lab as lab_module
 import lab_interfaces
@@ -11,7 +12,7 @@ import gitlab_.tools
 class GradingSheetLabUpdateListener[LabId, GroupId, Outcome](
     lab_interfaces.LabUpdateListener[GroupId]
 ):
-    lab: lab_module.Lab[LabId, GroupId]
+    lab: lab_module.Lab[LabId, GroupId, Any]
     spreadsheet: grading_sheet.core.GradingSpreadsheet[LabId]
     sheet: grading_sheet.core.GradingSheet[GroupId, Outcome]
 

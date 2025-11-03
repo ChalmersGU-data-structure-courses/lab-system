@@ -57,6 +57,7 @@ class EnumSpec[X](enum.Enum):
     value: X
 
     def __new__(cls: type, value):
+        x: object
         x = object.__new__(cls)
         x._value_ = value
         return x

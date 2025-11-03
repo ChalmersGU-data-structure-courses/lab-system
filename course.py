@@ -79,7 +79,7 @@ class InvitationStatus(str, enum.Enum):
     POSSIBLY_ACCEPTED = "possibly accepted"
 
 
-class Course:
+class Course[LabId]:
     """
     This class provides the lab management for a single course
     via Chalmers GitLab and optionally Canvas for group sign-up.
@@ -357,6 +357,9 @@ class Course:
 
     @functools.cached_property
     def chalmers_pdb(self) -> chalmers_pdb.Client:
+        if self.auth.pdb is None:
+            raise RuntimeError("PDB credentials missing")
+
         return chalmers_pdb.Client(auth=self.auth.pdb)
 
     @util.instance_cache.instance_cache
