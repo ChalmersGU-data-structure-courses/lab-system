@@ -210,7 +210,7 @@ def compile_unknown(
     src_files = get_src_files(src, src_files)
     if not src_files:
         logger.debug("No source files to compile.")
-        return (True, str())
+        return True if check else (True, "no source files to compile")
 
     if detect_encoding:
         # Import locally to avoid charet dependency if this option is not used.
