@@ -1,0 +1,6 @@
+*.csv.in
+*.csv
+gdpr_coding.json
+gitlab_users
+lab-*
+log
