@@ -1,28 +1,32 @@
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
-import lab as lab_module
 import lab_interfaces
 import grading_sheet.core
 import util.general
+import google_tools.general
 import google_tools.sheets
 import gitlab_.tools
 
+if TYPE_CHECKING:
+    import course as module_course
+    import lab as module_lab
 
-class GradingSheetLabUpdateListener[LabId, GroupId, Outcome](
+
+class GradingSheetLabUpdateListener[LabId, GroupId](
     lab_interfaces.LabUpdateListener[GroupId]
 ):
-    lab: lab_module.Lab[LabId, GroupId, Any]
+    lab: module_lab.Lab[LabId, GroupId, Any]
     spreadsheet: grading_sheet.core.GradingSpreadsheet[LabId]
-    sheet: grading_sheet.core.GradingSheet[GroupId, Outcome]
+    sheet: grading_sheet.core.GradingSheet[LabId, GroupId, Any]
 
     ids: set[GroupId]
     needed_num_queries: int
 
     def __init__(
         self,
-        lab: lab_module.Lab[LabId, GroupId],
-        grading_spreadsheet: grading_sheet.core.GradingSpreadsheet[GroupId, Outcome],
+        lab: module_lab.Lab[LabId, GroupId, Any],
+        grading_spreadsheet: grading_sheet.core.GradingSpreadsheet[LabId],
         deadline=None,
     ):
         self.lab = lab
@@ -32,6 +36,10 @@ class GradingSheetLabUpdateListener[LabId, GroupId, Outcome](
 
         self.id = set()
         self.needed_num_queries = 0
+
+    @property
+    def course(self) -> module_course.Course:
+        return self.lab.course
 
     def group_changed(self, id: GroupId) -> None:
         self.ids.add(id)
@@ -56,7 +64,7 @@ class GradingSheetLabUpdateListener[LabId, GroupId, Outcome](
             return False
 
         return (
-            list(group.submissions_relevant(self.deadline))
+            bool(list(group.submissions_relevant(self.deadline)))
             or self.sheet.config.include_groups_with_no_submission
             or group.non_empty()
         )
@@ -91,40 +99,29 @@ class GradingSheetLabUpdateListener[LabId, GroupId, Outcome](
         num_queries = max(query_counts, default=0)
         self.sheet.ensure_num_queries(num_queries)
 
-        # Update the grading sheet.
-        request_buffer = self.spreadsheet.create_request_buffer()
-        for group in groups:
-            for query, submission in enumerate(
-                group.submissions_relevant(self.deadline)
-            ):
-                if submission.outcome is None:
-                    grader = None
-                    outcome = None
-                else:
-                    grader = google_tools.sheets.cell_value(
-                        submission.grader_informal_name
-                    )
-                    outcome = google_tools.sheets.cell_link_with_fields(
-                        self.lab.course.config.outcome.as_cell.print(
-                            submission.outcome
-                        ),
-                        submission.link,
-                    )
-
-                self.sheet.write_query(
-                    request_buffer,
-                    group.id,
-                    query,
-                    self.sheet.Query(
-                        submission=google_tools.sheets.cell_link_with_fields(
+        def requests() -> Iterable[google_tools.general.Request]:
+            # Update the grading sheet.
+            for group in groups:
+                for query, submission in enumerate(
+                    group.submissions_relevant(self.deadline)
+                ):
+                    query = self.sheet.query(group.id, query)
+                    yield query.requests_write_submission(
+                        submission.request_name,
+                        gitlab_.tools.url_tag_name(
+                            group.project.get,
                             submission.request_name,
-                            gitlab_.tools.url_tag_name(
-                                group.project.get,
-                                submission.request_name,
-                            ),
                         ),
-                        grader=grader,
-                        score=outcome,
-                    ),
-                )
-        request_buffer.flush()
+                    )
+                    if submission.outcome is not None:
+                        yield query.requests_write_grader(
+                            submission.grader_informal_name
+                        )
+                        yield query.requests_write_outcome(
+                            self.course.config.outcome.as_cell.print(
+                                submission.outcome
+                            ),
+                            submission.link,
+                        )
+
+        self.spreadsheet.client_update_many(list(requests()))

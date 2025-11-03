@@ -365,7 +365,7 @@ class GradingSheetData[LabId, GroupId, Outcome]:
 
             return column
 
-        def parse_query(index) -> int:
+        def parse_query(index) -> int | None:
             while True:
                 try:
                     column_submission = next(columns)
@@ -388,7 +388,7 @@ class GradingSheetData[LabId, GroupId, Outcome]:
         found = False
         for index in itertools.count():
             column_submission = parse_query(index)
-            if not column_submission:
+            if column_submission is None:
                 break
 
             column_grader = consume(self.config.header.grader)
