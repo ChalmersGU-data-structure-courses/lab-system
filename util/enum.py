@@ -28,7 +28,7 @@ def patch_enum_type_params():
 patch_enum_type_params()
 
 
-class EnumSpec[X](enum.Enum):
+class EnumSpec[X](enum.EnumType):
     """
     A subclass of enum for enumerations of specifications.
     These are enumerations with separate data attached to every entry.
