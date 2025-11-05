@@ -8,7 +8,8 @@ import shlex
 import stat
 import subprocess
 from enum import Enum, auto
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
+from typing import Callable, Iterable
 
 import git
 import gitdb
@@ -33,13 +34,14 @@ head = "HEAD"
 master = "master"
 
 
-def remove_prefix(path, prefix, **kwargs):
+def remove_prefix(path: PurePosixPath, prefix: PurePosixPath, *args) -> PurePosixPath:
     return PurePosixPath(
-        **util.general.remove_prefix(path.parts, prefix.parts), **kwargs
+        *util.general.remove_prefix(path.parts, prefix.parts),
+        *args,
     )
 
 
-def local_ref(is_tag, reference):
+def local_ref(is_tag: bool, reference: str | PurePosixPath) -> PurePosixPath:
     return refs / (tags if is_tag else heads) / reference
 
 
@@ -47,15 +49,23 @@ local_branch = functools.partial(local_ref, False)
 local_tag = functools.partial(local_ref, True)
 
 
-def qualify(remote, reference):
+def qualify(remote: str, reference: str | PurePosixPath) -> PurePosixPath:
     return PurePosixPath(remote) / reference
 
 
-def remote_ref(is_tag, remote, reference):
+def remote_ref(
+    is_tag: bool,
+    remote: str,
+    reference: str | PurePosixPath,
+) -> PurePosixPath:
     return refs / (remote_tags if is_tag else remotes) / qualify(remote, reference)
 
 
-def local_or_remote_ref(is_tag, remote, reference):
+def local_or_remote_ref(
+    is_tag: bool,
+    remote: str | None,
+    reference: str | PurePosixPath,
+) -> PurePosixPath:
     """If remote is None, then we assume that the reference is local."""
     if remote is None:
         return local_ref(is_tag, reference)
@@ -73,13 +83,20 @@ class Namespacing(Enum):
     remote = auto()
 
 
-def namespaced_ref(is_tag, namespacing, remote, reference):
+def namespaced_ref(
+    is_tag: bool,
+    namespacing: Namespacing,
+    remote: str,
+    reference: str | PurePosixPath,
+) -> PurePosixPath:
     if namespacing in [Namespacing.qualified, Namespacing.qualified_suffix_tag]:
         reference = qualify(remote, reference)
         if namespacing == Namespacing.qualified_suffix_tag:
             reference = reference / "tag"
     return local_or_remote_ref(
-        is_tag, remote if namespacing == Namespacing.remote else None, reference
+        is_tag,
+        remote if namespacing == Namespacing.remote else None,
+        reference,
     )
 
 
@@ -87,18 +104,13 @@ namespaced_branch = functools.partial(namespaced_ref, False)
 namespaced_tag = functools.partial(namespaced_ref, True)
 
 
-def normalize_branch(repo, branch):
+def normalize_branch(
+    repo: git.Repo, branch: git.Head | PurePosixPath | str
+) -> git.Head:
     """
     Construct a head in the given repository from a given branch name.
-
-    Arguments:
-    * repo: Instance of git.Repository.
-    * branch:
-        An instance of git.Head, PurePosixPath, or str describing the branch.
-        All paths are interpreted relative to refs / heads.
-
-    Returns an instance of git.Head.
-    This method will not raise an exception if the tag does not exist.
+    The branch path is interpreted relative to refs / heads.
+    This method will not raise an exception if the branch does not exist.
     """
     if isinstance(branch, git.Head):
         return branch
@@ -109,11 +121,15 @@ def normalize_branch(repo, branch):
 # Commits.
 
 
-def commit_date(commit):
+def commit_date(commit: git.Commit) -> datetime.datetime:
     return datetime.datetime.fromtimestamp(commit.committed_date).astimezone()
 
 
-def find_unique_ancestor(repo, commit, ancestors):
+def find_unique_ancestor[X](
+    repo: git.Repo,
+    commit: git.Commit,
+    ancestors: dict[X, git.Commit],
+) -> Iterable[X]:
     """
     Find out which one of the given ancestors a commit derives from.
 
@@ -137,17 +153,10 @@ def find_unique_ancestor(repo, commit, ancestors):
 # Tags.
 
 
-def normalize_tag(repo, tag):
+def normalize_tag(repo: git.Repo, tag: git.Tag | PurePosixPath | str) -> git.Tag:
     """
     Construct a tag in the given repository from a given tag name.
-
-    Arguments:
-    * repo: Instance of git.Repository.
-    * tag:
-        An instance of git.Tag, PurePosixPath, or str describing the tag.
-        All paths are interpreted relative to refs / tags.
-
-    Returns an instance of git.Tag.
+    The tag path is interpreted relative to refs / tags.
     This method will not raise an exception if the tag does not exist.
     """
     if isinstance(tag, git.Tag):
@@ -156,7 +165,7 @@ def normalize_tag(repo, tag):
     return repo.tag(str(tag))
 
 
-def tag_exist(ref):
+def tag_exist(ref: git.Reference) -> bool:
     """
     Test whether a reference exists.
     ref is an instance of git.Reference.
@@ -171,7 +180,7 @@ def tag_exist(ref):
         raise
 
 
-def tag_message(tag, default_to_commit_message=False):
+def tag_message(tag: git.Tag, default_to_commit_message: bool = False) -> str | None:
     """
     Get the message for an annotated tag.
     Returns None if the tag is not annotated unless default_to_commit_message is set.
@@ -179,18 +188,16 @@ def tag_message(tag, default_to_commit_message=False):
     """
     x = tag.object
     if isinstance(x, git.TagObject) or default_to_commit_message:
+        assert isinstance(x.message, str | None)
         return x.message
     return None
 
 
-def tag_commit(tag):
+def tag_commit(tag: git.SymbolicReference) -> git.Commit:
     """
     Gets the commit associated to a tag reference of type git.SymbolicReference.
     Recursively resolves tag objects.
     This works around an insufficiency in git.SymbolicReference.commit for tag references.
-
-    Arguments:
-    * tag: Instance of git.SymbolicReference
     """
     return git.TagReference.commit.fget(tag)
 
@@ -198,17 +205,13 @@ def tag_commit(tag):
 # References.
 
 
-def resolve(repo, ref):
+def resolve(
+    repo: git.Repo,
+    ref: git.Commit | git.Reference | PurePosixPath | str,
+) -> git.Commit:
     """
     Resolve a reference in the given repository to a commit.
-
-    Arguments:
-    * repo: Instance of git.Repository.
-    * ref:
-        An instance of git.Commit, git.Reference, PurePosixPath, or str describing the commit.
-        All paths are interpreted absolutely with respect to the repository.
-
-    Return an instance of git.Commit.
+    All reference paths are interpreted absolutely with respect to the repository.
     Raises a ValueError is the reference cannot be resolved.
     """
     if isinstance(ref, git.Commit):
@@ -218,7 +221,7 @@ def resolve(repo, ref):
     return ref.commit
 
 
-references_hierarchy_basic = {
+references_hierarchy_basic: dict = {
     refs.name: {
         heads.name: {},
         tags.name: {},
@@ -228,7 +231,7 @@ references_hierarchy_basic = {
 }
 
 
-def references_hierarchy(repo):
+def references_hierarchy(repo: git.Repo):
     return util.general.expand_hierarchy(
         {PurePosixPath(ref.path): ref for ref in repo.refs},
         operator.attrgetter("parts"),
@@ -236,18 +239,23 @@ def references_hierarchy(repo):
     )
 
 
-def flatten_references_hierarchy(ref_hierarchy):
+def flatten_references_hierarchy[X](ref_hierarchy) -> dict[PurePosixPath, X]:
     return util.general.flatten_hierarchy(
-        ref_hierarchy, key_combine=lambda x: PurePosixPath(*x)
+        ref_hierarchy,
+        key_combine=lambda x: PurePosixPath(*x),
     )
 
 
 # Refspecs
 
 
-def refspec(src=None, dst=None, force=False):
-    def ref_str(ref):
-        return str(ref) if ref else ""
+def refspec(
+    src: PurePosixPath | str | None = None,
+    dst: PurePosixPath | str | None = None,
+    force: bool = False,
+) -> str:
+    def ref_str(ref: PurePosixPath | str | None):
+        return "" if ref is None else str(ref)
 
     return f'{"+" if force else ""}{ref_str(src)}:{ref_str(dst)}'
 
@@ -255,8 +263,8 @@ def refspec(src=None, dst=None, force=False):
 # Other stuff
 
 
-def boolean(x):
-    return str(bool(x)).lower()
+def boolean(x: bool) -> str:
+    return str(x).lower()
 
 
 class OverwriteException(IOError):
@@ -264,15 +272,15 @@ class OverwriteException(IOError):
 
 
 def add_remote(
-    repo,
-    remote,
-    url,
+    repo: git.Repo,
+    remote: str,
+    url: str,
     fetch_refspecs: list[str] | None = None,
     push_refspecs: list[str] | None = None,
-    prune=None,
-    no_tags=False,
-    exist_ok=False,
-    overwrite=False,
+    prune: bool | None = None,
+    no_tags: bool = False,
+    exist_ok: bool = False,
+    overwrite: bool = False,
 ):
     """
     Add a remote to a git repository.
@@ -306,14 +314,14 @@ def add_remote(
 
 # Tags fetched will be prefixed by remote.
 def add_tracking_remote(
-    repo,
-    remote,
-    url,
-    fetch_branches: list[str] | None = None,
-    fetch_tags: list[str] | None = None,
+    repo: git.Repo,
+    remote: str,
+    url: str,
+    fetch_branches: list[tuple[Namespacing, str]] | None = None,
+    fetch_tags: list[tuple[Namespacing, str]] | None = None,
     push_branches: list[str] | None = None,
     push_tags: list[str] | None = None,
-    force=True,
+    force: bool = True,
     **kwargs,
 ):
     """
@@ -337,6 +345,9 @@ def add_tracking_remote(
         push_branches = []
     if push_tags is None:
         push_tags = []
+
+    namespaced: Callable[[Namespacing, str, str | PurePosixPath], PurePosixPath]
+    namespaced_refs: list[tuple[Namespacing, str]]
 
     fetch_refspecs = [
         refspec(
@@ -363,7 +374,7 @@ def add_tracking_remote(
     add_remote(repo, remote, url, fetch_refspecs, push_refspecs, **kwargs)
 
 
-def onesided_merge(repo, commit, new_parent):
+def onesided_merge(repo: git.Repo, commit: git.Commit, new_parent: git.Commit):
     return git.Commit.create_from_tree(
         repo,
         commit.tree,
@@ -375,13 +386,23 @@ def onesided_merge(repo, commit, new_parent):
 
 
 # Only creates a new commit if necessary.
-def tag_onesided_merge(repo, tag_name, commit, new_parent):
+def tag_onesided_merge(
+    repo: git.Repo,
+    tag_name: str,
+    commit: git.Commit,
+    new_parent: git.Commit,
+):
     if not repo.is_ancestor(new_parent, commit):
         commit = onesided_merge(repo, commit, new_parent)
     return repo.create_tag(tag_name, commit)
 
 
-def checkout(repo, dir, ref, capture_stderr=False):
+def checkout(
+    repo: git.Repo,
+    dir: Path,
+    ref: git.Reference,
+    capture_stderr: bool = False,
+):
     """Checkout a reference into the given directory."""
     cmd = ["tar", "-x"]
     with util.path.working_dir(dir):
@@ -396,6 +417,7 @@ def checkout(repo, dir, ref, capture_stderr=False):
     if capture_stderr:
         t = util.threading.FileReader(tar.stderr)
 
+    assert tar.stdin is not None
     repo.archive(tar.stdin, ref)
     tar.stdin.close()
 
@@ -408,16 +430,20 @@ def checkout(repo, dir, ref, capture_stderr=False):
 
 
 @contextlib.contextmanager
-def checkout_manager(repo, ref):
+def checkout_manager(repo: git.Repo, ref: git.Reference):
     """Context manager for a temporary directory containing a checkout."""
     with util.path.temp_dir() as dir:
         checkout(repo, dir, ref)
         yield dir
 
 
-def format_entry(entry, as_log_message=False):
+TreeEntry = tuple[bytes, int, str]
+"""Entries of a git tree."""
+
+
+def format_entry(entry: TreeEntry, as_log_message=False):
     """
-    Formats a triple (binsha, mode, name) as a non-terminated string for use with git mktree.
+    Formats a tree entry as a non-terminated string for use with git mktree.
     If as_log_message is set, shell-escapes the name.
     """
     (binsha, mode, name) = entry
@@ -430,22 +456,15 @@ def format_entry(entry, as_log_message=False):
     return f"{mode:06o} {kind} {hexsha}	{name if as_log_message else util.path.format_path(name)}"
 
 
-def create_blob_from_file(repo, file):
-    """
-    Loads a blob for the given file into the given repository.
-    Returns an instance of git.Blob.
-    """
+def create_blob_from_file(repo: git.Repo, file: Path) -> git.Blob:
+    """Loads a blob for the given file into the given repository."""
     hexsha = repo.git.hash_object(file, "-w", "--no-filters")
     binsha = gitdb.util.hex_to_bin(hexsha)
     return git.Blob(repo, binsha, mode=file.stat().st_mode)
 
 
-def create_tree_from_entries(repo, entries):
-    """
-    Creates a tree for the given entries in the given repository.
-    Entries is an iterable of triples (binsha, mode, name).
-    Returns an instance of git.Tree.
-    """
+def create_tree_from_entries(repo: git.Repo, entries: Iterable[TreeEntry]) -> git.Tree:
+    """Creates a tree for the given entries in the given repository."""
     process = repo.git.mktree(
         "-z",
         istream=subprocess.PIPE,
@@ -463,12 +482,11 @@ def create_tree_from_entries(repo, entries):
     return git.Tree(repo, binsha)
 
 
-def create_tree_from_dir(repo, dir):
+def create_tree_from_dir(repo: git.Repo, dir: Path) -> git.Tree:
     """
     Loads a tree for the given directory into the given repository.
     This loads blobs for all contained files and recursively
     loads trees for the contained directories.
-    Returns an instance of git.Tree.
 
     TODO:
     Currently, this implementation does one process call per descendant of dir.
@@ -491,9 +509,8 @@ def create_tree_from_dir(repo, dir):
     return create_tree_from_entries(repo, entries())
 
 
-def read_text_file_from_tree(tree, path):
-    path = str(PurePosixPath(path))
-    return tree[path].data_stream.read().decode()
+def read_text_file_from_tree(tree: git.Tree, path: PurePosixPath):
+    return tree[str(path)].data_stream.read().decode()
 
 
 def merge_blobs(
@@ -524,7 +541,11 @@ def merge_blobs(
         return result
 
 
-def resolve_unmerged_blobs(repo, index, *merge_file_options):
+def resolve_unmerged_blobs(
+    repo: git.Repo,
+    index: git.IndexFile,
+    *merge_file_options,
+) -> None:
     index.resolve_blobs(
         merge_blobs(repo, base, current, other, *merge_file_options)
         for (
@@ -534,14 +555,19 @@ def resolve_unmerged_blobs(repo, index, *merge_file_options):
     )
 
 
-def get_root_commit(commit):
+def get_root_commit(commit: git.Commit) -> git.Commit:
     while commit.parents:
         commit = commit.parents[0]
     return commit
 
 
 @contextlib.contextmanager
-def with_tag(repo, path, ref, message=None):
+def with_tag(
+    repo: git.Repo,
+    path: PurePosixPath,
+    ref: str | git.SymbolicReference,
+    message: str | None = None,
+):
     tag = repo.create_tag(path=path, ref=ref, message=message)
     try:
         yield tag
