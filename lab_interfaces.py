@@ -199,8 +199,15 @@ class HandlingException(Exception, util.markdown.Markdown):
 class TimeConfig:
     """Time printing configuration."""
 
+    @classmethod
+    def timezone_default(cls) -> datetime.tzinfo:
+        r = dateutil.tz.gettz("Europe/Stockholm")
+        assert r is not None
+        return r
+
     zone: datetime.tzinfo = dataclasses.field(
-        default_factory=lambda: dateutil.tz.gettz("Europe/Stockholm")
+        # pylint: disable-next=unnecessary-lambda
+        default_factory=lambda: TimeConfig.timezone_default()
     )
     """Timezone to use."""
 
@@ -251,6 +258,8 @@ class GroupSetConfig[GroupId]:
     * lab group folder on Chalmers Gitlab,
     * formatting in live submissions table,
     * pasting and formatting in overview grading sheet.
+
+    The default values only make sense for integer group ids.
     """
 
     id: PrinterParser[GroupId, int | str] = util.print_parse.int_str()
@@ -305,14 +314,14 @@ DefaultGroupId = int
 class OutcomeSpec:
     name: str
     label: gitlab_.tools.LabelSpec | None = None
-    as_cell: str | int | None = None
+    as_cell: str | int = str()
 
     @classmethod
     def smart(
         cls,
         name: str,
         color: str | None = None,
-        as_cell: str | int | None = None,
+        as_cell: str | int = str(),
     ) -> "OutcomeSpec":
         return cls(
             name=name,
@@ -381,13 +390,13 @@ class OutcomesConfig[Outcome]:
                 (outcome, spec.as_cell) for outcome, spec in outcomes.items()
             ),
             labels={outcome: spec.label for outcome, spec in outcomes.items()}
-            | {None: waiting_for_grading},
+            | {None: waiting_for_grading.label},
         )
 
     @classmethod
     def from_enum_spec[X: util.enum.EnumSpec[OutcomeSpec]](
-        cls,
-        enum_type: type[X] = DefaultOutcome,
+        cls: "type[OutcomesConfig[X]]",
+        enum_spec: type[X] = DefaultOutcome,
         waiting_for_grading: OutcomeSpec = default_waiting_for_grading,
     ) -> "OutcomesConfig[X]":
         """
@@ -396,7 +405,7 @@ class OutcomesConfig[Outcome]:
         See from_mapping for remaining arguments.
         """
         return cls.from_mapping(
-            {value: value.value for value in enum_type},
+            {value: value.value for value in enum_spec},
             waiting_for_grading=waiting_for_grading,
         )
 
@@ -473,7 +482,7 @@ class VariantsConfig[Variant]:
 
     @classmethod
     def no_variants(
-        cls,
+        cls: "type[VariantsConfig[StandardVariant]]",
         submission_grading_title: str = "Grading for submission",
     ) -> "VariantsConfig[StandardVariant]":
         """Smart constuctor for a variant-free lab."""
@@ -497,7 +506,7 @@ class VariantsConfig[Variant]:
             name=util.print_parse.Dict(
                 [(StandardVariant.UNIQUE, "<standard variant>")]
             ),
-            branch=NoVariantsBranchPrinterParser,
+            branch=NoVariantsBranchPrinterParser(),
             source=source,
             submission_grading_title=util.print_parse.Dict(
                 [(StandardVariant.UNIQUE, submission_grading_title)]
@@ -508,7 +517,7 @@ class VariantsConfig[Variant]:
     default_name_key = str.lower
 
     @classmethod
-    def from_mapping[Variant](
+    def from_mapping(
         cls,
         variants: Mapping[Variant, VariantSpec],
         default: Variant | None = None,
@@ -521,6 +530,9 @@ class VariantsConfig[Variant]:
         The name_key argument is used for normalizing names.
         It should be injective on names.
         """
+        if default is None:
+            default = list(variants.keys())[0]
+
         name = util.print_parse.compose(
             util.print_parse.Dict((v, spec.name) for v, spec in variants.items()),
             util.print_parse.on_parse_normalize(
@@ -550,11 +562,11 @@ class VariantsConfig[Variant]:
 
     @classmethod
     def from_enum_spec[X: util.enum.EnumSpec[VariantSpec]](
-        cls,
+        cls: "type[VariantsConfig[X]]",
         enum_type: type[X],
         submission_grading_title_holed: str = default_submission_grading_title_holed,
         name_key: Callable[[str], str] = default_name_key,
-    ) -> "OutcomesConfig[X]":
+    ) -> "VariantsConfig[X]":
         """
         Smart constructor with sensible defaults.
         Takes a specification enumeration.
@@ -617,7 +629,7 @@ class GradingViaMergeRequestConfig:
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class LabConfig[GroupId, Outcome]:
+class LabConfig[GroupId, Outcome, Variant]:
     """Configuration of a lab in the lab system."""
 
     path_source: Path | None = None
@@ -639,7 +651,7 @@ class LabConfig[GroupId, Outcome]:
     For example, "Goose recognizer".
     """
 
-    group_set: GroupSetConfig[GroupId] = None
+    group_set: GroupSetConfig[GroupId] | None = None
     """
     An optional group set to use.
     If None, the lab is individual.
@@ -648,10 +660,10 @@ class LabConfig[GroupId, Outcome]:
     repository: RepositoryConfig = RepositoryConfig()
     """Configuration of git repositories used for the lab."""
 
-    outcomes: OutcomesConfig[Outcome] = OutcomesConfig.from_enum_spec(DefaultOutcome)
+    outcomes: OutcomesConfig[Outcome] = OutcomesConfig[DefaultOutcome].from_enum_spec()
     """Configuration of the possible grading outcomes of submissions."""
 
-    variants: VariantsConfig = VariantsConfig.no_variants()
+    variants: VariantsConfig[Variant] = VariantsConfig[StandardVariant].no_variants()
     """
     Optional configuration of lab variants.
     Use this to configure multi-language labs.
@@ -739,7 +751,10 @@ DefaultLabId = int
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class LabIdConfig[LabId]:
-    """Configuration of parsing and printing of references to a lab."""
+    """
+    Configuration of parsing and printing of references to a lab.
+    Defaults only make sense for integer lab ids.
+    """
 
     id: PrinterParser[LabId, str] = util.print_parse.int_str()
     """Human-readable id."""
@@ -965,7 +980,7 @@ class CourseAuth:
             pdb = secrets.get("pdb")
             if pdb:
                 yield (
-                    "pdb_login",
+                    "pdb",
                     chalmers_pdb.Auth(
                         username=pdb["username"],
                         password=pdb["password"],
@@ -982,12 +997,12 @@ class CourseAuth:
 # * name: full name,
 # * email: email address,
 # * gitlab_username: username on GitLab.
-outside_canvas = []
+# outside_canvas = []
 
 # For translations from student provided answers files to student names on Canvas.
 # Dictionary from stated name to full name on Canvas.
 # Giving a value of 'None' means that the student should be ignored.
-name_corrections = {}
+# name_corrections = {}
 
 
 class LabUpdateListener[GroupId]:
