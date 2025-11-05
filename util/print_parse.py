@@ -53,6 +53,20 @@ class PrinterParser[I, O](Protocol):
         """
 
 
+@dataclasses.dataclass
+class Debug[I, O](PrinterParser[I, O]):
+    name: str
+    pp: PrinterParser[I, O]
+
+    def print(self, x: I, /) -> O:
+        print(f"{self.name} printing {x}")
+        return self.pp.print(x)
+
+    def parse(self, y: O, /) -> I:
+        print(f"{self.name} parsing {y}")
+        return self.pp.parse(y)
+
+
 PrintParse = collections.namedtuple("PrintParse", ["print", "parse"])
 
 
@@ -95,14 +109,14 @@ def compose(*xs) -> PrinterParser:
     )
 
 
-def invert[I, O](pp: PrinterParser[O, O]) -> PrinterParser[O, I]:
+def invert[I, O](pp: PrinterParser[I, O]) -> PrinterParser[O, I]:
     """
     Invert a printer-parsers.
     Exchanges the print and parse functions.
     """
     return PrintParse(
         print=pp.parse,
-        parse=pp.parse,
+        parse=pp.print,
     )
 
 
@@ -617,12 +631,18 @@ string_coding = PrintParse(
     bytes.decode,
 )
 
+
+class ASCII(PrinterParser[str, bytes]):
+    def print(self, s: str, /) -> bytes:
+        return s.encode("ascii")
+
+    def parse(self, x: bytes, /) -> str:
+        return x.decode("ascii")
+
+
 # pylint: disable-next=redefined-builtin
 ascii: PrinterParser[str, bytes]
-ascii = PrintParse(
-    print=lambda s: s.encode("ascii"),
-    parse=lambda x: x.decode("ascii"),
-)
+ascii = ASCII()
 
 
 def base64_pad(x: bytes) -> bytes:
@@ -632,13 +652,13 @@ def base64_pad(x: bytes) -> bytes:
     return x
 
 
-base64_standard: PrinterParser[bytes, str]
+base64_standard: PrinterParser[bytes, bytes]
 base64_standard = PrintParse(
     print=base64.standard_b64encode,
     parse=util.general.compose(base64_pad, base64.standard_b64decode),
 )
 
-base64_standard_str: PrinterParser[str, str]
+base64_standard_str: PrinterParser[str, bytes]
 base64_standard_str = compose(ascii, base64_standard, invert(ascii))
 
 

@@ -39,7 +39,7 @@ def cursor(cls):
 
 @cursor
 class CreatedCursor:
-    id: int
+    id: int = dataclasses.field(metadata={"pp": util.print_parse.int_str()})
     created_at: datetime.datetime = util.print_parse.dataclass_field(pp_date)
 
 
