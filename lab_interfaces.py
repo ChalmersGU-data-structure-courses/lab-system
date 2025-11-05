@@ -989,6 +989,10 @@ class CourseAuth:
 
         return cls(**dict(args()))
 
+    def __repr__(self):
+        """Does not leak secrets."""
+        return "CourseAuth(...)"
+
 
 # ## Not yet ported.
 
