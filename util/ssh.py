@@ -574,6 +574,11 @@ class Multiplexer:
         The multiplexer may then attempt to reestablish the connection and retry the command.
         """
 
+    netloc: util.url.NetLoc
+    connection_master: ConnectionMaster
+    startup_failures: collections.deque[tuple[datetime.datetime, Exception]]
+    late_failures: collections.deque[tuple[Exception]]
+
     def __init__(self, netloc: util.url.NetLoc):
         self.netloc = netloc
         self.connection_master = None

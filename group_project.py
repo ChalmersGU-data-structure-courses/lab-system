@@ -122,7 +122,7 @@ class RequestAndResponses:
         """Read the JSON-encoded data in the message of a tag."""
         return json.loads(util.git.tag_message(self.repo_tag(segments)))
 
-    def repo_tag_read_text_file(self, segments, path):
+    def repo_tag_read_text_file(self, segments, path: PurePosixPath):
         """
         Read a text file given by 'path' (PurePosixPath)
         in the commit corresponding to 'segments'.
