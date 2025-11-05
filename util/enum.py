@@ -9,6 +9,12 @@ def patch_enum_type_params():
 
     We could instead have created a metaclass inheriting from enum.EnumType.
     But that might mess with the integration of enumerations in type checkers.
+
+    TODO:
+    Actually, the EnumType metaclass repurposes this syntax for member lookup.
+    So we would have to disable that.
+    But that would break things.
+    So this approach is not viable.
     """
     # pylint: disable=protected-access
     # Make patching idempotent.
@@ -25,10 +31,21 @@ def patch_enum_type_params():
     enum.EnumType._get_mixins_ = get_mixins
 
 
-patch_enum_type_params()
+# patch_enum_type_params()
 
 
-class EnumSpec[X](enum.EnumType):
+class EnumSpecType(enum.EnumType):
+    @classmethod
+    def _get_mixins_(mcs, class_name, bases):
+        if bases and bases[-1] == typing.Generic:
+            bases = bases[:-1]
+        return enum.EnumType._get_mixins_(class_name, bases)
+
+    def __getitem__(cls, name):
+        return cls.__class_getitem__(name)
+
+
+class EnumSpec[X](metaclass=EnumSpecType):
     """
     A subclass of enum for enumerations of specifications.
     These are enumerations with separate data attached to every entry.
@@ -60,7 +77,8 @@ class EnumSpec[X](enum.EnumType):
         x: object
         x = object.__new__(cls)
         x._value_ = value
+        x.value = value
         return x
 
     def __repr__(self):
-        return f"{self.__class__.__name__}.{self.name}"
+        return f"{self.__class__.__name__}.{self._name_}"
