@@ -452,8 +452,8 @@ def regex_many(
 
 
 def regex_keyed(
-    regexes_keyed: dict[str, str],
     holed_string: str,
+    regexes_keyed: dict[str, str],
     **kwargs,
 ) -> PrinterParser[dict[str, str], str]:
     return RegexNoncanonicalKeyed(

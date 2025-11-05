@@ -362,7 +362,9 @@ class StudentCallableRobograder(SubmissionHandler):
         * self.response_title
         """
         self.request_matcher = RegexRequestMatcher(
-            "test", ["test*", "Test*"], "(?:t|T)est[^: ]*"
+            "test",
+            ["test*", "Test*"],
+            "(?:t|T)est[^: ]*",
         )
         self.response_title = util.print_parse.regex_keyed(
             "Robograder: reporting for {tag}",
