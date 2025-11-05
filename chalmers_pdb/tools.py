@@ -34,3 +34,24 @@ class Client:
             raise PDBException(
                 f"Could not obtain CID for personnummer {personnummer}: got {rs}"
             ) from e
+
+    def details(self, cid):
+        try:
+            rs = self.pdb.person_dig(
+                {"cid": {"name": cid}},
+                {
+                    "name": True,
+                    "nid": True,
+                    "gu_email": True,
+                    "gu_ids": True,
+                    "gu_pnr": True,
+                    "l3_email": True,
+                    "official_emails": True,
+                    "official_phones": True,
+                },
+            )
+            return rs
+        except (KeyError, ValueError) as e:
+            raise PDBException(
+                f"Could not obtain details for CID {cid}: got {rs}"
+            ) from e
