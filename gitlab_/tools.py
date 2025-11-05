@@ -15,6 +15,7 @@ import gitlab
 import util.general
 import util.path
 import util.print_parse
+import util.url
 
 
 logger = logging.getLogger(__name__)
