@@ -68,9 +68,9 @@ class StudentConnector(abc.ABC):
 
 
 class StudentConnectorIndividual(StudentConnector):
-    course: module_course.Course
+    course: "module_course.Course"
 
-    def __init__(self, course: module_course.Course):
+    def __init__(self, course: "module_course.Course"):
         self.course = course
 
     def desired_groups(self):
@@ -111,9 +111,9 @@ class StudentConnectorIndividual(StudentConnector):
 
 
 class StudentConnectorGroupSet(StudentConnector):
-    group_set: module_group_set.GroupSet
+    group_set: "module_group_set.GroupSet"
 
-    def __init__(self, group_set: module_group_set.GroupSet):
+    def __init__(self, group_set: "module_group_set.GroupSet"):
         self.group_set = group_set
 
     def desired_groups(self):
@@ -340,7 +340,7 @@ class Lab[LabId, GroupId, Variant]:
 
     def __init__(
         self,
-        course: module_course.Course,
+        course: "module_course.Course",
         id: LabId,
         config: lab_interfaces.LabConfig | None = None,
         dir: Path | None = None,

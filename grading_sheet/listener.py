@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 class GradingSheetLabUpdateListener[LabId, GroupId](
     lab_interfaces.LabUpdateListener[GroupId]
 ):
-    lab: module_lab.Lab[LabId, GroupId, Any]
+    lab: "module_lab.Lab[LabId, GroupId, Any]"
     spreadsheet: grading_sheet.core.GradingSpreadsheet[LabId]
     sheet: grading_sheet.core.GradingSheet[LabId, GroupId, Any]
 
@@ -25,7 +25,7 @@ class GradingSheetLabUpdateListener[LabId, GroupId](
 
     def __init__(
         self,
-        lab: module_lab.Lab[LabId, GroupId, Any],
+        lab: "module_lab.Lab[LabId, GroupId, Any]",
         grading_spreadsheet: grading_sheet.core.GradingSpreadsheet[LabId],
         deadline=None,
     ):
@@ -38,7 +38,7 @@ class GradingSheetLabUpdateListener[LabId, GroupId](
         self.needed_num_queries = 0
 
     @property
-    def course(self) -> module_course.Course:
+    def course(self) -> "module_course.Course":
         return self.lab.course
 
     def group_changed(self, id: GroupId) -> None:
