@@ -301,7 +301,6 @@ _cid_to_gitlab_username = print_parse.from_dict([
     ('e9linda', 'linda.erlenhov'),
     ('aarne', 'Aarne.Ranta'),
     ('khoee', 'khoee1'),
-    ('viccar', 'viccar1'),
     ('georgegr', 'georgegr1'),
 ])
 
