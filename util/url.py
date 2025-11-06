@@ -135,7 +135,7 @@ url_formatter = util.print_parse.compose(
         _URL_NamedTuple(
             scheme=util.print_parse.identity,
             netloc=netloc_formatter,
-            path=util.print_parse.pure_posix_path,
+            path=util.print_parse.pure_posix_path_empty,
             query=QueryFormatter(),
             fragment=util.print_parse.identity,
         )

@@ -132,7 +132,7 @@ class ServerAlive:
 
 
 def cmd_ssh(
-    netloc: util.url.NetLoc = None,
+    netloc: util.url.NetLoc | None = None,
     args=None,
     *,
     allocate_terminal=True,
@@ -378,6 +378,7 @@ def shutdown_control_master(control_path, check=True, force=False):
     )
     cmd = list(
         cmd_ssh(
+            util.url.NetLoc(host=""),
             control=Control(
                 path=control_path,
                 command="exit" if force else "stop",

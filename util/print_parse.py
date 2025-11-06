@@ -595,6 +595,12 @@ pure_posix_path = PrintParse(
     parse=PurePosixPath,
 )
 
+pure_posix_path_empty: PrinterParser[PurePosixPath, str]
+pure_posix_path_empty = compose(
+    pure_posix_path,
+    on_print(lambda s: str() if s == "." else s),
+)
+
 pure_path: PrinterParser[pathlib.PurePath, str]
 pure_path = PrintParse(
     print=str,
