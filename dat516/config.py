@@ -302,6 +302,7 @@ _cid_to_gitlab_username = print_parse.from_dict([
     ('aarne', 'Aarne.Ranta'),
     ('khoee', 'khoee1'),
     ('viccar', 'viccar1'),
+    ('georgegr', 'georgegr1'),
 ])
 
 # Retrieve the Chalmers GitLab username for a user id on Chalmers/GU Canvas.
