@@ -200,12 +200,12 @@ class LabUpdateManager[GroupId]:
             self.lab.groups[id].members_clear()
 
         for listener in self.listeners:
-            listener.groups_changed_prepare(list(self.dirty), deadline=deadline)
+            listener.groups_changed_prepare(list(self.dirty))  # , deadline=deadline)
 
         self.lab.repo_push()
 
         for listener in self.listeners:
-            listener.groups_changed(list(self.dirty), deadline=deadline)
+            listener.groups_changed(list(self.dirty))  # , deadline=deadline)
 
         self.dirty.clear()
         self.write()

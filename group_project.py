@@ -666,7 +666,7 @@ class RequestAndResponses:
         if self.get_handled():
             return False
 
-        self.lab.update_manager.mark_dirty(self.group.id)
+        self.lab.update_manager.mark_dirty(ids=[self.group.id])
         result = self.process_request_inner()
 
         # Create tag <full-group-id>/<request_name>/handled

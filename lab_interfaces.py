@@ -1025,7 +1025,7 @@ class LabUpdateListener[GroupId]:
     * new response.
     """
 
-    def groups_changed_preparation(self, ids: list[GroupId]) -> None:
+    def groups_changed_prepare(self, ids: list[GroupId]) -> None:
         """
         Called before the collection repository is pushed.
         Use this to add tags.

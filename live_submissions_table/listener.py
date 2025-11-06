@@ -102,7 +102,7 @@ class LiveSubmissionsTableLabUpdateListener[LabId, GroupId](
                     )
                 self.path_staging.replace(self.path)
 
-    def groups_changed_preparation(self, ids: list[GroupId]) -> None:
+    def groups_changed_prepare(self, ids: list[GroupId]) -> None:
         self.table.update_rows(group_ids=ids)
         # with util.path.temp_dir() as dir:
         #     shutil.copyfile(self.path_staging, 'index.html')
