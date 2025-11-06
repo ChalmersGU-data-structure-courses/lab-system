@@ -28,7 +28,7 @@ class SetupData:
 
     @property
     def title_pp(self):
-        return self.lab.config.merge_request_title
+        return self.lab.config.variants.submission_grading_title
 
     @functools.cached_property
     def title(self):
@@ -44,7 +44,7 @@ class SetupData:
 
     @functools.cached_property
     def target_branch(self):
-        return self.lab.branch_problem(variant=self.variant)
+        return self.lab.config.branch_problem(variant=self.variant)
 
 
 class GradingViaMergeRequest:
@@ -413,7 +413,7 @@ class GradingViaMergeRequest:
         return list(self.submission_outcomes.values())[-1]
 
     def set_labels(self, outcome_new):
-        for outcome in self.course.config.outcomes:
+        for outcome in self.lab.config.outcomes.outcomes:
             with contextlib.suppress(ValueError):
                 self.merge_request.labels.remove(
                     self.setup_data.label_pp.print(outcome)

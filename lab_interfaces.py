@@ -792,6 +792,8 @@ class CourseConfig[LabId]:
     The authentication tokens provided in gitlab_config_personal.
     """
 
+    time: TimeConfig = TimeConfig()
+
     canvas_domain: str
     """
     The Canvas domain.
@@ -829,7 +831,7 @@ class CourseConfig[LabId]:
     This is created by the user, but maintained by the lab script.
     """
 
-    lab_ids: LabIdConfig[LabId]
+    lab_id: LabIdConfig[LabId] = LabIdConfig()
     """Configuration of formatting references to labs."""
 
     labs: Mapping[LabId, LabConfig]

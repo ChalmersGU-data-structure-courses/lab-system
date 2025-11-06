@@ -119,7 +119,7 @@ def run(
 
                 def add_webhook_event(
                     hook_event,
-                    courses_by_groups_path={c.config.path_course: c for c in cs},
+                    courses_by_groups_path={c.config.gitlab_path: c for c in cs},
                 ):
                     for result in webhook_listener.parse_hook_event(
                         courses_by_groups_path=courses_by_groups_path,
@@ -186,7 +186,7 @@ def run(
                         args=[course],
                         name=(
                             "course-sync-from-canvas-timer"
-                            f"<{course.config.path_course}>"
+                            f"<{course.config.gitlab_path}>"
                         ),
                         repeat=True,
                     )
@@ -212,7 +212,7 @@ def run(
                         lab.config.refresh_period + delay,
                         refresh_lab,
                         args=[lab],
-                        name=f"lab-refresh-timer<{c.config.path_course}, {lab.name}>",
+                        name=f"lab-refresh-timer<{c.config.gitlab_path}, {lab.name}>",
                         repeat=True,
                     )
                     thread_managers.append(util.threading.timer_manager(refresh_timer))

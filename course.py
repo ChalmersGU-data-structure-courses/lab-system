@@ -137,6 +137,7 @@ class Course[LabId]:
             if self.dir is None:
                 return None
 
+            print(self.dir / self.config.lab_id.full_id.print(lab_id))
             return self.dir / self.config.lab_id.full_id.print(lab_id)
 
         self.labs = {
@@ -145,7 +146,7 @@ class Course[LabId]:
         }
 
     def __enter__(self):
-        if self.config.ssh_use_multiplexer:
+        if self.config.gitlab.ssh_use_multiplexer:
             self.ssh_multiplexer = util.ssh.Multiplexer(self.config.gitlab.ssh_netloc)
             self.exit_stack.enter_context(contextlib.closing(self.ssh_multiplexer))
 
@@ -379,8 +380,8 @@ class Course[LabId]:
     @functools.cached_property
     def gl(self):
         r = gitlab.Gitlab(
-            self.config.gitlab.url,
-            private_token=self.auth.gitlab_token,
+            util.url.url_formatter.print(self.config.gitlab.url),
+            private_token=self.auth.gitlab_private_token,
             timeout=self.config.timeout.total_seconds(),
         )
         r.auth()
@@ -863,11 +864,11 @@ class Course[LabId]:
 
     @functools.cached_property
     def grading_spreadsheet(self):
-        if not self.config.grading_sheet:
+        if not self.config.grading_spreadsheet:
             raise RuntimeError("no grading spreadsheet configured")
 
         config = grading_sheet.config.Config.build(
-            external=self.config.grading_sheet,
+            external=self.config.grading_spreadsheet,
             internal=grading_sheet.config.ConfigInternal(
                 lab=self.config.lab_id.name,
             ),
@@ -955,7 +956,7 @@ class Course[LabId]:
         # Set up the server for listening for group project events.
         def add_webhook_event(hook_event):
             for result in webhook_listener.parse_hook_event(
-                courses_by_groups_path={self.config.path_course: self},
+                courses_by_groups_path={self.config.gitlab_path: self},
                 hook_event=hook_event,
                 strict=False,
             ):

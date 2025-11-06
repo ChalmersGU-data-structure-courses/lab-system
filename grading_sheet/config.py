@@ -33,7 +33,9 @@ class ConfigInternal[LabId]:
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
 class Config[LabId](ConfigExternal, ConfigInternal[LabId]):
-    pass
+    @classmethod
+    def build(cls, external: ConfigExternal, internal: ConfigInternal[LabId]) -> Self:
+        return cls(**vars(external), **vars(internal))
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True)

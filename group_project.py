@@ -320,9 +320,6 @@ class RequestAndResponses:
         if not self.lab.config.grading_via_merge_request:
             return None
 
-        if self.lab.config.multi_variant is None:
-            return self.group.grading_via_merge_request
-
         return self.group.grading_via_merge_request[self.variant]
 
     @functools.cached_property
@@ -548,7 +545,7 @@ class RequestAndResponses:
 
         def problems():
             for variant in self.variants:
-                yield self.lab.config.branch_problem.print(variant)
+                yield self.lab.config.branch_problem(variant)
 
         url = gitlab_.tools.url_tag_name(project, self.request_name)
         ref = f"[{self.request_name}]({url})"
@@ -565,7 +562,7 @@ class RequestAndResponses:
 
         def all_problems():
             for variant in self.lab.config.variants.variants:
-                problem = self.lab.config.branch_problem.print(variant)
+                problem = self.lab.config.branch_problem(variant)
                 url = gitlab_.tools.url_tree(project, problem, False)
                 yield f"* [{problem}]({url})"
 
@@ -995,7 +992,7 @@ class GroupProject:
             [self.lab.head_problem(variant=variant).commit],
         )
         if self.is_solution:
-            solution = self.lab.config.solution_branch(variant)
+            solution = self.lab.config.branch_solution(variant)
             # hash_ = commit.hexsha[:8]
             tag_name = f"submission-{solution}"
             with util.git.with_tag(self.lab.repo, tag_name, commit) as tag:

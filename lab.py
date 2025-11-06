@@ -282,7 +282,7 @@ class Lab[LabId, GroupId, Variant]:
 
     @functools.cached_property
     def full_id(self) -> str:
-        return self.course.config.lab_id.id.print(self.id)
+        return self.course.config.lab_id.full_id.print(self.id)
 
     @functools.cached_property
     def name(self) -> str:
@@ -466,7 +466,7 @@ class Lab[LabId, GroupId, Variant]:
         r = gitlab_.tools.CachedProject(
             gl=self.gl,
             logger=self.logger,
-            path=self.gitlab_path / self.course.config.primary,
+            path=self.gitlab_path / self.config.primary,
             name="Primary repository",
         )
 
@@ -586,7 +586,7 @@ class Lab[LabId, GroupId, Variant]:
             def branches():
                 if make_main:
                     yield self.config.repository.master
-                yield self.config.branch_problem.print(variant)
+                yield self.config.branch_problem(variant)
 
             source = spec.path_source
             if source is None:
@@ -772,7 +772,7 @@ class Lab[LabId, GroupId, Variant]:
             # TODO: add variant problem branches.
             def fetch_branches():
                 for variant in self.config.variants.variants:
-                    yield self.config.branch_problem.print(variant)
+                    yield self.config.branch_problem(variant)
 
             self.repo_add_remote(
                 self.config.primary,
@@ -1206,7 +1206,7 @@ class Lab[LabId, GroupId, Variant]:
     def head_problem(self, variant=None):
         return util.git.normalize_branch(
             self.repo,
-            self.config.branch_problem.print(variant),
+            self.config.branch_problem(variant),
         )
 
     @functools.cached_property
