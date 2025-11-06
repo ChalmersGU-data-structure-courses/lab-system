@@ -840,7 +840,7 @@ class Course[LabId]:
         call this method in a time-sensitive environment.
         """
         # Parse the lab and group id.
-        lab_id = self.config.lab.full_id.parse(lab_full_id)
+        lab_id = self.config.lab_id.full_id.parse(lab_full_id)
 
         # Delegate event to lab.
         lab = self.labs.get(lab_id)

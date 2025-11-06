@@ -100,7 +100,7 @@ def run(
         # Configure webhooks.
         if enable_webhooks:
             courses_by_netloc = util.general.multidict(
-                (c.webhook_netloc_listen, c) for c in courses if c.hooks_enabled
+                (c.hook_netloc_listen, c) for c in courses if c.hooks_enabled
             )
             for netloc, cs in courses_by_netloc.items():
                 netloc_str = util.url.netloc_formatter.print(netloc)
