@@ -313,7 +313,7 @@ class RequestAndResponses:
         with contextlib.suppress(AttributeError):
             return self._variant
 
-        return self.handled_result["variant"]
+        return self.lab.config.variants.serialize.parse(self.handled_result["variant"])
 
     @functools.cached_property
     def grading_merge_request(self):
@@ -648,7 +648,7 @@ class RequestAndResponses:
                 result = {}
 
             assert isinstance(result, dict)
-            result["variant"] = self._variant
+            result["variant"] = self.lab.config.variants.serialize.print(self._variant)
 
             self.grading_merge_request.sync_submission(self)
 

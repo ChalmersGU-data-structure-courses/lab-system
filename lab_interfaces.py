@@ -14,6 +14,7 @@ import dateutil.tz
 import grading_sheet.config as grading_sheet_config
 import util.enum
 import util.gdpr_coding
+import util.general
 import util.markdown
 import util.print_parse
 import util.url
@@ -453,6 +454,9 @@ class VariantsConfig[Variant]:
     Used for the main branches in student repositories.
     """
 
+    serialize: PrinterParser[Variant, util.general.JSON]
+    """Serializes a variant."""
+
     name: PrinterParser[Variant, str]
     """Formats a variant as a student-readable string."""
 
@@ -503,6 +507,7 @@ class VariantsConfig[Variant]:
         return cls(
             variants=frozenset(StandardVariant),
             default=StandardVariant.UNIQUE,
+            serialize=util.print_parse.Dict([(StandardVariant.UNIQUE, None)]),
             name=util.print_parse.Dict(
                 [(StandardVariant.UNIQUE, "<standard variant>")]
             ),
@@ -549,6 +554,7 @@ class VariantsConfig[Variant]:
             variants=frozenset(variants.keys()),
             default=default,
             name=name,
+            serialize=branch_part,
             branch=util.print_parse.compose(
                 util.print_parse.on(util.general.component_tuple(1), branch_part),
                 util.print_parse.regex_many("{}-{}", ["[\\-]*", ".*"]),
