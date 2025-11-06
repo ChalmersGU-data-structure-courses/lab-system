@@ -408,6 +408,8 @@ name_corrections = {}
 _cid_to_gitlab_username = print_parse.from_dict(
     [
         ("abela", "andreas.abel"),
+        ("lambda", "lambda1"),
+        ("dinohr", "dinohr1"),
     ]
 )
 
