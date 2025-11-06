@@ -86,7 +86,7 @@ class GradingSheetLabUpdateListener[LabId, GroupId](
         groups = [self.lab.groups[id] for id in ids]
 
         # Refresh grading sheet cache.
-        self.sheet.clear_cache()
+        self.sheet.data_clear()
 
         # Setup groups.
         self.sheet.setup_groups(groups=ids, group_link=self.group_link)
@@ -106,7 +106,7 @@ class GradingSheetLabUpdateListener[LabId, GroupId](
                     group.submissions_relevant(self.deadline)
                 ):
                     q = self.sheet.query(group.id, query)
-                    yield q.requests_write_submission(
+                    yield from q.requests_write_submission(
                         submission.request_name,
                         gitlab_.tools.url_tag_name(
                             group.project.get,
@@ -114,9 +114,11 @@ class GradingSheetLabUpdateListener[LabId, GroupId](
                         ),
                     )
                     if submission.outcome is not None:
-                        yield q.requests_write_grader(submission.grader_informal_name)
-                        yield q.requests_write_outcome(
-                            self.lab.config.outcome.as_cell.print(submission.outcome),
+                        yield from q.requests_write_grader(
+                            submission.grader_informal_name
+                        )
+                        yield from q.requests_write_outcome(
+                            self.lab.config.outcomes.as_cell.print(submission.outcome),
                             submission.link,
                         )
 
