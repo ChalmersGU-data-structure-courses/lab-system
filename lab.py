@@ -1040,6 +1040,8 @@ class Lab[LabId, GroupId, Variant]:
         if deadline is None:
             deadline = self.deadline
 
+        self.setup_request_handlers()
+
         def listeners():
             if use_grading_sheet:
                 yield GradingSheetLabUpdateListener(

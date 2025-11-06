@@ -924,10 +924,13 @@ class Course[LabId]:
         for lab_id in lab_ids:
             self.labs[lab_id].sync_projects_and_students_from_canvas(synced_group_sets)
 
-    def setup(self, use_live_submissions_table=True):
+    def setup(self, use_grading_sheet=True, use_live_submissions_table=True):
         """Sets up all labs."""
         for lab in self.labs.values():
-            lab.setup(use_live_submissions_table=use_live_submissions_table)
+            lab.setup(
+                use_grading_sheet=use_grading_sheet,
+                use_live_submissions_table=use_live_submissions_table,
+            )
 
     def initial_run(self):
         """Does initial runs of all labs."""
