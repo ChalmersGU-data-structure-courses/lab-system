@@ -814,8 +814,9 @@ class CourseConfig[LabId]:
     Found in the URL when opening the Canvas course in the browser.
     """
 
-    canvas_grading_path: PurePosixPath
+    canvas_grading_path: PurePosixPath | None = None
     """
+    Set to enable live submissions table.
     Path to (unpublished!) folder in Canvas course files.
     This is where the script will upload submission reports.
     This folder needs to exist and should not be published.

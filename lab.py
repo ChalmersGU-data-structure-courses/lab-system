@@ -1013,8 +1013,6 @@ class Lab[LabId, GroupId, Variant]:
     def setup(
         self,
         deadline=None,
-        use_grading_sheet=True,
-        use_live_submissions_table=True,
     ):
         """
         General setup method.
@@ -1042,13 +1040,13 @@ class Lab[LabId, GroupId, Variant]:
         self.setup_request_handlers()
 
         def listeners():
-            if use_grading_sheet:
+            if self.course.config.grading_spreadsheet is not None:
                 yield GradingSheetLabUpdateListener(
                     self,
                     self.course.grading_spreadsheet,
                     deadline=deadline,
                 )
-            if use_live_submissions_table:
+            if self.course.config.canvas_grading_path is not None:
                 yield LiveSubmissionsTableLabUpdateListener(self, deadline=deadline)
 
         self.update_manager.listeners = set(listeners())
