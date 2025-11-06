@@ -10,7 +10,7 @@ import dominate
 import gitlab_.tools
 import util.general
 import util.git
-
+import util.this_dir
 
 logger_default = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ def format_url(text, url):
     return dominate.tags.a(text, href=url, target="_blank")
 
 
-path_data = Path(__file__) / "live-submissions-table"
+path_data = Path(__file__).parent
 path_data_default_css = path_data / "default.css"
 path_data_sort_js = path_data / "sort.js"
 path_data_sort_css = path_data / "sort.css"
@@ -752,7 +752,7 @@ class LiveSubmissionsTable:
         # Make sure all needed group rows are built.
         for group_id in group_ids:
             if not group_id in self.group_rows:
-                group = self.lab.group[group_id]
+                group = self.lab.groups[group_id]
                 raise ValueError(f"live submissions table misses row for {group.name}")
 
         # Compute the columns (with column values) for these submissions.

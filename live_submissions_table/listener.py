@@ -48,7 +48,7 @@ class LiveSubmissionsTableLabUpdateListener[LabId, GroupId](
         if deadline is None:
             deadline = self.lab.deadline
         self.table = live_submissions_table.LiveSubmissionsTable(
-            self,
+            self.lab,
             config=live_submissions_table.Config(deadline=deadline),
             column_types=self.lab.submission_handler.grading_columns,
         )
@@ -68,7 +68,7 @@ class LiveSubmissionsTableLabUpdateListener[LabId, GroupId](
         """
         self.logger.info("Updating live submissions table")
         with self.staging_manager():
-            self.table.build(self.path_staging, group_ids=self.lab.groups.keys())
+            self.table.build(self.path_staging)
             if util.path.file_content_eq(
                 self.path_staging,
                 self.path,
@@ -98,7 +98,7 @@ class LiveSubmissionsTableLabUpdateListener[LabId, GroupId](
                     self.course.canvas_course.post_file(
                         path,
                         folder.id,
-                        self.canvas_path.parent.name,
+                        self.canvas_path.name,
                     )
                 self.path_staging.replace(self.path)
 
