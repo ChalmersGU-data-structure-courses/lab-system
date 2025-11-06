@@ -342,8 +342,8 @@ class Lab[LabId, GroupId, Variant]:
         self,
         course: "module_course.Course",
         id: LabId,
+        dir: Path,
         config: lab_interfaces.LabConfig | None = None,
-        dir: Path | None = None,
         deadline: datetime.datetime | None = None,
         logger: logging.Logger = logging.getLogger(__name__),
     ):
@@ -371,9 +371,8 @@ class Lab[LabId, GroupId, Variant]:
         self.config = self.course.config.labs[id] if config is None else config
         self.deadline = deadline
 
-        self.dir = None if dir is None else Path(dir)
-        if self.dir:
-            self.dir.mkdir(exist_ok=True)
+        self.dir = dir
+        self.dir.mkdir(exist_ok=True)
 
         self.repo_updated = False
         self.update_manager = LabUpdateManager(self)
