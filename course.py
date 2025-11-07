@@ -1145,17 +1145,11 @@ class Course[LabId]:
             yield
         except Exception:
             report = traceback.format_exc()
+            (value, mask) = google_tools.sheets.cell_data_from_value(report)
             google_tools.sheets.batch_update(
                 spreadsheets,
                 spreadsheet_id,
-                [
-                    google_tools.sheets.request_update_cell_user_entered_value(
-                        sheet_id,
-                        0,
-                        0,
-                        google_tools.sheets.cell_value(report),
-                    )
-                ],
+                [google_tools.sheets.request_update_cell(sheet_id, 0, 0, value, mask)],
             )
             raise
 
