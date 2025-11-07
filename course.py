@@ -209,6 +209,7 @@ class Course[LabId]:
         self.student_name_coding = util.gdpr_coding.NameCoding(
             self.dir / "gdpr_coding.json",
             first_and_last_name,
+            sort_by_first_name=self.config.initials_sort_by_first_name,
         )
         self.student_name_coding_update()
         return self.student_name_coding

@@ -874,6 +874,9 @@ class CourseConfig[LabId]:
     This is created by the user, but maintained by the lab script.
     """
 
+    initials_sort_by_first_name: bool = False
+    """Whether to sort initials by first name rather than last name."""
+
     lab_id: LabIdConfig[LabId] = LabIdConfig()
     """Configuration of formatting references to labs."""
 

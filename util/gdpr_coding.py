@@ -1,9 +1,11 @@
+from collections.abc import Iterable
 import dataclasses
 import functools
 import itertools
 import json
 import logging
-from typing import Any, Callable
+from pathlib import Path
+from typing import Callable
 
 import atomicwrites
 
@@ -15,21 +17,30 @@ logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass(frozen=True)
-class GDPRCoding[GroupId]:
+class GDPRCoding[Id]:
     # Printer-parser that encodes identifiers for use in non-GDPR-cleared documents.
     # The most common example is Google Sheets.
-    identifier: util.print_parse.PrinterParser[GroupId, int | str]
+    identifier: util.print_parse.PrinterParser[Id, int | str]
 
     # Sort key to use for the non-encoded identifiers.
     # Defaults to the identity (only makes sense if the group id is comparable).
-    sort_key: Callable[[GroupId], util.general.Comparable] = util.general.identity
+    sort_key: Callable[[Id], util.general.Comparable] = util.general.identity
 
 
-class NameCoding:
-    encode: dict[Any, str]
-    decode: dict[str, Any]
+class NameCoding[Id]:
+    path: Path
+    first_and_last_name: Callable[[Id], tuple[str, str]]
+    sort_by_first_name: bool
 
-    def __init__(self, path, first_and_last_name):
+    encode: dict[Id, str]
+    decode: dict[str, Id]
+
+    def __init__(
+        self,
+        path: Path,
+        first_and_last_name: Callable[[Id], tuple[str, str]],
+        sort_by_first_name: bool = False,
+    ):
         """
         Arguments:
         * path:
@@ -43,12 +54,18 @@ class NameCoding:
         """
         self.path = path
         self.first_and_last_name = first_and_last_name
+        self.sort_by_first_name = sort_by_first_name
 
         self._load()
 
-    def sort_key(self, id: str) -> util.general.Comparable:
+    def sort_key(self, id: Id) -> util.general.Comparable:
         s = self.encode[id]
-        return (s[1], s[0], 0 if len(s) == 2 else int(s[2:]))
+        n = 0 if len(s) == 2 else int(s[2:])
+        match self.sort_by_first_name:
+            case False:
+                return (s[1], s[0], n)
+            case True:
+                return (s[0], s[1], n)
 
     @functools.cached_property
     def gdpr_coding(self):
@@ -73,7 +90,7 @@ class NameCoding:
         with atomicwrites.atomic_write(self.path, overwrite=True) as file:
             json.dump(self.encode, file, ensure_ascii=False, indent=4)
 
-    def _add(self, id):
+    def _add(self, id: Id):
         (name_first, name_last) = self.first_and_last_name(id)
 
         def codings():
@@ -89,7 +106,7 @@ class NameCoding:
                 self.decode[coding] = id
                 break
 
-    def add_ids(self, ids):
+    def add_ids(self, ids: Iterable[Id]):
         ids = list(ids)
         logger.debug(f"Ensuring codings for: {ids}")
 
