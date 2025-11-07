@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+import dataclasses
 import functools
 import json
 import logging
@@ -10,6 +12,7 @@ import types
 import urllib.parse
 from datetime import timedelta
 from pathlib import Path, PurePosixPath
+from typing import Any, ClassVar
 
 import requests
 
@@ -29,6 +32,7 @@ from util.general import (
     without_adjacent_dups,
 )
 from util.path import OpenWithModificationTime, format_path, set_modification_time
+from util.print_parse import PrinterParser
 
 
 logger = logging.getLogger(__name__)
@@ -508,6 +512,15 @@ class Course:
     def assignment_str(self, id):
         return f"{self.assignment_details[id].name} (id {id})"
 
+    def get_submissions(self, assignment_id, use_cache=True) -> dict[int, dict]:
+        submissions = self.canvas.get_list(
+            [*self.endpoint, "assignments", assignment_id, "submissions"],
+            use_cache=use_cache,
+        )
+        return {submission.id: submission for submission in submissions}
+
+    # Old method.
+
     def post_assignment(self, assignment):
         return self.canvas.post(
             self.endpoint + ["assignments"],
@@ -526,13 +539,6 @@ class Course:
 
     def delete_assignment(self, id):
         self.canvas.delete(self.endpoint + ["assignments", id])
-
-    def get_submissions(self, assignment_id, use_cache=True):
-        return self.canvas.get_list(
-            ["courses", self.course_id, "assignments", assignment_id, "submissions"],
-            params={"include[]": ["submission_comments", "submission_history"]},
-            use_cache=use_cache,
-        )
 
     def get_section(self, name, use_cache=True):
         sections = self.canvas.get_list(
@@ -720,7 +726,107 @@ class GroupSet:
         )
 
 
+Grade = int | None
+
+
+class GradePrinterParser(PrinterParser[Grade, str | None]):
+    named_values: ClassVar[dict[str, int]] = {
+        "incomplete": 0,
+        "complete": 1,
+    }
+
+    def print(self, x: Grade, /) -> str | None:
+        if x is None:
+            return ""
+
+        return str(x)
+
+    def parse(self, y: str | None, /) -> Grade:
+        if y is None:
+            return None
+
+        x = self.named_values.get(y)
+        if x is not None:
+            return x
+
+        return int(y)
+
+
+@dataclasses.dataclass
+class Grading:
+    """A grade of None means no grade."""
+
+    grade: Grade
+    comment: str | None = None
+
+    grade_pp: ClassVar[PrinterParser[int | None, str | None]] = GradePrinterParser()
+
+    @property
+    def fields(self) -> Iterable[tuple[str, Any]]:
+        yield ("posted_grade", self.grade_pp.print(self.grade))
+        if self.comment is not None:
+            yield ("text_comment", self.comment)
+
+    def params(self, name) -> dict[str, Any]:
+        return {name + "[" + field + "]": value for (field, value) in self.fields}
+
+
+@dataclasses.dataclass
 class Assignment:
+    course: Course
+    id: int
+
+    @property
+    def canvas(self) -> Canvas:
+        return self.course.canvas
+
+    @functools.cached_property
+    def endpoint(self) -> list[str | int]:
+        return [*self.course.endpoint, "assignments", self.id]
+
+    def get_grades(self) -> dict[int, Grade]:
+        """Returns a dictionary from student user ids to grades."""
+        submissions = self.canvas.get(
+            [*self.endpoint, "submissions"],
+            use_cache=False,
+        )
+        grades = {
+            (submission.user_id, Grading.grade_pp.parse(submission.grade))
+            for submission in submissions
+        }
+        return util.general.sdict(grades)
+
+    def set_grade(self, user_id: int, grading: Grading) -> Grade:
+        """Warning: setting an invalid grade will set the submission to ungraded."""
+        r = self.canvas.put(
+            [*self.endpoint, "submissions", user_id],
+            params=grading.params("submission"),
+        )
+        return Grading.grade_pp.parse(r.grade)
+
+    def grade_many(self, gradings: dict[int, Grading]) -> JSONObject:
+        """
+        Returns a progress object.
+
+        Bad approach.
+        Have to wait for completion/errors by polling for progression.
+
+        TODO:
+        Figure out if requests supports send a batch of put requests.
+        (That is, without waiting for the first request to finish.)
+        """
+        progress = self.canvas.post(
+            [*self.endpoint, "submissions", "update_grades"],
+            params={
+                param: value
+                for user_id, grading in gradings.items()
+                for param, value in grading.params(f"grade_data[{user_id}]").items()
+            },
+        )
+        return progress
+
+
+class AssignmentOld:
     def __init__(self, course, assignment_id, use_cache=True):
         self.canvas = course.canvas
         self.course = course
@@ -764,33 +870,33 @@ class Assignment:
         checks = [
             on(eq, lambda c: c.author_id),
             on(eq, lambda c: c.comment),
-            on(Assignment.could_be_same_date, lambda c: c.created_at_date),
+            on(AssignmentOld.could_be_same_date, lambda c: c.created_at_date),
         ]
         return all(map(lambda check: check(a, b), checks))
 
     @staticmethod
     def is_duplicate_submission(a, b):
         checks = [
-            on(eq, Assignment.submission_file_signature),
+            on(eq, AssignmentOld.submission_file_signature),
             on(eq, lambda s: s.submission_type),
             on(eq, lambda s: s.workflow_state),
             on(eq, lambda s: s.body),
-            on(Assignment.could_be_same_date, Assignment.submission_date),
+            on(AssignmentOld.could_be_same_date, AssignmentOld.submission_date),
         ]
         return all(map(lambda check: check(a, b), checks))
 
     @staticmethod
     def merge_comments(comments):
         return without_adjacent_dups(
-            Assignment.is_duplicate_comment,
+            AssignmentOld.is_duplicate_comment,
             sorted(comments, key=lambda c: c.created_at_date),
         )
 
     @staticmethod
     def merge_submissions(submissions):
         return without_adjacent_dups(
-            Assignment.is_duplicate_submission,
-            sorted(submissions, key=Assignment.submission_date),
+            AssignmentOld.is_duplicate_submission,
+            sorted(submissions, key=AssignmentOld.submission_date),
         )
 
     # Get the web browser URL for a submission.
@@ -845,14 +951,14 @@ class Assignment:
             types.SimpleNamespace(
                 members=[submission.user_id for submission in grouped_submissions],
                 submissions=list(
-                    Assignment.merge_submissions(
+                    AssignmentOld.merge_submissions(
                         submission
                         for s in grouped_submissions
                         for submission in s.submission_history
                     )
                 ),
                 comments=list(
-                    Assignment.merge_comments(
+                    AssignmentOld.merge_comments(
                         [
                             comment
                             for s in grouped_submissions
@@ -933,8 +1039,8 @@ class Assignment:
             self.assignment_id,
             use_cache=use_cache,
         )
-        grouped_submission = Assignment.group_identical_submissions(
-            Assignment.filter_submissions(raw_submissions)
+        grouped_submission = AssignmentOld.group_identical_submissions(
+            AssignmentOld.filter_submissions(raw_submissions)
         )
         # pylint: disable-next=attribute-defined-outside-init
         self.submissions = self.align_with_groups(grouped_submission)
@@ -954,7 +1060,7 @@ class Assignment:
 
     @staticmethod
     def last_graded_submission(s):
-        i = Assignment.first_ungraded(s)
+        i = AssignmentOld.first_ungraded(s)
         if i == 0:
             return None
 
@@ -964,12 +1070,12 @@ class Assignment:
     def get_submissions(s, previous=False):
         submissions = s.submissions
         if previous:
-            submissions = submissions[: Assignment.first_ungraded(s)]
+            submissions = submissions[: AssignmentOld.first_ungraded(s)]
         return submissions
 
     @staticmethod
     def graded_comments(s):
-        last_graded = Assignment.last_graded_submission(s)
+        last_graded = AssignmentOld.last_graded_submission(s)
 
         def is_new(date):
             return (
@@ -983,7 +1089,7 @@ class Assignment:
 
     @staticmethod
     def ungraded_comments(s):
-        last_graded = Assignment.last_graded_submission(s)
+        last_graded = AssignmentOld.last_graded_submission(s)
 
         def is_new(date):
             return (
@@ -1020,7 +1126,7 @@ class Assignment:
         for submission in submissions:
             submission_files = {}
             for attachment in submission.attachments:
-                name = Assignment.get_file_name(attachment)
+                name = AssignmentOld.get_file_name(attachment)
                 if name_handler:
                     name = name_handler(attachment.id, name)
                 if name:
@@ -1037,13 +1143,13 @@ class Assignment:
 
     @staticmethod
     def get_graded_files(s, name_handler=None):
-        return Assignment.get_files(
-            s.submissions[: Assignment.first_ungraded(s)], name_handler=name_handler
+        return AssignmentOld.get_files(
+            s.submissions[: AssignmentOld.first_ungraded(s)], name_handler=name_handler
         )
 
     @staticmethod
     def get_current_files(s, name_handler=None):
-        return Assignment.get_files(s.submissions, name_handler=name_handler)
+        return AssignmentOld.get_files(s.submissions, name_handler=name_handler)
 
     @staticmethod
     def write_comments(path, comments):
@@ -1143,15 +1249,15 @@ class Assignment:
     #     dir.mkdir()
 
     #     current_dir = dir / 'current'
-    #     current = Assignment.current_submission(s)
-    #     self.create_submission_dir(current_dir, current, Assignment.get_current_files(s))
-    #     Assignment.write_comments(dir / 'new-comments.txt', Assignment.ungraded_comments(s))
+    #     current = AssignmentOld.current_submission(s)
+    #     self.create_submission_dir(current_dir, current, AssignmentOld.get_current_files(s))
+    #     AssignmentOld.write_comments(dir / 'new-comments.txt', AssignmentOld.ungraded_comments(s))
 
-    #     previous = Assignment.last_graded_submission(s)
+    #     previous = AssignmentOld.last_graded_submission(s)
     #     if previous != None:
     #         previous_dir = dir / 'previous'
-    #         self.create_submission_dir(previous_dir, previous, Assignment.get_graded_files(s))
-    #         Assignment.write_comments(dir / 'previous-comments.txt', Assignment.graded_comments(s))
+    #         self.create_submission_dir(previous_dir, previous, AssignmentOld.get_graded_files(s))
+    #         AssignmentOld.write_comments(dir / 'previous-comments.txt', AssignmentOld.graded_comments(s))
 
     #     if deadline != None:
     #         time_diff = current.submitted_at_date - deadline
@@ -1169,9 +1275,9 @@ class Assignment:
     #     dir.mkdir()
     #     for group in self.submissions:
     #         s = self.submissions[group]
-    #         current = Assignment.current_submission(s)
+    #         current = AssignmentOld.current_submission(s)
     #         if not (current.workflow_state == 'graded' and current.grade == 'complete')
-    #            and (current.workflow_state == 'submitted' or Assignment.ungraded_comments(s)):
+    #            and (current.workflow_state == 'submitted' or AssignmentOld.ungraded_comments(s)):
     #             self.prepare_submission(deadline, group, dir / self.group_set.details[group].name, s)
 
     def grade(self, user, comment=None, grade=None):
