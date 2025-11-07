@@ -6,21 +6,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Outdated location of Canvas auth token.
-/auth_token
-
-# Private module for sections and machine-local configuration.
-# You need to populate this from /gitlab_config_personal.py.template.
-/gitlab_config_personal.py
-
-# Credentials for Google account used by some subsystems.
-# You need to populate this if you want to use them.
-/google_tools/credentials.json
-/google_tools/token.pickle
-
-# Key generated on-demand by OpenSSL for webhook listener server.
-/cert.pem
-/key.pem
+# Secrets.
+# See template/secrets.toml
+secrets.toml
 
 # Canvas cache.
 # Always safe to delete, regenerated on demand.
