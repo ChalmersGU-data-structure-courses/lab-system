@@ -14,7 +14,6 @@ import googleapiclient.discovery
 import util.general
 import util.print_parse as pp
 from google_tools.general import Request
-from util.general import JSONDict
 
 
 logger = logging.getLogger(__name__)
@@ -225,7 +224,10 @@ def request_update_cells_user_entered_value(rows, start=None, range=None) -> Req
     * rows: Iterable (of rows) of iterables (of cells) of user entered values (API type ExtendedValue).
     """
     return request_update_cells(
-        ((cell_data(userEnteredValue=cell) for cell in row) for row in rows),
+        (
+            (cell_data(masked_user_entered_value=mask_all(cell))[0] for cell in row)
+            for row in rows
+        ),
         "userEnteredValue",
         start=start,
         range=range,
@@ -252,11 +254,29 @@ A field mask in the Google API.
 The value None means everything (`*`).
 """
 
+type MaskedValue[X] = tuple[X, FieldMask]
+"""A value together with a field mask for it."""
 
-def user_entered_value(value: str | int) -> tuple[tuple[Field, JSONDict], FieldMask]:
-    value = extended_value_number_or_string(value)
-    field = "userEnteredValue"
-    return ((field, value), None)
+
+def mask_all[X](value: X) -> MaskedValue[X]:
+    return (value, None)
+
+
+def field_with_mask(field: Field, mask: FieldMask) -> str:
+    if mask is None:
+        return field
+    return field + "(" + mask + ")"
+
+
+def masked_structure(fields: dict[Field, MaskedValue | None]) -> MaskedValue:
+    result_value = {}
+    result_mask_components = []
+    for field, masked_value in fields.items():
+        if masked_value is not None:
+            (value, mask) = masked_value
+            result_value[field] = value
+            result_mask_components.append(field_with_mask(field, mask))
+    return (result_value, ",".join(result_mask_components))
 
 
 def extended_value_number(n):
@@ -309,7 +329,7 @@ def text_format(link=None):
     return dict(f())
 
 
-# pylint: disable-next=redefined-outer-name
+# pylinell_t: disable-next=redefined-outer-name
 def cell_format(text_format=None):
     """Produces a value for the API type CellFormat."""
 
@@ -333,14 +353,9 @@ def request_update_cell_value_with_link(
 
     * value: API type ExtendedValue.
     """
-    value = extended_value_number_or_string(value)
-    fields = "userEnteredValue"
-    if link is None:
-        format = None
-    else:
-        format = linked_cell_format(link)
-        fields = cell_link_fields
-    return request_update_cell(sheet_id, row, column, cell_data(value, format), fields)
+    (val, mask) = cell_data_from_value(value, link)
+    assert mask is not None
+    return request_update_cell(sheet_id, row, column, val, mask)
 
 
 def requests_duplicate_dimension(
@@ -396,33 +411,30 @@ def redecode_json(s):
     return json.loads(json.dumps(s), object_hook=lambda x: types.SimpleNamespace(**x))
 
 
-SheetData = collections.namedtuple("Data", ["num_rows", "num_columns", "value"])
+SheetData = collections.namedtuple("SheetData", ["num_rows", "num_columns", "value"])
 
 
-def linked_cell_format(url):
+def linked_cell_format(url: str) -> MaskedValue:
     """
     Convenience method for producing a value for the API type CellFormat
     that displays a link to the given url (string).
     """
-    return cell_format(text_format=text_format(link=url))
+    return (cell_format(text_format=text_format(link=url)), "textFormat/link")
 
 
 def cell_data(
-    userEnteredValue=None,
-    userEnteredFormat=None,
-    note=None,
-):
-    """Produces a value for the API type CellData."""
-
-    def f():
-        if userEnteredValue is not None:
-            yield ("userEnteredValue", userEnteredValue)
-        if userEnteredFormat is not None:
-            yield ("userEnteredFormat", userEnteredFormat)
-        if note is not None:
-            yield ("note", note)
-
-    return dict(f())
+    masked_user_entered_value: MaskedValue | None = None,
+    masked_user_entered_format: MaskedValue | None = None,
+    masked_note: MaskedValue | None = None,
+) -> MaskedValue:
+    """Produces a masked value for the API type CellData."""
+    return masked_structure(
+        {
+            "userEnteredValue": masked_user_entered_value,
+            "userEnteredFormat": masked_user_entered_format,
+            "note": masked_note,
+        }
+    )
 
 
 string_value_empty = extended_value_string("")
@@ -433,31 +445,15 @@ cell_value_empty = {
 }
 
 
-def cell_value(value):
-    """Returns a value for the API type CellData for a cell with context string or integer value."""
-    return cell_data(userEnteredValue=extended_value_number_or_string(value))
-
-
-def cell_link(value, url):
+def cell_data_from_value(value: int | str, link: str | None = None) -> MaskedValue:
     """
-    Convenience method for writing a cell with a hyperlink.
-    Arguments:
-    * value: String or integer to use as userEnteredValue.
-    * url: URL (string) to use as link.
-    Returns a value for the API type CellData.
+    Specialization of cell_data.
+    Produces a masked value for the API type CellData.
     """
     return cell_data(
-        userEnteredValue=extended_value_number_or_string(value),
-        userEnteredFormat=linked_cell_format(url),
+        masked_user_entered_value=mask_all(extended_value_number_or_string(value)),
+        masked_user_entered_format=(None if link is None else linked_cell_format(link)),
     )
-
-
-cell_link_fields = "userEnteredValue,userEnteredFormat/textFormat/link"
-"""Fields contained in the result of cell_link."""
-
-
-def cell_link_with_fields(value, link):
-    return (cell_link(value, link), cell_link_fields)
 
 
 def sheet_data(sheet):
@@ -555,6 +551,8 @@ def get_sheet_id_from_title(client, spreadsheet_id: str, title: str) -> int:
 # pylint: disable-next=redefined-outer-name
 def batch_update(client, id: str, requests: Iterable[Request]):
     requests = list(requests)
+    if not requests:
+        return []
 
     def msg():
         yield f"Performing batch update of spreadsheet f{id} with requests:"

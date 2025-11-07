@@ -1041,12 +1041,13 @@ class Lab[LabId, GroupId, Variant]:
 
         def listeners():
             if self.course.config.grading_spreadsheet is not None:
+                self.logger.info("Enabling grading sheet.")
                 yield GradingSheetLabUpdateListener(
                     self,
                     self.course.grading_spreadsheet,
-                    deadline=deadline,
                 )
             if self.course.config.canvas_grading_path is not None:
+                self.logger.info("Enabling live submissions table.")
                 yield LiveSubmissionsTableLabUpdateListener(self, deadline=deadline)
 
         self.update_manager.listeners = set(listeners())

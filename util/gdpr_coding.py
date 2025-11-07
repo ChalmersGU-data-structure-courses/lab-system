@@ -7,6 +7,7 @@ from typing import Any, Callable
 
 import atomicwrites
 
+import util.general
 import util.print_parse
 
 
@@ -19,8 +20,9 @@ class GDPRCoding[GroupId]:
     # The most common example is Google Sheets.
     identifier: util.print_parse.PrinterParser[GroupId, int | str]
 
-    # Sort key to use for the encoded identifiers.
-    sort_key: Callable[[GroupId], util.general.Comparable] = lambda x: x
+    # Sort key to use for the non-encoded identifiers.
+    # Defaults to the identity (only makes sense if the group id is comparable).
+    sort_key: Callable[[GroupId], util.general.Comparable] = util.general.identity
 
 
 class NameCoding:
@@ -44,6 +46,10 @@ class NameCoding:
 
         self._load()
 
+    def sort_key(self, id: str) -> util.general.Comparable:
+        s = self.encode[id]
+        return (s[1], s[0], 0 if len(s) == 2 else int(s[2:]))
+
     @functools.cached_property
     def gdpr_coding(self):
         return GDPRCoding(
@@ -51,7 +57,7 @@ class NameCoding:
                 print=self.encode.__getitem__,
                 parse=self.decode.__getitem__,
             ),
-            sort_key=lambda s: (s[1], s[0], 0 if len(s) == 2 else int(s[2:])),
+            sort_key=self.sort_key,
         )
 
     def _load(self):

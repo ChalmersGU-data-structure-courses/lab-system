@@ -332,7 +332,8 @@ class RequestAndResponses:
             return None
 
         return self.grading_merge_request.outcome_with_link_and_grader(
-            self.request_name, accumulative=accumulative
+            self.request_name,
+            accumulative=accumulative,
         )
 
     @functools.cached_property

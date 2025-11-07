@@ -53,9 +53,7 @@ class QueryDataclass[Submission, Grader, Score]:
 
 
 class QueryDataclassSingleType[T](QueryDataclass[T, T, T], Sequence[T]):
-    """
-    Subclass of QueryDataclass with all fields of the same type.
-    """
+    """Subclass of QueryDataclass with all fields of the same type."""
 
     @functools.cached_property
     def _as_list(self) -> list[T]:
@@ -69,15 +67,11 @@ class QueryDataclassSingleType[T](QueryDataclass[T, T, T], Sequence[T]):
 
 
 class QueryColumnGroup(QueryDataclassSingleType[int]):
-    """
-    The column indices of a query column group.
-    """
+    """The column indices of a query column group."""
 
 
 class QueryHeaders(QueryDataclassSingleType[str]):
-    """
-    The headers of a query column group.
-    """
+    """The headers of a query column group."""
 
     def __init__(self, config: HeaderConfig, query_index: int):
         super().__init__(
@@ -134,9 +128,7 @@ class Query[LabId, GroupId, Outcome]:
         return self.grading_sheet.data.group_rows[self.group_id]
 
     def cell_coords(self, field) -> tuple[int, int]:
-        """
-        The coordinates in the grading sheet for the given query field.
-        """
+        """The coordinates in the grading sheet for the given query field."""
         return (self.group_row, self.query_column_group.__dict__[field])
 
     def query_cell(self, field):
@@ -147,9 +139,7 @@ class Query[LabId, GroupId, Outcome]:
         return self.grading_sheet.data.value(*self.cell_coords(field))
 
     def query_cell_value(self, field) -> str:
-        """
-        Get the cell value in the grading sheet for the given query field.
-        """
+        """Get the cell value in the grading sheet for the given query field."""
         r = google_tools.sheets.extended_value_extract_primitive(self.query_cell(field))
         return str(r)
 
@@ -204,7 +194,7 @@ class Query[LabId, GroupId, Outcome]:
         """Update the outcome/score cell."""
         yield from self.grading_sheet.requests_write_cell(
             self.group_row,
-            self.query_column_group.grader,
+            self.query_column_group.score,
             self.config.outcome.print(outcome),
             link=link,
             force=force,
@@ -300,9 +290,7 @@ class GradingSheetData[LabId, GroupId, Outcome]:
 
     @functools.cached_property
     def ignored_rows(self) -> set[int]:
-        """
-        The set of rows to ignore.
-        """
+        """The set of rows to ignore."""
         return {
             util.general.normalize_list_index(self.sheet_data.num_rows, row)
             for row in self.config.ignore_rows
@@ -318,9 +306,7 @@ class GradingSheetData[LabId, GroupId, Outcome]:
 
     @functools.cached_property
     def header_row(self) -> int:
-        """
-        The index of the header row (zero-based).
-        """
+        """The index of the header row (zero-based)."""
 
         def candidates():
             for row in range(self.sheet_data.num_rows):
@@ -407,9 +393,7 @@ class GradingSheetData[LabId, GroupId, Outcome]:
 
     @functools.cached_property
     def query_column_groups(self) -> list[QueryColumnGroup]:
-        """
-        The indices of query group columns.
-        """
+        """The indices of query group columns."""
         return list(
             self._parse_query_columns(
                 self.header_row,
@@ -564,9 +548,7 @@ class GradingSheet[LabId, GroupId, Outcome]:
 
     @functools.cached_property
     def title_canonical(self) -> str:
-        """
-        The canonical printing of the lab id.
-        """
+        """The canonical printing of the lab id."""
         return self.grading_spreadsheet.config.lab.print(self.lab_id)
 
     @property
@@ -657,9 +639,7 @@ class GradingSheet[LabId, GroupId, Outcome]:
         return GradingSheetData(self)
 
     def data_clear(self) -> None:
-        """
-        Clear the parsed data.
-        """
+        """Clear the parsed data."""
         with contextlib.suppress(AttributeError):
             delattr(self, "data")
 
@@ -686,6 +666,9 @@ class GradingSheet[LabId, GroupId, Outcome]:
         """
         coords = (row, column)
         value_old = self.data.sheet_data.value(*coords)
+        (value_new, mask) = google_tools.sheets.cell_data_from_value(value, link)
+        assert mask is not None
+
         if not force:
             # TODO:
             # is_subdata is not exactly what we want here.
@@ -694,23 +677,23 @@ class GradingSheet[LabId, GroupId, Outcome]:
             # Postpone until we have better framework for handling field masks.
             # TODO:
             # Investigate why links in userEnteredFormat do not show up in previous values.
-            if google_tools.sheets.is_subdata(value, value_old):
+            if google_tools.sheets.is_subdata(value_new, value_old):
                 return
             if google_tools.sheets.is_cell_non_empty(value_old):
                 self.logger.warning(
                     util.general.text_from_lines(
                         "overwriting existing value in"
                         f" cell {google_tools.sheets.a1_notation.print(coords)}",
-                        f"* previous: {value_old}",
-                        f"* current: {value}",
+                        f"* old: {value_old}",
+                        f"* new: {value_new}",
                     )
                 )
-        yield google_tools.sheets.request_update_cell_value_with_link(
+        yield google_tools.sheets.request_update_cell(
             self.data.sheet_properties.sheetId,
             row,
             column,
-            value,
-            link=link,
+            value_new,
+            mask,
         )
 
     def query(
@@ -718,20 +701,8 @@ class GradingSheet[LabId, GroupId, Outcome]:
         group_id: GroupId,
         query_index: int,
     ) -> Query[LabId, GroupId, Outcome]:
-        """
-        Get a Query instance for the specified group and query number.
-        """
+        """Get a Query instance for the specified group and query number."""
         return Query(self, group_id, query_index)
-
-    def _format_group(self, id: GroupId, link: str | None):
-        value = google_tools.sheets.extended_value_string(
-            self.config.gdpr_coding.identifier.print(id)
-        )
-        format = None if link is None else google_tools.sheets.linked_cell_format(link)
-        return google_tools.sheets.cell_data(
-            userEnteredValue=value,
-            userEnteredFormat=format,
-        )
 
     def _row_range_param(self, range_: util.general.Range):
         return google_tools.sheets.dimension_range(
@@ -798,9 +769,7 @@ class GradingSheet[LabId, GroupId, Outcome]:
         self.logger.debug("adding query column group: done")
 
     def ensure_num_queries(self, num_queries: int):
-        """
-        Ensure that the grading sheet has sufficient number of query column groups.
-        """
+        """Ensure that the grading sheet has sufficient number of query column groups."""
         while len(self.data.query_column_groups) < num_queries:
             self.add_query_column_group()
 
@@ -914,9 +883,16 @@ class GradingSheet[LabId, GroupId, Outcome]:
                 self.data.sheet_properties.sheetId,
                 ranges,
             )
+            (_, mask) = google_tools.sheets.cell_data_from_value(str(), str())
+
+            def group_cell_data(id):
+                return google_tools.sheets.cell_data_from_value(
+                    self.config.gdpr_coding.identifier.print(id)
+                )
+
             yield google_tools.sheets.request_update_cells(
-                [[self._format_group(id, group_link(id))] for id in new_ids],
-                fields=google_tools.sheets.cell_link_fields,
+                [[group_cell_data(id)] for id in new_ids],
+                fields=mask,
                 range=grid_range,
             )
             counter += len(new_ids)
@@ -967,9 +943,7 @@ class GradingSheet[LabId, GroupId, Outcome]:
         exist_ok: bool = False,
         skip_grading_spreadsheet_data_clear: bool = False,
     ) -> None:
-        """
-        Delete the lab worksheet.
-        """
+        """Delete the lab worksheet."""
         self.logger.info(f"deleting grading sheet for {self.title_canonical}...")
         if not self.exists:
             msg = f"worksheet for {self.title_canonical} does not exist"
@@ -986,9 +960,7 @@ class GradingSheet[LabId, GroupId, Outcome]:
         self.logger.info(f"deleting grading sheet for {self.title_canonical}: done")
 
     def create(self, exist_ok: bool = False) -> None:
-        """
-        Create the lab worksheet.
-        """
+        """Create the lab worksheet."""
         self.create_and_setup_groups(exist_ok=exist_ok)
 
     def create_and_setup_groups(
@@ -1202,9 +1174,7 @@ class GradingSpreadsheetData[LabId]:
 
     @functools.cached_property
     def lab_by_sheet_id(self) -> dict[int, LabId]:
-        """
-        Mapping from lab worksheet id to lab id.
-        """
+        """Mapping from lab worksheet id to lab id."""
         return util.general.sdict(
             (sheet_id, lab_id)
             for (sheet_id, _title, lab_id, index) in self._sheet_props_list
@@ -1212,9 +1182,7 @@ class GradingSpreadsheetData[LabId]:
 
     @functools.cached_property
     def lab_by_index(self) -> dict[int, LabId]:
-        """
-        Mapping from lab worksheet index to lab id.
-        """
+        """Mapping from lab worksheet index to lab id."""
         return util.general.sdict(
             (index, lab_id)
             for (sheet_id, _title, lab_id, index) in self._sheet_props_list
@@ -1295,9 +1263,7 @@ class GradingSpreadsheet[LabId]:
 
     @functools.cached_property
     def client(self):
-        """
-        Google Spreadsheets client from googleapiclient.
-        """
+        """Google Spreadsheets client from googleapiclient."""
         return google_tools.sheets.get_client(self.credentials)
 
     def client_get(
@@ -1343,16 +1309,12 @@ class GradingSpreadsheet[LabId]:
         return GradingSpreadsheetData(self)
 
     def data_clear(self) -> None:
-        """
-        Clear the parsed data.
-        """
+        """Clear the parsed data."""
         with contextlib.suppress(AttributeError):
             delattr(self, "data")
 
     def delete_grading_sheets(self, exist_ok: bool = False) -> None:
-        """
-        Delete all lab worksheets.
-        """
+        """Delete all lab worksheets."""
         if self.grading_sheets.values():
             try:
                 for grading_sheet in self.grading_sheets.values():
@@ -1364,9 +1326,7 @@ class GradingSpreadsheet[LabId]:
                 self.data_clear()
 
     def create_grading_sheets(self, exist_ok: bool = False) -> None:
-        """
-        Create all lab worksheets.
-        """
+        """Create all lab worksheets."""
         for grading_sheet in self.grading_sheets.values():
             grading_sheet.create(exist_ok=exist_ok)
 

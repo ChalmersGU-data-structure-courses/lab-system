@@ -266,7 +266,7 @@ class GroupColumn(Column):
         else:
             gdpr_coding = self.lab.student_connector.gdpr_coding()
             encoded_id = gdpr_coding.identifier.print(group.id)
-            sort_key = (2, gdpr_coding.sort_key(encoded_id))
+            sort_key = (2, gdpr_coding.sort_key(group.id))
 
         return StandardColumnValue(encoded_id, sort_key)
 

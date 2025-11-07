@@ -33,7 +33,7 @@ class LiveSubmissionsTableLabUpdateListener[LabId, GroupId](
 
     @property
     def canvas_path(self) -> PurePosixPath:
-        return self.course.config.canvas_grading_path / self.lab.full_id
+        return self.course.config.canvas_grading_path / (self.lab.full_id + ".html")
 
     def __init__(self, lab: module_lab.Lab, deadline=None):
         """
