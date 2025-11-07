@@ -451,6 +451,7 @@ class Course[LabId]:
         return gitlab_.graphql.Client(
             domain="git.chalmers.se",
             token=self.auth.gitlab_private_token,
+            timeout=self.config.timeout.total_seconds(),
         )
 
     @functools.cached_property

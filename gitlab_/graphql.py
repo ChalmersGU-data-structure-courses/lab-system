@@ -50,7 +50,14 @@ class GroupCursor:
 
 
 class Client(graphql_.client.ClientBase):
-    def __init__(self, domain, token, schema_full=False):
+    def __init__(
+        self,
+        domain,
+        token,
+        schema_full=False,
+        timeout: int | None = None,
+        retries: int = 3,
+    ):
         """
         Loading the full schema 'gitlab_schema.graphql' takes 2s on my laptop.
         Therefore, we maintain an extract 'gitlab_schema_extract.graphql' for the queries this class supports.
@@ -58,7 +65,8 @@ class Client(graphql_.client.ClientBase):
         transport = RequestsHTTPTransport(
             url=f"https://{domain}/api/graphql",
             verify=True,
-            retries=0,  # TODO: change to a higher value
+            timeout=timeout,
+            retries=retries,
             auth=util.general.BearerAuth(token),
         )
         version = "" if schema_full else "_extract"
