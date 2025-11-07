@@ -1,7 +1,6 @@
 import collections
 import contextlib
 import dataclasses
-import datetime
 import itertools
 import logging
 import os
@@ -16,6 +15,8 @@ import general
 import path_tools
 import print_parse
 import watchdog_tools
+
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
