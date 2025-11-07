@@ -228,10 +228,6 @@ class Lab[LabId, GroupId, Variant]:
     - groups_create_desired()
 
     All-in-one methods:
-    - deploy_lab:
-      Upload problem and solutions.
-      Does not yet talk to Canvas.
-      This is left to the event loop.
     - deploy_via_lab_sources_and_canvas: do all steps to deploy a lab for the first time
       (needs lab sources to be prepared and testing docker image built).
       Includes forking the student projects.
@@ -383,22 +379,6 @@ class Lab[LabId, GroupId, Variant]:
         group = self.group_create("solution")
         for variant in self.config.variants.variants:
             group.upload_solution(variant=variant)
-
-    def deploy(self):
-        """If this method goes wrong, you can use self.delete() to start from scratch."""
-        self.gitlab_group.create()
-        self.primary_project.create()
-        self.primary_project_problem_branches_create()
-        self.collection_project.create()
-        if self.config.has_solution is True:
-            self.solution_create_and_populate()
-        self.logger.info(
-            util.general.text_from_lines(
-                "Next steps:",
-                "* Restart event loop.",
-                "* Check robograding/-testing output for solution submissions in live submissions table.",
-            )
-        )
 
     def remove(self, *, force: bool = False):
         """Deletes lab remotely on GitLab and locally."""
@@ -1776,13 +1756,12 @@ class Lab[LabId, GroupId, Variant]:
         - populating the group projects with clones of the lab sources
 
         Prerequisites:
-        - lab sources repo updated on the server
-        - deploy directories built there (`make all`)
-        - test runner built there (`make test-image`)
+        - lab sources repo updated on this machine
+        - problem and solution deploy directories built there (`make all`)
+        - test runners built there (e.g., `make test-image`)
 
         To undo, call:
-        - gitlab_group.delete()
-        - repo_delete()
+        - self.remove(force=True)
         """
         self.logger.info(
             """
@@ -1803,6 +1782,10 @@ class Lab[LabId, GroupId, Variant]:
         self.logger.info("=== Uploading problem branch ===")
         self.primary_project_problem_branches_create()
 
+        self.logger.info("=== Uploading official solution ===")
+        if self.config.has_solution is True:
+            self.solution_create_and_populate()
+
         self.logger.info('=== Creating "collection" project for lab ===')
         self.collection_project.create()
 
@@ -1811,8 +1794,11 @@ class Lab[LabId, GroupId, Variant]:
 
         self.logger.info(
             """
-            Note: students are not yet added/invited to lab projects.
-            Run 'sync_students_to_gitlab()' when ready.
+            Optionally run 'sync_students_to_gitlab()' when ready.
+
+            Next steps:
+            * Restart event loop.
+            * Check robograding/-testing output for solution submissions in live submissions table.
             """
         )
         # Or you could also call sync_students_to_gitlab.
