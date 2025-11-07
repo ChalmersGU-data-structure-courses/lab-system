@@ -21,8 +21,11 @@ print('Defined variables:')
 c = course.Course(config, 'lp2')
 print(f"  c: Course <{c.dir}>")
 
-l = c.labs[1]
-print(f"  l: Lab <{l.name}>")
+l1 = c.labs[1]
+print(f"  l1: Lab <{l1.name}>")
+
+l2 = c.labs[2]
+print(f"  l2: Lab <{l2.name}>")
 
 # How to deploy a new lab:
 # 1. Make sure repository ~/labs is up to date.

@@ -224,7 +224,7 @@ _group = SimpleNamespace(
     # Note that many special characters are forbidden in GitLab group names.
     #
     # Needs to be a unique key for this group set configuration.
-    group_set_name='Lab Group',
+    group_set_name='Lab groups',
 
     # Format the id for use in a spreadsheet cell.
     # An integer or a string.
@@ -418,7 +418,7 @@ def _lab_item(k, *args, **kwargs):
 #   For recent labs, use 15 minutes.
 labs = dict([
     _lab_item(1, 'binary-search'       , datetime.timedelta(minutes=15), group_set=None  , robotester=True, use_robograder_instead=True ),  # noqa: E202, E203, E501
-    #_lab_item(2, 'indexing'            , datetime.timedelta(minutes=15), group_set=_group, robotester=True, use_robograder_instead=False),  # noqa: E202, E203, E501
+    _lab_item(2, 'indexing'            , datetime.timedelta(minutes=15), group_set=_group, robotester=True, use_robograder_instead=False),  # noqa: E202, E203, E501
     #_lab_item(3, 'plagiarism-detection', datetime.timedelta(minutes=15), group_set=_group, robotester=True, use_robograder_instead=False),  # noqa: E202, E203, E501
     #_lab_item(4, 'path-finder'         , datetime.timedelta(minutes=15), group_set=_group, robotester=True, use_robograder_instead=True ),  # noqa: E202, E203, E501
 ])
