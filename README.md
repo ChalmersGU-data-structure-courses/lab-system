@@ -12,11 +12,11 @@ Unless mentioned otherwise, the working directory is the folder of this file.
 
 Install the required packages via this command:
 ```
-pip install -r requirements.txt
+pip install -e .
 ```
 
-Create an untracked copy of `gitlab_config_personal.py.template` and remove the suffix.
-This file stores personal configuration such as access keys and paths local to your filesystem.
+Create an untracked copy of `template/secrets.toml` in the working directory.
+This file stores personal configuration such as access keys.
 We will fill in the configuration values below.
 
 ### Canvas
@@ -24,8 +24,7 @@ We will fill in the configuration values below.
 We require a Canvas access token.
 
 * Log into Canvas and go to [settings](https://chalmers.instructure.com/profile/settings) (the links here are for Chalmers Canvas).
-* Under **Approved Integrations** create an access token and store it under `canvas_auth_token` in `gitlab_config_personal.py`.
-* Also store the access token in a file `auth_token` (this is only relevant for old scripts that do not use `gitlab_config_personal.py`).
+* Under **Approved Integrations** create an access token and store it under `[canvas] auth_token` in `secrets.toml`.
 * The user providing the access token needs to be enrolled in the course's Canvas as "Examiner".
 
 ### Chalmers GitLab
@@ -34,7 +33,7 @@ We require a Chalmers GitLab access token.
 
 * Log into [Chalmers GitLab](https://git.chalmers.se/) by signing in with your **Chalmers Login** (we are not using login via username or email).
 * Go to [Access Tokens](https://git.chalmers.se/-/profile/personal_access_tokens) in your user settings.
-* Create an access token with scope `api` and store it under `private_token` in `gitlab_config_personal.py`.
+* Create an access token with scope `api` and store it under `[gitlab] private_token` in `secrets.toml`.
 
 We also require that SSH can connect without interactive authentication to Chalmers GitLab.
 For this, go to [SSH Keys](https://git.chalmers.se/-/profile/keys) in your user settings and upload your public SSH key.
@@ -53,8 +52,7 @@ We do integration with Google Sheets etc., we use a Google Cloud project with se
   Note that email address of the account.
   You will need this to share Google Cloud resources with it.
 * On the newly created service account, select **Manage keys** and create a new key in the default JSON format.
-* Download the JSON file to `google_tools/credentials.json`.
-  If you choose a different location to save this file, update the configuration option `google_credentials_path` in `gitlab_config_personal.py`
+* Open the JSON file and copy its values to the section `[google.credentials]` in `secrets.toml`.
 
 All Google resources that the scripts should be able to work on need to be shared with the service account created above.
 The simplest way to do that is to share the Google Drive folder of the course with the service account.
@@ -424,12 +422,12 @@ lab = course.labs[3]
 Let us first assume that you are deploying a lab with default locations for problems and solutions.
 In that case, you can deploy it to GitLab using the following all-in-one method:
 ```
-lab.deploy()
+lab.deploy_via_lab_sources_and_canvas()
 ```
 
 See the rest of this section for what running this method entails.
 If you need fine-tuning, you can always run each step by itself.
-If you mess up, you can freshen the plate using `lab.gitlab_group.delete()` and `lab.repo_delete()`.
+If you mess up, you can freshen the plate using `lab.remove(force=True)`.
 
 ---
 
@@ -537,4 +535,4 @@ You can use `group.merge_problem_into_branch` for group-specific merges.
 See `./run_event_loop -h` for now.
 
 You may want to run this as a systemd service.
-See `systemd_unit_file.service.template`.
+See `template/lab-system.service`.
