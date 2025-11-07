@@ -20,13 +20,9 @@ class GradingSheetLabUpdateListener[LabId, GroupId](
     spreadsheet: grading_sheet.core.GradingSpreadsheet[LabId]
     sheet: grading_sheet.core.GradingSheet[LabId, GroupId, Any]
 
-    def __init__(
-        self,
-        lab: "module_lab.Lab[LabId, GroupId, Any]",
-        grading_spreadsheet: grading_sheet.core.GradingSpreadsheet[LabId],
-    ):
+    def __init__(self, lab: "module_lab.Lab[LabId, GroupId, Any]"):
         self.lab = lab
-        self.spreadsheet = grading_spreadsheet
+        self.spreadsheet = self.course.grading_spreadsheet
         self.sheet = self.spreadsheet.grading_sheets[self.lab.id]
         self.sheet.ensure_and_setup_groups()
 

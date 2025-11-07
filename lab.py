@@ -1020,13 +1020,9 @@ class Lab[LabId, GroupId, Variant]:
         self.setup_request_handlers()
 
         def listeners():
-            # TODO
             if self.course.config.grading_spreadsheet is not None:
                 self.logger.info("Enabling grading sheet.")
-                yield GradingSheetLabUpdateListener(
-                    self,
-                    self.course.grading_spreadsheet,
-                )
+                yield GradingSheetLabUpdateListener(self)
 
             if self.course.config.canvas_grading_path is not None:
                 self.logger.info("Enabling live submissions table.")
