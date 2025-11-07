@@ -1,12 +1,15 @@
 import collections
+import contextlib
 import enum
 import functools
 import json
 import logging
 import re
+import socket
 import string
 import types
 from collections.abc import Iterable
+from typing import Generator, Literal
 
 import google.auth.credentials
 import googleapiclient.discovery
@@ -393,17 +396,45 @@ def request_delete_sheet(id) -> Request:
     return request("deleteSheet", sheetId=id)
 
 
-def get_client(credentials: google.auth.credentials.Credentials):
+class Timeout(enum.Enum):
+    UNCHANGED = object()
+
+
+@contextlib.contextmanager
+def default_timeout(timeout: float | None) -> Generator[None, None, None]:
+    prev = socket.getdefaulttimeout()
+    socket.setdefaulttimeout(timeout)
+    try:
+        yield
+    finally:
+        socket.setdefaulttimeout(prev)
+
+
+@contextlib.contextmanager
+def default_timeout_maybe(
+    timeout: float | None | Literal[Timeout.UNCHANGED],
+) -> Generator[None, None, None]:
+    with contextlib.ExitStack() as exit_stack:
+        if timeout is not Timeout.UNCHANGED:
+            exit_stack.enter_context(default_timeout(timeout))
+        yield
+
+
+def get_client(
+    credentials: google.auth.credentials.Credentials,
+    timeout: float | None | Literal[Timeout.UNCHANGED] = Timeout.UNCHANGED,
+):
     """Get a spreadsheets client using googleapiclient."""
 
-    # False positive.
-    # pylint: disable-next=no-member
-    return googleapiclient.discovery.build(
-        "sheets",
-        "v4",
-        credentials=credentials,
-        cache_discovery=False,
-    ).spreadsheets()
+    with default_timeout_maybe(timeout):
+        # False positive.
+        # pylint: disable-next=no-member
+        return googleapiclient.discovery.build(
+            "sheets",
+            "v4",
+            credentials=credentials,
+            cache_discovery=False,
+        ).spreadsheets()
 
 
 # Hack, for now.

@@ -872,6 +872,7 @@ class Course[LabId]:
             external=self.config.grading_spreadsheet,
             internal=grading_sheet.config.ConfigInternal(
                 lab=self.config.lab_id.name,
+                timeout=self.config.timeout,
             ),
         )
         lab_configs = {

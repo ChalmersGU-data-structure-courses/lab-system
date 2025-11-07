@@ -1,5 +1,6 @@
 import dataclasses
 from collections.abc import Collection
+import datetime
 from typing import Self
 
 import util.general
@@ -27,6 +28,9 @@ class ConfigExternal[LabId]:
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
 class ConfigInternal[LabId]:
+    timeout: datetime.timedelta | None = None
+    """Optional timeout for network requests."""
+
     lab: PrinterParser[LabId, str]
     """Printer-parser for lab ids formatted as sheet names."""
 

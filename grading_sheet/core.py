@@ -1264,7 +1264,13 @@ class GradingSpreadsheet[LabId]:
     @functools.cached_property
     def client(self):
         """Google Spreadsheets client from googleapiclient."""
-        return google_tools.sheets.get_client(self.credentials)
+
+        def args():
+            yield ("credentials", self.credentials)
+            if self.config.timeout is not None:
+                yield ("timeout", self.config.timeout.total_seconds())
+
+        return google_tools.sheets.get_client(**dict(args()))
 
     def client_get(
         self,

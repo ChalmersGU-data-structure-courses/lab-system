@@ -1,4 +1,3 @@
-from collections.abc import Iterable
 import dataclasses
 import functools
 import json
@@ -12,7 +11,7 @@ import types
 import urllib.parse
 from datetime import timedelta
 from pathlib import Path, PurePosixPath
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Generator
 
 import requests
 
@@ -761,7 +760,7 @@ class Grading:
     grade_pp: ClassVar[PrinterParser[int | None, str | None]] = GradePrinterParser()
 
     @property
-    def fields(self) -> Iterable[tuple[str, Any]]:
+    def fields(self) -> Generator[tuple[str, Any], None, None]:
         yield ("submission[posted_grade]", self.grade_pp.print(self.grade))
         if self.comment is not None:
             yield ("comment[text_comment]", self.comment)

@@ -890,8 +890,8 @@ class CourseConfig[LabId]:
     causing longer response periods for webhook-triggered updates.
     """
 
-    timeout: datetime.timedelta = datetime.timedelta(seconds=30)
-    """Timeout for network operations."""
+    timeout: datetime.timedelta | None = datetime.timedelta(seconds=30)
+    """Optional timeout for network operations."""
 
     names_informal: PrinterParser[str, str] = util.print_parse.Dict([])
     """
