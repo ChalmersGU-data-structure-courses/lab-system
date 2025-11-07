@@ -1013,6 +1013,7 @@ class Lab[LabId, GroupId, Variant]:
         from live_submissions_table.listener import (
             LiveSubmissionsTableLabUpdateListener,
         )
+        from canvas.grading_listener import CanvasGradingLabUpdateListener
 
         if deadline is None:
             deadline = self.deadline
@@ -1020,15 +1021,24 @@ class Lab[LabId, GroupId, Variant]:
         self.setup_request_handlers()
 
         def listeners():
+            # TODO
             if self.course.config.grading_spreadsheet is not None:
                 self.logger.info("Enabling grading sheet.")
                 yield GradingSheetLabUpdateListener(
                     self,
                     self.course.grading_spreadsheet,
                 )
+
             if self.course.config.canvas_grading_path is not None:
                 self.logger.info("Enabling live submissions table.")
                 yield LiveSubmissionsTableLabUpdateListener(self, deadline=deadline)
+
+            assignment_name = self.config.canvas_assignment_name
+            if assignment_name is not None:
+                self.logger.info(
+                    f"Enabling Canvas assignment synchronization with {assignment_name}."
+                )
+                yield CanvasGradingLabUpdateListener(self)
 
         self.update_manager.listeners = set(listeners())
 

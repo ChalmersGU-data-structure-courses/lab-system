@@ -1638,12 +1638,12 @@ class GroupProject:
             for (handler_key, handler_data) in self.handler_data.items()
         }
 
-    def submissions(self, deadline=None):
+    def submissions(self, deadline=None) -> Iterable[RequestAndResponses]:
         """
         Counts only the accepted submission attempts.
         If deadline is given, we restrict to prior submissions.
         Here, the date refers to the date of the submission commit.
-        Returns an iterable of instances of RequestAndResponses ordered by the date.
+        The output is ordered ordered by the date.
         """
         for (
             request_and_responses
@@ -1652,38 +1652,52 @@ class GroupProject:
                 if deadline is None or request_and_responses.date <= deadline:
                     yield request_and_responses
 
-    def submissions_with_outcome(self, deadline=None):
+    def submissions_with_outcome(self, deadline=None) -> Iterable[RequestAndResponses]:
         """
         Restricts the output of self.submissions to instances of SubmissionAndRequests with an outcome.
         This could be a submission-handler-provided outcome or a review by a grader.
-        Returns an iterable of instances of RequestAndResponses ordered by the date.
+        The output is ordered ordered by the date.
         """
         for submission in self.submissions(deadline=deadline):
             if submission.outcome is not None:
                 yield submission
 
-    def submissions_relevant(self, deadline=None):
+    def submissions_relevant(self, deadline=None) -> Iterable[RequestAndResponses]:
         """
         Restrict the output of self.submissions to all relevant submissions.
         A submission is *relevant* if it has an outcome or is the last submission and needs a review.
-        Returns an iterable of instances of RequestAndResponses ordered by the date.
+        The output is ordered ordered by the date.
         """
         submissions = list(self.submissions(deadline=deadline))
         for i, submission in enumerate(submissions):
             if i + 1 == len(submissions) or submission.outcome is not None:
                 yield submission
 
-    def submission_current(self, deadline=None):
+    def submission_current(self, deadline=None) -> RequestAndResponses | None:
         """
+        With respect to the output of self.submissions, return the last submission
+        if it needs a review (i.e. does not yet have an outcome), otherwise return None.
+        """
+        submissions = list(self.submissions(deadline=deadline))
+        if submissions:
+            last = submissions[-1]
+            if last.outcome_acc(accumulative=True) is None:
+                return last
+
+        return None
+
+    def submission_outcome(self, deadline=None) -> RequestAndResponses | None:
+        """
+        Returns the latest submission with an outcome, or None otherwise.
         With respect to the output of self.submissions, return the last submission
         if it needs a review (i.e. does not yet have an outcome), otherwise return None.
         Returns an instances of RequestAndResponses or None.
         """
         submissions = list(self.submissions(deadline=deadline))
         if submissions:
-            submission_last = submissions[-1]
-            if submission_last.outcome_acc(accumulative=True) is None:
-                return submission_last
+            last = submissions[-1]
+            if last.outcome_acc(accumulative=True) is not None:
+                return last
 
         return None
 

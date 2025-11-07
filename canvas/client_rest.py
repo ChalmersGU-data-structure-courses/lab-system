@@ -727,6 +727,7 @@ class GroupSet:
 
 
 Grade = int | None
+"""A grade of None means the submission is ungraded."""
 
 
 class GradePrinterParser(PrinterParser[Grade, str | None]):
@@ -754,8 +755,6 @@ class GradePrinterParser(PrinterParser[Grade, str | None]):
 
 @dataclasses.dataclass
 class Grading:
-    """A grade of None means no grade."""
-
     grade: Grade
     comment: str | None = None
 
@@ -763,12 +762,13 @@ class Grading:
 
     @property
     def fields(self) -> Iterable[tuple[str, Any]]:
-        yield ("posted_grade", self.grade_pp.print(self.grade))
+        yield ("submission[posted_grade]", self.grade_pp.print(self.grade))
         if self.comment is not None:
-            yield ("text_comment", self.comment)
+            yield ("comment[text_comment]", self.comment)
 
-    def params(self, name) -> dict[str, Any]:
-        return {name + "[" + field + "]": value for (field, value) in self.fields}
+    @property
+    def params(self) -> dict[str, Any]:
+        return dict(self.fields)
 
 
 @dataclasses.dataclass
@@ -800,30 +800,30 @@ class Assignment:
         """Warning: setting an invalid grade will set the submission to ungraded."""
         r = self.canvas.put(
             [*self.endpoint, "submissions", user_id],
-            params=grading.params("submission"),
+            params=grading.params,
         )
         return Grading.grade_pp.parse(r.grade)
 
-    def grade_many(self, gradings: dict[int, Grading]) -> JSONObject:
-        """
-        Returns a progress object.
+    # def grade_many(self, gradings: dict[int, Grading]) -> JSONObject:
+    #     """
+    #     Returns a progress object.
 
-        Bad approach.
-        Have to wait for completion/errors by polling for progression.
+    #     Bad approach.
+    #     Have to wait for completion/errors by polling for progression.
 
-        TODO:
-        Figure out if requests supports send a batch of put requests.
-        (That is, without waiting for the first request to finish.)
-        """
-        progress = self.canvas.post(
-            [*self.endpoint, "submissions", "update_grades"],
-            params={
-                param: value
-                for user_id, grading in gradings.items()
-                for param, value in grading.params(f"grade_data[{user_id}]").items()
-            },
-        )
-        return progress
+    #     TODO:
+    #     Figure out if requests supports send a batch of put requests.
+    #     (That is, without waiting for the first request to finish.)
+    #     """
+    #     progress = self.canvas.post(
+    #         [*self.endpoint, "submissions", "update_grades"],
+    #         params={
+    #             param: value
+    #             for user_id, grading in gradings.items()
+    #             for param, value in grading.params(f"grade_data[{user_id}]").items()
+    #         },
+    #     )
+    #     return progress
 
 
 class AssignmentOld:

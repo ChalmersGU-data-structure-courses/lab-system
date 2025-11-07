@@ -316,6 +316,7 @@ class OutcomeSpec:
     name: str
     label: gitlab_.tools.LabelSpec | None = None
     as_cell: str | int = str()
+    canvas_grade: int | None = None
 
     @classmethod
     def smart(
@@ -323,6 +324,7 @@ class OutcomeSpec:
         name: str,
         color: str | None = None,
         as_cell: str | int = str(),
+        canvas_grade: int | None = None,
     ) -> "OutcomeSpec":
         return cls(
             name=name,
@@ -332,12 +334,23 @@ class OutcomeSpec:
                 else gitlab_.tools.LabelSpec(name=name, color=color)
             ),
             as_cell=as_cell,
+            canvas_grade=canvas_grade,
         )
 
 
 class DefaultOutcome(util.enum.EnumSpec[OutcomeSpec]):
-    INCOMPLETE = OutcomeSpec.smart(name="incomplete", color="red", as_cell=0)
-    PASS = OutcomeSpec.smart(name="pass", color="green", as_cell=1)
+    INCOMPLETE = OutcomeSpec.smart(
+        name="incomplete",
+        color="red",
+        as_cell=0,
+        canvas_grade=0,
+    )
+    PASS = OutcomeSpec.smart(
+        name="pass",
+        color="green",
+        as_cell=1,
+        canvas_grade=1,
+    )
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -361,6 +374,13 @@ class OutcomesConfig[Outcome]:
     """
     Labels to use for outcomes in new-style grading via merge requests.
     The label specification for key None corresponds to the waiting-for-grading state.
+    """
+
+    canvas_grade: Mapping[Outcome, int | None]
+    """
+    Mapping from outcomes to grades in a Canvas assignment.
+    A value of None corresponds to a missing grade.
+    Use this if you do not want failing grades to show up on Canvas.
     """
 
     default_waiting_for_grading: ClassVar[OutcomeSpec] = OutcomeSpec.smart(
@@ -392,6 +412,9 @@ class OutcomesConfig[Outcome]:
             ),
             labels={outcome: spec.label for outcome, spec in outcomes.items()}
             | {None: waiting_for_grading.label},
+            canvas_grade={
+                outcome: spec.canvas_grade for outcome, spec in outcomes.items()
+            },
         )
 
     @classmethod
@@ -740,6 +763,15 @@ class LabConfig[GroupId, Outcome, Variant]:
     """
     Configuration of the grading sheet for this lab.
     Required if the grading spreadsheet is enabled in the course configuration.
+    """
+
+    canvas_assignment_name: str | None = None
+    """
+    Optional name of a Canvas assignment used to mirror outcomes.
+    The assignment should:
+    * be individual (not using a group set),
+    * have submissions disabled,
+    * have points configured in correspondence with outcomes_config.canvas_grade.
     """
 
     def branch_problem(self, variant) -> str:

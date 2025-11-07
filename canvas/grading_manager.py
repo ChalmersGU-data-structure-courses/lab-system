@@ -59,9 +59,10 @@ class GradingManager:
 
             grade_old = self.grades[user_id]
             grade_new = grading.grade
-            if not grade_old is None or grade_new == grade_old:
-                self.logger.warn(
-                    f"Overriding grade for {self.course.user_str(user_id)}: "
-                    f"{grade_old} -> {grade_new}"
-                )
-            self.grades[user_id] = self.assignment.set_grade(user_id, grading)
+            if not grade_new == grade_old:
+                if not grade_old is None:
+                    self.logger.warn(
+                        f"Overriding grade for {self.course.user_str(user_id)}: "
+                        f"{grade_old} -> {grade_new}"
+                    )
+                self.grades[user_id] = self.assignment.set_grade(user_id, grading)
