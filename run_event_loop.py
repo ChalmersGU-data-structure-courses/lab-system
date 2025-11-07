@@ -85,11 +85,12 @@ g.add_argument(
     "-a",
     "--auth",
     type=Path,
-    dest="log_file",
+    dest="auth",
     default=Path("secrets.toml"),
     help="""
 Authentication credentials and secrets for the various subsystems.
 See template/secrets.toml.
+Defaults to secrets.toml.
 """,
 )
 
@@ -102,45 +103,45 @@ g.add_argument(
     help="When running the event loop, do not configuration and use webhooks.",
 )
 
-local_port_default = 4200
+# local_port_default = 4200
 
-g.add_argument(
-    "-p",
-    "--port",
-    type=int,
-    default=local_port_default,
-    dest="port",
-    help=f"""
-The local port to listen at for webhook notifications from Chalmers GitLab.
-Defaults to {local_port_default}.
-""",
-).completer = complete_nothing
+# g.add_argument(
+#     "-p",
+#     "--port",
+#     type=int,
+#     default=local_port_default,
+#     dest="port",
+#     help=f"""
+# The local port to listen at for webhook notifications from Chalmers GitLab.
+# Defaults to {local_port_default}.
+# """,
+# ).completer = complete_nothing
 
-g.add_argument(
-    "-n",
-    "--netloc",
-    type=str,
-    metavar="NETLOC",
-    help="""
-Network location in format to specify for setting up webhooks on Chalmers GitLab.
-The format is <hostname>:<port> where the part :<port> may be omitted.
-The hostname defaults to the local interface routing to Chalmers GitLab.
-The port defaults to the value for --port.
----
-This option is useful if you are behind network address translation (NAT).
-In that case, you can specify a public network location on some server you have access to and use SSH port forwarding to forward connections to the specified network location to the computer running this program.
-For example, you may specify `--netloc <public address>:<public port>` and run `ssh -R *:<public port>:localhost:4200 <user>@<public address>`.
----
-This option is also useful if you have a dynamic IP that changes frequently and no fixed domain name that resolves to it.
-In that case, you may want to follow a procedure as outlined above for the case of NAT to avoid frequent changes in webhook configuration.
----
-Changes to the webhook network location are expensive.
-On program start up, the configuration of each individual project needs to be updated.
-(Group-level webhooks are only provided in the paid versions of GitLab.)
-This is 1–3 API calls per project.
-By default, a limit of 3600 API calls per hour is imposed.
-""",
-).completer = complete_nothing  # noqa: E501
+# g.add_argument(
+#     "-n",
+#     "--netloc",
+#     type=str,
+#     metavar="NETLOC",
+#     help="""
+# Network location in format to specify for setting up webhooks on Chalmers GitLab.
+# The format is <hostname>:<port> where the part :<port> may be omitted.
+# The hostname defaults to the local interface routing to Chalmers GitLab.
+# The port defaults to the value for --port.
+# ---
+# This option is useful if you are behind network address translation (NAT).
+# In that case, you can specify a public network location on some server you have access to and use SSH port forwarding to forward connections to the specified network location to the computer running this program.
+# For example, you may specify `--netloc <public address>:<public port>` and run `ssh -R *:<public port>:localhost:4200 <user>@<public address>`.
+# ---
+# This option is also useful if you have a dynamic IP that changes frequently and no fixed domain name that resolves to it.
+# In that case, you may want to follow a procedure as outlined above for the case of NAT to avoid frequent changes in webhook configuration.
+# ---
+# Changes to the webhook network location are expensive.
+# On program start up, the configuration of each individual project needs to be updated.
+# (Group-level webhooks are only provided in the paid versions of GitLab.)
+# This is 1–3 API calls per project.
+# By default, a limit of 3600 API calls per hour is imposed.
+# """,
+# ).completer = complete_nothing  # noqa: E501
 
 g = p.add_argument_group(title="Canvas sync")
 
@@ -182,17 +183,17 @@ Students will be added or invited to the lab(s) specified by --sync-from-canvas.
 
 g = p.add_argument_group(title="other options")
 
-g.add_argument(
-    "-j",
-    "--jobs",
-    type=int,
-    default=5,
-    dest="jobs",
-    help="""
-Maximum number of parallel jobs to use for git fetches and pushes.
-Defaults to 5, which currently (2021-12) seems to be the value of MaxSessions configured for sshd at Chalmers GitLab.
-""",
-).completer = complete_nothing
+# g.add_argument(
+#     "-j",
+#     "--jobs",
+#     type=int,
+#     default=5,
+#     dest="jobs",
+#     help="""
+# Maximum number of parallel jobs to use for git fetches and pushes.
+# Defaults to 5, which currently (2021-12) seems to be the value of MaxSessions configured for sshd at Chalmers GitLab.
+# """,
+# ).completer = complete_nothing
 
 g.add_argument(
     "-r",
@@ -323,7 +324,7 @@ def courses():
         )
         config = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(config)
-        c = course.Course(config, auth=auth, dir=dir)
+        c = course.Course(config.course, auth=auth, dir=dir)
         yield (dir, c)
 
 
