@@ -748,7 +748,6 @@ class Lab[LabId, GroupId, Variant]:
                 c.add_value("advice", "detachedHead", "false")
 
             # Configure and fetch primary repository.
-            # TODO: add variant problem branches.
             def fetch_branches():
                 for variant in self.config.variants.variants:
                     yield self.config.branch_problem(variant)
