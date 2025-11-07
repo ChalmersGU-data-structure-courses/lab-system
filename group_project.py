@@ -954,6 +954,11 @@ class GroupProject:
 
                 r.get = project
                 self.repo_add_remote()
+
+                # Set up webhooks if configured.
+                if self.course.hooks_enabled:
+                    for spec in self.hook_specs():
+                        gitlab_.tools.hook_create(spec)
             except:  # noqa: E722
                 r.delete()
                 raise
