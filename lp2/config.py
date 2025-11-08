@@ -9,6 +9,7 @@ Search for ACTION to find locations where you need to take action.
 The default lab configuration is as needed for the data structures course cluster.
 """
 
+import dataclasses
 import datetime
 import re
 from pathlib import Path, PurePosixPath
@@ -71,6 +72,18 @@ class Variant(util.enum.EnumSpec[VariantSpec]):
 
 variants: VariantsConfig[Variant]
 variants = VariantsConfig.from_enum_spec(Variant)
+
+
+def variant_branch(branch: str, variant: Variant) -> str:
+    if branch == "problem":
+        return variant.value.branch
+    return branch + "-" + variant.value.branch
+
+
+# Overide branch names.
+# The new default is problem-java/python.
+# But problem branches were called java/python in previous setup.
+variants = dataclasses.replace(variants, branch=variant_branch)
 
 
 # Lab ids
