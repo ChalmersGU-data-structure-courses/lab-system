@@ -1,0 +1,27 @@
+[Unit]
+Description=Event loop service for lab-system in course 2025 LP2 data structures.
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=900s
+KillSignal=SIGINT
+WorkingDirectory=/home/lp2-data-structures/lab-system
+ExecStart=%h/lab-system/run_event_loop.py \
+  --verbose \
+  --dir lp2 \
+  --sync-from-canvas 1 \
+  --sync-from-canvas 2 \
+  --start-with-sync \
+  --sync-period 900 \
+  --error-spreadsheet 1Mx2K4Tl3hgw7cww0cKHFoAP-tNNdXPF2LlhTWa35KeA \
+  --log-file lp2/log \
+  run
+
+# Use this for debugging to disable student sync and error notification spam
+#ExecStart=%h/lab-system/run_event_loop.py --verbose --dir lp2 --log lp2/log run
+
+[Install]
+WantedBy=default.target
