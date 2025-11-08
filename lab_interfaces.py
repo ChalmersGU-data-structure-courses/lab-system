@@ -483,9 +483,9 @@ class VariantsConfig[Variant]:
     name: PrinterParser[Variant, str]
     """Formats a variant as a student-readable string."""
 
-    branch: PrinterParser[tuple[str, Variant], str]
+    branch: Callable[[str, Variant], str]
     """
-    Format a branch and variant as a branch.
+    The branch for a branch kind and variant.
     For example: ("problem", "java") may become "problem-java".
     """
 
@@ -514,15 +514,8 @@ class VariantsConfig[Variant]:
     ) -> "VariantsConfig[StandardVariant]":
         """Smart constuctor for a variant-free lab."""
 
-        class NoVariantsBranchPrinterParser(
-            PrinterParser[tuple[str, StandardVariant], str]
-        ):
-            def print(self, x, /):
-                (y, ()) = x
-                return y
-
-            def parse(self, y, /):
-                return (y, StandardVariant.UNIQUE)
+        def branch(branch: str, _: StandardVariant) -> str:
+            return branch
 
         def source(branch: str, _: StandardVariant) -> Path:
             return Path(branch)
@@ -534,7 +527,7 @@ class VariantsConfig[Variant]:
             name=util.print_parse.Dict(
                 [(StandardVariant.UNIQUE, "<standard variant>")]
             ),
-            branch=NoVariantsBranchPrinterParser(),
+            branch=branch,
             source=source,
             submission_grading_title=util.print_parse.Dict(
                 [(StandardVariant.UNIQUE, submission_grading_title)]
@@ -570,6 +563,9 @@ class VariantsConfig[Variant]:
         )
         branch_part = util.print_parse.Dict((v, s.branch) for v, s in variants.items())
 
+        def branch(branch: str, variant: Variant) -> Path:
+            return branch + "-" + branch_part.print(variant)
+
         def source(branch: str, variant: Variant) -> Path:
             return Path(branch, branch_part.print(variant))
 
@@ -578,10 +574,7 @@ class VariantsConfig[Variant]:
             default=default,
             name=name,
             serialize=branch_part,
-            branch=util.print_parse.compose(
-                util.print_parse.on(util.general.component_tuple(1), branch_part),
-                util.print_parse.regex_many("{}-{}", ["[\\-]*", ".*"]),
-            ),
+            branch=branch,
             source=source,
             submission_grading_title=util.print_parse.compose(
                 name,
@@ -779,13 +772,13 @@ class LabConfig[GroupId, Outcome, Variant]:
     """
 
     def branch_problem(self, variant) -> str:
-        return self.variants.branch.print((self.repository.problem, variant))
+        return self.variants.branch(self.repository.problem, variant)
 
     def branch_submission(self, variant) -> str:
-        return self.variants.branch.print((self.repository.submission, variant))
+        return self.variants.branch(self.repository.submission, variant)
 
     def branch_solution(self, variant) -> str:
-        return self.variants.branch.print((self.repository.solution, variant))
+        return self.variants.branch(self.repository.solution, variant)
 
 
 DefaultLabId = int
