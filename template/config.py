@@ -11,20 +11,37 @@ The default lab configuration is as needed for the data structures course cluste
 
 import datetime
 import re
-from pathlib import PurePosixPath, Path
-import util.print_parse
-import util.enum
-import util.this_dir
+from pathlib import Path, PurePosixPath
+from typing import Callable
 
-import handlers.variants
+import grading_sheet.config
 import handlers.java
 import handlers.python
-
-import testers.podman
+import handlers.variants
 import robograder_java
-import grading_sheet.config
-import lab_interfaces
+import testers.general
+import testers.java
+import testers.podman
+import util.enum
+import util.print_parse
+import util.this_dir
+from lab_interfaces import (
+    CourseConfig,
+    DefaultLabId,
+    DefaultOutcome,
+    GroupSetConfig,
+    LabConfig,
+    LabIdConfig,
+    OutcomesConfig,
+    # OutcomeSpec,
+    # StandardVariant,
+    VariantsConfig,
+    VariantSpec,
+)
 
+
+# Delete this
+# -----------
 
 ACTION_MISSING = None
 
@@ -33,153 +50,177 @@ def ACTION_EXAMPLE(_) -> None:
     return None
 
 
+# Groups
+# ------
+
 GroupId = int
 
-group_set: lab_interfaces.GroupSetConfig[GroupId]
-group_set = lab_interfaces.GroupSetConfig[GroupId](
+group_set: GroupSetConfig[GroupId] = GroupSetConfig[GroupId](
     name=util.print_parse.regex_int("Lab group {}", flags=re.IGNORECASE),
     group_set_name="Lab groups",
 )
 
 
+# Outcomes
+# --------
+
 # Outcome.INCOMPLETE and Outcome.PASS
-Outcome = lab_interfaces.DefaultOutcome
+Outcome = DefaultOutcome
 
 # # Example outcome type with more outcomes.
-# class Outcome(util.enum.EnumSpec[lab_interfaces.OutcomeSpec]):
-#     INCOMPLETE = lab_interfaces.OutcomeSpec.smart(
+# class Outcome(util.enum.EnumSpec[OutcomeSpec]):
+#     INCOMPLETE = OutcomeSpec.smart(
 #         name="incomplete",
 #         color="red",
 #         as_cell=0,
 #     )
-#     PASS = lab_interfaces.OutcomeSpec.smart(
+#     PASS = OutcomeSpec.smart(
 #         name="pass",
 #         color="green",
 #         as_cell=1,
 #     )
-#     PASS_WITH_DISTINCTION = lab_interfaces.OutcomeSpec.smart(
+#     PASS_WITH_DISTINCTION = OutcomeSpec.smart(
 #         name="distinction",
 #         color="blue",
 #         as_cell=2,
 #     )
 
 
-outcomes: lab_interfaces.OutcomesConfig[Outcome]
-outcomes = lab_interfaces.OutcomesConfig.from_enum_spec(Outcome)
+outcomes: OutcomesConfig[Outcome] = OutcomesConfig.from_enum_spec(Outcome)
 
 
-class Variant(util.enum.EnumSpec[lab_interfaces.VariantSpec]):
-    JAVA = lab_interfaces.VariantSpec(name="Java", branch="java")
-    PYTHON = lab_interfaces.VariantSpec(name="Python", branch="python")
+# Variants
+# --------
+
+# Variant = StandardVariant
+
+# variants: VariantsConfig[Variant] = VariantsConfig.no_variants()
 
 
-variants: lab_interfaces.VariantsConfig[Variant]
-variants = lab_interfaces.VariantsConfig.from_enum_spec(Variant)
+class Variant(util.enum.EnumSpec[VariantSpec]):
+    JAVA = VariantSpec(name="Java", branch="java")
+    PYTHON = VariantSpec(name="Python", branch="python")
 
 
-gitlab_path = (
-    PurePosixPath() / "courses" / ACTION_EXAMPLE("data-structures") / ACTION_EXAMPLE("lp2") / ACTION_EXAMPLE("2025")
-)
+variants: VariantsConfig[Variant] = VariantsConfig.from_enum_spec(Variant)
 
 
-LabId = lab_interfaces.DefaultLabId
+# Lab ids
+# -------
+
+LabId = DefaultLabId
+
+lab_id = LabIdConfig()
+
+
+# Labs
+# ----
 
 
 def ACTION_EXAMPLE_lab_item(
+    id: LabId,
     folder: Path,
     group: bool,
     robo: bool,
     grader_instead_of_tester: bool,
     refresh_minutes: int,
-) -> lab_interfaces.LabConfig:
-    path = util.this_dir.this_dir.parent / "labs" / "labs" / folder
+) -> tuple[LabId, LabConfig]:
+    def submission_handler(v: Variant) -> type[handlers.general.SubmissionHandler]:
+        match v:
+            case Variant.JAVA:
+                return handlers.java.SubmissionHandler
+            case Variant.PYTHON:
+                return handlers.python.SubmissionHandler
 
-    def java_params():
-        yield ("dir_problem", Path() / "problem" / "java")
+    def robograding_handler(v: Variant) -> type[handlers.general.RobogradingHandler]:
+        if v == Variant.JAVA and grader_instead_of_tester:
+            return handlers.java.RobogradingHandler
+        return handlers.general.GenericTestingHandler
+
+    def tester_factory(v: Variant) -> Callable[..., testers.general.LabTester]:
+        match v:
+            case Variant.JAVA:
+                return testers.java.LabTester.factory
+            case Variant.PYTHON:
+                return testers.podman.LabTester.factory
+
+    def params(v: Variant):
         if robo:
-            yield ("machine_speed", 1)
-            if grader_instead_of_tester:
+            if v == Variant.JAVA and grader_instead_of_tester:
                 yield ("robograder_factory", robograder_java.factory)
-                yield ("dir_robograder", Path() / "robograder" / "java")
+                yield ("dir_robograder", variants.source("robograder", v))
             else:
-                yield ("tester_factory", testers.java.LabTester.factory)
-                yield ("dir_tester", Path() / "robotester" / "java")
-
-    def python_params():
-        if robo:
-            yield ("tester_factory", testers.podman.LabTester.factory)
-            yield ("dir_tester", Path() / "robotester" / "python")
+                yield ("tester_factory", tester_factory(v))
+                yield ("dir_tester", variants.source("robotester", v))
             yield ("machine_speed", 1)
 
-    def request_handlers():
-        def shared_columns():
-            if robo:
-                yield "robograding"
+        if v == Variant.JAVA:
+            yield ("dir_problem", Path() / "problem" / "java")
 
-        yield (
-            "submission",
-            handlers.variants.SubmissionHandler(
-                sub_handlers={
-                    Variant.JAVA: handlers.java.SubmissionHandler(
-                        **dict(java_params())
-                    ),
-                    Variant.PYTHON: handlers.python.SubmissionHandler(
-                        **dict(python_params())
-                    ),
-                },
-                shared_columns=list(shared_columns()),
-                show_solution=True,
-            ),
+    def sub_handlers(f):
+        return {v: f(v)(**dict(params(v))) for v in variants.variants}
+
+    request_handlers = {}
+    shared_columns = []
+    if robo:
+        shared_columns.append("robograding")
+        request_handlers["robograding"] = handlers.variants.RobogradingHandler(
+            sub_handlers=sub_handlers(robograding_handler),
         )
+    request_handlers["submission"] = handlers.variants.SubmissionHandler(
+        sub_handlers=sub_handlers(submission_handler),
+        shared_columns=shared_columns,
+        show_solution=True,
+    )
 
-        if robo:
-            yield (
-                "robograding",
-                handlers.variants.RobogradingHandler(
-                    sub_handlers={
-                        Variant.JAVA: (
-                            handlers.java.RobogradingHandler
-                            if grader_instead_of_tester
-                            else handlers.general.GenericTestingHandler
-                        )(**dict(java_params())),
-                        Variant.PYTHON: handlers.general.GenericTestingHandler(
-                            **dict(python_params())
-                        ),
-                    }
-                ),
-            )
-
-    return lab_interfaces.LabConfig(
+    path = util.this_dir.this_dir.parent / "labs" / "labs" / folder
+    name_semantic = (path / "name").read_text().strip()
+    lab_config = LabConfig(
         path_source=path,
-        name_semantic=(path / "name").read_text().strip(),
+        name_semantic=name_semantic,
         group_set=group_set if group else None,
         outcomes=outcomes,
         variants=variants,
         has_solution=True,
-        request_handlers=dict(request_handlers()),
+        request_handlers=request_handlers,
         refresh_period=datetime.timedelta(minutes=refresh_minutes),
+        canvas_assignment_name=f"{lab_id.name.print(id)}: {name_semantic}",
     )
+    return (id, lab_config)
 
 
-# fmt: off
-labs: dict[LabId, lab_interfaces.LabConfig]
-labs = {
-    1: ACTION_EXAMPLE_lab_item(Path("binary-search"       ), False, True, True , 15),
-    2: ACTION_EXAMPLE_lab_item(Path("indexing"            ), False, True, False, 15),
-    3: ACTION_EXAMPLE_lab_item(Path("plagiarism-detection"), False, True, False, 15),
-    4: ACTION_EXAMPLE_lab_item(Path("path-finder"         ), False, True, True , 15),
-}
-# fmt: on
+labs: list[tuple[LabId, LabConfig]] = [
+    # fmt: off
+    #                       id folder                        group  robo   grad.. refresh_minutes
+    ACTION_EXAMPLE_lab_item(1, Path("binary-search"       ), False, True , True , 15),
+    ACTION_EXAMPLE_lab_item(2, Path("indexing"            ), False, True , False, 15),
+    ACTION_EXAMPLE_lab_item(3, Path("plagiarism-detection"), False, True , False, 15),
+    ACTION_EXAMPLE_lab_item(4, Path("path-finder"         ), False, True , True , 15),
+    # fmt: on
+]
 
-course: lab_interfaces.CourseConfig
-course = lab_interfaces.CourseConfig(
+
+# Course
+# ------
+
+gitlab_path = (
+    PurePosixPath()
+    / "courses"
+    / ACTION_EXAMPLE("data-structures")
+    / ACTION_EXAMPLE("lp2")
+    / ACTION_EXAMPLE("2025")
+)
+
+course: CourseConfig
+course = CourseConfig(
     canvas_domain=ACTION_EXAMPLE("chalmers.instructure.com"),
     canvas_course_id=ACTION_EXAMPLE(12345),
     canvas_grading_path=PurePosixPath() / "lab-grading",  # ACTION: create on Canvas
     gitlab_path=gitlab_path,
     gitlab_path_graders=gitlab_path / "graders",
     grading_spreadsheet=grading_sheet.config.ConfigExternal(spreadsheet=ACTION_MISSING),
-    labs=labs,
+    lab_id=lab_id,
+    labs=dict(labs),
     chalmers_id_to_gitlab_username_override=ACTION_EXAMPLE(
         {
             "peb": "peter.ljunglof",
