@@ -107,7 +107,7 @@ class Course[LabId]:
         self,
         config: lab_interfaces.CourseConfig,
         auth: lab_interfaces.CourseAuth,
-        dir: Path | None = None,
+        dir: Path,
         *,
         logger=logging.getLogger(__name__),
     ):
@@ -115,15 +115,16 @@ class Course[LabId]:
         Arguments:
         * config: Course configuration.
         * auth: Authentication secrets.
-        * dir: Local directory used by the Course and Lab objects for storing information.
-               Each local lab repository will be created as a subdirectory with full id as name (e.g. lab-3).
-               Only needed by certain methods that depend on state not recorded on Canvas or GitLab.
-               If given, should exist on filesystem.
+        * dir:
+            Local directory used by the Course and Lab objects for storing information.
+            Each local lab repository will be created as a subdirectory.
         """
         self.logger = logger
         self.config = config
         self.auth = auth
+
         self.dir = dir
+        self.dir.mkdir(exist_ok=True)
 
         self.exit_stack = contextlib.ExitStack()
         self.ssh_multiplexer = None
@@ -133,15 +134,12 @@ class Course[LabId]:
         # pylint: disable-next=import-outside-toplevel
         import lab
 
-        def lab_dir(lab_id):
-            if self.dir is None:
-                return None
-
-            print(self.dir / self.config.lab_id.full_id.print(lab_id))
-            return self.dir / self.config.lab_id.full_id.print(lab_id)
-
         self.labs = {
-            lab_id: lab.Lab(self, lab_id, dir=lab_dir(lab_id))
+            lab_id: lab.Lab(
+                self,
+                lab_id,
+                dir=self.dir / self.config.lab_id.full_id.print(lab_id),
+            )
             for lab_id in self.config.labs
         }
 
