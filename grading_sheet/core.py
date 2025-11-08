@@ -886,9 +886,10 @@ class GradingSheet[LabId, GroupId, Outcome]:
             (_, mask) = google_tools.sheets.cell_data_from_value(str(), str())
 
             def group_cell_data(id):
-                return google_tools.sheets.cell_data_from_value(
+                (value, _) = google_tools.sheets.cell_data_from_value(
                     self.config.gdpr_coding.identifier.print(id)
                 )
+                return value
 
             yield google_tools.sheets.request_update_cells(
                 [[group_cell_data(id)] for id in new_ids],
