@@ -476,12 +476,12 @@ class Course[LabId]:
     # HACK
     def rectify_cid_to_gitlab_username(self, cid):
         keys = self.gitlab_users_cache.id_from_username.keys()
-        if cid in keys:
-            return cid
-
         weird = cid + "1"
         if weird in keys:
             return weird
+
+        if cid in keys:
+            return cid
 
         return cid
 
