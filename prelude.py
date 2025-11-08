@@ -1,36 +1,44 @@
-import logging
+# ACTION to get started:
+# * See README.md for general information.
+# * Instantiate template/secrets.toml as secrets.toml.
+# * Replace <course code> by sensible folder name.
+# * Instantiate template/config.py as <course code>/config.py.
+# * If you want to use systemd to run the event loop:
+#   - Instantiate template/lab-system.service as <course code>/lab-system.service.
+#   - Create a symlink to this in e.g. ~/.local/share/systemd/user.
 
-# pylint: disable-next=unused-import
-import course
+import logging
+from pathlib import Path
+
+# pylint: disable=unused-import
+from course import Course
+from lab_interfaces import CourseAuth
 
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 
-# ACTION to get started:
-# * See README.md for general information.
-# * Replace <course code> by sensible folder name.
-# * Instantiate gitlab_config.py.template as <course code>/config.py.
-# * If you want to use systemd to run the event loop:
-#   Instantiate systemd_unit_file.service.template as e.g. <course code>/lab-system.service.
+auth = CourseAuth.from_secrets(Path("secrets.toml"))
+
 
 # ACION: instantiate and uncomment below statements for concrete instance.
-# import <course code>.config as config
+# pylint: disable=wrong-import-position
+# from <course code>.config import course as config
 
-# print('Defined variables:')
+print("Defined variables:")
 
-# c = course.Course(config, '<course code>')
+# c = Course(config, '<course code>')
 # print(f"  c: Course <{c.dir}>")
 
 # l = c.labs[1]
 # print(f"  l: Lab <{l.name}>")
 
-# How to deploy a new lab:
+# How to deploy a lab in the data structure course cluster:
 # 1. Make sure repository ~/labs is up to date.
-# 2. Run `make problem solution` in the labs repository.
-# 3  Uncomment lab configuration in the config file lp2/config.py
-# 4. Deploy the lab l: l.deploy()
-# 5. To start from scratch: l.gitlab_group.delete() and l.repo_delete()
+# 2. Run `make problem solution robotester-python` in the labs repository.
+# 3. Uncomment lab configuration in the config file <course-code>/config.py
+# 4. Deploy the lab l: l.deploy_via_lab_sources_and_canvas()
+# 5. To start from scratch: l.remove(force=True)
 
 # How to interact with the event loop:
 # * Unit files are here:
@@ -41,18 +49,15 @@ logging.getLogger().setLevel(logging.INFO)
 #     systemctl --user start/stop/restart/status
 # * Event loop log:
 #     info level: journalctl --user-unit lab-system
-#     debug level: ~/lab-system/lp2/log/
+#     debug level: ~/lab-system/<course-code>/log/
 
 # How to hotfix labs that are already shared with the students:
 # 1. Call Lab.update_groups_problem to fast-forward the protected problem branches in the student groups.
 # 2. Call Lab.merge_groups_problem_into_main to hotfix main branch in student projects.
 
 # Manual syncing of students from Canvas:
-# l.sync_students_to_gitlab(add = True, remove = True)
+# l.sync_students_to_gitlab(add=True, remove=True)
 
 # Manual processing of submissions:
 # l.setup()
-# l.repo_fetch_all()
-# l.parse_request_tags(from_gitlab = False)
-# l.parse_requests_and_responses(from_gitlab = False)
-# l.process_requests()
+# l.initial_run()
