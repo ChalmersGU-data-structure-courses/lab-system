@@ -380,15 +380,15 @@ class SubmissionTesting:
                         if self.lab.config.has_solution:
                             with dominate.tags.p():
                                 group_solution = self.lab.groups[self_outer.solution]
-                                if self.lab.config.multi_variant is None:
+                                if self.lab.config.variants:
+                                    # TODO: remove hard-coding.
+                                    submission_solution = group_solution.submission_handler_data.requests_and_responses[
+                                        f"submission-{self.lab.config.branch_solution(submission_current.variant)}"
+                                    ]
+                                else:
                                     submission_solution = (
                                         group_solution.submission_current()
                                     )
-                                else:
-                                    # TODO: remove hard-coding.
-                                    submission_solution = group_solution.submission_handler_data.requests_and_responses[
-                                        f"submission-solution-{submission_current.variant}"
-                                    ]
 
                                 live_submissions_table.format_url(
                                     "vs. solution",
