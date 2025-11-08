@@ -194,7 +194,7 @@ course = CourseConfig(
     gitlab_path=gitlab_path,
     gitlab_path_graders=gitlab_path / "graders",
     grading_spreadsheet=grading_sheet.config.ConfigExternal(
-        spreadsheet="1Jb5GZVQvGnvK0rgilzpVBcD0f6fgXrmC-23-ulOJ-QE"
+        spreadsheet="1fk1QRHMcvuJY93G0oOD1i9f1XQg6GQEEE7pwUwDX0nI"
     ),
     initials_sort_by_first_name=True,
     lab_id=lab_id,
