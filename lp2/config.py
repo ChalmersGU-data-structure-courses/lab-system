@@ -202,6 +202,7 @@ course = CourseConfig(
     chalmers_id_to_gitlab_username_override=(
         {
             "peb": "peter.ljunglof",
+            "andrze": "andrze1",
         }
     ),
     webhook_netloc_listen=util.url.NetLoc(port=4218),
