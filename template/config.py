@@ -85,7 +85,6 @@ Outcome = DefaultOutcome
 #         as_cell=2,
 #     )
 
-
 outcomes: OutcomesConfig[Outcome] = OutcomesConfig.from_enum_spec(Outcome)
 
 
@@ -227,4 +226,6 @@ course = CourseConfig(
             "e9linda": "linda.erlenhov",
         }
     ),
+    # ACTION: choose a unique port of the form 42??
+    webhook_netloc_listen=util.url.NetLoc(port=ACTION_EXAMPLE(4253)),
 )
