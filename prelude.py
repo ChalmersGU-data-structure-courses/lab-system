@@ -27,7 +27,7 @@ auth = CourseAuth.from_secrets(Path("secrets.toml"))
 
 print("Defined variables:")
 
-# c = Course(config, '<course code>')
+# c = Course(auth=auth, config=config, dir=Path("<course code>"))
 # print(f"  c: Course <{c.dir}>")
 
 # l = c.labs[1]
@@ -36,7 +36,7 @@ print("Defined variables:")
 # How to deploy a lab in the data structure course cluster:
 # 1. Make sure repository ~/labs is up to date.
 # 2. Run `make problem solution robotester-python` in the labs repository.
-# 3. Uncomment lab configuration in the config file <course-code>/config.py
+# 3. Uncomment lab configuration in the config file <course code>/config.py
 # 4. Deploy the lab l: l.deploy_via_lab_sources_and_canvas()
 # 5. To start from scratch: l.remove(force=True)
 
@@ -49,7 +49,7 @@ print("Defined variables:")
 #     systemctl --user start/stop/restart/status
 # * Event loop log:
 #     info level: journalctl --user-unit lab-system
-#     debug level: ~/lab-system/<course-code>/log/
+#     debug level: ~/lab-system/<course code>/log/
 
 # How to hotfix labs that are already shared with the students:
 # 1. Call Lab.update_groups_problem to fast-forward the protected problem branches in the student groups.
