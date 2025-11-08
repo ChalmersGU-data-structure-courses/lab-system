@@ -505,7 +505,7 @@ class VariantsConfig[Variant]:
 
     def __bool__(self) -> bool:
         """Checks whether variants are configured."""
-        return not self.variants != set(StandardVariant)
+        return not self.variants == set(StandardVariant)
 
     @classmethod
     def no_variants(
