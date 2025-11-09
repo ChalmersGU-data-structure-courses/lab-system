@@ -73,8 +73,7 @@ def lab_item(
         outcomes=outcomes,
         request_handlers={"submission": handlers.general.SubmissionHandlerStub()},
         refresh_period=datetime.timedelta(minutes=refresh_minutes),
-        # ACTION: create Canvas assignments and then activate:
-        # canvas_assignment_name=f"{lab_id.name.print(id)}: {name}",
+        canvas_assignment_name=f"{lab_id.name.print(id)}: {name}",
     )
     return (id, lab_config)
 
