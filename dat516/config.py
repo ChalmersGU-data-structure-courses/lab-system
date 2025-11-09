@@ -97,7 +97,7 @@ course: CourseConfig
 course = CourseConfig(
     canvas_domain="chalmers.instructure.com",
     canvas_course_id=36887,
-    canvas_grading_path=PurePosixPath() / "lab-grading",
+    canvas_grading_path=PurePosixPath() / "lab-system",
     gitlab_path=gitlab_path,
     gitlab_path_graders=gitlab_path / "graders",
     grading_spreadsheet=grading_sheet.config.ConfigExternal(
