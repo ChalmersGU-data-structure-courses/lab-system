@@ -37,10 +37,7 @@ class SetupData:
     # TODO: remove hard-coding
     @functools.cached_property
     def source_branch(self):
-        if self.variant is None:
-            return "submission"
-
-        return f"submission-{self.variant}"
+        return self.lab.config.branch_submission(self.variant)
 
     @functools.cached_property
     def target_branch(self):
