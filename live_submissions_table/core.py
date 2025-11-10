@@ -580,7 +580,7 @@ class SubmissionDiffSolutionColumn(SubmissionDiffColumn):
                 submission_solution = self.lab.groups[
                     "solution"
                 ].submission_handler_data.requests_and_responses[
-                    f"submission-solution-{submission_current.variant}"
+                    f"submission-{self.lab.config.branch_solution(submission_current.variant)}"
                 ]
                 return ("solution", submission_solution.repo_tag(), None)
             except (KeyError, AttributeError) as e:
