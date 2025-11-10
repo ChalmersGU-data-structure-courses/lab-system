@@ -212,7 +212,8 @@ def compile_unknown(
     src_files = get_src_files(src, src_files)
     if not src_files:
         logger.debug("No source files to compile.")
-        return True if check else (True, "no source files to compile")
+        msg = "no source files to compile"
+        return msg if check else (True, msg)
 
     if detect_encoding:
         encoding = util.chardet.detect_encoding(src_files)
