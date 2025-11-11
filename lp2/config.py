@@ -201,7 +201,7 @@ course = CourseConfig(
     labs=dict(labs),
     chalmers_id_to_gitlab_username_override=(
         {
-            "peb": "peter.ljunglof",
+            "peb": "Peter.Ljunglof",
             "andrze": "andrze1",
         }
     ),
