@@ -352,6 +352,9 @@ class DefaultOutcome(util.enum.EnumSpec[OutcomeSpec]):
         canvas_grade=1,
     )
 
+    def __str__(self) -> str:
+        raise RuntimeError("attempted to convert outcome to string - possible bug?")
+
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class OutcomesConfig[Outcome]:
@@ -438,6 +441,9 @@ class StandardVariant(enum.Enum):
     """Variant type for a lab without variants."""
 
     UNIQUE = enum.auto()
+
+    def __str__(self) -> str:
+        raise RuntimeError("attempted to convert variant to string - possible bug?")
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
