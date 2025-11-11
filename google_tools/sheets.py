@@ -1,5 +1,6 @@
 import collections
 import contextlib
+import datetime
 import enum
 import functools
 import json
@@ -291,11 +292,11 @@ def extended_value_string(s):
 
 
 def extended_value_number_or_string(x):
-    if isinstance(x, int):
+    if isinstance(x, int | float):
         return extended_value_number(x)
     if isinstance(x, str):
         return extended_value_string(x)
-    raise TypeError(f"{x} is neither an integer nor a string")
+    raise TypeError(f"{x} is neither a number nor a string")
 
 
 def extended_value_formula(s):
@@ -305,8 +306,8 @@ def extended_value_formula(s):
 def extended_value_extract_primitive(v):
     n = v.get("numberValue")
     if n is not None:
-        if not isinstance(n, int):
-            raise ValueError(f"Not an integer: {n}")
+        if not isinstance(n, int | float):
+            raise ValueError(f"Not an number: {n}")
         return n
 
     s = v.get("stringValue")
@@ -347,7 +348,7 @@ def request_update_cell_value_with_link(
     sheet_id: str,
     row: int,
     column: int,
-    value: str | int,
+    value: str | int | float,
     link: str | None = None,
 ) -> Request:
     """
@@ -476,7 +477,10 @@ cell_value_empty = {
 }
 
 
-def cell_data_from_value(value: int | str, link: str | None = None) -> MaskedValue:
+def cell_data_from_value(
+    value: str | int | float,
+    link: str | None = None,
+) -> MaskedValue:
     """
     Specialization of cell_data.
     Produces a masked value for the API type CellData.
@@ -718,3 +722,16 @@ rect_to_a1 = pp.compose(
     pp.over_tuple(a1_notation),
     pp.regex_many("{}:{}", ("[^:]*", "[^:]*"), flags=re.ASCII),
 )
+
+epoch = datetime.datetime(year=1899, month=12, day=30)
+
+
+def datetime_value(date: datetime.datetime) -> float:
+    """
+    Format a date as required by Google spreadsheets.
+
+    Warning:
+    Dates in Google spreadsheets do not contain time zone information.
+    For given timezone with summer DST, this function is non-monotonic.
+    """
+    return (date.replace(tzinfo=None) - epoch) / datetime.timedelta(days=1)
