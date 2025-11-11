@@ -785,7 +785,7 @@ class Assignment:
 
     def get_grades(self) -> dict[int, Grade]:
         """Returns a dictionary from student user ids to grades."""
-        submissions = self.canvas.get(
+        submissions = self.canvas.get_list(
             [*self.endpoint, "submissions"],
             use_cache=False,
         )
