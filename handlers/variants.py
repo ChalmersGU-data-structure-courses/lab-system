@@ -13,8 +13,8 @@ class LanguageColumn(live_submissions_table.Column):
 
     def get_value(self, group):
         submission = group.submission_current(deadline=self.config.deadline)
-        variant = submission.handled_result.get("variant", "")
-        return live_submissions_table.StandardColumnValue(variant)
+        variant_name = self.lab.config.variants.name.print(submission.variant)
+        return live_submissions_table.StandardColumnValue(variant_name)
 
 
 def wrap_column_types(column_types):
@@ -43,9 +43,8 @@ def wrap_column_types(column_types):
 
         def get_value(self, group):
             submission = group.submission_current(deadline=self.config.deadline)
-            variant = submission.handled_result.get("variant")
             try:
-                column = self.columns[variant]
+                column = self.columns[submission.variant]
             except KeyError:
                 return live_submissions_table.StandardColumnValue()
 
