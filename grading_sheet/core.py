@@ -3,14 +3,16 @@ import bisect
 import collections
 import contextlib
 import dataclasses
+import datetime
 import functools
 import itertools
 import logging
 from collections.abc import Mapping, Sequence
 from logging import Logger
-from typing import Callable, Iterator
+from typing import Callable
 
 import google.auth.credentials
+import more_itertools
 
 import google_tools.general
 import google_tools.sheets
@@ -76,9 +78,20 @@ class QueryHeaders(QueryDataclassSingleType[str]):
     def __init__(self, config: HeaderConfig, query_index: int):
         super().__init__(
             submission=config.submission.print(query_index),
-            grader=config.grader,
-            score=config.score,
+            grader=config.grader.print(()),
+            score=config.score.print(()),
         )
+
+
+@dataclasses.dataclass
+class Columns:
+    """The columns of a grading sheet."""
+
+    group: int | None = None
+    last_submission_date: int | None = None
+    query_column_groups: list[QueryColumnGroup] = dataclasses.field(
+        default_factory=lambda: []
+    )
 
 
 class Query[LabId, GroupId, Outcome]:
@@ -121,7 +134,7 @@ class Query[LabId, GroupId, Outcome]:
 
     @property
     def query_column_group(self) -> QueryColumnGroup:
-        return self.grading_sheet.data.query_column_groups[self.query_index]
+        return self.grading_sheet.data.columns.query_column_groups[self.query_index]
 
     @property
     def group_row(self) -> int:
@@ -312,7 +325,7 @@ class GradingSheetData[LabId, GroupId, Outcome]:
             for row in range(self.sheet_data.num_rows):
                 if not row in self.ignored_rows:
                     value = self._parse_user_string(row, self.group_column)
-                    if value == self.config.header.group:
+                    if _attempt_parse(self.config.header.group, value) is not None:
                         yield row
 
         try:
@@ -324,82 +337,121 @@ class GradingSheetData[LabId, GroupId, Outcome]:
                 f" {google_tools.sheets.numeral_unbounded.print(self.group_column)}"
             ) from None
 
-    def _parse_query_columns(
-        self,
-        row,
-        columns: Iterator[int],
-    ) -> Iterable[QueryColumnGroup]:
-        def throw(column, found, expected):
+    def _parse_columns(self, row) -> Columns:
+        def throw(column: int, found: str | None, expected: str):
+            header_str = "header" if found is None else f"header {found}"
             raise SheetParseException(
-                f"unexpected query header {found}"
+                f"unexpected query header {header_str}"
                 f" in cell {google_tools.sheets.a1_notation.print((row, column))},"
                 f" expected {expected}"
             )
 
-        def consume(expected: str) -> int:
+        r = Columns()
+        columns = more_itertools.peekable(range(self.sheet_data.num_columns))
+
+        def consume(pp: PrinterParser[tuple[()], str]) -> int:
             try:
-                column = next(columns)
+                col = next(columns)
             except StopIteration:
+                row_str = google_tools.sheets.a1_notation.print((row, None))
                 raise SheetParseException(
-                    f"expected header {expected} at end of"
-                    f" row {google_tools.sheets.a1_notation.print((row, None))}"
+                    f"expected header {pp.print(())} at end of row {row_str}"
                 ) from None
+            value = self._parse_user_string(row, col)
+            if value is None or pp.parse(value) is None:
+                throw(col, value, pp.print(()))
+            return col
 
-            value = self._parse_user_string(row, column)
-            if not value == expected:
-                throw(column, value, expected)
+        @dataclasses.dataclass
+        class UniqueHeader[X]:
+            description: str
+            field: str
+            pp: PrinterParser[X, str]
+            required: bool
 
-            return column
+        unique_headers = [
+            UniqueHeader(
+                "group",
+                "group",
+                self.config.header.group,
+                True,
+            ),
+            UniqueHeader(
+                "last submission date",
+                "last_submission_date",
+                self.config.header.last_submission_date,
+                False,
+            ),
+        ]
 
-        def parse_query(index) -> int | None:
-            while True:
-                try:
-                    column_submission = next(columns)
-                except StopIteration:
-                    return None
-                value = self._parse_user_string(row, column_submission)
-                if value is None:
-                    continue
-                index_parsed = _attempt_parse(self.config.header.submission, value)
-                if index_parsed is None:
-                    continue
-                if not index_parsed == index:
-                    throw(
-                        column_submission,
-                        value,
-                        self.config.header.submission.print(index),
-                    )
-                return column_submission
+        def parse_unique_header(h: UniqueHeader) -> int | None:
+            col = columns.peek()
+            value = self._parse_user_string(row, col)
+            if value is None or _attempt_parse(h.pp, value) is None:
+                return False
+            if not getattr(r, h.field) is None:
+                cell_str = google_tools.sheets.a1_notation.print((row, col))
+                raise SheetParseException(
+                    f"duplicate {h.description} header {value} in {cell_str}"
+                )
+            setattr(r, h.field, next(columns))
+            return True
 
-        found = False
-        for index in itertools.count():
-            column_submission = parse_query(index)
-            if column_submission is None:
+        def parse_query_column_group() -> bool:
+            col = columns.peek()
+            value = self._parse_user_string(row, col)
+            if value is None:
+                return False
+            index_parsed = _attempt_parse(self.config.header.submission, value)
+            if index_parsed is None:
+                return False
+            index_wanted = len(r.query_column_groups)
+            if not index_parsed == index_wanted:
+                submission_str = self.config.header.submission.print(index_wanted)
+                throw(col, value, submission_str)
+            result = QueryColumnGroup(
+                submission=next(columns),
+                grader=consume(self.config.header.grader),
+                score=consume(self.config.header.score),
+            )
+            r.query_column_groups.append(result)
+            return True
+
+        def parse_item() -> bool:
+            for h in unique_headers:
+                if parse_unique_header(h):
+                    return True
+            if parse_query_column_group():
+                return True
+            return False
+
+        while True:
+            try:
+                x = columns.peek()
+            except StopIteration:
                 break
 
-            column_grader = consume(self.config.header.grader)
-            column_score = consume(self.config.header.score)
-            yield QueryColumnGroup(
-                submission=column_submission,
-                grader=column_grader,
-                score=column_score,
-            )
-            found = True
+            if not parse_item():
+                col = next(columns)
+                cell_str = google_tools.sheets.a1_notation.print((row, col))
+                value = self._parse_user_string(row, col)
+                value_str = "header" if value is None else f"header {value}"
+                self.grading_sheet.logger.debug(
+                    f"Ignoring header {value_str} in {cell_str}"
+                )
 
-        if not found:
+        for h in unique_headers:
+            if h.required and getattr(r, h.field) is None:
+                raise SheetParseException(f"no {h.description} header found")
+        if not r.query_column_groups:
             raise SheetParseException(
                 "no query column groups found, expected at least one"
             )
+        return r
 
     @functools.cached_property
-    def query_column_groups(self) -> list[QueryColumnGroup]:
-        """The indices of query group columns."""
-        return list(
-            self._parse_query_columns(
-                self.header_row,
-                iter(range(self.group_column + 1, self.sheet_data.num_columns)),
-            )
-        )
+    def columns(self) -> Columns:
+        return self._parse_columns(self.header_row)
 
     @functools.cached_property
     def num_queries(self) -> int:
@@ -407,7 +459,7 @@ class GradingSheetData[LabId, GroupId, Outcome]:
         The number of query column groups.
         The worksheet contains space for that many submissions per group.
         """
-        return len(self.query_column_groups)
+        return len(self.columns.query_column_groups)
 
     @functools.cached_property
     def group_rows(self) -> dict[GroupId, int]:
@@ -420,7 +472,7 @@ class GradingSheetData[LabId, GroupId, Outcome]:
         def f():
             for row in range(self.header_row + 1, self.sheet_data.num_rows):
                 if not row in self.ignored_rows:
-                    value = self._parse_user_string(row, self.group_column)
+                    value = self._parse_user_string(row, self.columns.group)
                     if value is None:
                         continue
 
@@ -444,11 +496,16 @@ class GradingSheetData[LabId, GroupId, Outcome]:
         Returns an iterable of the relevant column indices.
         Relevant means it has meaning to this module.
         """
-        yield self.group_column
-        for query_column_group in self.query_column_groups:
-            yield query_column_group.submission
-            yield query_column_group.grader
-            yield query_column_group.score
+
+        def cols():
+            yield self.columns.group
+            yield self.columns.last_submission_date
+            for query_column_group in self.columns.query_column_groups:
+                yield query_column_group.submission
+                yield query_column_group.grader
+                yield query_column_group.score
+
+        return filter(lambda col: col is not None, cols())
 
     def is_row_non_empty(self, row: int) -> bool:
         """
@@ -647,7 +704,7 @@ class GradingSheet[LabId, GroupId, Outcome]:
         self,
         row: int,
         column: int,
-        value: str | int,
+        value: str | int | float,
         link: str | None = None,
         force: bool = False,
     ) -> Iterable[google_tools.general.Request]:
@@ -696,6 +753,24 @@ class GradingSheet[LabId, GroupId, Outcome]:
             mask,
         )
 
+    def request_write_last_submission_date(
+        self,
+        group_id: GroupId,
+        date: datetime.datetime,
+    ) -> Iterable[google_tools.general.Request]:
+        """
+        Iterable of requests for writing the last submission date field for a specified group.
+        Warning: the time zone of the given date is ignored.
+        (Google spreadsheets is unable to handle time zones in date values.)
+        """
+        assert self.data.columns.last_submission_date is not None
+        yield from self.requests_write_cell(
+            self.data.group_rows[group_id],
+            self.data.columns.last_submission_date,
+            google_tools.sheets.datetime_value(date),
+            force=True,
+        )
+
     def query(
         self,
         group_id: GroupId,
@@ -718,10 +793,10 @@ class GradingSheet[LabId, GroupId, Outcome]:
         Therefore, call self.data_clear() before generating more requests.
         """
         self.logger.debug("adding query column group...")
-        column_group = self.data.query_column_groups[-1]
+        column_group = self.data.columns.query_column_groups[-1]
         headers = QueryHeaders(
             self.config.header,
-            len(self.data.query_column_groups),
+            len(self.data.columns.query_column_groups),
         )
         offset = util.general.len_range(util.general.range_of_strict(column_group))
 
@@ -770,7 +845,7 @@ class GradingSheet[LabId, GroupId, Outcome]:
 
     def ensure_num_queries(self, num_queries: int):
         """Ensure that the grading sheet has sufficient number of query column groups."""
-        while len(self.data.query_column_groups) < num_queries:
+        while self.data.num_queries < num_queries:
             self.add_query_column_group()
 
     def requests_delete_groups(self) -> Iterable[google_tools.general.Request]:
@@ -877,7 +952,7 @@ class GradingSheet[LabId, GroupId, Outcome]:
             )
             ranges = (
                 range_,
-                util.general.range_singleton(self.data.group_column),
+                util.general.range_singleton(self.data.columns.group),
             )
             grid_range = google_tools.sheets.grid_range(
                 self.data.sheet_properties.sheetId,
@@ -1073,7 +1148,10 @@ class GradingSheet[LabId, GroupId, Outcome]:
             # Insert new groups.
             if group_ids is not None:
                 requests.extend(
-                    self.requests_insert_groups(group_ids, group_link=group_link)
+                    self.requests_insert_groups(
+                        group_ids,
+                        group_link=group_link,
+                    )
                 )
 
             # Execute requests.
