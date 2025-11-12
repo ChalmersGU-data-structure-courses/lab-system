@@ -81,7 +81,16 @@ class GradingSheetLabUpdateListener[LabId, GroupId](
         def requests() -> Iterable[google_tools.general.Request]:
             # Update the grading sheet.
             for group in groups:
-                for query, submission in enumerate(group.submissions_relevant()):
+                submissions = list(group.submissions_relevant())
+                if self.sheet.data.columns.last_submission_date is not None:
+                    if submissions:
+                        date = submissions[-1].date
+                        yield from self.sheet.request_write_last_submission_date(
+                            group.id,
+                            date.astimezone(self.course.config.time.zone),
+                        )
+
+                for query, submission in enumerate(submissions):
                     q = self.sheet.query(group.id, query)
                     yield from q.requests_write_submission(
                         submission.request_name,

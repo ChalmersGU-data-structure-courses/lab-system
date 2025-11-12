@@ -1255,7 +1255,7 @@ class Lab[LabId, GroupId, Variant]:
             else group_ids
         )
 
-    def initial_run(self, deadline=None):
+    def initial_run(self, deadline=None, quick: bool = False):
         """
         Does an initial run of processing everything.
         Assumes that setup has already occurred.
@@ -1268,7 +1268,8 @@ class Lab[LabId, GroupId, Variant]:
             self.parse_response_issues()
             if self.config.grading_via_merge_request:
                 stack.enter_context(self.parse_grading_merge_request_responses())
-            self.repo_fetch_all()
+            if not quick:
+                self.repo_fetch_all()
             self.parse_request_tags(False)
             self.process_requests()
         self.update_manager.mark_dirty(self.groups.keys())

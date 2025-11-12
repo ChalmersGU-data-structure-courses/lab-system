@@ -375,7 +375,6 @@ def regex_non_canonical(
     )
 
 
-@dataclasses.dataclass
 class RegexNoncanonicalMany(PrinterParser[Sequence[str], str]):
     holed_string: str
     regex_parser: RegexParser
@@ -397,7 +396,6 @@ class RegexNoncanonicalMany(PrinterParser[Sequence[str], str]):
         return self.regex_parser(s).groups()
 
 
-@dataclasses.dataclass
 class RegexNoncanonicalKeyed(PrinterParser[dict[str, str], str]):
     holed_string: str
     regex_parser: RegexParser
@@ -445,10 +443,18 @@ def regex_many(
     return RegexNoncanonicalMany(
         holed_string,
         regex_escaping_formatter.format(
-            holed_string, *(f"({regex})" for regex in regexes)
+            holed_string,
+            *(f"({regex})" for regex in regexes),
         ),
         **kwargs,
     )
+
+
+def regex_none(
+    holed_string: str,
+    **kwargs,
+) -> PrinterParser[tuple[()], str]:
+    return regex_many(holed_string, [], **kwargs)
 
 
 def regex_keyed(

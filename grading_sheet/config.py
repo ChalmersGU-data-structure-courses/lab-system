@@ -1,6 +1,7 @@
-import dataclasses
 from collections.abc import Collection
+import dataclasses
 import datetime
+import re
 from typing import Self
 
 import util.general
@@ -49,23 +50,38 @@ class HeaderConfig:
     Used in LabConfig.
     """
 
-    group: str = "Group"
-    """The header for the group column."""
+    group: PrinterParser[tuple[()], str] = util.print_parse.regex_none(
+        "Group",
+        flags=re.IGNORECASE,
+    )
+    """Printer parser for the header for the group column."""
+
+    last_submission_date: PrinterParser[tuple[()], str] = util.print_parse.regex_none(
+        "Date",
+        flags=re.IGNORECASE,
+    )
+    """Printer parser for the optional header for the last submission date."""
 
     submission: PrinterParser[int, str] = util.print_parse.compose(
         util.print_parse.from_one,
-        util.print_parse.regex_int("Query #{}", regex="\\d+"),
+        util.print_parse.regex_int("Query #{}", regex="\\d+", flags=re.IGNORECASE),
     )
     """
     The printer-parser for the header of a submission column.
     Defaults to "Query #n" with 1-based numbering.
     """
 
-    grader: str = "Grader"
-    """The header for a grader column."""
+    grader: PrinterParser[tuple[()], str] = util.print_parse.regex_none(
+        "Grader",
+        flags=re.IGNORECASE,
+    )
+    """Printer parser for the header for a grader column."""
 
-    score: str = "0/1"
-    """The header of an outcome column."""
+    score: PrinterParser[tuple[()], str] = util.print_parse.regex_none(
+        "0/1",
+        flags=re.IGNORECASE,
+    )
+    """Printer parser for the header of an outcome column."""
 
 
 TEMPLATE_SPREADSHEET_ID = "1phOUdj_IynVKPiEU6KtNqI3hOXwNgIycc-bLwgChmUs"
