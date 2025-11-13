@@ -27,7 +27,7 @@ from dat151.config import course as config
 
 print("Defined variables:")
 
-c = Course(auth=auth, config=config, dir=Path("151"))
+c = Course(auth=auth, config=config, dir=Path("dat151"))
 print(f"  c: Course <{c.dir}>")
 
 l = c.labs[2]
