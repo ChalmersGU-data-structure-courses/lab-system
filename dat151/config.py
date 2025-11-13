@@ -148,9 +148,9 @@ labs: list[tuple[LabId, LabConfig]] = [
     # fmt: off
     #        id has_tester refresh_minutes
     lab_item(1, True     , 15),
-    lab_item(2, True     , 15),
-    lab_item(3, True     , 15),
-    lab_item(4, True     , 15),
+    # lab_item(2, True     , 15),
+    # lab_item(3, True     , 15),
+    # lab_item(4, True     , 15),
     # fmt: on
 ]
 
