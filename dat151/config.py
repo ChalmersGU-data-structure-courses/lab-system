@@ -139,8 +139,7 @@ def lab_item(
         has_solution=True,
         request_handlers=dict(request_handlers()),
         refresh_period=datetime.timedelta(minutes=refresh_minutes),
-        # ACTION: use below for sync with Canvas assignment:
-        # canvas_assignment_name=f"{lab_id.name.print(id)}: {name_semantic}",
+        canvas_assignment_name=f"{lab_id.name.print(id)}: Canvas mirror",
     )
     return (id, lab_config)
 
