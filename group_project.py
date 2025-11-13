@@ -11,6 +11,7 @@ from pathlib import PurePosixPath
 import git
 import gitlab
 import gitlab.v4.objects
+import more_itertools
 
 import events
 import gitlab_.tools
@@ -1643,25 +1644,63 @@ class GroupProject:
             for (handler_key, handler_data) in self.handler_data.items()
         }
 
+    def ensure_causality_of_submissions(
+        self,
+        submissions: Iterable[RequestAndResponses],
+    ) -> Iterable[RequestAndResponses]:
+        """
+        Produces an order of submission names that is compatible with the sync order in grading merge requests..
+        Keeps the original order as far as possible.
+        """
+        if self.lab.config.grading_via_merge_request is None:
+            yield from submissions
+
+        # Use dictionaries instead of sets for their ordering.
+        unconstrainted = {s.request_name: True for s in submissions}
+
+        def iterables():
+            for grading_merge_request in self.grading_via_merge_request.values():
+                if grading_merge_request.merge_request is not None:
+                    forced = []
+                    for name in grading_merge_request.synced_submissions:
+                        v = unconstrainted.pop(name, None)
+                        if v is not None:
+                            forced.append(name)
+                    yield forced
+            yield unconstrainted.keys()
+
+        def key(name):
+            return self.submission_handler_data.requests_and_responses[name].date
+
+        for s in util.general.merge(iterables(), key=key):
+            yield self.submission_handler_data.requests_and_responses[s]
+
     def submissions(self, deadline=None) -> Iterable[RequestAndResponses]:
         """
         Counts only the accepted submission attempts.
         If deadline is given, we restrict to prior submissions.
         Here, the date refers to the date of the submission commit.
-        The output is ordered ordered by the date.
+
+        The output is ordered ordered by the date subject to the following modification.
+        If grading via merge request is enabled, the synced submissions appear first, in sync order.
         """
-        for (
-            request_and_responses
-        ) in self.submission_handler_data.requests_and_responses.values():
-            if request_and_responses.accepted:
-                if deadline is None or request_and_responses.date <= deadline:
-                    yield request_and_responses
+
+        def submissions_input():
+            for (
+                request_and_responses
+            ) in self.submission_handler_data.requests_and_responses.values():
+                if request_and_responses.accepted:
+                    if deadline is None or request_and_responses.date <= deadline:
+                        yield request_and_responses
+
+        yield from self.ensure_causality_of_submissions(submissions_input())
 
     def submissions_with_outcome(self, deadline=None) -> Iterable[RequestAndResponses]:
         """
         Restricts the output of self.submissions to instances of SubmissionAndRequests with an outcome.
         This could be a submission-handler-provided outcome or a review by a grader.
-        The output is ordered ordered by the date.
+
+        See submissions for the order of the output.
         """
         for submission in self.submissions(deadline=deadline):
             if submission.outcome is not None:
@@ -1671,7 +1710,8 @@ class GroupProject:
         """
         Restrict the output of self.submissions to all relevant submissions.
         A submission is *relevant* if it has an outcome or is the last submission and needs a review.
-        The output is ordered ordered by the date.
+
+        See submissions for the order of the output.
         """
         submissions = list(self.submissions(deadline=deadline))
         for i, submission in enumerate(submissions):
