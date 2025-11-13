@@ -7,6 +7,7 @@ import functools
 import itertools
 import json
 import logging
+import operator
 import os
 import re
 import shlex
@@ -997,3 +998,26 @@ def dashify(x: str):
     x = re.sub(r"\s+", "-", x)
     x = re.sub(r"\:|/", "", x)
     return x
+
+
+def merge[X](iterables: Iterable[Iterable[X]], key=None) -> Iterable[X]:
+    if key is None:
+        key = identity
+
+    iterators = [more_itertools.peekable(it) for it in iterables]
+
+    while True:
+
+        def items():
+            for i, it in enumerate(iterators):
+                try:
+                    yield (it.peek(), i)
+                except StopIteration:
+                    pass
+
+        s = iter(sorted(items()))
+        try:
+            (_, i) = next(s)
+            yield next(iterators[i])
+        except StopIteration:
+            break
