@@ -1785,15 +1785,15 @@ class Lab[LabId, GroupId, Variant]:
         self.logger.info('=== Creating (empty) "primary" project for lab ===')
         self.primary_project.create()
 
+        self.logger.info('=== Creating "collection" project for lab ===')
+        self.collection_project.create()
+
         self.logger.info("=== Uploading problem branch ===")
         self.primary_project_problem_branches_create()
 
         self.logger.info("=== Uploading official solution ===")
         if self.config.has_solution is True:
             self.solution_create_and_populate()
-
-        self.logger.info('=== Creating "collection" project for lab ===')
-        self.collection_project.create()
 
         self.logger.info("=== Forking student projects from primary project ===")
         self.groups_create_desired()
