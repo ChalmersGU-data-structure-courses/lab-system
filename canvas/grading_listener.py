@@ -60,7 +60,8 @@ class CanvasGradingLabUpdateListener[GroupId, Outcome](
                                     f"* GitLab project: {group.project.get.web_url}/-/project_members",
                                 )
                             )
-                        yield canvas_user.id
+                        else:
+                            yield canvas_user.id
 
                 self.logger.debug(
                     f"Updating Canvas grade of members of {group.name} to {grade}"
