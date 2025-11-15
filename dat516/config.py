@@ -107,6 +107,7 @@ course = CourseConfig(
     labs=dict(labs),
     chalmers_id_to_gitlab_username_override={
         "aarne": "Aarne.Ranta",
+        "gaoli": "linda.gao",
     },
     webhook_netloc_listen=util.url.NetLoc(port=4299),
 )
