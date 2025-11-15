@@ -55,7 +55,7 @@ class CanvasGradingLabUpdateListener[GroupId, Outcome](
                         )
                         if canvas_user is None:
                             self.logger.warn(
-                                util.general.join_lines(
+                                util.general.text_from_lines(
                                     f"Failed to set Canvas grade: GitLab user {gitlab_user.username} in not on Canvas.",
                                     f"* GitLab project: {group.project.get.web_url}/-/project_members",
                                 )
