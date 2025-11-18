@@ -648,11 +648,9 @@ class GradingViaMergeRequestConfig:
     It also provides more fine-grained discussion threads with students.
     """
 
-    maximum_reserve_time: datetime.timedelta = datetime.timedelta(hours=-1)
+    maximum_reserve_time: datetime.timedelta | None = None
     """
-    For how long does assigning a reviewer block synchronization of new submissions?
-    If set to None, no limit applies.
-    A negative value effectively disables this feature (this is the default).
+    If set, prevents submissions sync while a reviewer is assigned for the merge request for the specified time period.
     Warnings will be generated if a submission synchronization is blocked.
 
     Warning: incomplete implementation.
