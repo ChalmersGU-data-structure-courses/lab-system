@@ -597,14 +597,10 @@ class GradingViaMergeRequest:
             return []
 
         # Block syncing if a review is happening.
-        if self.reviewer_current:
+        block_period = self.lab.config.grading_via_merge_request.maximum_reserve_time
+        if block_period is not None and self.reviewer_current:
             (_reviewer, (_start_id, start_date)) = self.reviewer_current
-            block_period = (
-                self.lab.config.grading_via_merge_request.maximum_reserve_time
-            )
-            if not block_period or (
-                datetime.datetime.now(datetime.timezone.utc) < start_date + block_period
-            ):
+            if datetime.datetime.now(datetime.timezone.utc) < start_date + block_period:
                 self.logger.warn(
                     self.with_merge_request_url(
                         f"New submission(s) made in {self.group.name}"
@@ -613,7 +609,7 @@ class GradingViaMergeRequest:
                         " to submission branch):",
                     )
                 )
-            return []
+                return []
 
         for submission in submissions:
             self.logger.info(f"Syncing submission {submission.request_name}.")
