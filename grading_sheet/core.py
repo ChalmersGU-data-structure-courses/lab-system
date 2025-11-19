@@ -962,7 +962,8 @@ class GradingSheet[LabId, GroupId, Outcome]:
 
             def group_cell_data(id):
                 (value, _) = google_tools.sheets.cell_data_from_value(
-                    self.config.gdpr_coding.identifier.print(id)
+                    self.config.gdpr_coding.identifier.print(id),
+                    group_link(id) if group_link else None,
                 )
                 return value
 
