@@ -24,7 +24,7 @@ class GradingSheetLabUpdateListener[LabId, GroupId](
         self.lab = lab
         self.spreadsheet = self.course.grading_spreadsheet
         self.sheet = self.spreadsheet.grading_sheets[self.lab.id]
-        self.sheet.ensure_and_setup_groups()
+        self.sheet.ensure_and_setup_groups(group_link=self.group_link)
 
     @property
     def course(self) -> "module_course.Course":
