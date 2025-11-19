@@ -107,7 +107,7 @@ class StudentConnectorIndividual(StudentConnector):
         return self.course.student_name_coding.gdpr_coding
 
     def gdpr_link_problematic(self):
-        return False
+        return True
 
 
 class StudentConnectorGroupSet(StudentConnector):
@@ -150,7 +150,7 @@ class StudentConnectorGroupSet(StudentConnector):
         return self.group_set.config.gdpr_coding
 
     def gdpr_link_problematic(self):
-        return True
+        return False
 
 
 class LabUpdateManager[GroupId]:
