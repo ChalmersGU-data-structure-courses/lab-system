@@ -1200,7 +1200,7 @@ class GroupProject:
         """
         self.logger.info(f"Updating problem branches in {self.project.path}")
         for variant in self.lab.config.variants.variants:
-            problem = self.lab.config.head_problem(variant)
+            problem = self.lab.config.branch_problem(variant)
             if ensure_ancestral:
                 tag = self.ancestral_tag(problem)
                 if not util.git.tag_exist(tag):
