@@ -20,6 +20,7 @@ WorkingDirectory=%h/lab-system
 ExecStart=%h/lab-system/run_event_loop.py \
   --dir dat151 \
   --sync-from-canvas 2 \
+  --sync-from-canvas 3 \
   --start-with-sync \
   --sync-period 900 \
   --error-spreadsheet 1vlasVmvtmrvae8Owq8P1VpHayrVrG20akmQD1YCzHd0 \
