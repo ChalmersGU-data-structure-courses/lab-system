@@ -1212,8 +1212,8 @@ class GroupProject:
             branch = util.git.normalize_branch(self.lab.repo, problem).commit
             self.repo.remote(self.remote).push(
                 util.git.refspec(
-                    problem.hexsha,
-                    branch,
+                    branch.hexsha,
+                    problem,
                     force=force,
                 )
             )
