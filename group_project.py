@@ -1220,6 +1220,10 @@ class GroupProject:
 
     def detect_variant(self, commit):
         """Find out which variant problem a commit derives from."""
+        with contextlib.suppress(ValueError):
+            [variant] = self.lab.config.variants.variants
+            return variant
+
         problem_branches = {
             variant: util.git.normalize_branch(
                 self.lab.repo,
