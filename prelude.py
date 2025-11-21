@@ -35,6 +35,14 @@ print(f"  lab1: {lab1}")
 print(f"  lab2: {lab2}")
 print(f"  lab3: {lab3}")
 
+# Find group number from student name
+from lab import Lab
+def find_group_number(lab: Lab, name: str):
+  for group in lab.groups.values():
+    for member in group.members:
+      if name in member.name:
+        print('🟢', group.name, member.name)
+
 # How to deploy a lab in the data structure course cluster:
 # 1. Make sure repository ~/labs is up to date.
 # 2. Run `make problem solution robotester-python` in the labs repository.
