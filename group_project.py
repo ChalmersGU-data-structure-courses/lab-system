@@ -1200,7 +1200,7 @@ class GroupProject:
         """
         self.logger.info(f"Updating problem branches in {self.project.path}")
         for variant in self.lab.config.variants.variants:
-            problem = self.lab.config.head_problem(variant)
+            problem = self.lab.config.branch_problem(variant)
             if ensure_ancestral:
                 tag = self.ancestral_tag(problem)
                 if not util.git.tag_exist(tag):
@@ -1212,14 +1212,18 @@ class GroupProject:
             branch = util.git.normalize_branch(self.lab.repo, problem).commit
             self.repo.remote(self.remote).push(
                 util.git.refspec(
-                    problem.hexsha,
-                    branch,
+                    branch.hexsha,
+                    problem,
                     force=force,
                 )
             )
 
     def detect_variant(self, commit):
         """Find out which variant problem a commit derives from."""
+        with contextlib.suppress(ValueError):
+            [variant] = self.lab.config.variants.variants
+            return variant
+
         problem_branches = {
             variant: util.git.normalize_branch(
                 self.lab.repo,
