@@ -150,7 +150,7 @@ labs: list[tuple[LabId, LabConfig]] = [
     lab_item(1, True     , 15),
     lab_item(2, True     , 15),
     lab_item(3, True     , 15),
-    # lab_item(4, True     , 15),
+    lab_item(4, True     , 15),
     # fmt: on
 ]
 

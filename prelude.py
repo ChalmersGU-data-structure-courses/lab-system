@@ -30,7 +30,7 @@ print("Defined variables:")
 c = Course(auth=auth, config=config, dir=Path("dat151"))
 print(f"  c: Course <{c.dir}>")
 
-l = c.labs[3]
+l = c.labs[4]
 print(f"  l: Lab <{l.name}>")
 
 # How to deploy a lab in the data structure course cluster:
