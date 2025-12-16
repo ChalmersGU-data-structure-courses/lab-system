@@ -675,9 +675,9 @@ class LabConfig[GroupId, Outcome, Variant]:
         <path_source>/<variant>/<problem/solution>
     """
 
-    name_semantic: str
+    name_semantic: str | None = None
     """
-    Semantic name for the lab.
+    Optional semantic name for the lab.
     For example, "Goose recognizer".
     """
 

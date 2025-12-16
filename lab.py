@@ -285,11 +285,14 @@ class Lab[LabId, GroupId, Variant]:
         return self.course.config.lab_id.name.print(self.id)
 
     @functools.cached_property
-    def name_semantic(self) -> str:
+    def name_semantic(self) -> str | None:
         return self.config.name_semantic
 
     @functools.cached_property
     def name_full(self) -> str:
+        if self.name_semantic is None:
+            return self.name
+
         return f"{self.name} — {self.name_semantic}"
 
     @functools.cached_property
