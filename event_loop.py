@@ -206,17 +206,20 @@ def run(
         delay = datetime.timedelta()
         for c in courses:
             for lab in c.labs.values():
-                refresh_lab(lab)
-                if lab.config.refresh_period is not None:
-                    refresh_timer = util.threading.Timer(
-                        lab.config.refresh_period + delay,
-                        refresh_lab,
-                        args=[lab],
-                        name=f"lab-refresh-timer<{c.config.gitlab_path}, {lab.name}>",
-                        repeat=True,
-                    )
-                    thread_managers.append(util.threading.timer_manager(refresh_timer))
-                    delay += c.config.first_lab_refresh_delay
+                if lab.config.request_handlers:
+                    refresh_lab(lab)
+                    if lab.config.refresh_period is not None:
+                        refresh_timer = util.threading.Timer(
+                            lab.config.refresh_period + delay,
+                            refresh_lab,
+                            args=[lab],
+                            name=f"lab-refresh-timer<{c.config.gitlab_path}, {lab.name}>",
+                            repeat=True,
+                        )
+                        thread_managers.append(
+                            util.threading.timer_manager(refresh_timer)
+                        )
+                        delay += c.config.first_lab_refresh_delay
 
         # Start the threads.
         for manager in thread_managers:
