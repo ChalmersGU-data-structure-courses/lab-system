@@ -76,5 +76,4 @@ course = CourseConfig(
         "aarne": "Aarne.Ranta",
         "gaoli": "linda.gao",
     },
-    webhook_netloc_listen=util.url.NetLoc(port=4299),
 )
