@@ -53,7 +53,6 @@ lab_id_config: LabIdConfig[LabId] = LabIdConfig(
 
 
 lab: LabConfig[GroupId, DefaultOutcome, NoVariants] = LabConfig(
-    name_semantic="Project",
     group_set=group_set,
     request_handlers={},
     variants=VariantsConfig.no_variants(),
