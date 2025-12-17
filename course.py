@@ -154,13 +154,13 @@ class Course[LabId]:
     def format_datetime(self, x):
         return x.astimezone(self.config.time.zone).strftime(self.config.time.format)
 
-    def get_group_set(self, config):
-        gs = self.group_sets.get(config.name)
+    def get_group_set(self, config: lab_interfaces.GroupSetConfig):
+        gs = self.group_sets.get(config.canvas_group_set_name)
         if gs:
             return gs
 
         gs = group_set.GroupSet(self, config)
-        self.group_sets[config.name] = gs
+        self.group_sets[config.canvas_group_set_name] = gs
         return gs
 
     @functools.cached_property

@@ -283,14 +283,19 @@ class GroupSetConfig[GroupId]:
     )
     """
     Full human-readable name.
-    Used in Canvas group set.
     Why not use use a zero-based numerical naming scheme:
     * Lab group 0,
     * Lab group 1,
     * ...?
     """
 
-    group_set_name: str = "Lab groups"
+    canvas_name: PrinterParser[GroupId, str] | None = None
+    """
+    Name used in Canvas group set.
+    If not specified, uses name.
+    """
+
+    canvas_group_set_name: str = "Lab groups"
     """
     Name of the group set on Canvas.
     Students sign up for lab groups here.
@@ -306,6 +311,12 @@ class GroupSetConfig[GroupId]:
     Must raise an exception on formatted string not plausibly corresponding to a group.
     This is needed for parsing the grading spreadsheet.
     """
+
+    @property
+    def effective_canvas_name(self) -> PrinterParser[GroupId, str]:
+        if self.canvas_name is not None:
+            return self.canvas_name
+        return self.name
 
 
 DefaultGroupId = int
