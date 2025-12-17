@@ -16,9 +16,11 @@ import util.print_parse
 
 from lab_interfaces import (
     CourseConfig,
-    DefaultLabId,
+    DefaultOutcome,
+    StandardVariant,
     GroupSetConfig,
     LabConfig,
+    LabIdConfig,
 )
 
 
@@ -28,36 +30,33 @@ from lab_interfaces import (
 GroupId = int
 
 group_set: GroupSetConfig[GroupId] = GroupSetConfig[GroupId](
-    name=util.print_parse.regex_int("Project group {}", flags=re.IGNORECASE),
-    group_set_name="Project groups",
+    name=util.print_parse.regex_int("Group {}", flags=re.IGNORECASE),
+    canvas_name=util.print_parse.regex_int("Project group {}", flags=re.IGNORECASE),
+    canvas_group_set_name="Project groups",
 )
 
 
 # Lab ids
 # -------
 
-LabId = DefaultLabId
+LabId = tuple[()]
+
+lab_id_config: LabIdConfig[LabId] = LabIdConfig(
+    id=util.print_parse.Dict({(): "project"}.items()),
+    full_id=util.print_parse.Dict({(): ""}.items()),
+    prefix=util.print_parse.Dict({(): "project-"}.items()),
+    name=util.print_parse.Dict({(): "Project"}.items()),
+)
 
 # Labs
 # ----
 
 
-def lab_item(
-    id: LabId,
-    name: str,
-) -> tuple[LabId, LabConfig]:
-    lab_config = LabConfig(
-        name_semantic=name,
-        group_set=group_set,
-        request_handlers={},
-    )
-    return (id, lab_config)
-
-
-labs: list[tuple[LabId, LabConfig]] = [
-    # id, name
-    lab_item(1, "Project"),
-]
+lab: LabConfig[GroupId, DefaultOutcome, StandardVariant] = LabConfig(
+    name_semantic="Project",
+    group_set=group_set,
+    request_handlers={},
+)
 
 
 # Course
@@ -65,13 +64,13 @@ labs: list[tuple[LabId, LabConfig]] = [
 
 gitlab_path = PurePosixPath() / "courses" / "dat076" / "2026"
 
-course: CourseConfig
-course = CourseConfig(
+course: CourseConfig[LabId] = CourseConfig(
     canvas_domain="chalmers.instructure.com",
     canvas_course_id=38042,
     gitlab_path=gitlab_path,
     gitlab_path_graders=gitlab_path / "graders",
-    labs=dict(labs),
+    lab_id=lab_id_config,
+    labs={(): lab},
     chalmers_id_to_gitlab_username_override={
         "aarne": "Aarne.Ranta",
         "gaoli": "linda.gao",
