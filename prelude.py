@@ -23,15 +23,15 @@ auth = CourseAuth.from_secrets(Path("secrets.toml"))
 
 # ACION: instantiate and uncomment below statements for concrete instance.
 # pylint: disable=wrong-import-position
-# from <course code>.config import course as config
+from dat076.config import course as config
 
 print("Defined variables:")
 
-# c = Course(auth=auth, config=config, dir=Path("<course code>"))
-# print(f"  c: Course <{c.dir}>")
+c = Course(auth=auth, config=config, dir=Path("dat076"))
+print(f"  c: Course <{c.dir}>")
 
-# l = c.labs[1]
-# print(f"  l: Lab <{l.name}>")
+l = c.labs[()]
+print(f"  l: Lab <{l.name}>")
 
 # How to deploy a lab in the data structure course cluster:
 # 1. Make sure repository ~/labs is up to date.
