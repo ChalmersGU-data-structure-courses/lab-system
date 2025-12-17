@@ -20,6 +20,7 @@ import grading_via_merge_request
 import group_project
 import lab_interfaces
 import util.general
+import util.gdpr_coding
 import util.git
 import util.path
 import util.print_parse
@@ -30,37 +31,38 @@ if TYPE_CHECKING:
     import group_set as module_group_set
 
 
-class StudentConnector(abc.ABC):
+class StudentConnector[GroupId](abc.ABC):
     @abc.abstractmethod
-    def desired_groups(self):
+    def desired_groups(self) -> frozenset[GroupId]:
         """
         The set of desired group ids.
         These usually come from the Canvas course.
         """
 
     @abc.abstractmethod
-    def desired_members(self, id):
+    def desired_members(self, id: GroupId) -> frozenset[str]:
         """
         The set of CIDs for a given group id.
         These usually come from the Canvas course.
         """
 
     @abc.abstractmethod
-    def gitlab_group_slug_pp(self): ...
+    def gitlab_group_slug_pp(self) -> util.print_parse.PrinterParser[GroupId, str]:
+        """Printer parser for group slugs on GitLab."""
 
     @abc.abstractmethod
-    def gitlab_group_name(self, id):
+    def gitlab_group_name(self, id: GroupId) -> str:
         """The corresponding name on Chalmers GitLab a given group id."""
 
     @abc.abstractmethod
-    def gdpr_coding(self):
+    def gdpr_coding(self) -> util.gdpr_coding.GDPRCoding:
         """
-        GDPR coding for group ids (instance of GDPRCoding).
+        GDPR coding for group ids.
         Currently only used in the grading spreadsheet.
         """
 
     @abc.abstractmethod
-    def gdpr_link_problematic(self):
+    def gdpr_link_problematic(self) -> bool:
         """
         Whether group links can be set in non-GDPR-cleared documents.
         Currently only used in the grading spreadsheet.
@@ -117,18 +119,11 @@ class StudentConnectorGroupSet(StudentConnector):
         self.group_set = group_set
 
     def desired_groups(self):
-        return frozenset(
-            self.group_set.config.name.parse(canvas_group.name)
-            for canvas_group in self.group_set.canvas_group_set.details.values()
-        )
+        return frozenset(self.group_set.canvas_group_ids())
 
     def desired_members(self, id):
         def f():
-            canvas_name = self.group_set.config.name.print(id)
-            canvas_id = self.group_set.canvas_group_set.name_to_id[canvas_name]
-            for canvas_user_id in self.group_set.canvas_group_set.group_users[
-                canvas_id
-            ]:
+            for canvas_user_id in self.group_set.canvas_group_members(id):
                 gitlab_username = (
                     self.group_set.course.gitlab_username_from_canvas_user_id(
                         canvas_user_id,
@@ -285,11 +280,14 @@ class Lab[LabId, GroupId, Variant]:
         return self.course.config.lab_id.name.print(self.id)
 
     @functools.cached_property
-    def name_semantic(self) -> str:
+    def name_semantic(self) -> str | None:
         return self.config.name_semantic
 
     @functools.cached_property
     def name_full(self) -> str:
+        if self.name_semantic is None:
+            return self.name
+
         return f"{self.name} — {self.name_semantic}"
 
     @functools.cached_property
@@ -1744,7 +1742,7 @@ class Lab[LabId, GroupId, Variant]:
         student_connector = self.student_connector
         if isinstance(student_connector, StudentConnectorGroupSet):
             group_set = student_connector.group_set
-            group_set_name = group_set.config.group_set_name
+            group_set_name = group_set.config.canvas_group_set_name
             if not group_set_name in synced_group_sets:
                 group_set.canvas_group_set_refresh()
                 synced_group_sets.add(group_set_name)
