@@ -13,14 +13,14 @@ import re
 from pathlib import PurePosixPath
 
 import util.print_parse
-
 from lab_interfaces import (
     CourseConfig,
     DefaultOutcome,
-    StandardVariant,
     GroupSetConfig,
     LabConfig,
     LabIdConfig,
+    NoVariants,
+    VariantsConfig,
 )
 
 
@@ -30,9 +30,9 @@ from lab_interfaces import (
 GroupId = int
 
 group_set: GroupSetConfig[GroupId] = GroupSetConfig[GroupId](
-    name=util.print_parse.regex_int("Group {}", flags=re.IGNORECASE),
-    canvas_name=util.print_parse.regex_int("Project group {}", flags=re.IGNORECASE),
     canvas_group_set_name="Project groups",
+    canvas_name=util.print_parse.regex_int("Project group {}", flags=re.IGNORECASE),
+    name=util.print_parse.regex_int("Group {}", flags=re.IGNORECASE),
 )
 
 
@@ -52,10 +52,11 @@ lab_id_config: LabIdConfig[LabId] = LabIdConfig(
 # ----
 
 
-lab: LabConfig[GroupId, DefaultOutcome, StandardVariant] = LabConfig(
+lab: LabConfig[GroupId, DefaultOutcome, NoVariants] = LabConfig(
     name_semantic="Project",
     group_set=group_set,
     request_handlers={},
+    variants=VariantsConfig.no_variants(),
 )
 
 
