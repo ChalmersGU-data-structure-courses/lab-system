@@ -27,7 +27,7 @@ WorkingDirectory=%h/lab-system
 # * specify labs to sync with Canvas (initially just -s 1).
 ExecStart=%h/lab-system/run_event_loop.py \
   --dir dat076 \
-  --sync-from-canvas 1 \
+  --sync-from-canvas project \
   --start-with-sync \
   --sync-period 600 \
   --error-spreadsheet 1RwyLdrDGqul5h13SX7FTlzjDBhmGr4ijLptpxlQRAgc \
