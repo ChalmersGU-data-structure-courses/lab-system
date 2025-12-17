@@ -449,7 +449,7 @@ class OutcomesConfig[Outcome]:
 
 
 class StandardVariant(enum.Enum):
-    """Variant type for a lab without variants."""
+    """Variant type for a lab with only a default variant."""
 
     UNIQUE = enum.auto()
 
@@ -472,6 +472,10 @@ class VariantSpec:
         return cls(name=name, branch=util.general.dashify(name))
 
 
+class NoVariants(util.enum.EnumSpec[VariantSpec]):
+    """Variant type for a lab with no variants at all."""
+
+
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class VariantsConfig[Variant]:
     """
@@ -488,10 +492,11 @@ class VariantsConfig[Variant]:
     See VariantsConfig.no_variants.
     """
 
-    default: Variant
+    default: Variant | None
     """
     The default lab variant.
     Used for the main branches in student repositories.
+    None for labs without any variants at all.
     """
 
     serialize: PrinterParser[Variant, util.general.JSON]
@@ -521,11 +526,11 @@ class VariantsConfig[Variant]:
     """
 
     def __bool__(self) -> bool:
-        """Checks whether variants are configured."""
+        """Checks whether non-standard variants are configured."""
         return not self.variants == set(StandardVariant)
 
     @classmethod
-    def no_variants(
+    def standard_variant(
         cls: "type[VariantsConfig[StandardVariant]]",
         submission_grading_title: str = "Grading for submission",
     ) -> "VariantsConfig[StandardVariant]":
@@ -564,11 +569,11 @@ class VariantsConfig[Variant]:
     ) -> "VariantsConfig[Variant]":
         """
         Smart constructor with sensible defaults.
-        If the default is not specified, it defaults to the first entry of 'variants'.
+        If the default is not specified, it defaults to the first entry of 'variants', if any.
         The name_key argument is used for normalizing names.
         It should be injective on names.
         """
-        if default is None:
+        if default is None and variants:
             default = list(variants.keys())[0]
 
         name = util.print_parse.compose(
@@ -616,6 +621,16 @@ class VariantsConfig[Variant]:
             submission_grading_title_holed=submission_grading_title_holed,
             name_key=name_key,
         )
+
+    @classmethod
+    def no_variants(
+        cls: "type[VariantsConfig[NoVariants]]",
+    ) -> "VariantsConfig[NoVariants]":
+        """
+        Smart constructor for a lab with no variants at all.
+        Use this for labs where the lab system does not handle submissions.
+        """
+        return cls.from_enum_spec(NoVariants)
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -704,7 +719,9 @@ class LabConfig[GroupId, Outcome, Variant]:
     outcomes: OutcomesConfig[Outcome] = OutcomesConfig[DefaultOutcome].from_enum_spec()
     """Configuration of the possible grading outcomes of submissions."""
 
-    variants: VariantsConfig[Variant] = VariantsConfig[StandardVariant].no_variants()
+    variants: VariantsConfig[Variant] = VariantsConfig[
+        StandardVariant
+    ].standard_variant()
     """
     Optional configuration of lab variants.
     Use this to configure multi-language labs.
