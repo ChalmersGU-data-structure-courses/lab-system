@@ -1,6 +1,6 @@
 """
 Template for a course configuration.
-The script run_event_loop.py loads this and read the value
+The script run_event_loop.py loads this and reads the value
   course_config: lab_interfaces.CourseConfig.
 
 See the documentation of the configuration classes.
