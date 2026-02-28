@@ -79,8 +79,8 @@ class Composition(PrinterParser):
     # type: ignore
     def __init__(self, *pps: PrinterParser):
         self.pps = pps
-        self.print = compose(*(pp.print for pp in self.pps))  # type: ignore
-        self.parse = compose(*(pp.parse for pp in reversed(self.pps)))  # type: ignore
+        self.print = util.general.compose(*(pp.print for pp in self.pps))
+        self.parse = util.general.compose(*(pp.parse for pp in reversed(self.pps)))
 
 
 class Inverse(PrinterParser):
