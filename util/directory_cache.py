@@ -53,7 +53,7 @@ class StoreQueryMixin[Key, Value](
         return r
 
     def get(self, query: Query[Key, Value], update: bool = False) -> Value:
-        key = query.cache_key()
+        key = query.key()
         if not update:
             try:
                 return self.read(key)
@@ -64,6 +64,7 @@ class StoreQueryMixin[Key, Value](
 
 class DirectoryFileStore:
     path: Path
+    text: bool
 
     def __init__(self, path: Path, text: bool = True):
         self.path = path

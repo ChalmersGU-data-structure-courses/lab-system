@@ -1,7 +1,9 @@
 # Recommended to import qualified.
+from collections.abc import Sequence
 import ast
 import base64
 import collections
+import contextlib
 import dataclasses
 import datetime as module_datetime
 import functools
@@ -326,6 +328,73 @@ def escape(chars: Iterable[str]) -> PrinterParser[str, str]:
 
 escape_parens: PrinterParser[str, str] = escape(["(", ")"])
 escape_brackets: PrinterParser[str, str] = escape(["[", "]"])
+
+
+@dataclasses.dataclass(frozen=True)
+class CharEscape(PrinterParser[str, str]):
+    escape: str
+    replacements: dict[str, str]
+
+    @property
+    def escape_pairs(self) -> Iterable[tuple[str, str]]:
+        yield (self.escape, self.escape)
+        yield from self.replacements.items()
+
+    @functools.cached_property
+    def print_trans(self) -> dict[str, str]:
+        table = {
+            original: self.escape + escaped for original, escaped in self.escape_pairs
+        }
+        return str.maketrans(table)
+
+    @functools.cached_property
+    def parse_trans(self):
+        return {escaped: original for original, escaped in self.escape_pairs}
+
+    @functools.cached_property
+    def parse_pattern(self) -> re.Pattern:
+        return re.compile(re.escape(self.escape) + "(.)")
+
+    def parse_replace(self, m: re.Match) -> str:
+        return self.parse_trans[m.group(1)]
+
+    def print(self, x: str, /) -> str:
+        return x.translate(self.print_trans)
+
+    def parse(self, y: str, /) -> str:
+        return self.parse_pattern.sub(self.parse_replace, y)
+
+
+class PathSegmentSpecials(PrinterParser[str, str]):
+    def print(self, x: str, /) -> str:
+        if not x or x.startswith("."):
+            x = "#" + x
+        return x
+
+    def parse(self, y: str, /) -> str:
+        with contextlib.suppress(ValueError):
+            x = util.general.remove_prefix(y, "#")
+            if not x or x.startswith("."):
+                return x
+        if not y:
+            raise ValueError("empty path segment")
+        return y
+
+
+string_as_path_segment: PrinterParser[str, str] = Composition(
+    CharEscape(escape="#", replacements={"/": "0", "\\": "1"}),
+    PathSegmentSpecials(),
+)
+
+path_segments: PrinterParser[PurePosixPath, Sequence[str]] = PrintParse(
+    print=lambda path: path.parts,
+    parse=lambda parts: PurePosixPath(*parts),
+)
+
+string_list_as_path: PrinterParser[list[str], PurePosixPath] = Composition(
+    over_list(string_as_path_segment),
+    Inverse(path_segments),
+)
 
 
 string_letters: PrinterParser[str, Iterable[str]] = PrintParse(
