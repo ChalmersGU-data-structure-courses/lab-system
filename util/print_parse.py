@@ -284,14 +284,12 @@ def without[I, O](pp: PrinterParser[I, O], value: I) -> PrinterParser[I, O]:
     return compose(on_print(util.general.check_return(lambda x: x != value)), pp)
 
 
-quote: PrinterParser[str, str]
-quote = PrintParse(
+quote: PrinterParser[str, str] = PrintParse(
     print=lambda s: ast.unparse(ast.Constant(s)),
     parse=ast.literal_eval,
 )
 
-doublequote: PrinterParser[str, str]
-doublequote = PrintParse(
+doublequote: PrinterParser[str, str] = PrintParse(
     print=util.general.doublequote,
     parse=ast.literal_eval,
 )
@@ -326,14 +324,11 @@ def escape(chars: Iterable[str]) -> PrinterParser[str, str]:
     )
 
 
-escape_parens: PrinterParser[str, str]
-escape_parens = escape(["(", ")"])
+escape_parens: PrinterParser[str, str] = escape(["(", ")"])
+escape_brackets: PrinterParser[str, str] = escape(["[", "]"])
 
-escape_brackets: PrinterParser[str, str]
-escape_brackets = escape(["[", "]"])
 
-string_letters: PrinterParser[str, Iterable[str]]
-string_letters = PrintParse(
+string_letters: PrinterParser[str, Iterable[str]] = PrintParse(
     print=util.general.identity,
     parse="".join,
 )
@@ -486,17 +481,11 @@ def regex_int(
     )
 
 
-qualify_with_slash: PrinterParser[tuple[str, str], str]
-qualify_with_slash = regex_many("{}/{}", ["[^/]*", ".*"])  # type: ignore
+qualify_with_slash: PrinterParser[tuple[str, str], str] = regex_many("{}/{}", ["[^/]*", ".*"])  # type: ignore
 
-parens: PrinterParser[str, str]
-parens = regex_non_canonical("({})", r"\((.*)\)")
-
-bracks: PrinterParser[str, str]
-bracks = regex_non_canonical("[{}]", r"\[(.*)\]")
-
-braces: PrinterParser[str, str]
-braces = regex_non_canonical("{{{}}}", r"\{(.*)\}")
+parens: PrinterParser[str, str] = regex_non_canonical("({})", r"\((.*)\)")
+bracks: PrinterParser[str, str] = regex_non_canonical("[{}]", r"\[(.*)\]")
+braces: PrinterParser[str, str] = regex_non_canonical("{{{}}}", r"\{(.*)\}")
 
 
 @dataclasses.dataclass
@@ -564,8 +553,7 @@ class Add(PrinterParser[int, int]):
         return y - self.increment
 
 
-from_one: PrinterParser[int, int]
-from_one = Add(1)
+from_one: PrinterParser[int, int] = Add(1)
 
 
 @dataclasses.dataclass
@@ -588,57 +576,48 @@ def _singleton_range_parse(range_):
     return range_
 
 
-singleton_range: PrinterParser[int, util.general.Range]
-singleton_range = PrintParse(
+singleton_range: PrinterParser[int, util.general.Range] = PrintParse(
     print=util.general.range_singleton,
     parse=_singleton_range_parse,
 )
 
 
-pure_posix_path: PrinterParser[PurePosixPath, str]
-pure_posix_path = PrintParse(
+pure_posix_path: PrinterParser[PurePosixPath, str] = PrintParse(
     print=str,
     parse=PurePosixPath,
 )
 
-pure_posix_path_empty: PrinterParser[PurePosixPath, str]
-pure_posix_path_empty = compose(
+pure_posix_path_empty: PrinterParser[PurePosixPath, str] = compose(
     pure_posix_path,
     on_print(lambda s: str() if s == "." else s),
 )
 
-pure_path: PrinterParser[pathlib.PurePath, str]
-pure_path = PrintParse(
+pure_path: PrinterParser[pathlib.PurePath, str] = PrintParse(
     print=str,
     parse=pathlib.PurePath,
 )
 
-posix_path: PrinterParser[pathlib.PosixPath, str]
-posix_path = PrintParse(
+posix_path: PrinterParser[pathlib.PosixPath, str] = PrintParse(
     print=str,
     parse=pathlib.PosixPath,
 )
 
-path: PrinterParser[pathlib.Path, str]
-path = PrintParse(
+path: PrinterParser[pathlib.Path, str] = PrintParse(
     print=str,
     parse=pathlib.Path,
 )
 
-search_path: PrinterParser[Iterable[str], str]
-search_path = PrintParse(
+search_path: PrinterParser[Iterable[str], str] = PrintParse(
     print=util.path.search_path_join,
     parse=util.path.search_path_split,
 )
 
-command_line: PrinterParser[Iterable[str], str]
-command_line = PrintParse(
+command_line: PrinterParser[Iterable[str], str] = PrintParse(
     print=shlex.join,
     parse=shlex.split,
 )
 
-string_coding: PrinterParser[str, bytes]
-string_coding = PrintParse(
+string_coding: PrinterParser[str, bytes] = PrintParse(
     str.encode,
     bytes.decode,
 )
@@ -664,14 +643,16 @@ def base64_pad(x: bytes) -> bytes:
     return x
 
 
-base64_standard: PrinterParser[bytes, bytes]
-base64_standard = PrintParse(
+base64_standard: PrinterParser[bytes, bytes] = PrintParse(
     print=base64.standard_b64encode,
     parse=util.general.compose(base64_pad, base64.standard_b64decode),
 )
 
-base64_standard_str: PrinterParser[str, bytes]
-base64_standard_str = compose(ascii, base64_standard, invert(ascii))
+base64_standard_str: PrinterParser[str, bytes] = compose(
+    ascii,
+    base64_standard,
+    invert(ascii),
+)
 
 
 def datetime(format: str) -> PrinterParser[module_datetime.datetime, str]:
@@ -688,12 +669,10 @@ def json_coding(**kwargs) -> PrinterParser[Any, str]:
     )
 
 
-json_coding_nice: PrinterParser[Any, str]
-json_coding_nice = json_coding(indent=4, sort_keys=True)
+json_coding_nice: PrinterParser[Any, str] = json_coding(indent=4, sort_keys=True)
 
 # TODO: change name
-json: PrinterParser[Any, str]
-json = json_coding()
+json: PrinterParser[Any, str] = json_coding()
 
 
 class Dataclass(Protocol):
