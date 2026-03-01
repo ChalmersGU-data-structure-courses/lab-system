@@ -103,7 +103,7 @@ def confirm_external_domain(username):
         raise CannotConfirm(
             f"{username} does not have unique '_' (as a stand-in for '@')"
         ) from None
-    if not "." in domain:
+    if not ("." in domain or domain in ["uni-mainz"]):
         raise CannotConfirm(f"Cannot confirm domain {domain}")
     return UserType.EXTERNAL
 
@@ -113,7 +113,7 @@ def confirm_external_workplace(username):
         [_, workplace] = username.split("-")
     except ValueError:
         raise CannotConfirm(f"{username} does not have unique '-'") from None
-    if not workplace in ["umu", "uni-mainz"]:
+    if not workplace in ["umu"]:
         raise CannotConfirm(f"Cannot confirm workplace {workplace}")
     return UserType.EXTERNAL
 
@@ -187,17 +187,10 @@ def process():
 
 def print_unresolved():
     for user in unresolved:
-        print(user.username, user.name, user.created_at, user.last_activity_on)
-
-
-def external():
-    for user in users:
-        if user.human:
-            if "_" in user.username:
-                [user, domain, *extra] = user.username.split("_")
-                print(f"{user}@{domain}")
-                if extra:
-                    print(f"  EXTRA: {extra}")
+        print(
+            f"{user.username}: name {util.print_parse.doublequote.print(user.name)}, "
+            f"created at {user.created_at}, last activity on {user.last_activity_on}"
+        )
 
 
 auth = lab_interfaces.CourseAuth.from_secrets(Path("secrets.toml"))
@@ -217,14 +210,18 @@ pdb_cached_client = chalmers_pdb.cached_client.CachedClient(
 )
 
 
-users: list[User] = list(retrieve_users(client))
+print("Loading list of users on Chalmers GitLab (give this a minute)...")
+# users: list[User] = list(retrieve_users(client))
 
-unresolved: set[User] = set(users)
+# unresolved: set[User] = set(users)
 
 # Map from username to CID or UserType.
-resolved: dict[str, str | UserType] = {}
+# resolved: dict[str, str | UserType] = {}
 
 process()
 
+print("Classified usernames into bot, external account, or associated to CID")
+print("Exceptions:")
+print_unresolved()
+
 assert {x.username for x in unresolved} == UNKNOWN_USERNAMES | CLOUD_ADMINS.keys()
-print("all usernames have been classified or marked separately")
