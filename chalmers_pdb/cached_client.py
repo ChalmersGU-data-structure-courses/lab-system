@@ -59,7 +59,6 @@ class CachedClient:
         self._cache = util.directory_cache.DirectoryJSONStore(cache_dir)
 
     def __getattr__(self, name):
-        print(name)
         if name[0] == "_":
             return None
         return FunctionProxy(self, name)
