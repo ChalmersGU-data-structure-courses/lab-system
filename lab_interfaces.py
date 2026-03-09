@@ -846,6 +846,28 @@ class LabIdConfig[LabId]:
         return PurePosixPath(self.full_id.print(id))
 
 
+SingleLabId = tuple[()]
+
+
+class SingleLabIdConfig(LabIdConfig[SingleLabId]):
+    """
+    Configuration of lab ids for a course with only a single lab project.
+    Does not use a separate group on GitLab for the lab.
+    """
+
+    def __init__(self, id: str, name: str):
+        """Uses id to configure id, full_id, and prefix."""
+        super().__init__(
+            id=util.print_parse.Dict({(): id}.items()),
+            full_id=util.print_parse.Dict({(): ""}.items()),
+            name=util.print_parse.Dict({(): name}.items()),
+            prefix=util.print_parse.Dict({(): f"{id}-"}.items()),
+        )
+
+    def path(self, id: SingleLabId):
+        return PurePosixPath()
+
+
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class CourseConfig[LabId]:
     """
