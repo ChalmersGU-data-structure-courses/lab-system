@@ -280,6 +280,10 @@ class Lab[LabId, GroupId, Variant]:
         return self.course.config.lab_id.name.print(self.id)
 
     @functools.cached_property
+    def path(self) -> str:
+        return self.course.config.lab_id.path(self.id)
+
+    @functools.cached_property
     def name_semantic(self) -> str | None:
         return self.config.name_semantic
 
@@ -310,7 +314,7 @@ class Lab[LabId, GroupId, Variant]:
     @functools.cached_property
     def gitlab_path(self) -> PurePosixPath:
         """Path of the lab folder on Chalmers GitLab."""
-        return self.course.config.gitlab_path / self.full_id
+        return self.course.config.gitlab_path / self.path
 
     @functools.cached_property
     def grading_via_merge_request_setup_data(
@@ -1239,7 +1243,7 @@ class Lab[LabId, GroupId, Variant]:
 
         r = self.course.parse_response_issues(self.collection_project)
         for (request, response_type), value in r.items():
-            (id, request) = self.course.qualify_with_slash.parse(request)
+            id, request = self.course.qualify_with_slash.parse(request)
             self.groups[id].grading_issues[(request, response_type)] = value
 
     @functools.cached_property
@@ -1767,15 +1771,13 @@ class Lab[LabId, GroupId, Variant]:
         To undo, call:
         - self.remove(force=True)
         """
-        self.logger.info(
-            """
+        self.logger.info("""
             Deploying lab
             -------------
 
             Note: requires lab sources to be deployed and test runner image built.
 
-            """
-        )
+            """)
 
         self.logger.info("=== Creating project root for lab ===")
         self.gitlab_group.create()
@@ -1796,15 +1798,13 @@ class Lab[LabId, GroupId, Variant]:
         self.logger.info("=== Forking student projects from primary project ===")
         self.groups_create_desired()
 
-        self.logger.info(
-            """
+        self.logger.info("""
             Optionally run 'sync_students_to_gitlab()' when ready.
 
             Next steps:
             * Restart event loop.
             * Check robograding/-testing output for solution submissions in live submissions table.
-            """
-        )
+            """)
         # Or you could also call sync_students_to_gitlab.
         # But that's dangerous because you can't delete things and start again without creating noise.
 

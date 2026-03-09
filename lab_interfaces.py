@@ -827,20 +827,23 @@ class LabIdConfig[LabId]:
     """Human-readable id."""
 
     full_id: PrinterParser[LabId, str] = util.print_parse.regex_int("lab-{}")
-    """
-    Used:
-    * as relative path on Chalmers GitLab,
-    * as filename for live submissions table on Canvas.
-    """
-
-    prefix: PrinterParser[LabId, str] = util.print_parse.regex_int("lab{}-")
-    """Used as prefix for projects on Chalmers GitLab."""
+    """Used for names of folders and files."""
 
     name: PrinterParser[LabId, str] = util.print_parse.regex_int(
         "Lab {}",
         flags=re.IGNORECASE,
     )
-    """Actual name."""
+    """Name."""
+
+    prefix: PrinterParser[LabId, str] = util.print_parse.regex_int("lab{}-")
+    """Used as prefix for projects on Chalmers GitLab."""
+
+    def path(self, id: LabId) -> PurePosixPath:
+        """
+        Path for this lab relative to the containing course in a directory hierarchy.
+        If your course contains only a single lab, you can override this to return PurePosixPath().
+        """
+        return PurePosixPath(self.full_id.print(id))
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
