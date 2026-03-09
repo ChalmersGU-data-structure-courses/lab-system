@@ -855,7 +855,7 @@ class SingleLabIdConfig(LabIdConfig[SingleLabId]):
     Does not use a separate group on GitLab for the lab.
     """
 
-    def __init__(self, id: str, name: str):
+    def __init__(self, id: str = "lab", name: str = "Lab"):
         """Uses id to configure id, full_id, and prefix."""
         super().__init__(
             id=util.print_parse.Dict({(): id}.items()),
