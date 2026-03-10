@@ -1,5 +1,5 @@
 # Recommended to import qualified.
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 import ast
 import base64
 import collections
@@ -13,11 +13,10 @@ import pathlib
 import re
 import shlex
 from typing import Any, Callable, ClassVar, Protocol
-from collections.abc import Iterable, Sequence
+from pathlib import PurePosixPath
 
 import util.general
 import util.path
-from util.path import PurePosixPath
 from util.escaping_formatter import regex_escaping_formatter
 
 
