@@ -1,3 +1,7 @@
+"""
+A simple key-value store implemented as a directory hierarchy.
+"""
+
 from abc import abstractmethod
 from contextlib import contextmanager
 import json
@@ -12,10 +16,12 @@ logger = logging.getLogger(__name__)
 
 
 class StoreMiss(Exception):
-    pass
+    """Exception representing a cache miss."""
 
 
 class Store[Key, Value]:
+    """Interface for a key-value store."""
+
     @abstractmethod
     def read(self, key: Key) -> Value: ...
 
@@ -31,21 +37,24 @@ class Store[Key, Value]:
 
 
 class Query[Key, Value]:
+    """
+    Interface for a query value store.
+    The query knows how to compute itself.
+    """
+
     @abstractmethod
     def key(self) -> Key: ...
 
     @abstractmethod
     def compute(self) -> Value: ...
 
-    def log_item(self) -> str:
-        return str(self.key())
-
 
 class StoreQueryMixin[Key, Value](
     Store[Key, Value]
 ):  # pylint: disable = abstract-method
+    """A mix-in for interacting with queries in a key-value store"""
+
     def compute(self, query: Query[Key, Value], key: Key | None = None) -> Value:
-        logger.info(f"Computing {query.log_item()}.")
         if key is None:
             key = query.key()
         r = query.compute()
@@ -63,6 +72,11 @@ class StoreQueryMixin[Key, Value](
 
 
 class DirectoryFileStore:
+    """
+    Backend for a key-value store implemented using a directory hierarchy.
+    The anticipated keys are paths (PurePosixPath).
+    """
+
     path: Path
     text: bool
 
@@ -128,6 +142,12 @@ class DirectoryFileStore:
 
 
 class DirectoryStore(DirectoryFileStore, StoreQueryMixin[PurePosixPath, str | bytes]):
+    """
+    A key-value store implemented using a directory hierarchy:
+    * The keys are paths (PurePosixPath),
+    * The values are str (or bytes if the constructor flag `text` is set to false).
+    """
+
     def read(self, key: PurePosixPath) -> str | bytes:
         try:
             with self.file_read(key) as file:
@@ -141,6 +161,12 @@ class DirectoryStore(DirectoryFileStore, StoreQueryMixin[PurePosixPath, str | by
 
 
 class DirectoryJSONStore(DirectoryFileStore, StoreQueryMixin[PurePosixPath, JSON]):
+    """
+    A key-value store implemented using a directory hierarchy:
+    * The keys are paths (PurePosixPath),
+    * The values are JSON structures.
+    """
+
     def __init__(self, path: Path):
         super().__init__(path, True)
 

@@ -123,7 +123,7 @@ disable = [
   'R0915',  # too-many-statements
   'R0917',  # too-many-positional-arguments
 
-  # Outer negation is preferrable if non-negated condition is the primary condition under consideration.
+  # Outer negation is preferable if non-negated condition is the primary condition under consideration.
   'C0117',  # unnecessary-negation
 
   # Iterating over dictionary keys should be made explicit.

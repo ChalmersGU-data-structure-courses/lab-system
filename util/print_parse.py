@@ -77,19 +77,31 @@ class Composition(PrinterParser):
     Composes the printers in forward order and the parsers in reverse order.
     """
 
-    # type: ignore
     def __init__(self, *pps: PrinterParser):
         self.pps = pps
-        self.print = util.general.compose(*(pp.print for pp in self.pps))
-        self.parse = util.general.compose(*(pp.parse for pp in reversed(self.pps)))
+
+    def print(self, x, /):
+        for pp in self.pps:
+            x = pp.print(x)
+        return x
+
+    def parse(self, y, /):
+        for pp in reversed(self.pps):
+            y = pp.parse(y)
+        return y
 
 
-class Inverse(PrinterParser):
+class Inverse[I, O](PrinterParser[I, O]):
     """The inverse of a printer-parser."""
 
-    def __init__(self, pp: PrinterParser):
-        self.print = pp.parse  # type: ignore
-        self.parse = pp.print  # type: ignore
+    def __init__(self, pp: PrinterParser[O, I]):
+        self.pp = pp
+
+    def print(self, x: I, /) -> O:
+        return self.pp.parse(x)
+
+    def parse(self, y: O, /) -> I:
+        return self.pp.print(y)
 
 
 identity = PrintParse(
@@ -331,6 +343,11 @@ escape_brackets: PrinterParser[str, str] = escape(["[", "]"])
 
 @dataclasses.dataclass(frozen=True)
 class CharEscape(PrinterParser[str, str]):
+    """
+    Printer-parser for escaping characters in a string.
+    Replaces specified characters (including the escape character) by the escape character followed by the replacement.
+    """
+
     escape: str
     replacements: dict[str, str]
 
@@ -365,18 +382,20 @@ class CharEscape(PrinterParser[str, str]):
 
 
 class PathSegmentSpecials(PrinterParser[str, str]):
+    """Escape special paths (see SPECIALS)."""
+
+    SPECIALS = ["", ".", ".."]
+
     def print(self, x: str, /) -> str:
-        if not x or x.startswith("."):
-            x = "#" + x
+        if x in self.SPECIALS:
+            return "#" + x
         return x
 
     def parse(self, y: str, /) -> str:
         with contextlib.suppress(ValueError):
             x = util.general.remove_prefix(y, "#")
-            if not x or x.startswith("."):
+            if x in self.SPECIALS:
                 return x
-        if not y:
-            raise ValueError("empty path segment")
         return y
 
 
@@ -385,14 +404,20 @@ string_as_path_segment: PrinterParser[str, str] = Composition(
     PathSegmentSpecials(),
 )
 
-path_segments: PrinterParser[PurePosixPath, Sequence[str]] = PrintParse(
-    print=lambda path: path.parts,
-    parse=lambda parts: PurePosixPath(*parts),
-)
+
+class PathSegments(PrinterParser[PurePosixPath, Sequence[str]]):
+    """See a path a sequence of strings."""
+
+    def print(self, x: PurePosixPath, /):
+        return x.parts
+
+    def parse(self, y: Sequence[str], /):
+        return PurePosixPath(*y)
+
 
 string_list_as_path: PrinterParser[list[str], PurePosixPath] = Composition(
     over_list(string_as_path_segment),
-    Inverse(path_segments),
+    Inverse(PathSegments()),
 )
 
 
