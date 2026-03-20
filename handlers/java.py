@@ -143,11 +143,14 @@ class CompilationAndRobogradingColumn(live_submissions_table.Column):
 class SubmissionHandler(handlers.general.SubmissionHandler):
     """A submission handler for Java labs."""
 
+    report_response_title = handlers.general.robograder_response_title
+
     def __init__(
         self,
         robograder_factory=None,
         tester_factory=None,
         show_solution=True,
+        has_report=False,
         **kwargs,
     ):
         """
@@ -166,13 +169,17 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
         elif tester_factory is not None:
             self.tester_factory = tester_factory
             self.testing = handlers.general.SubmissionTesting(
-                self.tester_factory, tester_is_robograder=True, **kwargs
+                self.tester_factory,
+                tester_is_robograder=True,
+                has_report=has_report,
+                **kwargs,
             )
 
         self.has_robograder = (
             self.robograder_factory is not None or self.tester_factory is not None
         )
         self.show_solution = show_solution
+        self.has_report = has_report
 
     def setup(self, lab):
         # pylint: disable=attribute-defined-outside-init
@@ -189,12 +196,15 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
             )
 
         def f():
-            if self.robograder_factory is not None:
-                yield ("robograding", CompilationAndRobogradingColumn)
-            elif self.tester_factory is not None:
-                yield from self.testing.grading_columns()
+            if self.has_report:
+                yield ("report", handlers.general.ReportColumn)
             else:
-                yield ("compilation", CompilationColumn)
+                if self.robograder_factory is not None:
+                    yield ("robograding", CompilationAndRobogradingColumn)
+                elif self.tester_factory is not None:
+                    yield from self.testing.grading_columns()
+                else:
+                    yield ("compilation", CompilationColumn)
 
         self.grading_columns = live_submissions_table.with_standard_columns(
             dict(f()),
@@ -202,6 +212,7 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
         )
 
     def _handle_request(self, request_and_responses, src, report):
+        report = None
         try:
             with submission_java.submission_checked_and_compiled(src) as (
                 dir_bin,
@@ -215,11 +226,24 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
                     except robograder_java.RobograderException as e:
                         robograding_report = e.markdown()
                     (report / report_robograding).write_text(robograding_report)
+                    report = robograding_report
                 elif self.tester_factory is not None:
-                    self.testing.test_submission(request_and_responses, src, dir_bin)
+                    report = self.testing.test_submission(
+                        request_and_responses,
+                        src,
+                        dir_bin,
+                    )
         except lab_interfaces.HandlingException as e:
             compilation_success = False
             compilation_report = str(e)
+            report = compilation_report
+
+        # Post response issue if configured.
+        if self.has_report is not None and report is not None:
+            request_and_responses.post_response_issue(
+                response_key=self.report_response_key,
+                description=report,
+            )
 
         (report / report_compilation).write_text(compilation_report)
         request_and_responses.repo_report_create(

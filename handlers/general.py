@@ -108,6 +108,8 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
     variant_failure_key = variant_failure_key
     variant_failure_title = variant_failure_title
     submission_failure = (submission_failure_response_key, submission_failure_title)
+    report_response_key = "report"
+    report_response_title = robograder_response_title
 
     @functools.cached_property
     def response_titles(self):
@@ -124,6 +126,8 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
                 yield self.submission_failure
             if self.variant_failure_key is not None:
                 yield (self.variant_failure_key, self.variant_failure_title)
+            if self.report_response_key is not None:
+                yield (self.report_response_key, self.report_response_title)
 
         return dict(f())
 
@@ -154,6 +158,26 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
                 }
 
             return handle_request_with_src(request_and_responses, src)
+
+
+class ReportColumn(live_submissions_table.Column):
+    def __init__(self, table, response_key=SubmissionHandler.report_response_key):
+        super().__init__(table)
+        self.response_key = response_key
+
+    def format_header_cell(self, cell):
+        with cell:
+            dominate.util.text("Robograding")
+
+    def get_value(self, group):
+        submission_current = group.submission_current(deadline=self.config.deadline)
+        issue, _title_data = submission_current.responses[self.response_key]
+
+        def format_cell(cell):
+            with cell:
+                live_submissions_table.format_url("report", issue.web_url)
+
+        return live_submissions_table.CallbackColumnValue(callback=format_cell)
 
 
 class SubmissionHandlerStub(SubmissionHandler):
@@ -309,12 +333,14 @@ class SubmissionTesting:
         tester_factory,
         tester_is_robograder=False,
         solution="solution",
+        has_report=False,
         **tester_args,
     ):
         self.tester_factory = tester_factory
         self.tester_args = tester_args
         self.tester_is_robograder = tester_is_robograder
         self.solution = solution
+        self.has_report = has_report
 
     def setup(self, lab):
         # pylint: disable-next=attribute-defined-outside-init
@@ -421,8 +447,9 @@ class SubmissionTesting:
     # The suppress option is useful if the submission did not compile.
     # In that case, we want to skip testing.
     def test_submission(self, request_and_responses, src, bin=None, suppress=False):
+        """Returns the markdown test report, if existing."""
         if not self.tester:
-            return
+            return None
 
         with util.path.temp_dir() as test:
             if not suppress:
@@ -433,16 +460,18 @@ class SubmissionTesting:
                 commit_message="test results",
                 force=True,
             )
-            if self.has_markdown_report:
-                with util.path.temp_dir() as test_report:
-                    (test_report / self.report_path).write_text(
-                        util.markdown.join_blocks(
-                            self.tester.format_tests_output_as_markdown(test)
-                        )
-                    )
-                    request_and_responses.repo_report_create(
-                        self.segments_test_report,
-                        test_report,
-                        commit_message="test report",
-                        force=True,
-                    )
+            if not self.has_markdown_report:
+                return None
+
+            with util.path.temp_dir() as test_report:
+                result = util.markdown.join_blocks(
+                    self.tester.format_tests_output_as_markdown(test)
+                )
+                (test_report / self.report_path).write_text(result)
+                request_and_responses.repo_report_create(
+                    self.segments_test_report,
+                    test_report,
+                    commit_message="test report",
+                    force=True,
+                )
+                return result

@@ -7,16 +7,31 @@ import live_submissions_table
 class SubmissionHandler(handlers.general.SubmissionHandler):
     """A submission handler for Python labs."""
 
-    def __init__(self, tester_factory=None, show_solution=True, **tester_args):
+    report_response_title = handlers.general.tester_response_title
+
+    class ReportColumn:
+        def format_header_cell(self, cell):
+            with cell:
+                dominate.util.text("Robograding")
+
+    def __init__(
+        self,
+        tester_factory=None,
+        show_solution=True,
+        has_report=False,
+        **tester_args,
+    ):
         if tester_factory is None:
             self.testing = None
         else:
             self.testing = handlers.general.SubmissionTesting(
                 tester_factory,
                 tester_is_robograder=True,
+                has_report=has_report,
                 **tester_args,
             )
         self.show_solution = show_solution
+        self.has_report = has_report
 
     def setup(self, lab):
         super().setup(lab)
@@ -24,7 +39,9 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
             self.testing.setup(lab)
 
         def columns():
-            if self.testing is not None:
+            if self.has_report:
+                yield ("report", handlers.general.ReportColumn)
+            elif self.testing is not None:
                 yield from self.testing.grading_columns()
 
         # pylint: disable-next=attribute-defined-outside-init
@@ -34,8 +51,17 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
         )
 
     def _handle_request(self, request_and_responses, src):
+        report = None
         if self.testing is not None:
-            self.testing.test_submission(request_and_responses, src)
+            report = self.testing.test_submission(request_and_responses, src)
+
+        # Post response issue if configured.
+        if self.has_report is not None and report is not None:
+            request_and_responses.post_response_issue(
+                response_key=self.report_response_key,
+                description=report,
+            )
+
         return {
             "accepted": True,
             "review_needed": True,
