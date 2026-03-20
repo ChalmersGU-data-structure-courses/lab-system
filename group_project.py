@@ -773,7 +773,10 @@ class HandlerData:
                 # pylint: disable-next=broad-exception-caught
                 except Exception:
                     return None
-                return (r["tag"], (issue, r))
+                tag_name = r["tag"]
+                if self.handler.request_matcher.parse(tag_name) is None:
+                    return None
+                return (tag_name, (issue, r))
 
             u = {}
             self.responses[response_key] = u
