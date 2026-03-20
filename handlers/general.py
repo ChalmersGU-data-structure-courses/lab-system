@@ -128,7 +128,9 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
         return dict(f())
 
     def handle_request_callback_with_src(
-        self, request_and_responses, handle_request_with_src
+        self,
+        request_and_responses,
+        handle_request_with_src,
     ):
         """
         Handles a submission by checking it out and calling handle_request_with_src.

@@ -11,7 +11,6 @@ import submission_java
 import util.git
 import util.path
 
-
 report_segments = ["report"]
 report_compilation = PurePosixPath("compilation")
 report_robograding = PurePosixPath("robograding.md")
@@ -98,7 +97,6 @@ class CompilationAndRobogradingColumn(live_submissions_table.Column):
 
     def get_value(self, group):
         submission_current = group.submission_current(deadline=self.config.deadline)
-
         report = submission_current.repo_tag(report_segments)
 
         def link_for(name, path):
@@ -186,7 +184,8 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
             # if self.robograder_factory is None:
             #    self.robograder_factory = robograder_java.factory
             self.robograder = self.robograder_factory(
-                dir_lab=lab.config.path_source, **self.kwargs
+                dir_lab=lab.config.path_source,
+                **self.kwargs,
             )
 
         def f():

@@ -53,7 +53,7 @@ class RequestAndResponses:
             self.gitlab_tag = tag_data
         else:
             self.gitlab_tag = None
-            (self.repo_remote_tag, self.repo_remote_commit) = tag_data
+            self.repo_remote_tag, self.repo_remote_commit = tag_data
         self.responses = {}
 
     @property
@@ -294,7 +294,7 @@ class RequestAndResponses:
         if self.outcome_response_key is None:
             return None
 
-        (issue, title_data) = self.responses[self.outcome_response_key]
+        issue, title_data = self.responses[self.outcome_response_key]
         return (title_data["outcome"], issue)
 
     @functools.cached_property
@@ -306,7 +306,7 @@ class RequestAndResponses:
         if self.outcome_with_issue is None:
             return None
 
-        (_, issue) = self.outcome_with_issue
+        _, issue = self.outcome_with_issue
         return issue
 
     @functools.cached_property
@@ -343,14 +343,14 @@ class RequestAndResponses:
 
     def outcome_acc(self, accumulative=False):
         if self.outcome_with_issue:
-            (outcome, _) = self.outcome_with_issue
+            outcome, _ = self.outcome_with_issue
             return outcome
 
         x = self.outcome_link_grader_from_grading_merge_request_acc(
             accumulative=accumulative
         )
         if x:
-            (outcome, _, _) = x
+            outcome, _, _ = x
             return outcome
 
         return None
@@ -367,11 +367,11 @@ class RequestAndResponses:
         Only valid for submission requests with an outcome.
         """
         if self.outcome_with_issue:
-            (_, issue) = self.outcome_with_issue
+            _, issue = self.outcome_with_issue
             return issue.web_url
 
         if self.outcome_link_grader_from_grading_merge_request:
-            (_, link, _) = self.outcome_link_grader_from_grading_merge_request
+            _, link, _ = self.outcome_link_grader_from_grading_merge_request
             return link
 
         raise ValueError("no outcome")
@@ -383,11 +383,11 @@ class RequestAndResponses:
         Only valid for submission requests with an outcome.
         """
         if self.outcome_with_issue:
-            (_, issue) = self.outcome_with_issue
+            _, issue = self.outcome_with_issue
             return issue.author["username"]
 
         if self.outcome_link_grader_from_grading_merge_request:
-            (_, _, grader) = self.outcome_link_grader_from_grading_merge_request
+            _, _, grader = self.outcome_link_grader_from_grading_merge_request
             return grader
 
         raise ValueError("no outcome")
@@ -641,7 +641,7 @@ class RequestAndResponses:
 
         if all(checks()):
             if self.variants is not None:
-                msg = "Variant detection failed, but submission handler successed."
+                msg = "Variant detection failed, but submission handler succeeded."
                 self.logger.error(msg)
                 raise ValueError(msg)
 
@@ -741,7 +741,7 @@ class HandlerData:
         """
 
         def parser(item):
-            (tag_name, tag_data) = item
+            tag_name, tag_data = item
             if self.handler.request_matcher.parse(tag_name) is None:
                 return None
             return (tag_name, tag_data)
@@ -1468,7 +1468,7 @@ class GroupProject:
         # To be a valid request, the tag name must consist of a single path segment.
         # That is, it must be non-empty and cannot contain the character '/'.
         def check_single_path_segment(item):
-            (tag_name, _tag_data) = item
+            tag_name, _tag_data = item
             tag_parts = PurePosixPath(tag_name).parts
             try:
                 (_,) = tag_parts
@@ -1553,7 +1553,7 @@ class GroupProject:
         """
 
         def action(x):
-            (_, r) = x
+            _, r = x
             return r
 
         return util.general.maybe(functools.partial(util.general.map_values, action))(
