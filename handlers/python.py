@@ -1,3 +1,5 @@
+import dominate
+
 import handlers.general
 import live_submissions_table
 
