@@ -34,7 +34,7 @@ ExecStart=%h/lab-system/run_event_loop.py \
   --start-with-sync \
   --sync-period 900 \
   --error-spreadsheet 1qnG1Lfp8Y-_0MpsncASBljDb_NTn1pFk6b0pgjQwka4 \
-  --log COURSE_CODE/log  # create this as a directory to enable log rotation
+  --log COURSE_CODE/log `#create this as a directory to enable log rotation` \
   --verbose \
   run
 
