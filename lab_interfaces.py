@@ -600,7 +600,7 @@ class VariantsConfig[Variant]:
             source=source,
             submission_grading_title=util.print_parse.compose(
                 name,
-                util.print_parse.regex(submission_grading_title_holed),
+                util.print_parse.Regex(submission_grading_title_holed),
             ),
         )
 

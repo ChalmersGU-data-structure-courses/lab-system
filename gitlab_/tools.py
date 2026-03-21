@@ -17,7 +17,6 @@ import util.path
 import util.print_parse
 import util.url
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -552,21 +551,21 @@ class LabelSpec:
 
 username_regex = r"[a-zA-Z0-9\.\-_]+"
 
-pp_username = util.print_parse.regex("{}", username_regex)
+pp_username = util.print_parse.Regex("{}", username_regex)
 
 
 class _T:
     @functools.cached_property
     def pp_add(self):
-        return util.print_parse.regex("requested review from @{}", username_regex)
+        return util.print_parse.Regex("requested review from @{}", username_regex)
 
     @functools.cached_property
     def pp_remove(self):
-        return util.print_parse.regex("removed review request for @{}", username_regex)
+        return util.print_parse.Regex("removed review request for @{}", username_regex)
 
     @functools.cached_property
     def pp_change(self):
-        return util.print_parse.regex_many(
+        return util.print_parse.RegexMany(
             "requested review from @{} and removed review request for @{}",
             [username_regex, username_regex],
         )
@@ -599,7 +598,7 @@ def parse_reviewer_intervals(notes):
         r = parse_reviewer_change(note)
         if r:
             change = (note.id, parse_date(note.created_at))
-            (added, removed) = r
+            added, removed = r
 
             if not removed == reviewer:
                 raise ValueError(

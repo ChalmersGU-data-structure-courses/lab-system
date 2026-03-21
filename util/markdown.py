@@ -73,7 +73,7 @@ LINK_HOLE_PARSERS: list[util.print_parse.CharEscape] = [
 ]
 
 link_raw_printer_parser: util.print_parse.RegexNoncanonicalMany = (
-    util.print_parse.regex_many(
+    util.print_parse.RegexMany(
         LINK_HOLE_STRING,
         tuple(parser.regex for parser in LINK_HOLE_PARSERS),
     )

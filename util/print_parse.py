@@ -479,12 +479,7 @@ def int_str(format="") -> PrinterParser[int, str]:
 
 
 class RegexParser:
-    def __init__(
-        self,
-        # pylint: disable-next=redefined-outer-name
-        regex: str,
-        **kwargs,
-    ):
+    def __init__(self, regex: str, **kwargs):
         self.pattern = re.compile(regex, **kwargs)
 
     def __call__(self, s: str, full: bool = True, pos: int | None = None) -> re.Match:
@@ -511,13 +506,7 @@ class RegexNoncanonicalBase[X](RegexPrinterParser[X]):
     holed_string: str
     regex_parser: RegexParser
 
-    def __init__(
-        self,
-        holed_string: str,
-        # pylint: disable-next=redefined-outer-name
-        regex: str,
-        **kwargs,
-    ):
+    def __init__(self, holed_string: str, regex: str, **kwargs):
         self.holed_string = holed_string
         self.regex_parser = RegexParser(regex, **kwargs)
 
@@ -549,76 +538,58 @@ class RegexNoncanonicalKeyed(RegexNoncanonicalBase[dict[str, str]]):
         return self.regex_parser(s).groupdict()
 
 
-# pylint: disable-next=redefined-outer-name
-def regex(holed_string: str, regex: str = ".*", **kwargs) -> PrinterParser[str, str]:
+class Regex(RegexNoncanonical):
     """
     BUG.
-    This and following functions only work under the following assumption.
+    This and the following classes only work under the following assumption.
     The holed_string argument must not contain regex special characters (except for holes).
     """
-    return RegexNoncanonical(
-        holed_string,
-        regex_escaping_formatter.format(holed_string, f"({regex})"),
-        **kwargs,
-    )
+
+    def __init__(self, holed_string: str, regex: str = ".*", **kwargs):
+        super().__init__(
+            holed_string,
+            regex_escaping_formatter.format(holed_string, f"({regex})"),
+            **kwargs,
+        )
 
 
-# Sidestep limitations of shadowing in Python.
-_regex = regex
-
-
-def regex_many(
-    holed_string: str,
-    regexes: Iterable[str],
-    **kwargs,
-) -> PrinterParser[Sequence[str], str]:
-    return RegexNoncanonicalMany(
-        holed_string,
-        regex_escaping_formatter.format(
+class RegexMany(RegexNoncanonicalMany):
+    def __init__(self, holed_string: str, regexes: Iterable[str], **kwargs):
+        regex = regex_escaping_formatter.format(
             holed_string,
             *(f"({regex})" for regex in regexes),
-        ),
-        **kwargs,
-    )
+        )
+        super().__init__(holed_string, regex, **kwargs)
 
 
-def regex_none(
-    holed_string: str,
-    **kwargs,
-) -> PrinterParser[tuple[()], str]:
-    return regex_many(holed_string, [], **kwargs)
+class RegexNone(RegexMany):
+    def __init__(self, holed_string: str, **kwargs):
+        super().__init__(holed_string, [], **kwargs)
 
 
-def regex_keyed(
-    holed_string: str,
-    regexes_keyed: dict[str, str],
-    **kwargs,
-) -> PrinterParser[dict[str, str], str]:
-    return RegexNoncanonicalKeyed(
-        holed_string,
-        regex_escaping_formatter.format(
+class RegexKeyed(RegexNoncanonicalKeyed):
+    def __init__(self, holed_string: str, regexes_keyed: dict[str, str], **kwargs):
+        regex = regex_escaping_formatter.format(
             holed_string,
             **{key: f"(?P<{key}>{regex})" for (key, regex) in regexes_keyed.items()},
-        ),
-        **kwargs,
-    )
+        )
+        super().__init__(holed_string, regex, **kwargs)
 
 
 def regex_int(
     holed_string: str,
     format: str = "",
-    # pylint: disable-next=redefined-outer-name
     regex: str = "\\d+",
     **kwargs,
 ) -> PrinterParser[int, str]:
     """Takes a format string with a single hole."""
     return compose(
         int_str(format=format),
-        _regex(holed_string, regex=regex, **kwargs),
+        Regex(holed_string, regex=regex, **kwargs),
     )
 
 
-qualify_with_slash: PrinterParser[tuple[str, str], str] = regex_many("{}/{}", ["[^/]*", ".*"])  # type: ignore
+qualify_with_slash: PrinterParser[tuple[str, str], str] = RegexMany("{}/{}", ["[^/]*", ".*"])  # type: ignore
 
 parens: PrinterParser[str, str] = RegexNoncanonical("({})", r"\((.*)\)")
 bracks: PrinterParser[str, str] = RegexNoncanonical("[{}]", r"\[(.*)\]")

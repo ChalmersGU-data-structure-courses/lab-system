@@ -19,7 +19,6 @@ import util.general
 import util.print_parse as pp
 from google_tools.general import Request
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -125,7 +124,7 @@ def grid_range(sheet_id, rect):
 
     def f():
         yield ("sheetId", sheet_id)
-        ((row_start, row_end), (column_start, column_end)) = rect
+        (row_start, row_end), (column_start, column_end) = rect
         yield from g("startRowIndex", row_start)
         yield from g("endRowIndex", row_end)
         yield from g("startColumnIndex", column_start)
@@ -277,7 +276,7 @@ def masked_structure(fields: dict[Field, MaskedValue | None]) -> MaskedValue:
     result_mask_components = []
     for field, masked_value in fields.items():
         if masked_value is not None:
-            (value, mask) = masked_value
+            value, mask = masked_value
             result_value[field] = value
             result_mask_components.append(field_with_mask(field, mask))
     return (result_value, ",".join(result_mask_components))
@@ -357,7 +356,7 @@ def request_update_cell_value_with_link(
 
     * value: API type ExtendedValue.
     """
-    (val, mask) = cell_data_from_value(value, link)
+    val, mask = cell_data_from_value(value, link)
     assert mask is not None
     return request_update_cell(sheet_id, row, column, val, mask)
 
@@ -663,7 +662,7 @@ def list_of_digits(base):
             raise ValueError("cannot encode negative number as list of digits")
 
         while n != 0:
-            (n, x) = divmod(n - 1, base)
+            n, x = divmod(n - 1, base)
             yield x
 
     return pp.PrintParse(
@@ -706,7 +705,7 @@ numeral_unbounded = pp.compose(
 a1_notation = pp.compose(
     pp.swap,
     pp.combine((alpha_unbounded, numeral_unbounded)),
-    pp.regex_many("{}{}", ("[a-zA-Z]*", "\\-?\\d*"), flags=re.ASCII),
+    pp.RegexMany("{}{}", ("[a-zA-Z]*", "\\-?\\d*"), flags=re.ASCII),
 )
 
 # Formats a (zero-based) range as a silly inclusive one-based range.
@@ -720,7 +719,7 @@ rect_to_a1 = pp.compose(
     pp.over_tuple(range_as_one_based_inclusive),
     pp.interchange,
     pp.over_tuple(a1_notation),
-    pp.regex_many("{}:{}", ("[^:]*", "[^:]*"), flags=re.ASCII),
+    pp.RegexMany("{}:{}", ("[^:]*", "[^:]*"), flags=re.ASCII),
 )
 
 epoch = datetime.datetime(year=1899, month=12, day=30)

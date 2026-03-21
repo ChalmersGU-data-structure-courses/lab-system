@@ -103,7 +103,7 @@ compilation_requirement_ignore = CompilationRequirement(required=False)
 
 compilation_requirement_warn = CompilationRequirement(
     required=False,
-    response_title=util.print_parse.regex_keyed(
+    response_title=util.print_parse.RegexKeyed(
         "Your submission {tag} does not compile",
         {"tag": "[^: ]*"},
         flags=re.IGNORECASE,
@@ -122,7 +122,7 @@ compilation_requirement_warn = CompilationRequirement(
 
 compilation_requirement_require = CompilationRequirement(
     required=True,
-    response_title=util.print_parse.regex_keyed(
+    response_title=util.print_parse.RegexKeyed(
         "Your submission {tag} does not compile",
         {"tag": "[^: ]*"},
         flags=re.IGNORECASE,
@@ -289,7 +289,7 @@ class Robograder(SubmissionHandler):
     def __init__(self):
         """Provides a default implementation of self.response_title."""
         self.response_title = (
-            util.print_parse.regex_keyed(
+            util.print_parse.RegexKeyed(
                 "Robograder: reporting for {tag}",
                 {"tag": "[^: ]*"},
                 flags=re.IGNORECASE,
@@ -366,7 +366,7 @@ class StudentCallableRobograder(SubmissionHandler):
             ["test*", "Test*"],
             "(?:t|T)est[^: ]*",
         )
-        self.response_title = util.print_parse.regex_keyed(
+        self.response_title = util.print_parse.RegexKeyed(
             "Robograder: reporting for {tag}",
             {"tag": "[^: ]*"},
             flags=re.IGNORECASE,

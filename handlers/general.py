@@ -68,14 +68,14 @@ testing_request = lab_interfaces.RegexRequestMatcher(
 generic_response_key = "response"
 """The standard response key for a handler with only one kind of response."""
 
-robograder_response_title = util.print_parse.regex_keyed(
+robograder_response_title = util.print_parse.RegexKeyed(
     "Robograder: reporting for {tag}",
     {"tag": "[^: ]*"},
     flags=re.IGNORECASE,
 )
 """The standard robograding response printer-parser."""
 
-tester_response_title = util.print_parse.regex_keyed(
+tester_response_title = util.print_parse.RegexKeyed(
     "Tester: reporting for {tag}",
     {"tag": "[^: ]*"},
     flags=re.IGNORECASE,

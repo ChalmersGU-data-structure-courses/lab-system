@@ -50,13 +50,13 @@ class HeaderConfig:
     Used in LabConfig.
     """
 
-    group: PrinterParser[tuple[()], str] = util.print_parse.regex_none(
+    group: PrinterParser[tuple[()], str] = util.print_parse.RegexNone(
         "Group",
         flags=re.IGNORECASE,
     )
     """Printer parser for the header for the group column."""
 
-    last_submission_date: PrinterParser[tuple[()], str] = util.print_parse.regex_none(
+    last_submission_date: PrinterParser[tuple[()], str] = util.print_parse.RegexNone(
         "Date",
         flags=re.IGNORECASE,
     )
@@ -71,13 +71,13 @@ class HeaderConfig:
     Defaults to "Query #n" with 1-based numbering.
     """
 
-    grader: PrinterParser[tuple[()], str] = util.print_parse.regex_none(
+    grader: PrinterParser[tuple[()], str] = util.print_parse.RegexNone(
         "Grader",
         flags=re.IGNORECASE,
     )
     """Printer parser for the header for a grader column."""
 
-    score: PrinterParser[tuple[()], str] = util.print_parse.regex_none(
+    score: PrinterParser[tuple[()], str] = util.print_parse.RegexNone(
         "0/1",
         flags=re.IGNORECASE,
     )
