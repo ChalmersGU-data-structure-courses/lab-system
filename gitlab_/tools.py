@@ -478,8 +478,12 @@ def url_tag(project, tag):
     return url_tag_name(project, tag.name)
 
 
+def url_merge_request_note_anchor(merge_request, note=None):
+    return "notes" if note is None else f"note_{note.id}"
+
+
 def url_merge_request_note(merge_request, note=None):
-    anchor = "notes" if note is None else f"note_{note.id}"
+    anchor = url_merge_request_note_anchor(merge_request, note)
     return merge_request.web_url + "#" + anchor
 
 
