@@ -756,6 +756,14 @@ class LabConfig[GroupId, Outcome, Variant]:
     Its value must be an instance of SubmissionHandler.
     """
 
+    report_key: str | None = None
+    """
+    Optional response key of the submission handler for automated testing reports.
+    If set, the submission handler is responsible for posting such an issue for every accepted submission.
+    This will be linked in the grading merge request.
+    For support for including it in the live submissions table, see handlers.general.ReportColumn.
+    """
+
     refresh_period: datetime.timedelta | None = datetime.timedelta(minutes=60)
     """
     Lab refresh period if the script is run in an event loop.

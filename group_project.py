@@ -310,6 +310,16 @@ class RequestAndResponses:
         return issue
 
     @functools.cached_property
+    def report_issue(self):
+        """
+        The report issue.
+        Only valid if the lab config sets 'report'.
+        """
+        assert self.lab.config.report is not None
+        issue, _title_data = self.responses[self.lab.config.report]
+        return issue
+
+    @functools.cached_property
     def variant(self):
         with contextlib.suppress(AttributeError):
             return self._variant

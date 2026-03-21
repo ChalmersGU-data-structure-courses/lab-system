@@ -477,6 +477,8 @@ class GradingViaMergeRequest:
                 )
             )
             yield util.markdown.ColumnSpec(title="Synchronized")
+            if self.lab.config.report_key is not None:
+                yield util.markdown.ColumnSpec(title="Robograding")
             yield util.markdown.ColumnSpec(
                 title="Outcome",
                 align=util.markdown.Alignment.CENTER,
@@ -487,14 +489,16 @@ class GradingViaMergeRequest:
             )
 
         def rows():
+            requests_and_responses = (
+                self.group.submission_handler_data.requests_and_responses
+            )
             # pylint: disable=cell-var-from-loop
             for request_name, (_date, note) in self.synced_submissions.items():
-                has_outcome = self.outcome_with_link_and_grader(request_name)
-                if has_outcome:
-                    (outcome, link, grader) = has_outcome
+                submission = requests_and_responses[request_name]
 
-                def col_request_name():
-                    return util.markdown.link(
+                def columns():
+                    # Request name.
+                    yield util.markdown.link(
                         request_name,
                         gitlab_.tools.url_tree(
                             self.group.project.lazy,
@@ -503,37 +507,37 @@ class GradingViaMergeRequest:
                         ),
                     )
 
-                def col_sync():
-                    return util.markdown.link(
+                    # Synchronized.
+                    yield util.markdown.link(
                         self.course.format_datetime(
                             gitlab_.tools.parse_date(note.created_at)
                         ),
                         gitlab_.tools.url_merge_request_note(self.merge_request, note),
                     )
 
-                def col_outcome():
-                    # pylint: disable=possibly-used-before-assignment
+                    # Report.
+                    if self.lab.config.report_key is not None:
+                        yield util.markdown.link("report", submission.report)
 
+                    has_outcome = self.outcome_with_link_and_grader(request_name)
                     if not has_outcome:
-                        return None
+                        yield from [None, None]
+                    else:
+                        outcome, link, grader = has_outcome
 
-                    return util.markdown.link(
-                        self.lab.config.outcomes.name.print(outcome),
-                        link,
-                    )
+                        # Outcome.
+                        yield util.markdown.link(
+                            self.lab.config.outcomes.name.print(outcome),
+                            link,
+                        )
 
-                def col_grader():
-                    # pylint: disable=possibly-used-before-assignment
+                        # Grader.
+                        yield util.markdown.link(
+                            grader,
+                            gitlab_.tools.url_username(self.gl, grader),
+                        )
 
-                    if not has_outcome:
-                        return None
-
-                    return util.markdown.link(
-                        grader,
-                        gitlab_.tools.url_username(self.gl, grader),
-                    )
-
-                yield (col_request_name(), col_sync(), col_outcome(), col_grader())
+                yield from columns()
 
         return util.markdown.table(column_specs(), rows())
 
@@ -641,6 +645,8 @@ class GradingViaMergeRequest:
                 )
                 if submission_message:
                     yield util.markdown.quote(submission_message)
+                if self.lab.config.report_key is not None:
+                    yield util.markdown.link("Robograding", submission.report.web_url)
 
             self.merge_request.notes.create({"body": util.markdown.join_blocks(body())})
 
