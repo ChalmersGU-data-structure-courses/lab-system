@@ -17,6 +17,7 @@ from pathlib import PurePosixPath
 
 import util.general
 import util.path
+import util.re
 from util.escaping_formatter import regex_escaping_formatter
 
 
@@ -308,14 +309,25 @@ doublequote: PrinterParser[str, str] = PrintParse(
 )
 
 
-def escape(chars: Iterable[str]) -> PrinterParser[str, str]:
-    # pylint: disable-next=redefined-builtin
-    def print(s):
-        for c in itertools.chain(["\\"], chars):
-            s = s.replace(c, "\\" + c)
+class Escape(PrinterParser[str, str]):
+    ESCAPE_CHAR = "\\"
+
+    def __init__(self, chars: Iterable[str]):
+        self.chars = str().join(chars)
+        self.chars_with_escape = self.ESCAPE_CHAR + self.chars
+
+    @functools.cached_property
+    def regex(self) -> str:
+        char_list = re.escape(self.chars_with_escape)
+        char_regex = f"[^{char_list}]|{re.escape(self.ESCAPE_CHAR)}[{char_list}]"
+        return f"(?:{char_regex})*"
+
+    def print(self, x: str, /) -> str:
+        for c in itertools.chain(["\\"], self.chars):
+            s = x.replace(c, "\\" + c)
         return s
 
-    def parse_helper(it):
+    def parse_helper(self, it):
         while True:
             try:
                 c = next(it)
@@ -328,28 +340,43 @@ def escape(chars: Iterable[str]) -> PrinterParser[str, str]:
             else:
                 yield c
 
-    def parse(s):
-        return "".join(parse_helper(iter(s)))
-
-    return PrintParse(
-        print=print,
-        parse=parse,
-    )
-
-
-escape_parens: PrinterParser[str, str] = escape(["(", ")"])
-escape_brackets: PrinterParser[str, str] = escape(["[", "]"])
+    def parse(self, y: str, /) -> str:
+        return "".join(self.parse_helper(iter(y)))
 
 
 @dataclasses.dataclass(frozen=True)
 class CharEscape(PrinterParser[str, str]):
     """
     Printer-parser for escaping characters in a string.
-    Replaces specified characters (including the escape character) by the escape character followed by the replacement.
+    Replaces specified characters (including the escape character) by the escape character followed by the specified replacement.
+
+    Generalizes and improves Escape.
+    The smart constructor `standard` provides a stand-in replacement.
     """
 
     escape: str
     replacements: dict[str, str]
+
+    @classmethod
+    def standard(cls, to_escape: Iterable[str], escape_char: str = "\\") -> CharEscape:
+        """Convenience method for the case where each replacement is the original character."""
+        return cls(escape=escape_char, replacements={c: c for c in to_escape})
+
+    @functools.cached_property
+    def regex(self) -> str:
+        re_nonescaped = util.re.character_set(
+            itertools.chain(self.escape, self.replacements.keys()),
+            invert=True,
+        )
+        re_replacements = util.re.alternatives(
+            re.escape(s)
+            for s in itertools.chain(self.escape, self.replacements.values())
+        )
+        re_escaped_replacements = util.re.sequence(
+            [re.escape(self.escape), util.re.no_capture(re_replacements)]
+        )
+        re_char = util.re.alternatives([re_nonescaped, re_escaped_replacements])
+        return util.re.many(util.re.no_capture(re_char))
 
     @property
     def escape_pairs(self) -> Iterable[tuple[str, str]]:
@@ -379,6 +406,10 @@ class CharEscape(PrinterParser[str, str]):
 
     def parse(self, y: str, /) -> str:
         return self.parse_pattern.sub(self.parse_replace, y)
+
+
+escape_parens: CharEscape = CharEscape.standard(["(", ")"])
+escape_brackets: CharEscape = CharEscape.standard(["[", "]"])
 
 
 class PathSegmentSpecials(PrinterParser[str, str]):
