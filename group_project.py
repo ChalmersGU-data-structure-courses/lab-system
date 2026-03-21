@@ -510,12 +510,20 @@ class RequestAndResponses:
             self._repo_tag_after_segments(prev_name, segments), commit, force=True
         )
 
-    def post_response_issue(self, response_key, title_data=None, description=str()):
+    def post_response_issue(
+        self,
+        response_key,
+        title_data=None,
+        description=str(),
+        exist_ok: bool = False,
+    ):
         if title_data is None:
             title_data = {}
 
         # Only allow posting if there is not already a response issue of the same type.
         if response_key in self.responses:
+            if exist_ok:
+                return
             raise ValueError(
                 f"Response issue for {response_key} already exists "
                 f"for request {self.request_name} in {self.name} in {self.lab.name}"

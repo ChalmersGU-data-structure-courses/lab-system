@@ -237,6 +237,7 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
             request_and_responses.post_response_issue(
                 response_key=self.lab.config.report_key,
                 description=report_content,
+                exist_ok=True,  # TODO: overwrite any existing issue.
             )
 
         (report / report_compilation).write_text(compilation_report)
