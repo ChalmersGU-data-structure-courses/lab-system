@@ -260,6 +260,8 @@ class GradingViaMergeRequest:
 
     def synced_submissions_generator(self) -> Generator[tuple[str, SyncedSubmission]]:
         for note in self.notes:
+            if note.system:
+                continue
             if note.author["id"] in self.course.lab_system_users:
                 try:
                     line = note.body.splitlines()[0]
@@ -274,7 +276,8 @@ class GradingViaMergeRequest:
                         ),
                     )
                 except ValueError as e:
-                    self.logger.warning(f"failed to parse note body {note.body}: {e}")
+                    e.add_note(f"while parsing note body {note.body}")
+                    raise
 
     @functools.cached_property
     def synced_submissions(self) -> dict[str, SyncedSubmission]:
