@@ -323,6 +323,20 @@ class RegexPrinterParser[I](abc.ABC, PrinterParser[I, str]):
         """A regular expression describing valid outputs."""
 
 
+class RegexComposition(Composition, RegexPrinterParser):
+    """
+    Forwards the regex call to the last printer parser in the composition.
+    Only binary composition supported for now (for typing reasons).
+    """
+
+    def __init__(self, pp: PrinterParser, regex_pp: RegexPrinterParser):
+        super().__init__(pp, regex_pp)
+        self.regex_pp = regex_pp
+
+    def regex(self) -> str:
+        return self.regex_pp.regex()
+
+
 class Escape(RegexPrinterParser[str]):
     ESCAPE_CHAR = "\\"
 
@@ -511,7 +525,7 @@ class RegexNoncanonicalBase[X](RegexPrinterParser[X]):
         self.regex_parser = RegexParser(regex, **kwargs)
 
     def regex(self) -> str:
-        return self.regex_parser.pattern.regex
+        return self.regex_parser.pattern.pattern
 
 
 class RegexNoncanonical(RegexNoncanonicalBase[str]):
@@ -574,6 +588,34 @@ class RegexKeyed(RegexNoncanonicalKeyed):
             **{key: f"(?P<{key}>{regex})" for (key, regex) in regexes_keyed.items()},
         )
         super().__init__(holed_string, regex, **kwargs)
+
+
+def regex_compose[I](
+    holed_string: str,
+    pp: RegexPrinterParser[I],
+    **kwargs,
+) -> RegexPrinterParser[I]:
+    return RegexComposition(pp, Regex(holed_string, pp.regex(), **kwargs))
+
+
+def regex_compose_many(
+    holed_string: str,
+    pps: Iterable[RegexPrinterParser],
+    **kwargs,
+) -> RegexPrinterParser[Sequence]:
+    pps = tuple(pps)
+    regex_pp = RegexMany(holed_string, [pp.regex() for pp in pps], **kwargs)
+    return RegexComposition(combine(pps), regex_pp)
+
+
+def regex_compose_keyed(
+    holed_string: str,
+    pps: dict[str, RegexPrinterParser],
+    **kwargs,
+) -> RegexPrinterParser[dict[str, Any]]:
+    pps_regex = {key: pp.regex() for key, pp in pps.items()}
+    regex_pp = RegexMany(holed_string, pps_regex, **kwargs)
+    return RegexComposition(combine_dict(pps), regex_pp)
 
 
 def regex_int(
