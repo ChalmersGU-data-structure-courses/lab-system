@@ -210,7 +210,7 @@ class GradingViaMergeRequest:
             if note.author["id"] in self.course.lab_system_users:
                 try:
                     line = note.body.splitlines()[0]
-                    (request_name, _) = self.sync_message.parse(line)
+                    request_name, _ = self.sync_message.parse(line)
                     yield (
                         request_name,
                         (gitlab_.tools.parse_date(note.created_at), note),
@@ -241,7 +241,7 @@ class GradingViaMergeRequest:
         None if no reviewer is currently assigned (according to the notes).
         """
         with contextlib.suppress(IndexError):
-            (reviewer, (start, end)) = self.reviewer_intervals[-1]
+            reviewer, (start, end) = self.reviewer_intervals[-1]
             if end is None:
                 return (reviewer, start)
 
@@ -316,7 +316,7 @@ class GradingViaMergeRequest:
     def play_submission_label_events(self, outcome_status, events):
         for date, (outcome, action), info in events:
             if outcome in outcome_status:
-                (status, _) = outcome_status[outcome]
+                status, _ = outcome_status[outcome]
                 if action == status:
                     self.logger.warn(
                         self.with_merge_request_url(
@@ -338,7 +338,7 @@ class GradingViaMergeRequest:
         try:
             (outcome,) = outcomes
             if outcome is not None:
-                (_, info) = outcome_status[outcome]
+                _, info = outcome_status[outcome]
                 return (outcome, info)
         except ValueError:
             if outcomes or warn_if_no_outcome:
@@ -367,8 +367,8 @@ class GradingViaMergeRequest:
                 longest=True,
             ):
                 if request_name_next is not None:
-                    (date_to, _) = self.synced_submissions[request_name_next]
-                (jt, it) = util.general.before_and_after(
+                    date_to, _ = self.synced_submissions[request_name_next]
+                jt, it = util.general.before_and_after(
                     # pylint: disable-next = possibly-used-before-assignment
                     lambda x: request_name_next is None or x[0] <= date_to,
                     it,
@@ -460,7 +460,7 @@ class GradingViaMergeRequest:
             )
 
         try:
-            (outcome, (date, (username, _system))) = self.submission_outcomes[
+            outcome, (date, (username, _system)) = self.submission_outcomes[
                 request_name
             ]
         except KeyError:
@@ -599,7 +599,7 @@ class GradingViaMergeRequest:
         # Block syncing if a review is happening.
         block_period = self.lab.config.grading_via_merge_request.maximum_reserve_time
         if block_period is not None and self.reviewer_current:
-            (_reviewer, (_start_id, start_date)) = self.reviewer_current
+            _reviewer, (_start_id, start_date) = self.reviewer_current
             if datetime.datetime.now(datetime.timezone.utc) < start_date + block_period:
                 self.logger.warn(
                     self.with_merge_request_url(
@@ -632,8 +632,8 @@ class GradingViaMergeRequest:
                     submission.request_name,
                     True,
                 )
-                yield util.general.join_lines(
-                    [self.sync_message.print((submission.request_name, link))]
+                yield util.general.text_from_lines(
+                    self.sync_message.print((submission.request_name, link))
                 )
                 submission_message = util.git.tag_message(
                     submission.repo_remote_tag,
