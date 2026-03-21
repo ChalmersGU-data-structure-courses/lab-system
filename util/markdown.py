@@ -90,12 +90,18 @@ class ColumnSpec:
 
 
 def table(column_specs: Iterable[ColumnSpec], rows: Iterable[Sequence[str]]):
-    """Doesn't do any escaping."""
+    """BUG: Doesn't do any escaping."""
     column_specs = list(column_specs)
     rows = list(rows)
 
     lengths = [
-        max(len(str(x)) for x in [column_spec.title, *(row[i] for row in rows)])
+        max(
+            len(str(x))
+            for x in [
+                column_spec.title,
+                *(row[i] for row in rows if row[i] is not None),
+            ]
+        )
         for (i, column_spec) in enumerate(column_specs)
     ]
 
@@ -120,7 +126,7 @@ def table(column_specs: Iterable[ColumnSpec], rows: Iterable[Sequence[str]]):
                 column_spec = column_specs[i]
                 just = str.rjust if column_spec.align is Alignment.RIGHT else str.ljust
                 yield wrap_with_space(
-                    just("" if entry is None else str(entry), lengths[i])
+                    just(str() if entry is None else str(entry), lengths[i])
                 )
 
         return join_with_pipe(f())
