@@ -518,7 +518,7 @@ class RequestAndResponses:
         if response_key in self.responses:
             raise ValueError(
                 f"Response issue for {response_key} already exists "
-                "for request {self.request_name} in {self.name} in {self.lab.name}"
+                f"for request {self.request_name} in {self.name} in {self.lab.name}"
             )
 
         # Make sure title_data is a dictionary and fill in request name.
