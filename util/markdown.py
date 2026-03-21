@@ -6,7 +6,7 @@ from typing import Sequence
 
 import more_itertools
 import util.print_parse
-from util.print_parse import PrinterParser
+from util.print_parse import PrinterParser, RegexPrinterParser
 
 import util.general
 
@@ -65,23 +65,11 @@ def escape(s: str) -> str:
     return s
 
 
-LINK_HOLE_STRING: str = "[{}]({})"
-
-LINK_HOLE_PARSERS: list[util.print_parse.CharEscape] = [
-    util.print_parse.escape_brackets,
-    util.print_parse.escape_parens,
-]
-
-link_raw_printer_parser: util.print_parse.RegexNoncanonicalMany = (
-    util.print_parse.RegexMany(
-        LINK_HOLE_STRING,
-        tuple(parser.regex for parser in LINK_HOLE_PARSERS),
+link_printer_parser: RegexPrinterParser[tuple[str, str]] = (
+    util.print_parse.regex_compose_many(
+        "[{}]({})",
+        (util.print_parse.escape_brackets, util.print_parse.escape_parens),
     )
-)
-
-link_printer_parser: PrinterParser[tuple[str, str], str] = util.print_parse.Composition(
-    util.print_parse.combine(tuple(LINK_HOLE_PARSERS)),
-    link_raw_printer_parser,
 )
 
 
