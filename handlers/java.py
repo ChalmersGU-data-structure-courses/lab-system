@@ -283,7 +283,8 @@ class RobogradingHandler(handlers.general.RobogradingHandler):
         super().setup(lab)
         # pylint: disable-next=attribute-defined-outside-init
         self.robograder = self.robograder_factory(
-            dir_lab=lab.config.path_source, **self.kwargs
+            dir_lab=lab.config.path_source,
+            **self.kwargs,
         )
 
     def _handle_request(self, request_and_responses, src):
