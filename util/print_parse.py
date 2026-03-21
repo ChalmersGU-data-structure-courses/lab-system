@@ -475,10 +475,23 @@ class RegexParser:
     ):
         self.pattern = re.compile(regex, **kwargs)
 
-    def __call__(self, s: str) -> re.Match:
-        m = self.pattern.fullmatch(s)
+    def __call__(self, s: str, full: bool = True, pos: int | None = None) -> re.Match:
+        method = self.pattern.fullmatch if full else self.pattern.match
+        m = method(s)
         if not m:
-            raise ValueError(f"does not match {self.pattern.pattern}: {s}")
+
+            def parts():
+                yield "does not "
+                if full:
+                    yield "full"
+                yield "match "
+                yield self.pattern.pattern
+                if pos is not None:
+                    yield f" at position {pos}"
+                yield ": "
+                yield s
+
+            raise ValueError(str().join(parts()))
         return m
 
 
