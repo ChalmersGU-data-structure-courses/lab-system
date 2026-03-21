@@ -1,5 +1,9 @@
-# Recommended to import qualified.
+"""
+Recommended to import qualified.
+"""
+
 from collections.abc import Iterable, Sequence
+import abc
 import ast
 import base64
 import collections
@@ -309,14 +313,23 @@ doublequote: PrinterParser[str, str] = PrintParse(
 )
 
 
-class Escape(PrinterParser[str, str]):
+class RegexPrinterParser[I](abc.ABC, PrinterParser[I, str]):
+    """
+    A printer parser outputting strings.
+    An associated regex describes valid outputs.
+    """
+
+    def regex(self) -> str:
+        """A regular expression describing valid outputs."""
+
+
+class Escape(RegexPrinterParser[str]):
     ESCAPE_CHAR = "\\"
 
     def __init__(self, chars: Iterable[str]):
         self.chars = str().join(chars)
         self.chars_with_escape = self.ESCAPE_CHAR + self.chars
 
-    @functools.cached_property
     def regex(self) -> str:
         char_list = re.escape(self.chars_with_escape)
         char_regex = f"[^{char_list}]|{re.escape(self.ESCAPE_CHAR)}[{char_list}]"
@@ -345,7 +358,7 @@ class Escape(PrinterParser[str, str]):
 
 
 @dataclasses.dataclass(frozen=True)
-class CharEscape(PrinterParser[str, str]):
+class CharEscape(RegexPrinterParser[str]):
     """
     Printer-parser for escaping characters in a string.
     Replaces specified characters (including the escape character) by the escape character followed by the specified replacement.
@@ -362,7 +375,6 @@ class CharEscape(PrinterParser[str, str]):
         """Convenience method for the case where each replacement is the original character."""
         return cls(escape=escape_char, replacements={c: c for c in to_escape})
 
-    @functools.cached_property
     def regex(self) -> str:
         re_nonescaped = util.re.character_set(
             itertools.chain(self.escape, self.replacements.keys()),
@@ -495,19 +507,7 @@ class RegexParser:
         return m
 
 
-def regex_non_canonical(
-    holed_string: str,
-    # pylint: disable-next=redefined-outer-name
-    regex: str,
-    **kwargs,
-) -> PrinterParser[str, str]:
-    return compose(
-        singleton,
-        RegexNoncanonicalMany(holed_string, regex, **kwargs),
-    )
-
-
-class RegexNoncanonicalMany(PrinterParser[Sequence[str], str]):
+class RegexNoncanonicalBase[X](RegexPrinterParser[X]):
     holed_string: str
     regex_parser: RegexParser
 
@@ -521,6 +521,19 @@ class RegexNoncanonicalMany(PrinterParser[Sequence[str], str]):
         self.holed_string = holed_string
         self.regex_parser = RegexParser(regex, **kwargs)
 
+    def regex(self) -> str:
+        return self.regex_parser.pattern.regex
+
+
+class RegexNoncanonical(RegexNoncanonicalBase[str]):
+    def print(self, arg: str, /) -> str:
+        return self.holed_string.format(arg)
+
+    def parse(self, s: str, /) -> str:
+        return util.general.from_singleton(self.regex_parser(s).groups())
+
+
+class RegexNoncanonicalMany(RegexNoncanonicalBase[Sequence[str]]):
     def print(self, args: Sequence[str], /) -> str:
         return self.holed_string.format(*args)
 
@@ -528,20 +541,7 @@ class RegexNoncanonicalMany(PrinterParser[Sequence[str], str]):
         return self.regex_parser(s).groups()
 
 
-class RegexNoncanonicalKeyed(PrinterParser[dict[str, str], str]):
-    holed_string: str
-    regex_parser: RegexParser
-
-    def __init__(
-        self,
-        holed_string: str,
-        # pylint: disable-next=redefined-outer-name
-        regex: str,
-        **kwargs,
-    ):
-        self.holed_string = holed_string
-        self.regex_parser = RegexParser(regex, **kwargs)
-
+class RegexNoncanonicalKeyed(RegexNoncanonicalBase[dict[str, str]]):
     def print(self, args: dict[str, str], /) -> str:
         return self.holed_string.format(**args)
 
@@ -556,7 +556,7 @@ def regex(holed_string: str, regex: str = ".*", **kwargs) -> PrinterParser[str, 
     This and following functions only work under the following assumption.
     The holed_string argument must not contain regex special characters (except for holes).
     """
-    return regex_non_canonical(
+    return RegexNoncanonical(
         holed_string,
         regex_escaping_formatter.format(holed_string, f"({regex})"),
         **kwargs,
@@ -620,9 +620,9 @@ def regex_int(
 
 qualify_with_slash: PrinterParser[tuple[str, str], str] = regex_many("{}/{}", ["[^/]*", ".*"])  # type: ignore
 
-parens: PrinterParser[str, str] = regex_non_canonical("({})", r"\((.*)\)")
-bracks: PrinterParser[str, str] = regex_non_canonical("[{}]", r"\[(.*)\]")
-braces: PrinterParser[str, str] = regex_non_canonical("{{{}}}", r"\{(.*)\}")
+parens: PrinterParser[str, str] = RegexNoncanonical("({})", r"\((.*)\)")
+bracks: PrinterParser[str, str] = RegexNoncanonical("[{}]", r"\[(.*)\]")
+braces: PrinterParser[str, str] = RegexNoncanonical("{{{}}}", r"\{(.*)\}")
 
 
 @dataclasses.dataclass
