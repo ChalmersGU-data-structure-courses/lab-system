@@ -1,4 +1,3 @@
-from collections.abc import Iterable
 import bisect
 import collections
 import contextlib
@@ -7,7 +6,7 @@ import datetime
 import functools
 import itertools
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from logging import Logger
 from typing import Callable
 
@@ -21,7 +20,6 @@ import util.print_parse
 from util.print_parse import PrinterParser
 
 from .config import Config, HeaderConfig, LabConfig
-
 
 logger_default = logging.getLogger(__name__)
 """Default logger for this module."""
@@ -283,12 +281,12 @@ class GradingSheetData[LabId, GroupId, Outcome]:
 
     @functools.cached_property
     def sheet_properties_raw(self):
-        (properties_raw, _sheet_data) = self._sheet
+        properties_raw, _sheet_data = self._sheet
         return properties_raw
 
     @functools.cached_property
     def sheet_data(self) -> google_tools.sheets.SheetData:
-        (_properties_raw, sheet_data) = self._sheet
+        _properties_raw, sheet_data = self._sheet
         return sheet_data
 
     @functools.cached_property
@@ -427,7 +425,7 @@ class GradingSheetData[LabId, GroupId, Outcome]:
 
         while True:
             try:
-                x = columns.peek()
+                columns.peek()
             except StopIteration:
                 break
 
@@ -627,7 +625,7 @@ class GradingSheet[LabId, GroupId, Outcome]:
         Parsed from the grading spreadsheet instance.
         Raises KeyError if the worksheet does not exist.
         """
-        (sheet_id, _title, _index) = self._lab_data
+        sheet_id, _title, _index = self._lab_data
         return sheet_id
 
     @property
@@ -645,7 +643,7 @@ class GradingSheet[LabId, GroupId, Outcome]:
         if self._title_override is not None:
             return self._title_override
 
-        (_sheet_id, title, _index) = self._lab_data
+        _sheet_id, title, _index = self._lab_data
         return title
 
     @property
@@ -655,7 +653,7 @@ class GradingSheet[LabId, GroupId, Outcome]:
         Parsed from the grading spreadsheet instance.
         Raises KeyError if the worksheet does not exist.
         """
-        (_sheet_id, _title, index) = self._lab_data
+        _sheet_id, _title, index = self._lab_data
         return index
 
     def _template_sheet(self) -> int:
@@ -664,7 +662,7 @@ class GradingSheet[LabId, GroupId, Outcome]:
         Assumes that self.config.template is not None.
         """
         assert self.config.template is not None
-        (spreadsheet_id, sheet_id_or_title) = self.config.template
+        spreadsheet_id, sheet_id_or_title = self.config.template
         if isinstance(sheet_id_or_title, int):
             return sheet_id_or_title
 
@@ -683,7 +681,7 @@ class GradingSheet[LabId, GroupId, Outcome]:
         if self.config.template is None:
             return None
 
-        (spreadsheet_id, _) = self.config.template
+        spreadsheet_id, _ = self.config.template
         return (spreadsheet_id, self._template_sheet())
 
     @functools.cached_property
@@ -723,7 +721,7 @@ class GradingSheet[LabId, GroupId, Outcome]:
         """
         coords = (row, column)
         value_old = self.data.sheet_data.value(*coords)
-        (value_new, mask) = google_tools.sheets.cell_data_from_value(value, link)
+        value_new, mask = google_tools.sheets.cell_data_from_value(value, link)
         assert mask is not None
 
         if not force:
@@ -858,7 +856,7 @@ class GradingSheet[LabId, GroupId, Outcome]:
         This method has side effects.
         It calls self.data.mock_delete_groups() if deletion is needed.
         """
-        (group_start, _) = self.data.group_range
+        group_start, _ = self.data.group_range
 
         # Delete group rows (including trailing empty rows).
         # Leave an empty group row for retaining formatting.
@@ -904,7 +902,7 @@ class GradingSheet[LabId, GroupId, Outcome]:
         # Are there no previous group rows?
         # In that case, self.group_range denotes a non-empty range of empty rows.
         empty = not self.data.group_rows
-        (groups_start, groups_end) = self.data.group_range
+        groups_start, groups_end = self.data.group_range
 
         # We maintain the ordering of the existing group rows.
         # They might not be sorted.
@@ -958,10 +956,10 @@ class GradingSheet[LabId, GroupId, Outcome]:
                 self.data.sheet_properties.sheetId,
                 ranges,
             )
-            (_, mask) = google_tools.sheets.cell_data_from_value(str(), str())
+            _, mask = google_tools.sheets.cell_data_from_value(str(), str())
 
             def group_cell_data(id):
-                (value, _) = google_tools.sheets.cell_data_from_value(
+                value, _ = google_tools.sheets.cell_data_from_value(
                     self.config.gdpr_coding.identifier.print(id)
                 )
                 return value
@@ -1083,7 +1081,7 @@ class GradingSheet[LabId, GroupId, Outcome]:
             template_sheet_id = prec_grading_sheet.sheet_id
             same_spreadsheet = True
         else:
-            (template_spreadsheet_id, template_sheet_id) = template
+            template_spreadsheet_id, template_sheet_id = template
             self.logger.debug(
                 "using template worksheet"
                 f" {template_spreadsheet_id}/{template_sheet_id}"
@@ -1242,8 +1240,8 @@ class GradingSpreadsheetData[LabId]:
             )
         except util.general.SDictException as e:
             lab_id = e.key
-            (sheet_id_a, title_a, index_a) = e.value_a
-            (sheet_id_b, title_b, index_b) = e.value_b
+            sheet_id_a, title_a, index_a = e.value_a
+            sheet_id_b, title_b, index_b = e.value_b
             msg = util.general.text_from_lines(
                 f"duplicate grading worksheet for {self.config.lab.print(lab_id)}",
                 f"* id {sheet_id_a} with title {title_a} at index {index_a}",
@@ -1287,7 +1285,7 @@ class GradingSpreadsheetData[LabId]:
         if lab_id is None:
             return 0
 
-        (_sheet_id, _title, index) = self.lab_data[lab_id]
+        _sheet_id, _title, index = self.lab_data[lab_id]
         return index + 1
 
     @functools.cached_property

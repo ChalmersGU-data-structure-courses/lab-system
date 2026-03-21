@@ -332,7 +332,7 @@ def text_format(link=None):
     return dict(f())
 
 
-# pylinell_t: disable-next=redefined-outer-name
+# pylint: disable-next=redefined-outer-name
 def cell_format(text_format=None):
     """Produces a value for the API type CellFormat."""
 
@@ -696,7 +696,7 @@ alpha_unbounded = pp.compose(
 # The numerical part of A1 notation, supporting the unbounded value None.
 numeral_unbounded = pp.compose(
     pp.maybe(pp.from_one),
-    pp.with_none(pp.int_str(), str()),
+    pp.with_none(pp.IntStr(), str()),
 )
 
 # Formats a (zero-based) pair of row and column index in A1 notation.
@@ -705,7 +705,7 @@ numeral_unbounded = pp.compose(
 a1_notation = pp.compose(
     pp.swap,
     pp.combine((alpha_unbounded, numeral_unbounded)),
-    pp.RegexMany("{}{}", ("[a-zA-Z]*", "\\-?\\d*"), flags=re.ASCII),
+    pp.RegexSmart("{}{}", regexes=("[a-zA-Z]*", "\\-?\\d*"), flags=re.ASCII),
 )
 
 # Formats a (zero-based) range as a silly inclusive one-based range.
@@ -719,7 +719,7 @@ rect_to_a1 = pp.compose(
     pp.over_tuple(range_as_one_based_inclusive),
     pp.interchange,
     pp.over_tuple(a1_notation),
-    pp.RegexMany("{}:{}", ("[^:]*", "[^:]*"), flags=re.ASCII),
+    pp.RegexSmart("{}:{}", regexes=("[^:]*", "[^:]*"), flags=re.ASCII),
 )
 
 epoch = datetime.datetime(year=1899, month=12, day=30)

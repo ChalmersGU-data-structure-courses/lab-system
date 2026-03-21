@@ -35,11 +35,13 @@ variant_failure_key = "grading"
 
 def grading_response_for_outcome[Outcome](outcome_name: PrinterParser[Outcome, str]):
     """The standard grading response printer-parser for a given outcome name printer-parser."""
-    return util.print_parse.compose(
+    return util.print_parse.Composition(
         util.print_parse.on(util.general.component("outcome"), outcome_name),
-        util.print_parse.RegexNoncanonicalKeyed(
+        util.print_parse.NamedArgsPrinterParser(),
+        util.print_parse.RegexNoncanonical(
             "Grading for {tag}: {outcome}",
             "grading\\s+(?:for|of)\\s+(?P<tag>[^: ]*)\\s*:\\s*(?P<outcome>[^:\\.!]*)[\\.!]*",
+            "grading\\s+(?:for|of)\\s+(?:[^: ]*)\\s*:\\s*(?:[^:\\.!]*)[\\.!]*",
             flags=re.IGNORECASE,
         ),
     )
@@ -47,15 +49,15 @@ def grading_response_for_outcome[Outcome](outcome_name: PrinterParser[Outcome, s
 
 submission_failure_response_key = "submission_failure"
 
-submission_failure_title = util.print_parse.RegexNoncanonicalKeyed(
+submission_failure_title = util.print_parse.RegexSmart(
     "Your submission {tag} was not accepted",
-    "Your submission (?P<tag>[^: ]*) was not accepted",
+    regexes_keyed={"tag": "[^: ]*"},
     flags=re.IGNORECASE,
 )
 
-variant_failure_title = util.print_parse.RegexNoncanonicalKeyed(
+variant_failure_title = util.print_parse.RegexSmart(
     "Your submission {tag} was not accepted: variant detection failure",
-    "Your submission (?P<tag>[^: ]*) was not accepted: variant detection failure",
+    regexes_keyed={"tag": "[^: ]*"},
     flags=re.IGNORECASE,
 )
 
@@ -68,16 +70,16 @@ testing_request = lab_interfaces.RegexRequestMatcher(
 generic_response_key = "response"
 """The standard response key for a handler with only one kind of response."""
 
-robograder_response_title = util.print_parse.RegexKeyed(
+robograder_response_title = util.print_parse.RegexSmart(
     "Robograder: reporting for {tag}",
-    {"tag": "[^: ]*"},
+    regexes_keyed={"tag": "[^: ]*"},
     flags=re.IGNORECASE,
 )
 """The standard robograding response printer-parser."""
 
-tester_response_title = util.print_parse.RegexKeyed(
+tester_response_title = util.print_parse.RegexSmart(
     "Tester: reporting for {tag}",
-    {"tag": "[^: ]*"},
+    regexes_keyed={"tag": "[^: ]*"},
     flags=re.IGNORECASE,
 )
 """The standard testing response printer-parser."""

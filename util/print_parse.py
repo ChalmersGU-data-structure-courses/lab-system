@@ -2,7 +2,7 @@
 Recommended to import qualified.
 """
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 import abc
 import ast
 import base64
@@ -16,13 +16,12 @@ import json as module_json
 import pathlib
 import re
 import shlex
-from typing import Any, Callable, ClassVar, Protocol
+from typing import Any, Callable, ClassVar, Protocol, Self
 from pathlib import PurePosixPath
 
 import util.general
 import util.path
 import util.re
-from util.escaping_formatter import regex_escaping_formatter
 
 
 class PrinterParser[I, O](Protocol):
@@ -147,6 +146,15 @@ interchange = PrintParse(
     print=util.general.interchange,
     parse=util.general.interchange,
 )
+
+
+class Singleton[X](PrinterParser[X, Sequence[X]]):
+    def print(self, x: X, /) -> Sequence[X]:
+        return util.general.singleton(x)
+
+    def parse(self, y: Sequence[X], /) -> X:
+        return util.general.from_singleton(y)
+
 
 singleton = PrintParse(
     print=util.general.singleton,
@@ -320,7 +328,10 @@ class RegexPrinterParser[I](abc.ABC, PrinterParser[I, str]):
     """
 
     def regex(self) -> str:
-        """A regular expression describing valid outputs."""
+        """
+        A regular expression describing valid outputs.
+        This must not capture any groups.
+        """
 
 
 class RegexComposition(Composition, RegexPrinterParser):
@@ -385,7 +396,7 @@ class CharEscape(RegexPrinterParser[str]):
     replacements: dict[str, str]
 
     @classmethod
-    def standard(cls, to_escape: Iterable[str], escape_char: str = "\\") -> CharEscape:
+    def standard(cls, to_escape: Iterable[str], escape_char: str = "\\") -> Self:
         """Convenience method for the case where each replacement is the original character."""
         return cls(escape=escape_char, replacements={c: c for c in to_escape})
 
@@ -484,138 +495,211 @@ string_letters: PrinterParser[str, Iterable[str]] = PrintParse(
 )
 
 
-def int_str(format="") -> PrinterParser[int, str]:
-    format_str = f"{{:{format}d}}"
-    return PrintParse(
-        print=format_str.format,
-        parse=int,
-    )
+class IntStr(RegexPrinterParser[int]):
+    def __init__(self, format="", regex=r"\d+"):
+        self.format_str = f"{{:{format}d}}"
+        self.provided_regex = regex
+
+    def regex(self) -> str:
+        return self.provided_regex
+
+    def print(self, x: int, /) -> str:
+        return self.format_str.format(x)
+
+    def parse(self, y: str, /) -> int:
+        return int(y)
+
+
+type Args[X] = tuple[Sequence[X], Mapping[str, X]]
+
+
+class PosArgsPrinterParser[X](PrinterParser[Sequence[X], Args[X]]):
+    def print(self, x: Sequence[X], /) -> Args[X]:
+        return (x, {})
+
+    def parse(self, y: Args[X], /) -> Sequence[X]:
+        pos, _named = y
+        return pos
+
+
+class NamedArgsPrinterParser[X](PrinterParser[Mapping[str, X], Args[X]]):
+    def print(self, x: Mapping[str, X], /) -> Args[X]:
+        return ((), x)
+
+    def parse(self, y: Args[X], /) -> Mapping[str, X]:
+        _pos, named = y
+        return named
+
+
+class SingleArgPrinterParser[X](Composition):
+    def __init__(self):
+        super().__init__(Singleton(), PosArgsPrinterParser())
 
 
 class RegexParser:
     def __init__(self, regex: str, **kwargs):
         self.pattern = re.compile(regex, **kwargs)
 
-    def __call__(self, s: str, full: bool = True, pos: int | None = None) -> re.Match:
-        method = self.pattern.fullmatch if full else self.pattern.match
-        m = method(s)
+    def __call__(self, s: str) -> re.Match:
+        m = self.pattern.fullmatch(s)
         if not m:
-
-            def parts():
-                yield "does not "
-                if full:
-                    yield "full"
-                yield "match "
-                yield self.pattern.pattern
-                if pos is not None:
-                    yield f" at position {pos}"
-                yield ": "
-                yield s
-
-            raise ValueError(str().join(parts()))
+            raise ValueError(f"does not match {self.pattern.pattern}: {s}")
         return m
 
 
-class RegexNoncanonicalBase[X](RegexPrinterParser[X]):
+class RegexNoncanonical(RegexPrinterParser[Args[str]]):
     holed_string: str
     regex_parser: RegexParser
 
-    def __init__(self, holed_string: str, regex: str, **kwargs):
+    def __init__(
+        self,
+        holed_string: str,
+        regex: str,
+        regex_without_groups: str,
+        **kwargs,
+    ):
         self.holed_string = holed_string
         self.regex_parser = RegexParser(regex, **kwargs)
+        self.regex_without_groups = regex_without_groups
 
     def regex(self) -> str:
-        return self.regex_parser.pattern.pattern
+        return self.regex_without_groups
 
+    def print(self, x: Args[str], /) -> str:
+        args, kwargs = x
+        return self.holed_string.format(*args, **kwargs)
 
-class RegexNoncanonical(RegexNoncanonicalBase[str]):
-    def print(self, arg: str, /) -> str:
-        return self.holed_string.format(arg)
-
-    def parse(self, s: str, /) -> str:
-        return util.general.from_singleton(self.regex_parser(s).groups())
-
-
-class RegexNoncanonicalMany(RegexNoncanonicalBase[Sequence[str]]):
-    def print(self, args: Sequence[str], /) -> str:
-        return self.holed_string.format(*args)
-
-    def parse(self, s: str, /) -> Sequence[str]:
-        return self.regex_parser(s).groups()
-
-
-class RegexNoncanonicalKeyed(RegexNoncanonicalBase[dict[str, str]]):
-    def print(self, args: dict[str, str], /) -> str:
-        return self.holed_string.format(**args)
-
-    def parse(self, s: str, /) -> dict[str, str]:
-        return self.regex_parser(s).groupdict()
+    def parse(self, s: str, /) -> Args[str]:
+        r = self.regex_parser(s)
+        return (r.groups(), r.groupdict())
 
 
 class Regex(RegexNoncanonical):
-    """
-    BUG.
-    This and the following classes only work under the following assumption.
-    The holed_string argument must not contain regex special characters (except for holes).
-    """
+    def __init__(
+        self,
+        holed_string: str,
+        regexes: Sequence[str] = tuple(),
+        regexes_keyed: Mapping[str, str] = util.general.empty_mapping,
+        **kwargs,
+    ):
+        def format(capturing: bool) -> str:
+            formatter = util.re.RegexFormatter(capturing=capturing)
+            return formatter.format(holed_string, *regexes, **regexes_keyed)
 
-    def __init__(self, holed_string: str, regex: str = ".*", **kwargs):
+        super().__init__(holed_string, format(True), format(False))
+
+
+class RegexSmart(RegexComposition):
+    def __init__(
+        self,
+        holed_string: str,
+        regex: str | None = None,
+        regexes: Sequence[str] | None = None,
+        regexes_keyed: Mapping[str, str] | None = None,
+        **kwargs,
+    ):
+        def pps_gen():
+            nonlocal regex, regexes
+            if regex is None and regexes is None and regexes_keyed is None:
+                regex = ".*"
+            if regex is not None:
+                assert regexes is None
+                regexes = [regex]
+                yield singleton
+            if regexes_keyed is not None:
+                assert regexes is None
+                yield NamedArgsPrinterParser()
+            else:
+                if regexes is None:
+                    regexes = []
+                yield PosArgsPrinterParser()
+
+        pps = list(pps_gen())
+
+        if regexes is None:
+            regexes = []
+        if regexes_keyed is None:
+            regexes_keyed = {}
+
         super().__init__(
-            holed_string,
-            regex_escaping_formatter.format(holed_string, f"({regex})"),
-            **kwargs,
+            Composition(*pps),
+            Regex(holed_string, regexes, regexes_keyed, **kwargs),
         )
 
 
-class RegexMany(RegexNoncanonicalMany):
-    def __init__(self, holed_string: str, regexes: Iterable[str], **kwargs):
-        regex = regex_escaping_formatter.format(
-            holed_string,
-            *(f"({regex})" for regex in regexes),
-        )
-        super().__init__(holed_string, regex, **kwargs)
-
-
-class RegexNone(RegexMany):
+class RegexNone(RegexSmart):
     def __init__(self, holed_string: str, **kwargs):
-        super().__init__(holed_string, [], **kwargs)
+        super().__init__(holed_string, regexes=[], **kwargs)
 
 
-class RegexKeyed(RegexNoncanonicalKeyed):
-    def __init__(self, holed_string: str, regexes_keyed: dict[str, str], **kwargs):
-        regex = regex_escaping_formatter.format(
-            holed_string,
-            **{key: f"(?P<{key}>{regex})" for (key, regex) in regexes_keyed.items()},
+class RegexCompose(RegexComposition):
+    def __init__(
+        self,
+        holed_string: str,
+        pps: Sequence[RegexPrinterParser] = tuple(),
+        pps_keyed: Mapping[str, RegexPrinterParser] = util.general.empty_mapping,
+        **kwargs,
+    ):
+        pps_regex = [pp.regex() for pp in pps]
+        pps_regex_keyed = {key: pp.regex() for key, pp in pps_keyed.items()}
+        super().__init__(
+            combine((combine(pps), combine_dict(pps_keyed))),
+            Regex(holed_string, pps_regex, pps_regex_keyed, **kwargs),
         )
-        super().__init__(holed_string, regex, **kwargs)
 
 
-def regex_compose[I](
-    holed_string: str,
-    pp: RegexPrinterParser[I],
-    **kwargs,
-) -> RegexPrinterParser[I]:
-    return RegexComposition(pp, Regex(holed_string, pp.regex(), **kwargs))
+class RegexComposeSmart(RegexComposition):
+    def __init__(
+        self,
+        holed_string: str,
+        pp: RegexPrinterParser | None = None,
+        pps: Sequence[RegexPrinterParser] | None = None,
+        pps_keyed: Mapping[str, RegexPrinterParser] | None = None,
+        **kwargs,
+    ):
+        def pps_gen():
+            nonlocal pps
+            if pp is not None:
+                assert pps is None
+                pps = [pp]
+                yield singleton
+            if pps_keyed is not None:
+                assert pps is None
+                yield NamedArgsPrinterParser()
+            else:
+                if pps is None:
+                    pps = []
+                yield PosArgsPrinterParser()
+
+        seq_pps = list(pps_gen())
+
+        if pps is None:
+            pps = []
+        if pps_keyed is None:
+            pps_keyed = {}
+
+        super().__init__(
+            Composition(*seq_pps),
+            RegexCompose(holed_string, pps, pps_keyed, **kwargs),
+        )
 
 
-def regex_compose_many(
-    holed_string: str,
-    pps: Iterable[RegexPrinterParser],
-    **kwargs,
-) -> RegexPrinterParser[Sequence]:
-    pps = tuple(pps)
-    regex_pp = RegexMany(holed_string, [pp.regex() for pp in pps], **kwargs)
-    return RegexComposition(combine(pps), regex_pp)
+class RegexMaybe[I](RegexPrinterParser[I]):
+    def __init__(self, pp: RegexPrinterParser[I]):
+        self.pp = pp
 
+    def regex(self) -> str:
+        return util.re.maybe(util.re.no_capture(self.pp.regex()))
 
-def regex_compose_keyed(
-    holed_string: str,
-    pps: dict[str, RegexPrinterParser],
-    **kwargs,
-) -> RegexPrinterParser[dict[str, Any]]:
-    pps_regex = {key: pp.regex() for key, pp in pps.items()}
-    regex_pp = RegexMany(holed_string, pps_regex, **kwargs)
-    return RegexComposition(combine_dict(pps), regex_pp)
+    def print(self, x: int | None, /) -> str:
+        if x is None:
+            return str()
+        return self.pp.print(x)
+
+    def parse(self, y: str, /) -> int | None:
+        if not y:
+            return None
+        return self.pp.parse(y)
 
 
 def regex_int(
@@ -623,19 +707,23 @@ def regex_int(
     format: str = "",
     regex: str = "\\d+",
     **kwargs,
-) -> PrinterParser[int, str]:
+) -> RegexPrinterParser[int]:
     """Takes a format string with a single hole."""
-    return compose(
-        int_str(format=format),
-        Regex(holed_string, regex=regex, **kwargs),
+    return RegexComposeSmart(
+        holed_string,
+        pp=IntStr(format=format, regex=regex),
+        **kwargs,
     )
 
 
-qualify_with_slash: PrinterParser[tuple[str, str], str] = RegexMany("{}/{}", ["[^/]*", ".*"])  # type: ignore
+qualify_with_slash: PrinterParser[tuple[str, str], str] = RegexSmart(
+    "{}/{}",
+    regexes=["[^/]*", ".*"],
+)
 
-parens: PrinterParser[str, str] = RegexNoncanonical("({})", r"\((.*)\)")
-bracks: PrinterParser[str, str] = RegexNoncanonical("[{}]", r"\[(.*)\]")
-braces: PrinterParser[str, str] = RegexNoncanonical("{{{}}}", r"\{(.*)\}")
+parens: PrinterParser[str, str] = RegexSmart("({})", regex=r".*")
+bracks: PrinterParser[str, str] = RegexSmart("[{}]", regex=r".*")
+braces: PrinterParser[str, str] = RegexSmart("{{{}}}", regex=r".*")
 
 
 @dataclasses.dataclass

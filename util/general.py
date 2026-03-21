@@ -7,7 +7,6 @@ import functools
 import itertools
 import json
 import logging
-import operator
 import os
 import re
 import shlex
@@ -17,11 +16,13 @@ import sys
 import time
 from collections import defaultdict, namedtuple
 from datetime import datetime, timedelta, timezone
-from types import SimpleNamespace
+from types import MappingProxyType, SimpleNamespace
 from typing import Any, Callable, Iterable, Mapping, Protocol
 
 import more_itertools
 import requests
+
+empty_mapping: Mapping = MappingProxyType({})
 
 
 def identity[T](x: T) -> T:
@@ -120,7 +121,7 @@ def choose_unique(f, xs):
 
 
 def swap(xs):
-    (a, b) = xs
+    a, b = xs
     return (b, a)
 
 
@@ -500,7 +501,7 @@ def check_process(p):
 
 # Only implemented for linux.
 def pipe(min_size):
-    (r, w) = os.pipe()
+    r, w = os.pipe()
     F_SETPIPE_SZ = 1031
     fcntl.fcntl(r, F_SETPIPE_SZ, min_size)
     return (r, w)
@@ -709,12 +710,12 @@ def range_of_strict(xs) -> Range:
 
 
 def len_range(range_: Range) -> int:
-    (start, end) = range_
+    start, end = range_
     return end - start
 
 
 def range_is_empty(range_: Range) -> bool:
-    (start, end) = range_
+    start, end = range_
     return start is not None and end is not None and start >= end
 
 
@@ -727,12 +728,12 @@ def range_singleton(i: int) -> Range:
 
 
 def is_range_singleton(range_: Range) -> bool:
-    (start, end) = range_
+    start, end = range_
     return end == start + 1
 
 
 def range_shift(range_: Range, offset: int) -> Range:
-    (start, end) = range_
+    start, end = range_
     return (start + offset, end + offset)
 
 
@@ -1017,7 +1018,7 @@ def merge[X](iterables: Iterable[Iterable[X]], key=None) -> Iterable[X]:
 
         s = iter(sorted(items()))
         try:
-            (_, i) = next(s)
+            _, i = next(s)
             yield next(iterators[i])
         except StopIteration:
             break

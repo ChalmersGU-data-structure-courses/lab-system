@@ -85,7 +85,7 @@ netloc_formatter = util.print_parse.compose(
     util.print_parse.combine_namedtuple(
         _NetLoc_NamedTuple(
             host=url_strict_quoter,
-            port=util.print_parse.maybe(util.print_parse.int_str()),
+            port=util.print_parse.maybe(util.print_parse.IntStr()),
             user=util.print_parse.maybe(url_strict_quoter),
             password=util.print_parse.maybe(url_strict_quoter),
         )

@@ -1,4 +1,3 @@
-import re
 import string
 
 
@@ -6,9 +5,8 @@ class EscapingFormatter(string.Formatter):
     """
     A subclass of string.Formatter that allows literal text to be escaped.
 
-    TODO: Propose to Python developers to include this generalization in string.Formatter.
-          It is backward-compatible (except if users of string.Formatter have subclassed
-          with an instance method already called 'escape_literal').
+    TODO:
+    Propose to Python developers to include the escape_literation generalization in string.Formatter.
     """
 
     def escape_literal(self, s):
@@ -18,6 +16,9 @@ class EscapingFormatter(string.Formatter):
         Subclasses may override this method to achieve custom escaping behaviour.
         """
         return s
+
+    def postprocess_field(self, obj, _field_name):
+        return obj
 
     def vformat(self, format_string, args, kwargs):
         used_args = set()
@@ -91,20 +92,13 @@ class EscapingFormatter(string.Formatter):
                     auto_arg_index=auto_arg_index,
                 )
 
-                # format the object and append to the result
-                result.append(self.format_field(obj, format_spec))
+                # format the object
+                obj = self.format_field(obj, format_spec)
+
+                # do postprocessing
+                obj = self.postprocess_field(obj, field_name)
+
+                # append to the result
+                result.append(obj)
 
         return ("".join(result), auto_arg_index)
-
-
-class RegexEscapingFormatter(EscapingFormatter):
-    """
-    A formatter for regular expressions where literal text
-    spans are just that and escaped into regular expressions.
-    """
-
-    def escape_literal(self, s):
-        return re.escape(s)
-
-
-regex_escaping_formatter = RegexEscapingFormatter()

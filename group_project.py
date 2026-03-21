@@ -11,7 +11,6 @@ from pathlib import PurePosixPath
 import git
 import gitlab
 import gitlab.v4.objects
-import more_itertools
 
 import events
 import gitlab_.tools

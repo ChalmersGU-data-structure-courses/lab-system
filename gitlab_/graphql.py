@@ -13,7 +13,6 @@ import util.print_parse
 from graphql_.tools import distribute, lift, over_list, query, tupling
 from util.this_dir import this_dir
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -39,7 +38,7 @@ def cursor(cls):
 
 @cursor
 class CreatedCursor:
-    id: int = dataclasses.field(metadata={"pp": util.print_parse.int_str()})
+    id: int = dataclasses.field(metadata={"pp": util.print_parse.IntStr()})
     created_at: datetime.datetime = util.print_parse.dataclass_field(pp_date)
 
 
@@ -148,7 +147,7 @@ class Client(graphql_.client.ClientBase):
             cursor = CreatedCursor(created_at=last_requested - safety_interval, id=0)  # type: ignore
 
         def f(item):
-            (id, _username) = item
+            id, _username = item
             return last_known_id is None or id > last_known_id
 
         yield from filter(

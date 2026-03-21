@@ -551,23 +551,25 @@ class LabelSpec:
 
 username_regex = r"[a-zA-Z0-9\.\-_]+"
 
-pp_username = util.print_parse.Regex("{}", username_regex)
+pp_username = util.print_parse.RegexSmart("{}", username_regex)
 
 
 class _T:
     @functools.cached_property
     def pp_add(self):
-        return util.print_parse.Regex("requested review from @{}", username_regex)
+        return util.print_parse.RegexSmart("requested review from @{}", username_regex)
 
     @functools.cached_property
     def pp_remove(self):
-        return util.print_parse.Regex("removed review request for @{}", username_regex)
+        return util.print_parse.RegexSmart(
+            "removed review request for @{}", username_regex
+        )
 
     @functools.cached_property
     def pp_change(self):
-        return util.print_parse.RegexMany(
+        return util.print_parse.RegexSmart(
             "requested review from @{} and removed review request for @{}",
-            [username_regex, username_regex],
+            regexes=[username_regex, username_regex],
         )
 
     def __call__(self, note):

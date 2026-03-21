@@ -49,17 +49,17 @@ lab_configs = {
     1: LabConfig(
         template=(TEMPLATE_SPREADSHEET_ID, TEMPLATE_SHEET_TITLES[0]),
         gdpr_coding=lab_group,
-        outcome=util.print_parse.int_str,
+        outcome=util.print_parse.IntStr(),
     ),
     2: LabConfig(
         template=None,
         gdpr_coding=lab_grupp,
-        outcome=util.print_parse.int_str,
+        outcome=util.print_parse.IntStr(),
     ),
     3: LabConfig(
         template=(TEST_SPREADSHEET_ID, "Test template"),
         gdpr_coding=lab_group,
-        outcome=util.print_parse.int_str,
+        outcome=util.print_parse.IntStr(),
     ),
 }
 

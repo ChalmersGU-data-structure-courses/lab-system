@@ -1,26 +1,26 @@
-from collections.abc import Collection
 import abc
 import dataclasses
 import datetime
 import enum
 import re
+import tomllib
+from collections.abc import Collection
+from pathlib import Path, PurePosixPath
 from types import MappingProxyType
 from typing import Callable, ClassVar, Mapping
-from pathlib import Path, PurePosixPath
-import tomllib
 
 import dateutil.tz
 
+import chalmers_pdb
+import gitlab_.tools
 import grading_sheet.config as grading_sheet_config
+import grading_via_merge_request
 import util.enum
 import util.gdpr_coding
 import util.general
 import util.markdown
 import util.print_parse
 import util.url
-import gitlab_.tools
-import chalmers_pdb
-
 from util.print_parse import PrinterParser
 
 
@@ -263,7 +263,7 @@ class GroupSetConfig[GroupId]:
     The default values only make sense for integer group ids.
     """
 
-    id: PrinterParser[GroupId, int | str] = util.print_parse.int_str()
+    id: PrinterParser[GroupId, int | str] = util.print_parse.IntStr()
     """
     Human-readable id.
     Typical use case: values in a column of group identifiers.
@@ -600,7 +600,7 @@ class VariantsConfig[Variant]:
             source=source,
             submission_grading_title=util.print_parse.compose(
                 name,
-                util.print_parse.Regex(submission_grading_title_holed),
+                util.print_parse.RegexSmart(submission_grading_title_holed),
             ),
         )
 
@@ -831,7 +831,7 @@ class LabIdConfig[LabId]:
     Defaults only make sense for integer lab ids.
     """
 
-    id: PrinterParser[LabId, str] = util.print_parse.int_str()
+    id: PrinterParser[LabId, str] = util.print_parse.IntStr()
     """Human-readable id."""
 
     full_id: PrinterParser[LabId, str] = util.print_parse.regex_int("lab-{}")
