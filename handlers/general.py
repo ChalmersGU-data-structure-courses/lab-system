@@ -108,7 +108,6 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
     variant_failure_key = variant_failure_key
     variant_failure_title = variant_failure_title
     submission_failure = (submission_failure_response_key, submission_failure_title)
-    report_response_key = "report"
     report_response_title = robograder_response_title
 
     @functools.cached_property
@@ -126,8 +125,8 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
                 yield self.submission_failure
             if self.variant_failure_key is not None:
                 yield (self.variant_failure_key, self.variant_failure_title)
-            if self.report_response_key is not None:
-                yield (self.report_response_key, self.report_response_title)
+            if self.lab.config.report_key is not None:
+                yield (self.lab.config.report_key, self.report_response_title)
 
         return dict(f())
 
@@ -161,21 +160,21 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
 
 
 class ReportColumn(live_submissions_table.Column):
-    def __init__(self, table, response_key=SubmissionHandler.report_response_key):
-        super().__init__(table)
-        self.response_key = response_key
+    title = "Robograding"
 
     def format_header_cell(self, cell):
         with cell:
-            dominate.util.text("Robograding")
+            dominate.util.text(self.title)
 
     def get_value(self, group):
         submission_current = group.submission_current(deadline=self.config.deadline)
-        issue, _title_data = submission_current.responses[self.response_key]
 
         def format_cell(cell):
             with cell:
-                live_submissions_table.format_url("report", issue.web_url)
+                live_submissions_table.format_url(
+                    "report",
+                    submission_current.report_issue.web_url,
+                )
 
         return live_submissions_table.CallbackColumnValue(callback=format_cell)
 
@@ -333,14 +332,12 @@ class SubmissionTesting:
         tester_factory,
         tester_is_robograder=False,
         solution="solution",
-        has_report=False,
         **tester_args,
     ):
         self.tester_factory = tester_factory
         self.tester_args = tester_args
         self.tester_is_robograder = tester_is_robograder
         self.solution = solution
-        self.has_report = has_report
 
     def setup(self, lab):
         # pylint: disable-next=attribute-defined-outside-init

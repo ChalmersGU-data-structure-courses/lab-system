@@ -150,7 +150,6 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
         robograder_factory=None,
         tester_factory=None,
         show_solution=True,
-        has_report=False,
         **kwargs,
     ):
         """
@@ -171,7 +170,6 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
             self.testing = handlers.general.SubmissionTesting(
                 self.tester_factory,
                 tester_is_robograder=True,
-                has_report=has_report,
                 **kwargs,
             )
 
@@ -179,7 +177,6 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
             self.robograder_factory is not None or self.tester_factory is not None
         )
         self.show_solution = show_solution
-        self.has_report = has_report
 
     def setup(self, lab):
         # pylint: disable=attribute-defined-outside-init
@@ -196,15 +193,12 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
             )
 
         def f():
-            if self.has_report:
-                yield ("report", handlers.general.ReportColumn)
+            if self.robograder_factory is not None:
+                yield ("robograding", CompilationAndRobogradingColumn)
+            elif self.tester_factory is not None:
+                yield from self.testing.grading_columns()
             else:
-                if self.robograder_factory is not None:
-                    yield ("robograding", CompilationAndRobogradingColumn)
-                elif self.tester_factory is not None:
-                    yield from self.testing.grading_columns()
-                else:
-                    yield ("compilation", CompilationColumn)
+                yield ("compilation", CompilationColumn)
 
         self.grading_columns = live_submissions_table.with_standard_columns(
             dict(f()),
@@ -212,7 +206,7 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
         )
 
     def _handle_request(self, request_and_responses, src, report):
-        report = None
+        report_content = None
         try:
             with submission_java.submission_checked_and_compiled(src) as (
                 dir_bin,
@@ -226,9 +220,9 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
                     except robograder_java.RobograderException as e:
                         robograding_report = e.markdown()
                     (report / report_robograding).write_text(robograding_report)
-                    report = robograding_report
+                    report_content = robograding_report
                 elif self.tester_factory is not None:
-                    report = self.testing.test_submission(
+                    report_content = self.testing.test_submission(
                         request_and_responses,
                         src,
                         dir_bin,
@@ -236,13 +230,13 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
         except lab_interfaces.HandlingException as e:
             compilation_success = False
             compilation_report = str(e)
-            report = compilation_report
+            report_content = compilation_report
 
         # Post response issue if configured.
-        if self.has_report is not None and report is not None:
+        if self.lab.config.report_key is not None and report_content is not None:
             request_and_responses.post_response_issue(
-                response_key=self.report_response_key,
-                description=report,
+                response_key=self.lab.config.report_key,
+                description=report_content,
             )
 
         (report / report_compilation).write_text(compilation_report)

@@ -18,7 +18,6 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
         self,
         tester_factory=None,
         show_solution=True,
-        has_report=False,
         **tester_args,
     ):
         if tester_factory is None:
@@ -27,11 +26,9 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
             self.testing = handlers.general.SubmissionTesting(
                 tester_factory,
                 tester_is_robograder=True,
-                has_report=has_report,
                 **tester_args,
             )
         self.show_solution = show_solution
-        self.has_report = has_report
 
     def setup(self, lab):
         super().setup(lab)
@@ -39,9 +36,7 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
             self.testing.setup(lab)
 
         def columns():
-            if self.has_report:
-                yield ("report", handlers.general.ReportColumn)
-            elif self.testing is not None:
+            if self.testing is not None:
                 yield from self.testing.grading_columns()
 
         # pylint: disable-next=attribute-defined-outside-init
@@ -51,15 +46,15 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
         )
 
     def _handle_request(self, request_and_responses, src):
-        report = None
+        report_content = None
         if self.testing is not None:
-            report = self.testing.test_submission(request_and_responses, src)
+            report_content = self.testing.test_submission(request_and_responses, src)
 
         # Post response issue if configured.
-        if self.has_report is not None and report is not None:
+        if self.lab.config.report_key is not None and report_content is not None:
             request_and_responses.post_response_issue(
-                response_key=self.report_response_key,
-                description=report,
+                response_key=self.lab.config.report_key,
+                description=report_content,
             )
 
         return {
