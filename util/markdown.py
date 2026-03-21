@@ -5,6 +5,8 @@ import re
 from typing import Sequence
 
 import more_itertools
+import util.print_parse
+from util.print_parse import PrinterParser
 
 import util.general
 
@@ -63,8 +65,28 @@ def escape(s: str) -> str:
     return s
 
 
-def link(title, url):
-    return f"[{title}]({url})"
+LINK_HOLE_STRING: str = "[{}]({})"
+
+LINK_HOLE_PARSERS: list[util.print_parse.CharEscape] = [
+    util.print_parse.escape_brackets,
+    util.print_parse.escape_parens,
+]
+
+link_raw_printer_parser: util.print_parse.RegexNoncanonicalMany = (
+    util.print_parse.regex_many(
+        LINK_HOLE_STRING,
+        tuple(parser.regex for parser in LINK_HOLE_PARSERS),
+    )
+)
+
+link_printer_parser: PrinterParser[tuple[str, str], str] = util.print_parse.Composition(
+    util.print_parse.combine(tuple(LINK_HOLE_PARSERS)),
+    link_raw_printer_parser,
+)
+
+
+def link(title, target):
+    return link_printer_parser.print((title, target))
 
 
 class Alignment(enum.Enum):
