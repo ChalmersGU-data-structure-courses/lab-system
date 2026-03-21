@@ -683,6 +683,13 @@ class GradingViaMergeRequestConfig:
     See: https://github.com/ChalmersGU-data-structure-courses/lab-system/issues/57
     """
 
+    # TODO:
+    # Move these types to a new config module for grading_via_merge_request.
+    # We do not want to import the full module here.
+    sync_message: util.print_parse.RegexPrinterParser[
+        grading_via_merge_request.SyncMessage
+    ] = grading_via_merge_request.SyncMessagePrinterParser()
+
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class LabConfig[GroupId, Outcome, Variant]:

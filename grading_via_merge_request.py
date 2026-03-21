@@ -1,17 +1,21 @@
 import bisect
 import contextlib
+from dataclasses import dataclass
 import datetime
 import functools
 import logging
 import time
+from typing import Generator
 
 import more_itertools
+from gitlab.v4.objects import ProjectMergeRequestNote
 
 import gitlab_.tools
 import util.general
 import util.git
 import util.markdown
 import util.print_parse
+from util.print_parse import PrinterParser
 
 
 class SetupData:
@@ -44,17 +48,62 @@ class SetupData:
         return self.lab.config.branch_problem(variant=self.variant)
 
 
-class GradingViaMergeRequest:
-    sync_message = util.print_parse.compose(
-        util.print_parse.combine(
-            (util.print_parse.escape_brackets, util.print_parse.escape_parens)
-        ),
-        util.print_parse.regex_many(
-            "Synchronized submission branch with [{}]({}).",
-            [r"(?:[^\[\]\\]|\\[\[\]\\])*", r"(?:[^\(\)\\]|\\[\(\)\\])*"],
-        ),
-    )
+@dataclass
+class SyncMessage:
+    request_name: str
+    request_link: str
+    report_issue_number: int | None
 
+
+class SyncMessageAdaptor(PrinterParser[SyncMessage, dict]):
+    def print(self, x: SyncMessage, /) -> dict:
+        return {
+            "link": (x.request_name, x.request_link),
+            "report": x.report_issue_number,
+        }
+
+    def parse(self, y: dict, /) -> SyncMessage:
+        request_name, request_link = y["link"]
+        report_issue_number = y["report"]
+        return SyncMessage(
+            request_name=request_name,
+            request_link=request_link,
+            report_issue_number=report_issue_number,
+        )
+
+
+@dataclass
+class SyncedSubmission:
+    note: ProjectMergeRequestNote
+    sync_message: SyncMessage
+    date: datetime.datetime
+
+
+def format_issue_number(issue_number):
+    return f"#{issue_number}"
+
+
+class SyncMessagePrinterParser(util.print_parse.RegexComposition):
+    def __init__(
+        self,
+        holed_string: str = "Synchronized submission branch with {link}{report}.",
+        holed_string_report: str = " (robograding report #{})",
+    ):
+        super().__init__(
+            SyncMessageAdaptor(),
+            util.print_parse.RegexComposeSmart(
+                holed_string,
+                pps_keyed={
+                    "link": util.markdown.link_printer_parser,
+                    "report": util.print_parse.RegexMaybe(
+                        util.print_parse.regex_int(holed_string_report)
+                    ),
+                },
+            ),
+        )
+
+
+class GradingViaMergeRequest:
     non_grader_change_message = util.general.join_lines(
         ["⚠️**WARNING**⚠️ Grading label change by non-grader detected."]
     )
@@ -67,6 +116,10 @@ class GradingViaMergeRequest:
         self.notes_suppress_cache_clear_counter = 0
         self.non_grader_change = False
         self.outcome_last_checked = None
+
+    @property
+    def config(self):
+        return self.lab.config.grading_via_merge_request
 
     @property
     def course(self):
@@ -205,28 +258,36 @@ class GradingViaMergeRequest:
             (gitlab_.tools.parse_date(note.created_at), note) for note in self.notes
         ]
 
-    def synced_submissions_generator(self):
+    def synced_submissions_generator(self) -> Generator[tuple[str, SyncedSubmission]]:
         for note in self.notes:
             if note.author["id"] in self.course.lab_system_users:
                 try:
                     line = note.body.splitlines()[0]
-                    request_name, _ = self.sync_message.parse(line)
+                    sync_message = self.config.sync_message.parse(line)
+                    date = gitlab_.tools.parse_date(note.created_at)
                     yield (
-                        request_name,
-                        (gitlab_.tools.parse_date(note.created_at), note),
+                        sync_message.request_name,
+                        SyncedSubmission(
+                            note=note,
+                            sync_message=sync_message,
+                            date=date,
+                        ),
                     )
-                except ValueError:
-                    pass
+                except ValueError as e:
+                    self.logger.warning(f"failed to parse note body {note.body}: {e}")
 
     @functools.cached_property
-    def synced_submissions(self):
+    def synced_submissions(self) -> dict[str, SyncedSubmission]:
         return dict(self.synced_submissions_generator())
 
     @functools.cached_property
-    def synced_submissions_by_date(self):
+    def synced_submissions_by_date(self) -> list[tuple[datetime.datetime, str]]:
         return [
-            (date, request_name)
-            for (request_name, (date, _)) in self.synced_submissions.items()
+            (synced_submission.date, request_name)
+            for (
+                request_name,
+                synced_submission,
+            ) in self.synced_submissions.items()
         ]
 
     @functools.cached_property
@@ -367,10 +428,11 @@ class GradingViaMergeRequest:
                 longest=True,
             ):
                 if request_name_next is not None:
-                    date_to, _ = self.synced_submissions[request_name_next]
+                    synced_submission_to = self.synced_submissions[request_name_next]
                 jt, it = util.general.before_and_after(
+                    lambda x: request_name_next is None
                     # pylint: disable-next = possibly-used-before-assignment
-                    lambda x: request_name_next is None or x[0] <= date_to,
+                    or x[0] <= synced_submission_to.date,
                     it,
                 )
                 self.play_submission_label_events(outcome_status, jt)
@@ -489,12 +551,8 @@ class GradingViaMergeRequest:
             )
 
         def rows():
-            requests_and_responses = (
-                self.group.submission_handler_data.requests_and_responses
-            )
             # pylint: disable=cell-var-from-loop
-            for request_name, (_date, note) in self.synced_submissions.items():
-                submission = requests_and_responses[request_name]
+            for request_name, synced_submission in self.synced_submissions.items():
 
                 def columns():
                     # Request name.
@@ -509,15 +567,20 @@ class GradingViaMergeRequest:
 
                     # Synchronized.
                     yield util.markdown.link(
-                        self.course.format_datetime(
-                            gitlab_.tools.parse_date(note.created_at)
+                        self.course.format_datetime(synced_submission.date),
+                        gitlab_.tools.url_merge_request_note(
+                            self.merge_request,
+                            synced_submission.note,
                         ),
-                        gitlab_.tools.url_merge_request_note(self.merge_request, note),
                     )
 
                     # Report.
                     if self.lab.config.report_key is not None:
-                        yield util.markdown.link("report", submission.report)
+                        issue_number = synced_submission.sync_message.report_issue_number
+                        if issue_number is None:
+                            yield None
+                        else:
+                            yield format_issue_number(issue_number)
 
                     has_outcome = self.outcome_with_link_and_grader(request_name)
                     if not has_outcome:
@@ -537,7 +600,7 @@ class GradingViaMergeRequest:
                             gitlab_.tools.url_username(self.gl, grader),
                         )
 
-                yield from columns()
+                yield tuple(columns())
 
         return util.markdown.table(column_specs(), rows())
 
@@ -601,7 +664,7 @@ class GradingViaMergeRequest:
             return []
 
         # Block syncing if a review is happening.
-        block_period = self.lab.config.grading_via_merge_request.maximum_reserve_time
+        block_period = self.config.maximum_reserve_time
         if block_period is not None and self.reviewer_current:
             _reviewer, (_start_id, start_date) = self.reviewer_current
             if datetime.datetime.now(datetime.timezone.utc) < start_date + block_period:
@@ -631,13 +694,21 @@ class GradingViaMergeRequest:
 
             def body():
                 # pylint: disable=cell-var-from-loop
-                link = gitlab_.tools.url_tree(
-                    self.group.project.get,
-                    submission.request_name,
-                    True,
+                sync_message = SyncMessage(
+                    request_name=submission.request_name,
+                    request_link=gitlab_.tools.url_tree(
+                        self.group.project.get,
+                        submission.request_name,
+                        True,
+                    ),
+                    report_issue_number=(
+                        None
+                        if self.lab.config.report_key is None
+                        else submission.report_issue.iid
+                    ),
                 )
                 yield util.general.text_from_lines(
-                    self.sync_message.print((submission.request_name, link))
+                    self.config.sync_message.print(sync_message)
                 )
                 submission_message = util.git.tag_message(
                     submission.repo_remote_tag,
@@ -645,8 +716,6 @@ class GradingViaMergeRequest:
                 )
                 if submission_message:
                     yield util.markdown.quote(submission_message)
-                if self.lab.config.report_key is not None:
-                    yield util.markdown.link("Robograding", submission.report.web_url)
 
             self.merge_request.notes.create({"body": util.markdown.join_blocks(body())})
 
