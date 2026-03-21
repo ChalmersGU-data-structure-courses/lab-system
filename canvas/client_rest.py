@@ -9,9 +9,10 @@ import subprocess
 import sys
 import types
 import urllib.parse
+from collections.abc import Generator
 from datetime import timedelta
 from pathlib import Path, PurePosixPath
-from typing import Any, ClassVar, Generator
+from typing import Any, ClassVar
 
 import requests
 
@@ -760,7 +761,7 @@ class Grading:
     grade_pp: ClassVar[PrinterParser[int | None, str | None]] = GradePrinterParser()
 
     @property
-    def fields(self) -> Generator[tuple[str, Any], None, None]:
+    def fields(self) -> Generator[tuple[str, Any]]:
         yield ("submission[posted_grade]", self.grade_pp.print(self.grade))
         if self.comment is not None:
             yield ("comment[text_comment]", self.comment)

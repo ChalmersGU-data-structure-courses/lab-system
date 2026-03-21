@@ -9,8 +9,8 @@ import re
 import socket
 import string
 import types
-from collections.abc import Iterable
-from typing import Generator, Literal
+from collections.abc import Generator, Iterable
+from typing import Literal
 
 import google.auth.credentials
 import googleapiclient.discovery
@@ -401,7 +401,7 @@ class Timeout(enum.Enum):
 
 
 @contextlib.contextmanager
-def default_timeout(timeout: float | None) -> Generator[None, None, None]:
+def default_timeout(timeout: float | None) -> Generator[None]:
     prev = socket.getdefaulttimeout()
     socket.setdefaulttimeout(timeout)
     try:
@@ -413,7 +413,7 @@ def default_timeout(timeout: float | None) -> Generator[None, None, None]:
 @contextlib.contextmanager
 def default_timeout_maybe(
     timeout: float | None | Literal[Timeout.UNCHANGED],
-) -> Generator[None, None, None]:
+) -> Generator[None]:
     with contextlib.ExitStack() as exit_stack:
         if timeout is not Timeout.UNCHANGED:
             exit_stack.enter_context(default_timeout(timeout))

@@ -1,11 +1,11 @@
 import bisect
 import contextlib
-from dataclasses import dataclass
 import datetime
 import functools
 import logging
 import time
-from typing import Generator
+from collections.abc import Generator
+from dataclasses import dataclass
 
 import more_itertools
 from gitlab.v4.objects import ProjectMergeRequestNote
