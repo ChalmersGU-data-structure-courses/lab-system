@@ -1,9 +1,10 @@
 import logging
 from typing import Any, TYPE_CHECKING
 
-import util.general
+import canvas.client_rest
 import canvas.grading_manager
 import lab_interfaces
+import util.general
 
 if TYPE_CHECKING:
     import course as module_course
@@ -47,6 +48,8 @@ class CanvasGradingLabUpdateListener[GroupId, Outcome](
                 outcome: Outcome
                 outcome = submission.outcome_acc(accumulative=True)
                 grade = self.lab.config.outcomes.canvas_grade[outcome]
+                if grade is None:
+                    continue
 
                 def canvas_user_ids(group=group):
                     for gitlab_user in group.members:
