@@ -37,7 +37,10 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
 
         def columns():
             if self.testing is not None:
-                yield from self.testing.grading_columns()
+                if self.lab.config.report_key is not None:
+                    yield ("report", handlers.general.ReportColumn)
+                else:
+                    yield from self.testing.grading_columns()
 
         # pylint: disable-next=attribute-defined-outside-init
         self.grading_columns = live_submissions_table.with_standard_columns(

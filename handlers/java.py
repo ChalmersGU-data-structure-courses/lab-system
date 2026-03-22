@@ -199,12 +199,19 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
             )
 
         def f():
-            if self.robograder_factory is not None:
-                yield ("robograding", CompilationAndRobogradingColumn)
-            elif self.tester_factory is not None:
-                yield from self.testing.grading_columns()
+            if self.lab.config.report_key is not None:
+                if (
+                    self.robograder_factory is not None
+                    or self.tester_factory is not None
+                ):
+                    yield ("report", handlers.general.ReportColumn)
             else:
-                yield ("compilation", CompilationColumn)
+                if self.robograder_factory is not None:
+                    yield ("robograding", CompilationAndRobogradingColumn)
+                elif self.tester_factory is not None:
+                    yield from self.testing.grading_columns()
+                else:
+                    yield ("compilation", CompilationColumn)
 
         self.grading_columns = live_submissions_table.with_standard_columns(
             dict(f()),

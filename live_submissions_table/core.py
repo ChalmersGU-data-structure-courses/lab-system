@@ -433,7 +433,7 @@ class SubmissionFilesColumn(Column):
 
 class SubmissionFilesNewstyleColumn(Column):
     def format_header(self, cell):
-        float_left_and_right(cell, "Request", " vs:")
+        float_left_and_right(cell, "Submission", " vs:")
 
     @dataclasses.dataclass
     class Value(ColumnValue):

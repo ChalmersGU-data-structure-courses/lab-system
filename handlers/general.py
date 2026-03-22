@@ -189,7 +189,7 @@ class SubmissionHandlerStub(SubmissionHandler):
         super().setup(lab)
         # pylint: disable-next=attribute-defined-outside-init
         self.grading_columns = live_submissions_table.with_standard_columns(
-            with_solution=False
+            with_solution=False,
         )
 
     def handle_request(self, request_and_responses):
