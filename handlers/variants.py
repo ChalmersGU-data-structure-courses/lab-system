@@ -48,13 +48,12 @@ def wrap_column_types(column_types):
         def cell(self, group_id):
             group = self.lab.groups[group_id]
             submission = group.submission_current(deadline=self.config.deadline)
-            variant = submission.handled_result.get("variant")
             try:
-                column = self.columns[variant]
+                column = self.columns[submission.variant]
             except KeyError:
                 return live_submissions_table.StandardColumnValue()
 
-            return column.cell(group)
+            return column.cell(group_id)
 
     return ColumnWrapper
 
