@@ -1,14 +1,3 @@
-"""
-Template for a course configuration.
-The script run_event_loop.py loads this and reads the value
-  course_config: lab_interfaces.CourseConfig.
-
-See the documentation of the configuration classes.
-Search for ACTION to find locations where you need to take action.
-
-The default lab configuration is as needed for the data structures course cluster.
-"""
-
 import datetime
 import re
 from pathlib import PurePosixPath
