@@ -104,7 +104,10 @@ def protect_tags(
     for pattern in patterns:
         with exist_ok_check(exist_ok):
             project.protectedtags.create(
-                {"name": pattern, "create_access_level": gitlab.const.DEVELOPER_ACCESS}
+                {
+                    "name": pattern,
+                    "create_access_level": gitlab.const.AccessLevel.DEVELOPER,
+                }
             )
 
 
@@ -118,8 +121,8 @@ def protect_branch(project, branch, delete_prev=False):
         project.protectedbranches.delete(branch)
     data = {
         "name": branch,
-        "merge_access_level": gitlab.const.MAINTAINER_ACCESS,
-        "push_access_level": gitlab.const.MAINTAINER_ACCESS,
+        "merge_access_level": gitlab.const.AccessLevel.MAINTAINER,
+        "push_access_level": gitlab.const.AccessLevel.MAINTAINER,
         "allow_force_push": True,
     }
     project.protectedbranches.create(data)

@@ -1650,7 +1650,7 @@ class Lab[LabId, GroupId, Variant]:
                                 self.gl,
                                 entity,
                                 email,
-                                gitlab.const.DEVELOPER_ACCESS,
+                                gitlab.const.AccessLevel.DEVELOPER,
                             )
                     except gitlab.exceptions.GitlabCreateError as e:
                         self.logger.error(str(e))
@@ -1676,7 +1676,7 @@ class Lab[LabId, GroupId, Variant]:
                         user_id = self.course.gitlab_users_cache.id_from_username[
                             gitlab_username
                         ]
-                        access_level = gitlab.const.DEVELOPER_ACCESS
+                        access_level = gitlab.const.AccessLevel.DEVELOPER
                         if user_id in inherited_access:
                             access_level = max(access_level, inherited_access[user_id])
                         with gitlab_.tools.exist_ok():
@@ -1722,7 +1722,10 @@ class Lab[LabId, GroupId, Variant]:
                     try:
                         with gitlab_.tools.exist_ok():
                             gitlab_.tools.invitation_create(
-                                self.gl, entity, email, gitlab.const.DEVELOPER_ACCESS
+                                self.gl,
+                                entity,
+                                email,
+                                gitlab.const.AccessLevel.DEVELOPER,
                             )
                     except gitlab.exceptions.GitlabCreateError as e:
                         self.logger.error(str(e))

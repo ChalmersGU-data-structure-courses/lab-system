@@ -1076,7 +1076,7 @@ class GroupProject:
             with gitlab_.tools.exist_ok():
                 members_data = {
                     "user_id": gitlab_user.id,
-                    "access_level": gitlab.const.DEVELOPER_ACCESS,
+                    "access_level": gitlab.const.AccessLevel.DEVELOPER,
                 }
                 self.project.lazy.members.create(members_data)
 

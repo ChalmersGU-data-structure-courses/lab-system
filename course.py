@@ -420,7 +420,7 @@ class Course[LabId]:
     def graders(self):
         return gitlab_.tools.members_from_access(
             self.graders_group.lazy,
-            [gitlab.const.OWNER_ACCESS],
+            [gitlab.const.AccessLevel.OWNER],
         )
 
     @functools.cached_property
@@ -672,7 +672,7 @@ class Course[LabId]:
                             self.graders_group.lazy.members.create(
                                 {
                                     "user_id": gitlab_user_id,
-                                    "access_level": gitlab.const.OWNER_ACCESS,
+                                    "access_level": gitlab.const.AccessLevel.OWNER,
                                 }
                             )
                     else:
@@ -686,7 +686,7 @@ class Course[LabId]:
                                     self.gl,
                                     self.graders_group.lazy,
                                     user.email,
-                                    gitlab.const.OWNER_ACCESS,
+                                    gitlab.const.AccessLevel.OWNER,
                                 )
 
         for email in invitations.keys() - invite():
@@ -702,9 +702,9 @@ class Course[LabId]:
         return gitlab_.tools.members_from_access(
             cached_entity.lazy,
             [
-                gitlab.const.DEVELOPER_ACCESS,
-                gitlab.const.MAINTAINER_ACCESS,
-                gitlab.const.OWNER_ACCESS,
+                gitlab.const.AccessLevel.DEVELOPER,
+                gitlab.const.AccessLevel.MAINTAINER,
+                gitlab.const.AccessLevel.OWNER,
             ],
         )
 
