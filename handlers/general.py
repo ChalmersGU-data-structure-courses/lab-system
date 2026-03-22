@@ -167,6 +167,7 @@ class ReportColumn(live_submissions_table.Column):
     def format_header(self, cell):
         with cell:
             dominate.util.text(self.title)
+            dominate.tags.attr(style="text-align: center;")
 
     def cell(self, group_id):
         group = self.lab.groups[group_id]
