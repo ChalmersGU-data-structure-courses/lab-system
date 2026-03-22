@@ -173,7 +173,7 @@ class ReportColumn(live_submissions_table.Column):
 
         def format_cell(cell):
             with cell:
-                live_submissions_table.format_url(
+                util.html.format_url(
                     "report",
                     submission_current.report_issue.web_url,
                 )
@@ -380,7 +380,7 @@ class SubmissionTesting:
                     with cell:
                         with dominate.tags.p():
                             if self_outer.report_path is None:
-                                live_submissions_table.format_url(
+                                util.html.format_url(
                                     "test",
                                     gitlab_.tools.url_tree(
                                         self.lab.collection_project.get,
@@ -395,7 +395,7 @@ class SubmissionTesting:
                                     True: self_outer.segments_test_report,
                                     False: self_outer.segments_test,
                                 }[self_outer.has_markdown_report]
-                                live_submissions_table.format_url(
+                                util.html.format_url(
                                     "report",
                                     gitlab_.tools.url_tree(
                                         self.lab.collection_project.get,
@@ -417,7 +417,7 @@ class SubmissionTesting:
                                         group_solution.submission_current()
                                     )
 
-                                live_submissions_table.format_url(
+                                util.html.format_url(
                                     "vs. solution",
                                     gitlab_.tools.url_compare(
                                         self.lab.collection_project.get,

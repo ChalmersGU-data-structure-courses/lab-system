@@ -3,52 +3,49 @@ import dataclasses
 import datetime
 import logging
 import types
+from collections.abc import Generator
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import dominate
 
 import gitlab_.tools
 import util.general
 import util.git
+import util.html
 import util.this_dir
+
+if TYPE_CHECKING:
+    import course as module_course
 
 logger_default = logging.getLogger(__name__)
 
 
-def add_class(element, class_name):
-    """
-    Add a class name to an element.
-    The element should be an instance of dominate.dom_tag.
-    """
-    x = element.attributes.get("class", "")
-    element.set_attribute("class", x + " " + class_name if x else class_name)
-
-
-def format_url(text, url):
-    """
-    Creates a value of dominate.tags.a from a pair of two strings.
-    The first string is the text to display, the second the URL.
-    Configure it to open the link a new tab/window.
-    """
-    return dominate.tags.a(text, href=url, target="_blank")
-
-
 path_data = Path(__file__).parent
 path_data_default_css = path_data / "default.css"
-path_data_sort_js = path_data / "sort.js"
-path_data_sort_css = path_data / "sort.css"
 
 
-def embed_raw(path):
-    return dominate.util.raw("\n" + path.read_text())
-
-
-def embed_css(path):
-    return dominate.tags.style(embed_raw(path))
-
-
-def embed_js(path):
-    return dominate.tags.script(embed_raw(path))
+def doc_with_head(title: str) -> dominate.document:
+    doc = dominate.document()
+    doc.title = title
+    with doc.head:
+        dominate.tags.meta(charset="utf-8")
+        # Make it fit into the Canvas style by using the same fonts (font source?).
+        dominate.tags.link(
+            rel="preconnect",
+            href="https://fonts.gstatic.com/",
+            crossorigin="anonymous",
+        )
+        dominate.tags.link(
+            rel="stylesheet",
+            media="screen",
+            href=(
+                "https://du11hjcvx0uqb.cloudfront.net"
+                "/dist/brandable_css/no_variables/bundles/lato_extended-f5a83bde37.css"
+            ),
+        )
+        util.html.embed_css(path_data_default_css)
+    return doc
 
 
 # Always have the following columns:
@@ -236,7 +233,7 @@ class DateColumn(Column):
 
         def format_cell(self, cell):
             if self.late:
-                add_class(cell, "problematic")
+                util.html.add_class(cell, "problematic")
             with cell:
                 with dominate.tags.span():
                     dominate.util.text(self.date.strftime("%b %d, %H:%M"))
@@ -298,7 +295,10 @@ class MembersColumn(Column):
             if canvas_user is not None:
                 dominate.util.text(": ")
                 if canvas_user.enrollments:
-                    format_url(canvas_user.name, canvas_user.enrollments[0].html_url)
+                    util.html.format_url(
+                        canvas_user.name,
+                        canvas_user.enrollments[0].html_url,
+                    )
                 else:
                     self.logger.warning(
                         util.general.text_from_lines(
@@ -410,10 +410,10 @@ class SubmissionFilesColumn(Column):
 
         def format_cell(self, cell):
             with cell:
-                a = format_url(*self.linked_name)
-                add_class(a, "block")
-                a = format_url(*self.linked_grading_response)
-                add_class(a, "block")
+                a = util.html.format_url(*self.linked_name)
+                util.html.add_class(a, "block")
+                a = util.html.format_url(*self.linked_grading_response)
+                util.html.add_class(a, "block")
 
     def get_value(self, group):
         submission = group.submission_current(deadline=self.config.deadline)
@@ -470,11 +470,11 @@ class SubmissionDiffColumnValue(ColumnValue):
         return self.linked_name is not None
 
     def format_cell(self, cell):
-        add_class(cell, "extension-column")
+        util.html.add_class(cell, "extension-column")
         if self.has_content():
             with cell:
                 with dominate.tags.p():
-                    format_url(*self.linked_name)
+                    util.html.format_url(*self.linked_name)
                     if self.is_same:
                         dominate.tags.attr(_class="grayed-out")
                 if self.is_same:
@@ -483,7 +483,7 @@ class SubmissionDiffColumnValue(ColumnValue):
                 if self.linked_grader is not None:
                     with dominate.tags.p():
                         dominate.util.text("graded by ")
-                        format_url(*self.linked_grader)
+                        util.html.format_url(*self.linked_grader)
 
 
 class SubmissionDiffColumn(Column):
@@ -503,7 +503,7 @@ class SubmissionDiffColumn(Column):
         """
 
     def format_header_cell(self, cell):
-        add_class(cell, "extension-column")
+        util.html.add_class(cell, "extension-column")
         with cell:
             dominate.util.text(self.title)
 
@@ -513,7 +513,7 @@ class SubmissionDiffColumn(Column):
         if x is None:
             return SubmissionDiffColumnValue(None)
 
-        (name, a, linked_grader) = x
+        name, a, linked_grader = x
         b = submission_current.repo_tag()
 
         return SubmissionDiffColumnValue(
@@ -591,7 +591,7 @@ class SubmissionDiffSolutionColumn(SubmissionDiffColumn):
         if x is None:
             return None
 
-        (name, submission_solution) = x
+        name, submission_solution = x
         return (name, submission_solution.repo_tag(), None)
 
 
@@ -722,9 +722,8 @@ class LiveSubmissionsTable:
         """
         Build the live submissions table.
 
-        Before calling this method, all required group rows need to have been updated.
-        As this can update the local collection repository, a push there is required
-        before building or uploading the live submissions table.
+        Before calling this method, all required group rows need to have been updated (TODO: still needed?).
+        As this can update the local collection repository, a push there is required before building or uploading the live submissions table.
 
         Arguments:
         * file:
@@ -732,8 +731,7 @@ class LiveSubmissionsTable:
             The generated HTML file is self-contained and only contains absolute links.
         * group_ids:
             An optional iterable of group ids to produce rows for.
-            Currently, only group with a current submission
-            for the specified deadline are supported.
+            Currently, only groups with a current submission for the specified deadline are supported.
             (Each supplied column type is responsible for this.)
         """
         self.logger.info("building live submissions table...")
@@ -750,6 +748,7 @@ class LiveSubmissionsTable:
         )
 
         # Make sure all needed group rows are built.
+        # TODO: is this still needed?
         for group_id in group_ids:
             if not group_id in self.group_rows:
                 group = self.lab.groups[group_id]
@@ -768,7 +767,8 @@ class LiveSubmissionsTable:
                 if any(value.has_content() for value in r.values.values()):
                     if column.sortable:
                         r.canonical_sort_keys = util.general.canonical_keys(
-                            group_ids, lambda group_id: r.values[group_id].sort_key()
+                            group_ids,
+                            lambda group_id: r.values[group_id].sort_key(),
                         )
                     yield (name, r)
 
@@ -787,58 +787,60 @@ class LiveSubmissionsTable:
             )
         )
 
+        @dataclasses.dataclass
+        class HTMLCell(util.html.HTMLCell):
+            value: ColumnValue
+
+            def value(self):
+                raise NotImplementedError()
+
+            def inhabited(self) -> bool:
+                return self.value.has_content
+
+            def sort_key(self) -> util.general.Comparable | None:
+                return self.value.sort_key()
+
+            def format(self, cell: dominate.tags.td) -> None:
+                self.value.format_cell(cell)
+
+        @dataclasses.dataclass
+        class HTMLColumn(util.html.HTMLColumn):
+            name_: str
+            column: Column
+
+            def name(self) -> str:
+                return self.name_
+
+            def sortable(self) -> bool:
+                return self.column.sortable
+
+            def format_header(self, cell: dominate.tags.th) -> None:
+                self.column.format_header_cell(cell)
+
+            def cell(self, row) -> HTMLCell:
+                return HTMLCell(value=self.column.get_value(row))
+
+        def columns() -> Generator[util.html.HTMLColumn]:
+            for name, column in self.columns.items():
+                yield HTMLColumn(name_=name, column=column)
+
+        renderer = util.html.HTMLTableRenderer(
+            columns=list(columns()),
+            rows=group_ids,
+            skip_empty_columns=True,
+            sort_order=self.config.sort_order,
+            id="results",
+        )
+
         # Build the HTML document.
-        doc = dominate.document()
-        doc.title = f"Grading requests: {self.lab.name_full}"
-        with doc.head:
-            dominate.tags.meta(charset="utf-8")
-            # Make it fit into the Canvas style by using the same fonts (font source?).
-            dominate.tags.link(
-                rel="preconnect",
-                href="https://fonts.gstatic.com/",
-                crossorigin="anonymous",
-            )
-            dominate.tags.link(
-                rel="stylesheet",
-                media="screen",
-                href=(
-                    "https://du11hjcvx0uqb.cloudfront.net"
-                    "/dist/brandable_css/no_variables/bundles/lato_extended-f5a83bde37.css"
-                ),
-            )
-            embed_css(path_data_default_css)
-            embed_css(path_data_sort_css)
-            embed_js(path_data_sort_js)
-
+        doc = doc_with_head(f"Open requests: {self.lab.name_full}")
+        renderer.format_head(doc.head)
         with doc.body:
-            with dominate.tags.table(id="results"):
-                with dominate.tags.thead():
-                    for name in column_data.keys():
-                        column = self.columns[name]
-                        cell = dominate.tags.th()
-                        add_class(cell, name)
-                        if column.sortable:
-                            add_class(cell, "sortable")
-                            # want to write: is_prefix([name], sort_order)
-                            if [name] == sort_order[:1]:
-                                add_class(cell, "sortable-order-asc")
-                        column.format_header_cell(cell)
-                with dominate.tags.tbody():
-                    for group_id in group_ids:
-                        self.logger.debug(
-                            f"processing {self.lab.groups[group_id].name}"
-                        )
-                        with dominate.tags.tr():
-                            for name, data in column_data.items():
-                                column = self.columns[name]
-                                cell = dominate.tags.td()
-                                cell.is_pretty = False
-                                add_class(cell, name)
-                                if column.sortable:
-                                    cell["data-sort-key"] = str(
-                                        data.canonical_sort_keys[group_id]
-                                    )
-                                data.values[group_id].format_cell(cell)
-
+            renderer.render()
         file.write_text(doc.render(pretty=True))
         self.logger.info("building live submissions table: done")
+
+
+class UnifiedLiveSubmissionsTable:
+    def __init__(self, course: "module_course.Course", logger: logging.Logger):
+        self.course = course

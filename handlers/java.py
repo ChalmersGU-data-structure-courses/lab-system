@@ -9,6 +9,7 @@ import live_submissions_table
 import robograder_java
 import submission_java
 import util.git
+import util.html
 import util.path
 
 report_segments = ["report"]
@@ -49,9 +50,9 @@ class CompilationColumn(live_submissions_table.Column):
 
         def format_cell(cell):
             with cell:
-                a = live_submissions_table.format_url("compilation", url)
+                a = util.html.format_url("compilation", url)
                 if cl:
-                    live_submissions_table.add_class(a, cl)
+                    util.html.add_class(a, cl)
 
         return live_submissions_table.CallbackColumnValue(
             sort_key=sort_key,
@@ -80,7 +81,7 @@ class RobogradingColumn(live_submissions_table.Column):
 
         def format_cell(cell):
             with cell:
-                live_submissions_table.format_url("robograding", url)
+                util.html.format_url("robograding", url)
 
         return live_submissions_table.CallbackColumnValue(callback=format_cell)
 
@@ -100,7 +101,7 @@ class CompilationAndRobogradingColumn(live_submissions_table.Column):
         report = submission_current.repo_tag(report_segments)
 
         def link_for(name, path):
-            a = live_submissions_table.format_url(
+            a = util.html.format_url(
                 name,
                 gitlab_.tools.url_tree(
                     self.lab.collection_project.get,
@@ -128,7 +129,7 @@ class CompilationAndRobogradingColumn(live_submissions_table.Column):
                 if sort_key != 2:
                     a = link_for("compilation", report_compilation)
                     if sort_key == 1:
-                        live_submissions_table.add_class(a, cl)
+                        util.html.add_class(a, cl)
 
                 # Add line for robograding report.
                 if sort_key != 0:

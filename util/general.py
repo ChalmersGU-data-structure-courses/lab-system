@@ -742,7 +742,7 @@ def when(condition, value):
     return value if condition else True
 
 
-def canonical_keys(items, key=None):
+def canonical_keys[X](items: Iterable[X], key=None) -> dict[X, int]:
     """
     Canonicalize sort keys.
     Takes an iterable of unique items.
