@@ -2,6 +2,7 @@ from collections.abc import Iterable
 import dataclasses
 import datetime
 import functools
+import importlib.resources
 import logging
 from typing import Optional, Tuple
 
@@ -11,7 +12,6 @@ import graphql_.client
 import util.general
 import util.print_parse
 from graphql_.tools import distribute, lift, over_list, query, tupling
-from util.this_dir import this_dir
 
 logger = logging.getLogger(__name__)
 
@@ -69,9 +69,9 @@ class Client(graphql_.client.ClientBase):
             auth=util.general.BearerAuth(token),
         )
         version = "" if schema_full else "_extract"
-        filename = f"gitlab_schema{version}.graphql"
-        path_schema = this_dir / "graphql_" / filename
-        super().__init__(transport, path_schema)
+        filename = f"schema{version}.graphql"
+        schema = importlib.resources.files(__name__).joinpath(filename).read_text()
+        super().__init__(transport, schema)
 
     def query_complexity(self):
         return distribute(self.ds.Query.queryComplexity.select)(

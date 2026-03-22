@@ -16,10 +16,7 @@ import util.path
 from .documents import Documents
 from .drive import Drive, TemporaryFile
 
-
 logger = logging.getLogger(__name__)
-
-this_dir = Path(__file__).parent
 
 
 Request = util.general.JSONDict

@@ -18,7 +18,7 @@ def retrieve_all_from_cursor(callback, cursor=None):
     Returns an iterable of all the results.
     """
     while True:
-        (results, cursor) = callback(cursor)
+        results, cursor = callback(cursor)
         yield from results
         if cursor is None:
             break
@@ -31,11 +31,12 @@ class Query:
 
 
 class ClientBase:
-    def __init__(self, transport, path_schema):
+    def __init__(self, transport, schema: str | None = None):
         self.transport = transport
         self.client = gql.Client(
             transport=self.transport,
-            schema=path_schema.read_text(),
+            schema=schema,
+            fetch_schema_from_transport=schema is None,
         )
         self.ds = DSLSchema(self.client.schema)
 
@@ -53,7 +54,7 @@ class ClientBase:
 
     # pylint: disable-next=redefined-outer-name
     def execute(self, query, values=None):
-        (query, process) = with_processing(query)
+        query, process = with_processing(query)
         # print(print_ast(query))
         return process(self.session.execute(query, variable_values=values))
 
@@ -73,7 +74,7 @@ class ClientBase:
 
     # pylint: disable-next=redefined-outer-name
     def queue_query(self, query, process=None):
-        (query, process) = with_processing(query)
+        query, process = with_processing(query)
 
         i = len(self.queue_queries)
         self.queue_queries.append(query)

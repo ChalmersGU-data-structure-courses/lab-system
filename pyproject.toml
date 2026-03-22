@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = 'lab-system'
 description = 'A system for administrating labs used by some courses at Chalmers University of Technology and Gothenburg University'
@@ -5,6 +9,7 @@ classifiers = [
   "Development Status :: 4 - Beta",
   "Programming Language :: Python :: 3",
 ]
+license = 'MIT'
 version = '0.2.0'
 requires-python = '>=3.12'
 dependencies = [
@@ -37,9 +42,6 @@ oldstyle_sandboxing = [
 [[project.authors]]
 name = 'Christian Sattler'
 email = 'sattler@chalmers.se'
-
-[project.license]
-text = "MIT License"
 
 [project.urls]
 Homepage = 'https://github.com/ChalmersGU-data-structure-courses/lab-system'
@@ -130,6 +132,53 @@ disable = [
   'C0201',  # consider-iterating-dictionary
 ]
 
+# TODO:
+# Create a lab_system package.
+# Move lab-system-related stuff (including top-level modules there).
 [tool.setuptools]
-# TODO: Remove workaround once we have proper namespacing.
-py-modules = []
+packages = [
+  'canvas',
+  'chalmers_pdb',
+  'experiments',
+  'gitlab_',
+  'google_tools',
+  'grading_sheet',
+  'graphql_',
+  'handlers',
+  'live_submissions_table',
+  'one_off_scripts',
+  'testers',
+  'util',
+  'util.html',
+]
+
+py-modules = [
+  'course',
+  'course_basics',
+  'event_loop',
+  'events',
+  'grading_protocol',
+  'grading_via_merge_request',
+  'graphql2',
+  'group_project',
+  'group_set',
+  'invite_students',
+  'lab',
+  'lab_interfaces',
+  'prelude',
+  'robograder_java',
+  'run_event_loop',
+  'run_java_robograder',
+  'submission_java',
+  'test',
+  'webhook_listener',
+]
+
+[tool.setuptools.package-data]
+lab-system = [
+  'gitlab_/schema.graphql',
+  'gitlab_/schema_extract.graphql',
+  'live_submissions_table/default.css',
+  'util/html/sort.css',
+  'util/html/sort.js',
+]

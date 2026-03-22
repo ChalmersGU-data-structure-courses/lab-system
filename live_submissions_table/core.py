@@ -1,10 +1,10 @@
 import abc
 import dataclasses
 import datetime
+import importlib.resources
 import logging
 import types
 from collections.abc import Generator
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import dominate
@@ -13,7 +13,6 @@ import gitlab_.tools
 import util.general
 import util.git
 import util.html
-import util.this_dir
 
 if TYPE_CHECKING:
     import course as module_course
@@ -21,8 +20,7 @@ if TYPE_CHECKING:
 logger_default = logging.getLogger(__name__)
 
 
-path_data = Path(__file__).parent
-path_data_default_css = path_data / "default.css"
+PATH_DATA_DEFAULT_CSS = "default.css"
 
 
 def doc_with_head(title: str) -> dominate.document:
@@ -44,7 +42,11 @@ def doc_with_head(title: str) -> dominate.document:
                 "/dist/brandable_css/no_variables/bundles/lato_extended-f5a83bde37.css"
             ),
         )
-        util.html.embed_css(path_data_default_css)
+        util.html.embed_css(
+            importlib.resources.files(__name__)
+            .joinpath(PATH_DATA_DEFAULT_CSS)
+            .read_text()
+        )
     return doc
 
 
