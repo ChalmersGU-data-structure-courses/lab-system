@@ -1,10 +1,12 @@
 import abc
+import contextlib
 import dataclasses
 import datetime
 import importlib.resources
 import logging
 from collections.abc import Generator, Iterable
-from typing import TYPE_CHECKING
+from functools import cached_property
+from typing import Any, TYPE_CHECKING
 
 import dominate
 
@@ -15,6 +17,7 @@ import util.html
 
 if TYPE_CHECKING:
     import course as module_course
+    import lab as module_lab
 
 logger_default = logging.getLogger(__name__)
 
@@ -756,10 +759,155 @@ class LiveSubmissionsTable:
 
 
 class UnifiedLiveSubmissionsTable:
+    @dataclasses.dataclass
+    class LabColumn(util.html.HTMLColumn):
+        course: "module_course.Course"
+
+        def name(self) -> str:
+            return "lab"
+
+        def sortable(self) -> bool:
+            return True
+
+        def format_header(self, cell: dominate.tags.th) -> None:
+            with cell:
+                dominate.util.text("Lab")
+                dominate.tags.attr(style="text-align: center;")
+
+        def cell(self, row) -> util.html.HTMLCell:
+            lab_id, _group_id = row
+            return StandardColumnValue(
+                self.course.config.lab_id.id.print(lab_id),
+                key=lab_id,
+            )
+
+    class WrapColumn(util.html.HTMLColumn):
+        name_: str
+        columns: "dict[Any, module_lab.Lab]"
+
+        def __init__(self, outer: "UnifiedLiveSubmissionsTable", name: str):
+            self.name_ = name
+            self.columns = outer.shared_columns[name]
+
+        @cached_property
+        def some_column(self) -> Column:
+            return next(iter(self.columns.values()))
+
+        def name(self) -> str:
+            return self.name_
+
+        def sortable(self) -> bool:
+            return self.some_column.sortable()
+
+        def format_header(self, cell: dominate.tags.th) -> None:
+            self.some_column.format_header(cell)
+
+        def cell(self, row) -> util.html.HTMLCell:
+            lab_id, group_id = row
+            return self.columns[lab_id].cell(group_id)
+
     def __init__(
         self,
         course: "module_course.Course",
-        live_submissions_tables: Iterable[LiveSubmissionsTable],
+        tables: Iterable[LiveSubmissionsTable],
         logger: logging.Logger,
+        columns: list[str] | None = None,
+        columns_pre: Iterable[str] = ("date",),
+        sort_order: list[str] = ("date",),
     ):
+        # Need at least one table.
+        assert tables
+
         self.course = course
+        self.tables = {tables.lab.id: tables for table in tables}
+        self.logger = logger
+
+        if columns is None:
+            columns = list(self.shared_columns.keys())
+        for name in columns:
+            assert name in self.shared_columns.keys()
+        self.columns_inner = columns
+        for name in columns_pre:
+            assert name in self.columns_inner_set
+        self.columns_pre = columns_pre
+        self.sort_order = sort_order
+
+    @cached_property
+    def some_table(self) -> LiveSubmissionsTable:
+        return next(iter(self.tables.values()))
+
+    @cached_property
+    def shared_columns(self) -> dict[str, dict[Any, Column]]:
+        def gen():
+            for table in self.tables.values():
+                for name in self.some_table.columns.keys():
+                    with contextlib.suppress(LookupError):
+                        columns = {
+                            table.lab.id: table.columns[name]
+                            for table in self.tables.values()
+                        }
+                        yield (name, columns)
+
+        return dict(gen())
+
+    @cached_property
+    def columns_inner_set(self) -> set[str]:
+        return set(self.columns_inner)
+
+    @cached_property
+    def columns_post(self) -> list[str]:
+        exclude = set(self.columns_pre)
+        return [name for name in self.columns_inner if not name in exclude]
+
+    @cached_property
+    def columns(self) -> dict[str, util.html.HTMLColumn]:
+        def gen():
+            for name in self.columns_pre:
+                yield self.WrapColumn(self, name)
+            yield self.LabColumn(self.course)
+            for name in self.columns_post:
+                yield self.WrapColumn(self, name)
+
+        return {column.name(): column for column in gen()}
+
+    def build(self, path: Path):
+        """
+        Build the unified live submissions table.
+        The generated HTML file is self-contained and only contains absolute links.
+        """
+        self.logger.info("building unified live submissions table...")
+
+        # Compute the list of pairs of lab id and group id with live submissions.
+        def ids_gen():
+            for lab_id, table in self.tables.items():
+                lab = self.course.labs[lab_id]
+                for group_id in lab.groups_with_live_submissions(
+                    deadline=table.config.deadline
+                ):
+                    if not group_id in table.group_rows:
+                        raise ValueError(
+                            f"live submissions table for {lab.name} "
+                            f"misses row for {lab.groups[group_id].name}"
+                        )
+                    yield (lab.id, group_id)
+
+        ids = list(ids_gen())
+        self.logger.debug(
+            f"building unified live submissions table for the following groups: {ids}"
+        )
+
+        renderer = util.html.HTMLTableRenderer(
+            columns=self.columns.values(),
+            rows=ids,
+            skip_empty_columns=True,
+            sort_order=[self.columns[name] for name in self.sort_order],
+            id="results",
+        )
+
+        # Build the HTML document.
+        doc = doc_with_head("Open requests")
+        renderer.format_head(doc.head)
+        with doc.body:
+            renderer.render()
+        path.write_text(doc.render(pretty=True))
+        self.logger.info("building unified live submissions table: done")
