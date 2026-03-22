@@ -258,6 +258,12 @@ class GradingViaMergeRequest:
             (gitlab_.tools.parse_date(note.created_at), note) for note in self.notes
         ]
 
+    def note_url(self, synced_submission: SyncedSubmission):
+        return gitlab_.tools.url_merge_request_note(
+            self.merge_request,
+            synced_submission.note,
+        )
+
     def synced_submissions_generator(self) -> Generator[tuple[str, SyncedSubmission]]:
         for note in self.notes:
             if note.system:
@@ -571,15 +577,14 @@ class GradingViaMergeRequest:
                     # Synchronized.
                     yield util.markdown.link(
                         self.course.format_datetime(synced_submission.date),
-                        gitlab_.tools.url_merge_request_note(
-                            self.merge_request,
-                            synced_submission.note,
-                        ),
+                        self.note_url(synced_submission),
                     )
 
                     # Report.
                     if self.lab.config.report_key is not None:
-                        issue_number = synced_submission.sync_message.report_issue_number
+                        issue_number = (
+                            synced_submission.sync_message.report_issue_number
+                        )
                         if issue_number is None:
                             yield None
                         else:

@@ -7,7 +7,7 @@ import logging
 from collections.abc import Generator, Iterable
 from functools import cached_property
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import Any, Callable, TYPE_CHECKING
 
 import dominate
 
@@ -239,7 +239,7 @@ class MembersColumn(Column):
     def format_header(self, cell):
         with cell:
             dominate.tags.attr(style="text-align: center;")
-            dominate.util.text("Members on record")
+            dominate.util.text("Members")
 
     class Value(ColumnValue):
         # pylint: disable=abstract-method
@@ -329,7 +329,7 @@ class MessageColumn(Column):
 
     def format_header(self, cell):
         with cell:
-            dominate.util.text("Submission message")
+            dominate.util.text("Message")
 
     class Value(ColumnValue):
         def __init__(self, message):
@@ -425,9 +425,35 @@ class SubmissionFilesColumn(Column):
                 )
 
         url = gitlab_.tools.url_tree(group.project.get, submission.request_name, True)
-        return SubmissionFilesColumn.Value(
+        return self.Value(
             (submission.request_name, url),
             linked_grading_response,
+        )
+
+
+class SubmissionFilesNewstyleColumn(Column):
+    def format_header(self, cell):
+        float_left_and_right(cell, "Request", " vs:")
+
+    @dataclasses.dataclass
+    class Value(ColumnValue):
+        title: str
+        target: str
+
+        def format(self, cell):
+            with cell:
+                util.html.format_url(self.title, self.target)
+
+    def cell(self, group_id):
+        assert self.lab.config.grading_via_merge_request
+        group = self.lab.groups[group_id]
+        submission = group.submission_current(deadline=self.config.deadline)
+        request_name = submission.request_name
+        grading_merge_request = submission.grading_merge_request
+        synced_submission = grading_merge_request.synced_submissions[request_name]
+        return self.Value(
+            submission.request_name,
+            grading_merge_request.note_url(synced_submission),
         )
 
 
@@ -453,7 +479,7 @@ class SubmissionDiffColumnValue(ColumnValue):
                         dominate.util.text("identical")
                 if self.linked_grader is not None:
                     with dominate.tags.p():
-                        dominate.util.text("graded by ")
+                        dominate.util.text("handled by ")
                         util.html.format_url(*self.linked_grader)
 
 
@@ -567,7 +593,12 @@ class SubmissionDiffSolutionColumn(SubmissionDiffColumn):
         return (name, submission_solution.repo_tag(), None)
 
 
-def with_standard_columns(columns=None, with_solution=True, choose_solution=None):
+def with_standard_columns(
+    columns=None,
+    with_solution: bool = True,
+    choose_solution: Callable | None = None,
+    newstyle_submission: bool = True,
+):
     if columns is None:
         columns = {}
 
@@ -576,7 +607,12 @@ def with_standard_columns(columns=None, with_solution=True, choose_solution=None
         yield ("query-number", QueryNumberColumn)
         yield ("group", GroupColumn)
         yield ("members", MembersColumn)
-        yield ("submission", SubmissionFilesColumn)
+        SubmissionFiles = (
+            SubmissionFilesNewstyleColumn
+            if newstyle_submission
+            else SubmissionFilesColumn
+        )
+        yield ("submission", SubmissionFiles)
         yield ("submission-after-previous", SubmissionDiffPreviousColumn)
         yield ("submission-after-problem", SubmissionDiffProblemColumn)
         if with_solution:
