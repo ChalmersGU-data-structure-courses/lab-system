@@ -5,13 +5,15 @@ import live_submissions_table
 
 
 class LanguageColumn(live_submissions_table.Column):
-    sortable = True
+    def sortable(self):
+        return True
 
-    def format_header_cell(self, cell):
+    def format_header(self, cell):
         with cell:
             dominate.util.text("Language")
 
-    def get_value(self, group):
+    def cell(self, group_id):
+        group = self.lab.groups[group_id]
         submission = group.submission_current(deadline=self.config.deadline)
         variant = submission.handled_result.get("variant", "")
         return live_submissions_table.StandardColumnValue(variant)
@@ -35,13 +37,16 @@ def wrap_column_types(column_types):
                 variant: column_type(table)
                 for (variant, column_type) in column_types.items()
             }
-            self.sortable = all(column.sortable for column in self.columns.values())
 
-        def format_header_cell(self, cell):
+        def sortable(self):
+            return all(column.sortable() for column in self.columns.values())
+
+        def format_header(self, cell):
             column = next(iter(self.columns.values()))
-            return column.format_header_cell(cell)
+            return column.format_header(cell)
 
-        def get_value(self, group):
+        def cell(self, group_id):
+            group = self.lab.groups[group_id]
             submission = group.submission_current(deadline=self.config.deadline)
             variant = submission.handled_result.get("variant")
             try:
@@ -49,7 +54,7 @@ def wrap_column_types(column_types):
             except KeyError:
                 return live_submissions_table.StandardColumnValue()
 
-            return column.get_value(group)
+            return column.cell(group)
 
     return ColumnWrapper
 

@@ -3,8 +3,7 @@ import dataclasses
 import datetime
 import importlib.resources
 import logging
-import types
-from collections.abc import Generator
+from collections.abc import Generator, Iterable
 from typing import TYPE_CHECKING
 
 import dominate
@@ -73,62 +72,21 @@ def doc_with_head(title: str) -> dominate.document:
 # * A function that generates the cell content for a given group
 
 
-class ColumnValue:
-    """
-    The column value associated to a group.
-    This is relative to a column whose get_value method has produced this instance.
-    """
-
-    @abc.abstractmethod
-    def sort_key(self):
-        """
-        Return the sort key.
-        Only called for sortable columns.
-        """
-
-    def has_content(self):
-        """
-        Return a boolean indicating if this cell has displayable content.
-        If all cells in a column have no displayable content,
-        then the live submissions table will omit the column.
-        The default implementation returns True.
-        """
-        return True
-
-    @abc.abstractmethod
-    def format_cell(self, cell):
-        """
-        Fill in content for the given table cell.
-        The argument is of type dominate.tags.td.
-        You may use context managers to define its elements and attributes:
-            with cell:
-                dominate.tags.p('a paragraph')
-                dominate.tags.p('another paragraph')
-        """
+ColumnValue = util.html.HTMLCell
 
 
-class ColumnValueEmpty:
+class ColumnValueEmpty(ColumnValue):
     def sort_key(self):
         return 0
 
-    def has_content(self):
+    def inhabited(self):
         return False
 
-    def format_cell(self, _cell):
+    def format(self, _cell):
         return ""
 
 
-class Column:
-    """
-    Required attributes:
-    * sortable:
-        A boolean indicating if this column is sortable.
-        If so, then column values produced by get_value need to have sort_key implemented.
-        Set to False by default.
-    """
-
-    sortable = False
-
+class Column(abc.ABC):
     def __init__(self, table):
         """
         Store the given configuration under self.config.
@@ -152,38 +110,30 @@ class Column:
     def logger(self):
         return self.table.logger
 
-    def format_header_cell(self, cell):
-        """
-        Fill in content for the given table header cell.
-        The argument is of type dominate.tags.td.
-        You may use context managers to define its elements and attributes:
-            with cell:
-                dominate.util.text('Column header')
-        """
-        raise NotImplementedError()
+    def sortable(self) -> bool:
+        return False
 
-    def get_value(self, group):
-        """
-        Return the column value (instance of ColumnValue) for
-        a given group project (instance of group_GroupProject).
-        """
-        raise NotImplementedError()
+    @abc.abstractmethod
+    def format_header(self, cell: dominate.tags.th) -> None: ...
+
+    @abc.abstractmethod
+    def cell(self, group_id) -> ColumnValue: ...
 
 
 class CallbackColumnValue(ColumnValue):
     # pylint: disable=abstract-method
     """
-    A column value implementation using a callback function for format_cell.
-    Values for sort_key and has_content are given at construction.
+    A column value implementation using a callback function for format.
+    Values for sort_key and inhabited are given at construction.
     """
 
     def sort_key(self):
         return self._sort_key
 
-    def __init__(self, sort_key=None, has_content=True, callback=None):
+    def __init__(self, sort_key=None, inhabited=True, callback=None):
         self._sort_key = sort_key
-        self.has_content = lambda: has_content
-        self.format_cell = callback if callback is not None else lambda cell: None
+        self.inhabited = lambda: inhabited
+        self.format = callback if callback is not None else lambda cell: None
 
 
 class StandardColumnValue(ColumnValue):
@@ -202,11 +152,11 @@ class StandardColumnValue(ColumnValue):
         """Returns the specified sort key, or in its absences the value."""
         return self.key
 
-    def has_content(self):
+    def inhabited(self):
         """Checks if the specified value converts to a non-empty string."""
         return bool(str(self.value))
 
-    def format_cell(self, cell):
+    def format(self, cell):
         """Formats the cell with text content (centered) according to the specified value."""
         with cell:
             dominate.util.text(str(self.value))
@@ -215,9 +165,10 @@ class StandardColumnValue(ColumnValue):
 
 # TODO: implement deadlines in lab config.
 class DateColumn(Column):
-    sortable = True
+    def sortable(self):
+        return True
 
-    def format_header_cell(self, cell):
+    def format_header(self, cell):
         with cell:
             dominate.util.text("Date")
             dominate.tags.attr(style="text-align: center;")
@@ -230,10 +181,10 @@ class DateColumn(Column):
         def sort_key(self):
             return self.date
 
-        def has_content(self):
+        def inhabited(self):
             return True
 
-        def format_cell(self, cell):
+        def format(self, cell):
             if self.late:
                 util.html.add_class(cell, "problematic")
             with cell:
@@ -242,20 +193,23 @@ class DateColumn(Column):
                     dominate.tags.attr(title=self.date.strftime("%z (%Z)"))
                     dominate.tags.attr(style="text-align: center;")
 
-    def get_value(self, group):
+    def cell(self, group_id):
+        group = self.lab.groups[group_id]
         submission = group.submission_current(deadline=self.config.deadline)
         return DateColumn.Value(submission.date)
 
 
 class GroupColumn(Column):
-    sortable = True
+    def sortable(self):
+        return True
 
-    def format_header_cell(self, cell):
+    def format_header(self, cell):
         with cell:
             dominate.tags.attr(style="text-align: center;")
             dominate.util.text("Group")
 
-    def get_value(self, group):
+    def cell(self, group_id):
+        group = self.lab.groups[group_id]
         if not group.is_known:
             encoded_id = f"{group.name} (unknown)"
             sort_key = (0, encoded_id)
@@ -271,7 +225,7 @@ class GroupColumn(Column):
 
 
 class MembersColumn(Column):
-    def format_header_cell(self, cell):
+    def format_header(self, cell):
         with cell:
             dominate.tags.attr(style="text-align: center;")
             dominate.util.text("Members on record")
@@ -289,7 +243,7 @@ class MembersColumn(Column):
             self.members = members
             self.logger = logger
 
-        def has_content(self):
+        def inhabited(self):
             return bool(self.members)
 
         def fill_in_member(self, gitlab_user, canvas_user):
@@ -312,13 +266,14 @@ class MembersColumn(Column):
                     )
                     dominate.util.text(canvas_user.name)
 
-        def format_cell(self, cell):
+        def format(self, cell):
             with cell:
                 for member in self.members:
                     with dominate.tags.p():
                         self.fill_in_member(*member)
 
-    def get_value(self, group):
+    def cell(self, group_id):
+        group = self.lab.groups[group_id]
         members = [
             (member, self.course.canvas_user_by_gitlab_username.get(member.username))
             for member in group.members
@@ -328,9 +283,10 @@ class MembersColumn(Column):
 
 
 class QueryNumberColumn(Column):
-    sortable = True
+    def sortable(self) -> bool:
+        return True
 
-    def format_header_cell(self, cell):
+    def format_header(self, cell):
         with cell:
             dominate.tags.attr(style="text-align: center;")
             dominate.util.text("#")
@@ -342,13 +298,14 @@ class QueryNumberColumn(Column):
         def sort_key(self):
             return self.number
 
-        def format_cell(self, cell):
+        def format(self, cell):
             with cell:
                 # TODO: make parametrizable in configuration
                 dominate.util.text(f"#{self.number + 1}")
                 dominate.tags.attr(style="text-align: center;")
 
-    def get_value(self, group):
+    def cell(self, group_id):
+        group = self.lab.groups[group_id]
         submissions_with_outcome = group.submissions_with_outcome(
             deadline=self.config.deadline
         )
@@ -356,9 +313,10 @@ class QueryNumberColumn(Column):
 
 
 class MessageColumn(Column):
-    sortable = True
+    def sortable(self) -> bool:
+        return True
 
-    def format_header_cell(self, cell):
+    def format_header(self, cell):
         with cell:
             dominate.util.text("Submission message")
 
@@ -369,15 +327,16 @@ class MessageColumn(Column):
         def sort_key(self):
             return self.message
 
-        def has_content(self):
+        def inhabited(self):
             return bool(self.message)
 
-        def format_cell(self, cell):
+        def format(self, cell):
             with cell:
                 if self.message is not None:
                     dominate.tags.pre(self.message)
 
-    def get_value(self, group):
+    def cell(self, group_id):
+        group = self.lab.groups[group_id]
         submission_current = group.submission_current(deadline=self.config.deadline)
         message = util.git.tag_message(
             submission_current.repo_remote_tag,
@@ -400,7 +359,7 @@ def float_left_and_right(cell, left, right):
 
 
 class SubmissionFilesColumn(Column):
-    def format_header_cell(self, cell):
+    def format_header(self, cell):
         float_left_and_right(cell, "Submission", " vs:")
 
     class Value(ColumnValue):
@@ -410,14 +369,15 @@ class SubmissionFilesColumn(Column):
             self.linked_name = linked_name
             self.linked_grading_response = linked_grading_response
 
-        def format_cell(self, cell):
+        def format(self, cell):
             with cell:
                 a = util.html.format_url(*self.linked_name)
                 util.html.add_class(a, "block")
                 a = util.html.format_url(*self.linked_grading_response)
                 util.html.add_class(a, "block")
 
-    def get_value(self, group):
+    def cell(self, group_id):
+        group = self.lab.groups[group_id]
         submission = group.submission_current(deadline=self.config.deadline)
 
         response_key = self.lab.submission_handler.review_response_key
@@ -461,19 +421,17 @@ class SubmissionFilesColumn(Column):
 
 
 class SubmissionDiffColumnValue(ColumnValue):
-    # pylint: disable=abstract-method
-
     def __init__(self, linked_name, linked_grader=None, is_same=False):
         self.linked_name = linked_name
         self.linked_grader = linked_grader
         self.is_same = is_same
 
-    def has_content(self):
+    def inhabited(self):
         return self.linked_name is not None
 
-    def format_cell(self, cell):
+    def format(self, cell):
         util.html.add_class(cell, "extension-column")
-        if self.has_content():
+        if self.inhabited():
             with cell:
                 with dominate.tags.p():
                     util.html.format_url(*self.linked_name)
@@ -504,12 +462,13 @@ class SubmissionDiffColumn(Column):
           - grader link
         """
 
-    def format_header_cell(self, cell):
+    def format_header(self, cell):
         util.html.add_class(cell, "extension-column")
         with cell:
             dominate.util.text(self.title)
 
-    def get_value(self, group):
+    def cell(self, group_id):
+        group = self.lab.groups[group_id]
         submission_current = group.submission_current(deadline=self.config.deadline)
         x = self.base_ref(group)
         if x is None:
@@ -639,7 +598,7 @@ def with_standard_columns(columns=None, with_solution=True, choose_solution=None
 #         self.link = link
 #         self.different = different
 
-#     def format_cell(self, cell):
+#     def format(self, cell):
 #         with cell:
 #             with dominate.tags.a():
 #                 text(self.name)
@@ -705,7 +664,7 @@ class LiveSubmissionsTable:
         self.logger.info(f"updating row for {group.name} in live submissions table")
         if group.submission_current(deadline=self.config.deadline):
             self.group_rows[group.id] = {
-                column_name: column.get_value(group)
+                column_name: column.cell(group.id)
                 for (column_name, column) in self.columns.items()
             }
         else:
@@ -756,55 +715,6 @@ class LiveSubmissionsTable:
                 group = self.lab.groups[group_id]
                 raise ValueError(f"live submissions table misses row for {group.name}")
 
-        # Compute the columns (with column values) for these submissions.
-        # We omit empty columns.
-        def f():
-            # pylint: disable=cell-var-from-loop
-            for name, column in self.columns.items():
-                r = types.SimpleNamespace()
-                r.values = dict(
-                    (group_id, column.get_value(self.lab.groups[group_id]))
-                    for group_id in group_ids
-                )
-                if any(value.has_content() for value in r.values.values()):
-                    if column.sortable:
-                        r.canonical_sort_keys = util.general.canonical_keys(
-                            group_ids,
-                            lambda group_id: r.values[group_id].sort_key(),
-                        )
-                    yield (name, r)
-
-        column_data = dict(f())
-
-        # Pre-sort the list of group ids with live submissions according to the given sort order.
-        sort_order = list(
-            filter(
-                lambda column_name: column_name in column_data,
-                self.config.sort_order,
-            )
-        )
-        group_ids.sort(
-            key=lambda group_id: tuple(
-                column_data[name].values[group_id].sort_key() for name in sort_order
-            )
-        )
-
-        @dataclasses.dataclass
-        class HTMLCell(util.html.HTMLCell):
-            value: ColumnValue
-
-            def value(self):
-                raise NotImplementedError()
-
-            def inhabited(self) -> bool:
-                return self.value.has_content
-
-            def sort_key(self) -> util.general.Comparable | None:
-                return self.value.sort_key()
-
-            def format(self, cell: dominate.tags.td) -> None:
-                self.value.format_cell(cell)
-
         @dataclasses.dataclass
         class HTMLColumn(util.html.HTMLColumn):
             name_: str
@@ -814,23 +724,25 @@ class LiveSubmissionsTable:
                 return self.name_
 
             def sortable(self) -> bool:
-                return self.column.sortable
+                return self.column.sortable()
 
             def format_header(self, cell: dominate.tags.th) -> None:
-                self.column.format_header_cell(cell)
+                self.column.format_header(cell)
 
-            def cell(self, row) -> HTMLCell:
-                return HTMLCell(value=self.column.get_value(row))
+            def cell(self, row) -> util.html.HTMLCell:
+                return self.column.cell(row)
 
-        def columns() -> Generator[util.html.HTMLColumn]:
+        def columns_gen() -> Generator[tuple[str, util.html.HTMLColumn]]:
             for name, column in self.columns.items():
-                yield HTMLColumn(name_=name, column=column)
+                yield (name, HTMLColumn(name_=name, column=column))
+
+        columns = dict(columns_gen())
 
         renderer = util.html.HTMLTableRenderer(
-            columns=list(columns()),
+            columns=columns.values(),
             rows=group_ids,
             skip_empty_columns=True,
-            sort_order=self.config.sort_order,
+            sort_order=[columns[name] for name in self.config.sort_order],
             id="results",
         )
 
@@ -844,5 +756,10 @@ class LiveSubmissionsTable:
 
 
 class UnifiedLiveSubmissionsTable:
-    def __init__(self, course: "module_course.Course", logger: logging.Logger):
+    def __init__(
+        self,
+        course: "module_course.Course",
+        live_submissions_tables: Iterable[LiveSubmissionsTable],
+        logger: logging.Logger,
+    ):
         self.course = course

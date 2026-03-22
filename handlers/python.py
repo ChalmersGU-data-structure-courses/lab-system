@@ -10,7 +10,7 @@ class SubmissionHandler(handlers.general.SubmissionHandler):
     report_response_title = handlers.general.tester_response_title
 
     class ReportColumn:
-        def format_header_cell(self, cell):
+        def format_header(self, cell):
             with cell:
                 dominate.util.text("Robograding")
 

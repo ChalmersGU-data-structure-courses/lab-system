@@ -164,21 +164,22 @@ class SubmissionHandler(lab_interfaces.SubmissionHandler):
 class ReportColumn(live_submissions_table.Column):
     title = "Robograding"
 
-    def format_header_cell(self, cell):
+    def format_header(self, cell):
         with cell:
             dominate.util.text(self.title)
 
-    def get_value(self, group):
+    def cell(self, group_id):
+        group = self.lab.groups[group_id]
         submission_current = group.submission_current(deadline=self.config.deadline)
 
-        def format_cell(cell):
+        def format(cell):
             with cell:
                 util.html.format_url(
                     "report",
                     submission_current.report_issue.web_url,
                 )
 
-        return live_submissions_table.CallbackColumnValue(callback=format_cell)
+        return live_submissions_table.CallbackColumnValue(callback=format)
 
 
 class SubmissionHandlerStub(SubmissionHandler):
@@ -352,13 +353,14 @@ class SubmissionTesting:
         self_outer = self
 
         class TestingColumn(live_submissions_table.Column):
-            def format_header_cell(self, cell):
+            def format_header(self, cell):
                 with cell:
                     dominate.util.text(
                         "Robograding" if self_outer.tester_is_robograder else "Testing"
                     )
 
-            def get_value(self, group):
+            def cell(self, group_id):
+                group = self.lab.groups[group_id]
                 submission_current = group.submission_current(
                     deadline=self.config.deadline
                 )
@@ -374,9 +376,9 @@ class SubmissionTesting:
                         return list(dir.iterdir())
 
                 if not check():
-                    return live_submissions_table.CallbackColumnValue(has_content=False)
+                    return live_submissions_table.CallbackColumnValue(inhabited=False)
 
-                def format_cell(cell):
+                def format(cell):
                     with cell:
                         with dominate.tags.p():
                             if self_outer.report_path is None:
@@ -430,7 +432,7 @@ class SubmissionTesting:
                                     ),
                                 )
 
-                return live_submissions_table.CallbackColumnValue(callback=format_cell)
+                return live_submissions_table.CallbackColumnValue(callback=format)
 
         if self.tester:
             yield (

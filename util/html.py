@@ -1,9 +1,8 @@
 import abc
-import importlib.resources
 from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import cached_property
-from pathlib import PurePosixPath
+from pathlib import Path
 from typing import ClassVar
 
 import dominate
@@ -33,61 +32,33 @@ def format_url(text, url, new: bool = True) -> dominate.tags.a:
 
 
 class Cell(abc.ABC):
-    """The cell for a given column and row."""
-
     @abc.abstractmethod
-    def value(self):
-        """The value of the cell."""
+    def value(self): ...
 
     def inhabited(self) -> bool:
-        """
-        Does this cell has displayable content?
-        If all cells in a column have no displayable content, then a table renderer may omit the column.
-        """
         return True
 
     def sort_key(self) -> util.general.Comparable | None:
-        """
-        The sort key.
-        Only used for sortable columns.
-        """
         return None
 
 
 class Column[Row](abc.ABC):
     @abc.abstractmethod
-    def name(self) -> str:
-        """
-        The name of the column.
-        Must be unique.
-        """
+    def name(self) -> str: ...
 
     def sortable(self) -> bool:
-        """
-        Is this column sortable?
-        If so, its cells must define a sort key.
-        """
         return False
 
     @abc.abstractmethod
-    def cell(self, row: Row) -> Cell:
-        """The cell for a given row."""
+    def cell(self, row: Row) -> Cell: ...
 
     def inhabited(self, rows: Iterable[Row]) -> bool:
-        """
-        Is this column inhabited?
-        The implementation checks if any cell in this column is inhabited.
-        """
         for row in rows:
             if self.cell(row).inhabited():
                 return True
         return False
 
     def ranks(self, rows: Iterable[Row]) -> dict[Row, int]:
-        """
-        Produce a ranking of the rows.
-        Only usable if the column is sortable.
-        """
         assert self.sortable()
 
         def key(row: Row) -> util.general.Comparable:
@@ -99,18 +70,8 @@ class Column[Row](abc.ABC):
 
 
 class HTMLCell(Cell):
-    def value(self, cell: dominate.tags.td):
-        raise NotImplementedError()
-
     @abc.abstractmethod
-    def format(self, cell: dominate.tags.td) -> None:
-        """
-        Fill in content for the given table cell.
-        You may use context managers to define its elements and attributes:
-            with cell:
-                dominate.tags.p('a paragraph')
-                dominate.tags.p('another paragraph')
-        """
+    def format(self, cell: dominate.tags.td) -> None: ...
 
 
 class HTMLColumn[Row](Column[Row]):
@@ -127,6 +88,9 @@ class Table[Row, C: Column[Row]]:
 
     @abc.abstractmethod
     def rows(self) -> Iterable[Row]: ...
+
+
+PATH_DATA: Path = Path(__file__).parent
 
 
 def embed_raw(s: str) -> dominate.util.text:
@@ -148,47 +112,41 @@ class HTMLTableRenderer[Row, C: HTMLColumn[Row]]:
 
     skip_empty_columns: bool = False
     skip_empty_rows: bool = False
-    sort_order: list[C] | None = None
+    sort_order: list[str] | None = None
     id: str | None = None
 
-    PATH_DATA_SORT_JS: ClassVar[PurePosixPath] = "sort.js"
-    PATH_DATA_SORT_CSS: ClassVar[PurePosixPath] = "sort.css"
+    PATH_DATA_SORT_JS: ClassVar[Path] = PATH_DATA / "sort.js"
+    PATH_DATA_SORT_CSS: ClassVar[Path] = PATH_DATA / "sort.css"
 
     @classmethod
     def format_head(cls, head: dominate.tags.head) -> None:
         with head:
-            embed_css(
-                importlib.resources.files(__name__)
-                .joinpath(cls.PATH_DATA_SORT_JS)
-                .read_text()
-            )
-            embed_js(
-                importlib.resources.files(__name__)
-                .joinpath(cls.PATH_DATA_SORT_CSS)
-                .read_text()
-            )
+            embed_css(cls.PATH_DATA_SORT_JS.read_text())
+            embed_js(cls.PATH_DATA_SORT_CSS.read_text())
 
     @cached_property
-    def actual_columns(self) -> dict[str, C]:
+    def actual_columns(self) -> list[C]:
         def gen():
             for column in self.columns:
                 if not self.skip_empty_columns or column.inhabited(self.rows):
-                    yield (column.name(), column)
-
-        return dict(gen())
-
-    @cached_property
-    def actual_sort_order(self) -> list[C] | None:
-        if self.sort_order is None:
-            return None
-
-        def gen():
-            for column in self.sort_order:
-                assert column.sortable()
-                if column.name in self.actual_columns.keys():
                     yield column
 
         return list(gen())
+
+    @cached_property
+    def actual_column_names(self) -> set[str]:
+        return {column.name() for column in self.actual_columns}
+
+    @cached_property
+    def actual_sort_order(self) -> list[str] | None:
+        if self.sort_order is None:
+            return None
+
+        return [
+            column_name
+            for column_name in self.sort_order
+            if column_name in self.actual_column_names
+        ]
 
     def row_inhabited(self, row: Row) -> bool:
         for column in self.columns:
@@ -208,8 +166,8 @@ class HTMLTableRenderer[Row, C: HTMLColumn[Row]]:
     @cached_property
     def column_ranks(self) -> dict[str, dict[Row, int]]:
         return {
-            name: column.ranks(self.actual_rows)
-            for name, column in self.actual_columns.items()
+            column.name: column.ranks()
+            for column in self.actual_columns
             if column.sortable()
         }
 
@@ -229,14 +187,14 @@ class HTMLTableRenderer[Row, C: HTMLColumn[Row]]:
     def td(self, row: Row, column: C) -> None:
         with dominate.tags.td() as cell:
             cell.is_pretty = False
-            add_class(cell, column.name())
+            add_class(cell, column.name)
             if column.sortable():
-                cell["data-sort-key"] = str(self.column_ranks[column.name()][row])
+                cell["data-sort-key"] = str(self.column_ranks[column.name][row])
             column.cell(row).format(cell)
 
     def tr(self, row: Row) -> None:
         with dominate.tags.tr():
-            for column in self.actual_columns.values():
+            for column in self.actual_columns:
                 self.td(row, column)
 
     def tbody(self) -> None:
@@ -256,7 +214,7 @@ class HTMLTableRenderer[Row, C: HTMLColumn[Row]]:
 
     def thead(self) -> None:
         with dominate.tags.thead():
-            for column in self.actual_columns.values():
+            for column in self.actual_columns:
                 self.th(column)
 
     def render(self) -> dominate.tags.table:

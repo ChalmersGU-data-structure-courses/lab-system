@@ -18,13 +18,15 @@ report_robograding = PurePosixPath("robograding.md")
 
 
 class CompilationColumn(live_submissions_table.Column):
-    sortable = True
+    def sortable(self):
+        return True
 
-    def format_header_cell(self, cell):
+    def format_header(self, cell):
         with cell:
             dominate.util.text("Compilation")
 
-    def get_value(self, group):
+    def cell(self, group_id):
+        group = self.lab.groups[group_id]
         submission_current = group.submission_current(deadline=self.config.deadline)
 
         report = submission_current.repo_tag(report_segments)
@@ -48,7 +50,7 @@ class CompilationColumn(live_submissions_table.Column):
             cl = None
             sort_key = 1
 
-        def format_cell(cell):
+        def format(cell):
             with cell:
                 a = util.html.format_url("compilation", url)
                 if cl:
@@ -56,20 +58,21 @@ class CompilationColumn(live_submissions_table.Column):
 
         return live_submissions_table.CallbackColumnValue(
             sort_key=sort_key,
-            has_content=bool(cl),
-            callback=format_cell,
+            inhabited=bool(cl),
+            callback=format,
         )
 
 
 class RobogradingColumn(live_submissions_table.Column):
-    def format_header_cell(self, cell):
+    def format_header(self, cell):
         with cell:
             dominate.util.text("Robograding")
 
-    def get_value(self, group):
+    def cell(self, group_id):
+        group = self.lab.groups[group_id]
         submission_current = group.submission_current(deadline=self.config.deadline)
         if not submission_current.handled_result["compilation_succeded"]:
-            return live_submissions_table.CallbackColumnValue(has_content=False)
+            return live_submissions_table.CallbackColumnValue(inhabited=False)
 
         report = submission_current.repo_tag(report_segments)
         url = gitlab_.tools.url_tree(
@@ -79,24 +82,26 @@ class RobogradingColumn(live_submissions_table.Column):
             report_robograding,
         )
 
-        def format_cell(cell):
+        def format(cell):
             with cell:
                 util.html.format_url("robograding", url)
 
-        return live_submissions_table.CallbackColumnValue(callback=format_cell)
+        return live_submissions_table.CallbackColumnValue(callback=format)
 
 
 class CompilationAndRobogradingColumn(live_submissions_table.Column):
-    sortable = True
-    """Sorted by compilation status."""
+    def sortable(self):
+        """Sorted by compilation status."""
+        return True
 
-    def format_header_cell(self, cell):
+    def format_header(self, cell):
         with cell:
             dominate.util.text("Compilation &")
             dominate.tags.br()
             dominate.util.text("Robograding")
 
-    def get_value(self, group):
+    def cell(self, group_id):
+        group = self.lab.groups[group_id]
         submission_current = group.submission_current(deadline=self.config.deadline)
         report = submission_current.repo_tag(report_segments)
 
@@ -123,7 +128,7 @@ class CompilationAndRobogradingColumn(live_submissions_table.Column):
             cl = None
             sort_key = 2  # Compilation succeeded without error output.
 
-        def format_cell(cell):
+        def format(cell):
             with cell:
                 # Add line for compilation report.
                 if sort_key != 2:
@@ -137,7 +142,7 @@ class CompilationAndRobogradingColumn(live_submissions_table.Column):
 
         return live_submissions_table.CallbackColumnValue(
             sort_key=sort_key,
-            callback=format_cell,
+            callback=format,
         )
 
 
