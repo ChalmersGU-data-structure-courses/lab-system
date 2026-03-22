@@ -507,7 +507,9 @@ class RequestAndResponses:
         if not self.lab.repo.is_ancestor(prev_commit, commit):
             commit = util.git.onesided_merge(self.lab.repo, commit, prev_commit)
         return self.repo_tag_create(
-            self._repo_tag_after_segments(prev_name, segments), commit, force=True
+            self._repo_tag_after_segments(prev_name, segments),
+            commit,
+            force=True,
         )
 
     def post_response_issue(
@@ -525,8 +527,8 @@ class RequestAndResponses:
             if exist_ok:
                 return
             raise ValueError(
-                f"Response issue for {response_key} already exists "
-                f"for request {self.request_name} in {self.name} in {self.lab.name}"
+                f"Response issue for {response_key} already exists for "
+                f"request {self.request_name} in {self.group.name} in {self.lab.name}"
             )
 
         # Make sure title_data is a dictionary and fill in request name.
