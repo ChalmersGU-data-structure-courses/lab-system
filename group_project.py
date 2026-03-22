@@ -890,9 +890,13 @@ class GroupProject:
                 f"— {self.lab.student_connector.gitlab_group_name(id)}"
             )
 
-        self.gitlab_path = self.lab.gitlab_path / self.gitlab_path_name
-        # if self.is_known:
-        self.handler_data = {
+    @functools.cached_property
+    def gitlab_path(self):
+        return self.lab.gitlab_path / self.gitlab_path_name
+
+    @functools.cached_property
+    def handler_data(self):
+        return {
             handler_key: HandlerData(self, handler_key)
             for handler_key in self.lab.config.request_handlers.keys()
         }
