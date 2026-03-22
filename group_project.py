@@ -1762,19 +1762,11 @@ class GroupProject:
         return None
 
     def submission_outcome(self, deadline=None) -> RequestAndResponses | None:
-        """
-        Returns the latest submission with an outcome, or None otherwise.
-        With respect to the output of self.submissions, return the last submission
-        if it needs a review (i.e. does not yet have an outcome), otherwise return None.
-        Returns an instances of RequestAndResponses or None.
-        """
-        submissions = list(self.submissions(deadline=deadline))
-        if submissions:
-            last = submissions[-1]
-            if last.outcome_acc(accumulative=True) is not None:
-                return last
-
-        return None
+        """Returns the latest submission with an outcome, or None otherwise."""
+        submissions = list(self.submissions_with_outcome(deadline=deadline))
+        if not submissions:
+            return None
+        return submissions[-1]
 
     def parse_hook_event_tag(self, hook_event, _strict):
         """
