@@ -1,5 +1,4 @@
 from collections.abc import Generator, Iterable
-import contextlib
 import functools
 import logging
 from typing import TYPE_CHECKING

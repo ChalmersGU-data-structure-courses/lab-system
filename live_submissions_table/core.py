@@ -6,6 +6,7 @@ import importlib.resources
 import logging
 from collections.abc import Generator, Iterable
 from functools import cached_property
+from pathlib import Path
 from typing import Any, TYPE_CHECKING
 
 import dominate
@@ -133,10 +134,17 @@ class CallbackColumnValue(ColumnValue):
     def sort_key(self):
         return self._sort_key
 
+    def inhabited(self):
+        return self._inhabited
+
+    def format(self, cell):
+        if self._format is not None:
+            self._format(cell)
+
     def __init__(self, sort_key=None, inhabited=True, callback=None):
         self._sort_key = sort_key
-        self.inhabited = lambda: inhabited
-        self.format = callback if callback is not None else lambda cell: None
+        self._inhabited = inhabited
+        self._format = callback
 
 
 class StandardColumnValue(ColumnValue):
@@ -682,7 +690,7 @@ class LiveSubmissionsTable:
         for group_id in group_ids:
             self.update_row(group_id)
 
-    def build(self, file, group_ids=None):
+    def build(self, path: Path, group_ids=None):
         """
         Build the live submissions table.
 
@@ -754,7 +762,7 @@ class LiveSubmissionsTable:
         renderer.format_head(doc.head)
         with doc.body:
             renderer.render()
-        file.write_text(doc.render(pretty=True))
+        path.write_text(doc.render(pretty=True))
         self.logger.info("building live submissions table: done")
 
 
@@ -810,16 +818,18 @@ class UnifiedLiveSubmissionsTable:
         self,
         course: "module_course.Course",
         tables: Iterable[LiveSubmissionsTable],
-        logger: logging.Logger,
         columns: list[str] | None = None,
         columns_pre: Iterable[str] = ("date",),
         sort_order: list[str] = ("date",),
+        logger=logger_default,
     ):
         # Need at least one table.
+        tables = list(tables)
+
         assert tables
 
         self.course = course
-        self.tables = {tables.lab.id: tables for table in tables}
+        self.tables = {table.lab.id: table for table in tables}
         self.logger = logger
 
         if columns is None:

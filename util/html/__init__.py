@@ -99,7 +99,7 @@ class Column[Row](abc.ABC):
 
 
 class HTMLCell(Cell):
-    def value(self, cell: dominate.tags.td):
+    def value(self):
         raise NotImplementedError()
 
     @abc.abstractmethod
@@ -159,12 +159,12 @@ class HTMLTableRenderer[Row, C: HTMLColumn[Row]]:
         with head:
             embed_css(
                 importlib.resources.files(__name__)
-                .joinpath(cls.PATH_DATA_SORT_JS)
+                .joinpath(cls.PATH_DATA_SORT_CSS)
                 .read_text()
             )
             embed_js(
                 importlib.resources.files(__name__)
-                .joinpath(cls.PATH_DATA_SORT_CSS)
+                .joinpath(cls.PATH_DATA_SORT_JS)
                 .read_text()
             )
 

@@ -151,12 +151,12 @@ class StudentConnectorGroupSet(StudentConnector):
 class LabUpdateManager[GroupId]:
     lab: "Lab[GroupId, Any, Any]"
     dirty: set[GroupId]
-    listeners: set[lab_interfaces.LabUpdateListener[GroupId]]
+    listeners: dict[lab_interfaces.LabUpdateListener[GroupId], None]
 
     def __init__(self, lab: "Lab[GroupId, Any, Any]"):
         self.lab = lab
         self.read()
-        self.listeners = set()
+        self.listeners = {}
 
     @functools.cached_property
     def pp(self) -> util.print_parse.PrinterParser[set[GroupId], str]:
@@ -1032,7 +1032,7 @@ class Lab[LabId, GroupId, Variant]:
                 )
                 yield CanvasGradingLabUpdateListener(self)
 
-        self.update_manager.listeners = set(listeners())
+        self.update_manager.listeners = {listener: None for listener in listeners()}
 
     def parse_request_tags(self, from_gitlab=True):
         """

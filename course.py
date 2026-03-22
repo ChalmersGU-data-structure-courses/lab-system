@@ -927,8 +927,22 @@ class Course[LabId]:
 
     def setup(self):
         """Sets up all labs."""
+        # pylint: disable=import-outside-toplevel
+        from live_submissions_table.listener import (
+            UnifiedLiveSubmissionsTableLabUpdateListener,
+        )
+
         for lab in self.labs.values():
             lab.setup()
+
+        if (
+            self.config.canvas_grading_path is not None
+            and self.config.live_submissions_table_unified
+        ):
+            self.logger.info("Enabling unified live submissions table.")
+            listener = UnifiedLiveSubmissionsTableLabUpdateListener(self)
+            for lab in self.labs.values():
+                lab.update_manager.listeners[listener] = None
 
     def initial_run(self):
         """Does initial runs of all labs."""
@@ -1029,7 +1043,7 @@ class Course[LabId]:
                 # The event loop.
                 while True:
                     self.logger.info("Waiting for event.")
-                    (event, callback) = event_queue.remove()
+                    event, callback = event_queue.remove()
                     if isinstance(event, events.TerminateProgram):
                         self.logger.info(
                             "Program termination event received, shutting down."
@@ -1127,7 +1141,7 @@ class Course[LabId]:
         if format_score is None:
             format_score = format_score_default
 
-        (scores, summary) = value
+        scores, summary = value
         return util.general.map_keys_and_values(
             lambda lab_id: self.labs[lab_id].name,
             format_score,
@@ -1146,7 +1160,7 @@ class Course[LabId]:
             yield
         except Exception:
             report = traceback.format_exc()
-            (value, mask) = google_tools.sheets.cell_data_from_value(report)
+            value, mask = google_tools.sheets.cell_data_from_value(report)
             google_tools.sheets.batch_update(
                 spreadsheets,
                 spreadsheet_id,

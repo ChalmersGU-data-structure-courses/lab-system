@@ -919,8 +919,17 @@ class CourseConfig[LabId]:
     """
     Set to enable live submissions table.
     Path to (unpublished!) folder in Canvas course files.
-    This is where the script will upload submission reports.
+    This is where the script will upload the tables.
     This folder needs to exist and should not be published.
+    """
+
+    live_submissions_table_unified: str | None = "unified.html"
+    """If set, upload a unified live submissions table."""
+
+    live_submissions_table_split: bool = True
+    """
+    If set, upload split live submissions tables (traditional way).
+    The tables will be named by lab full_id.
     """
 
     gitlab: GitlabConfig = GitlabConfig()
