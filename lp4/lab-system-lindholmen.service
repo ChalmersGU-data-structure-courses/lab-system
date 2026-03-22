@@ -1,0 +1,43 @@
+# To deploy this on the lab server:
+# * Create a copy of this file somewhere, perhaps in the local course directory.
+# * Symlink to it in ./.local/share/systemd/user/
+# * Enable lingering for the user:
+#     loginctl enable-linger
+# * Inspect/enable/start/stop/restart the service using
+#      systemctl --user status/enable/start/stop/restart.
+# * After editing this file, run
+#     systemd --user daemon-reload
+#   and restart for changes to take effect.
+
+[Unit]
+Description=Event loop service for lab system.
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=900s
+KillSignal=SIGINT
+WorkingDirectory=%h/lindholmen/lab-system
+# ACTION: replace as follows:
+# * fix path to event loop script,
+# * replace COURSE_CODE by lower case course code,
+# * specify labs to sync from Canvas:
+#   - initially usually just -s 1,
+#   - remember to remove flags for labs where the grading has already begun.
+ExecStart=%h/lindholmen/lab-system/run_event_loop.py \
+  --dir lp4 \
+  --sync-from-canvas 1 \
+  --start-with-sync \
+  --sync-period 900 \
+  --error-spreadsheet 1qnG1Lfp8Y-_0MpsncASBljDb_NTn1pFk6b0pgjQwka4 \
+  --log lp4/log \
+  --verbose \
+  run
+
+# Use this for debugging to disable student sync and error notification spam
+#ExecStart=%h/lindholmen/lab-system/run_event_loop.py --dir lp4 --log lp4/log --verbose run
+
+[Install]
+WantedBy=default.target
