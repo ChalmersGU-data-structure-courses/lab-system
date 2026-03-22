@@ -1003,11 +1003,6 @@ class Lab[LabId, GroupId, Variant]:
         * deadline:
             Passed to setup_live_submissions_table.
             If set, overrides self.deadline.
-        * use_grading_sheet:
-            Whether to maintain an overview sheet of submissions and their outcome
-        * use_live_submissions_table:
-            Whether to build and update a live submissions table
-            of submissions needing reviews (by graders).
         """
         # pylint: disable=import-outside-toplevel
         from grading_sheet.listener import GradingSheetLabUpdateListener
