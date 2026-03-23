@@ -13,7 +13,7 @@ import shlex
 import threading
 import traceback
 import types
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 
 import atomicwrites
@@ -816,14 +816,20 @@ class Course[LabId]:
         finally:
             self.logger.info("Deleted project hooks in all labs")
 
-    def parse_hook_event(self, hook_event, lab_full_id, project_slug, strict=False):
+    def parse_hook_event(
+        self,
+        hook_event,
+        path_lab: PurePosixPath,
+        project_slug: str,
+        strict=False,
+    ):
         """
         Arguments:
         * hook_event:
             Dictionary (decoded JSON).
             Event received from a webhook in this course.
-        * lab_full_id:
-            Lab id as appearing in the project path of the event.
+        * path_lab:
+            Lab path as appearing (relative to course) in the project path of the event.
         * project_slug:
             Project as appearing in the project path of the event.
         * strict:
@@ -839,22 +845,31 @@ class Course[LabId]:
         Make sure to precompute this attribute before you
         call this method in a time-sensitive environment.
         """
+
         # Parse the lab and group id.
-        lab_id = self.config.lab_id.full_id.parse(lab_full_id)
+        # TODO: make LabIdConfig.path into printer-parser.
+        def parse_lab_id() -> LabId:
+            for lab_id in self.labs.keys():
+                if path_lab == self.config.lab_id.path(lab_id):
+                    return lab_id
+            return None
+
+        lab_id = parse_lab_id()
+        if not (lab_id is not None and lab_id in self.labs.keys()):
+            if strict:
+                raise ValueError(f"Unknown lab path {path_lab}")
+
+            self.logger.warning(
+                f"Received webhook event for unknown lab path {path_lab}."
+            )
+            self.logger.debug(f"Webhook event:\n{hook_event}")
 
         # Delegate event to lab.
-        lab = self.labs.get(lab_id)
-        if lab is not None:
-            yield from webhook_listener.map_with_callback(
-                lab.course_event,
-                lab.parse_hook_event(hook_event, project_slug, strict=strict),
-            )
-        else:
-            if strict:
-                raise ValueError(f"Unknown lab id {lab_id}")
-
-            self.logger.warning(f"Received webhook event for unknown lab id {lab_id}.")
-            self.logger.debug(f"Webhook event:\n{hook_event}")
+        lab = self.labs[lab_id]
+        yield from webhook_listener.map_with_callback(
+            lab.course_event,
+            lab.parse_hook_event(hook_event, project_slug, strict=strict),
+        )
 
     def program_event(self, course_event):
         return events.ProgramEventInCourse(
