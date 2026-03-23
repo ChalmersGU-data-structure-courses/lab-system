@@ -39,31 +39,37 @@ class Outcome(util.enum.EnumSpec[OutcomeSpec]):
         name="incomplete",
         color="red",
         as_cell="0",
+        canvas_grade=None,
     )
     FRONTEND = OutcomeSpec.smart(
         name="frontend:pass backend:incomplete",
         color="orange",
         as_cell="F",
+        canvas_grade=None,
     )
     BACKEND = OutcomeSpec.smart(
         name="backend:pass extensions:incomplete",
         color="yellow",
         as_cell="B",
+        canvas_grade=None,
     )
     EXTENSION_3 = OutcomeSpec.smart(
         name="pass grade:3",
         color="green",
         as_cell="E3",
+        canvas_grade="three",
     )
     EXTENSION_4 = OutcomeSpec.smart(
         name="pass grade:4",
         color="green",
         as_cell="E4",
+        canvas_grade="four",
     )
     EXTENSION_5 = OutcomeSpec.smart(
         name="pass grade:5",
         color="green",
         as_cell="E5",
+        canvas_grade="five",
     )
 
 
