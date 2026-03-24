@@ -275,5 +275,8 @@ course = CourseConfig(
     initials_sort_by_first_name=True,
     lab_id=lab_id,
     labs=dict(labs),
+    chalmers_id_to_gitlab_username_override={
+        "e9linda": "linda.erlenhov",
+    },
     webhook_netloc_listen=util.url.NetLoc(port=4236),
 )
