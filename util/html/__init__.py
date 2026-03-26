@@ -155,18 +155,14 @@ class HTMLTableRenderer[Row, C: HTMLColumn[Row]]:
     PATH_DATA_SORT_CSS: ClassVar[PurePosixPath] = "sort.css"
 
     @classmethod
+    def resource(cls, rel_path: PurePosixPath) -> str:
+        return importlib.resources.files(__name__).joinpath(rel_path).read_text()
+
+    @classmethod
     def format_head(cls, head: dominate.tags.head) -> None:
         with head:
-            embed_css(
-                importlib.resources.files(__name__)
-                .joinpath(cls.PATH_DATA_SORT_CSS)
-                .read_text()
-            )
-            embed_js(
-                importlib.resources.files(__name__)
-                .joinpath(cls.PATH_DATA_SORT_JS)
-                .read_text()
-            )
+            embed_css(cls.resource(cls.PATH_DATA_SORT_CSS))
+            embed_js(cls.resource(cls.PATH_DATA_SORT_JS))
 
     @cached_property
     def column_names(self) -> set[str]:
