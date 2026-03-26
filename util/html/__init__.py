@@ -169,10 +169,14 @@ class HTMLTableRenderer[Row, C: HTMLColumn[Row]]:
             )
 
     @cached_property
+    def column_names(self) -> set[str]:
+        return {column.name() for column in self.columns}
+
+    @cached_property
     def actual_columns(self) -> dict[str, C]:
         def gen():
             for column in self.columns:
-                if not self.skip_empty_columns or column.inhabited(self.rows):
+                if not (self.skip_empty_columns and not column.inhabited(self.rows)):
                     yield (column.name(), column)
 
         return dict(gen())
@@ -185,7 +189,8 @@ class HTMLTableRenderer[Row, C: HTMLColumn[Row]]:
         def gen():
             for column in self.sort_order:
                 assert column.sortable()
-                if column.name in self.actual_columns.keys():
+                assert column.name() in self.column_names
+                if column.name() in self.actual_columns.keys():
                     yield column
 
         return list(gen())
@@ -220,8 +225,8 @@ class HTMLTableRenderer[Row, C: HTMLColumn[Row]]:
 
         def key(row: Row) -> list[int]:
             return [
-                self.column_ranks[column_name][row]
-                for column_name in self.actual_sort_order
+                self.column_ranks[column.name()][row]
+                for column in self.actual_sort_order
             ]
 
         return sorted(self.actual_rows, key=key)
