@@ -5,12 +5,15 @@ import logging
 import shlex
 import ssl
 from pathlib import PurePosixPath
+from typing import TYPE_CHECKING
 
 import util.openssl
 import util.path
 import util.print_parse
 import util.url
 
+if TYPE_CHECKING:
+    import course as module_course
 
 logger_default = logging.getLogger(__name__)
 
@@ -120,6 +123,36 @@ def map_with_callback(f, xs):
         yield (f(e), callback)
 
 
+def find_by_groups_path[X](
+    by_groups_path: dict[PurePosixPath, X],
+    path: PurePosixPath,
+) -> tuple[X, PurePosixPath] | None:
+    path_inner = PurePosixPath(path.name)
+    path_outer = path.parent
+
+    while True:
+        value = by_groups_path.get(path_outer)
+        if value is not None:
+            return (value, path_inner)
+
+        if path_outer == PurePosixPath():
+            return None
+
+        path_inner = PurePosixPath(path_outer.name) / path_inner
+        path_outer = path_outer.parent
+
+
+def find_lab_by_path[LabId](
+    course: "module_course.Course",
+    path_lab: PurePosixPath,
+) -> LabId:
+    for lab_id in course.labs.keys():
+        if path_lab == course.config.lab_id.path(lab_id):
+            return lab_id
+
+    return None
+
+
 def parse_hook_event(
     courses_by_groups_path,
     hook_event,
@@ -166,26 +199,23 @@ def parse_hook_event(
     with parsing_error_manager(hook_event):
         # Find the relevant lab and group project.
         project_path = PurePosixPath(hook_event["project"]["path_with_namespace"])
-        (project_slug, lab_full_id, *path_groups_parts_rev) = reversed(
-            project_path.parts
-        )
-        path_groups = PurePosixPath(*reversed(path_groups_parts_rev))
-
-        course = courses_by_groups_path.get(path_groups)
-        if course:
-            yield from map_with_callback(
-                course.program_event,
-                course.parse_hook_event(
-                    hook_event=hook_event,
-                    lab_full_id=lab_full_id,
-                    project_slug=project_slug,
-                    strict=strict,
-                ),
-            )
-        else:
-            msg = f"unknown course with student groups path {shlex.quote(str(path_groups))}"
+        r = find_by_groups_path(courses_by_groups_path, project_path)
+        if r is None:
+            msg = f"unknown course for path {shlex.quote(str(project_path))}"
             if strict:
                 raise ValueError(msg)
 
             logger.warning(f"Received webhook event for {msg}")
             logger.debug(f"Webhook event:\n{hook_event}")
+            return
+
+        course, path = r
+        yield from map_with_callback(
+            course.program_event,
+            course.parse_hook_event(
+                hook_event=hook_event,
+                path_lab=path.parent,
+                project_slug=path.name,
+                strict=strict,
+            ),
+        )

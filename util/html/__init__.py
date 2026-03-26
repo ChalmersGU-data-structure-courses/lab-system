@@ -155,24 +155,24 @@ class HTMLTableRenderer[Row, C: HTMLColumn[Row]]:
     PATH_DATA_SORT_CSS: ClassVar[PurePosixPath] = "sort.css"
 
     @classmethod
+    def resource(cls, rel_path: PurePosixPath) -> str:
+        return importlib.resources.files(__name__).joinpath(rel_path).read_text()
+
+    @classmethod
     def format_head(cls, head: dominate.tags.head) -> None:
         with head:
-            embed_css(
-                importlib.resources.files(__name__)
-                .joinpath(cls.PATH_DATA_SORT_CSS)
-                .read_text()
-            )
-            embed_js(
-                importlib.resources.files(__name__)
-                .joinpath(cls.PATH_DATA_SORT_JS)
-                .read_text()
-            )
+            embed_css(cls.resource(cls.PATH_DATA_SORT_CSS))
+            embed_js(cls.resource(cls.PATH_DATA_SORT_JS))
+
+    @cached_property
+    def column_names(self) -> set[str]:
+        return {column.name() for column in self.columns}
 
     @cached_property
     def actual_columns(self) -> dict[str, C]:
         def gen():
             for column in self.columns:
-                if not self.skip_empty_columns or column.inhabited(self.rows):
+                if not (self.skip_empty_columns and not column.inhabited(self.rows)):
                     yield (column.name(), column)
 
         return dict(gen())
@@ -185,7 +185,8 @@ class HTMLTableRenderer[Row, C: HTMLColumn[Row]]:
         def gen():
             for column in self.sort_order:
                 assert column.sortable()
-                if column.name in self.actual_columns.keys():
+                assert column.name() in self.column_names
+                if column.name() in self.actual_columns.keys():
                     yield column
 
         return list(gen())
@@ -220,8 +221,8 @@ class HTMLTableRenderer[Row, C: HTMLColumn[Row]]:
 
         def key(row: Row) -> list[int]:
             return [
-                self.column_ranks[column_name][row]
-                for column_name in self.actual_sort_order
+                self.column_ranks[column.name()][row]
+                for column in self.actual_sort_order
             ]
 
         return sorted(self.actual_rows, key=key)
@@ -256,8 +257,9 @@ class HTMLTableRenderer[Row, C: HTMLColumn[Row]]:
 
     def thead(self) -> None:
         with dominate.tags.thead():
-            for column in self.actual_columns.values():
-                self.th(column)
+            with dominate.tags.tr():
+                for column in self.actual_columns.values():
+                    self.th(column)
 
     def render(self) -> dominate.tags.table:
         table = dominate.tags.table()

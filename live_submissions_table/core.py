@@ -762,7 +762,7 @@ class LiveSubmissionsTable:
                 group = self.lab.groups[group_id]
                 raise ValueError(f"live submissions table misses row for {group.name}")
 
-        @dataclasses.dataclass
+        @dataclasses.dataclass(frozen=True)
         class HTMLColumn(util.html.HTMLColumn):
             name_: str
             column: Column

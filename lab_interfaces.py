@@ -11,6 +11,7 @@ from typing import Callable, ClassVar, Mapping
 
 import dateutil.tz
 
+import canvas.client_rest
 import chalmers_pdb
 import gitlab_.tools
 import grading_sheet.config as grading_sheet_config
@@ -327,7 +328,7 @@ class OutcomeSpec:
     name: str
     label: gitlab_.tools.LabelSpec | None = None
     as_cell: str | int = str()
-    canvas_grade: int | None = None
+    canvas_grade: canvas.client_rest.Grade = None
 
     @classmethod
     def smart(
@@ -335,7 +336,7 @@ class OutcomeSpec:
         name: str,
         color: str | None = None,
         as_cell: str | int = str(),
-        canvas_grade: int | None = None,
+        canvas_grade: canvas.client_rest.Grade = None,
     ) -> "OutcomeSpec":
         return cls(
             name=name,
@@ -857,6 +858,8 @@ class LabIdConfig[LabId]:
         """
         Path for this lab relative to the containing course in a directory hierarchy.
         If your course contains only a single lab, you can override this to return PurePosixPath().
+
+        TODO: make printer-parser for parsing in course.Course.parse_hook_event.
         """
         return PurePosixPath(self.full_id.print(id))
 

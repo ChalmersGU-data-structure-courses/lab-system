@@ -12,7 +12,7 @@ import urllib.parse
 from collections.abc import Generator
 from datetime import timedelta
 from pathlib import Path, PurePosixPath
-from typing import Any, ClassVar
+from typing import Any
 
 import requests
 
@@ -33,7 +33,6 @@ from util.general import (
 )
 from util.path import OpenWithModificationTime, format_path, set_modification_time
 from util.print_parse import PrinterParser
-
 
 logger = logging.getLogger(__name__)
 
@@ -726,31 +725,8 @@ class GroupSet:
         )
 
 
-Grade = int | None
+Grade = int | float | str | None
 """A grade of None means the submission is ungraded."""
-
-
-class GradePrinterParser(PrinterParser[Grade, str | None]):
-    named_values: ClassVar[dict[str, int]] = {
-        "incomplete": 0,
-        "complete": 1,
-    }
-
-    def print(self, x: Grade, /) -> str | None:
-        if x is None:
-            return ""
-
-        return str(x)
-
-    def parse(self, y: str | None, /) -> Grade:
-        if y is None:
-            return None
-
-        x = self.named_values.get(y)
-        if x is not None:
-            return x
-
-        return int(y)
 
 
 @dataclasses.dataclass
@@ -758,11 +734,9 @@ class Grading:
     grade: Grade
     comment: str | None = None
 
-    grade_pp: ClassVar[PrinterParser[int | None, str | None]] = GradePrinterParser()
-
     @property
     def fields(self) -> Generator[tuple[str, Any]]:
-        yield ("submission[posted_grade]", self.grade_pp.print(self.grade))
+        yield ("submission[posted_grade]", self.grade)
         if self.comment is not None:
             yield ("comment[text_comment]", self.comment)
 
@@ -787,13 +761,9 @@ class Assignment:
     def get_grades(self) -> dict[int, Grade]:
         """Returns a dictionary from student user ids to grades."""
         submissions = self.canvas.get_list(
-            [*self.endpoint, "submissions"],
-            use_cache=False,
+            [*self.endpoint, "submissions"], use_cache=False
         )
-        grades = {
-            (submission.user_id, Grading.grade_pp.parse(submission.grade))
-            for submission in submissions
-        }
+        grades = {(submission.user_id, submission.grade) for submission in submissions}
         return util.general.sdict(grades)
 
     def set_grade(self, user_id: int, grading: Grading) -> Grade:
@@ -802,7 +772,7 @@ class Assignment:
             [*self.endpoint, "submissions", user_id],
             params=grading.params,
         )
-        return Grading.grade_pp.parse(r.grade)
+        return r.grade
 
     # def grade_many(self, gradings: dict[int, Grading]) -> JSONObject:
     #     """
@@ -1300,5 +1270,5 @@ class AssignmentOld:
 
 
 def user_first_and_last_name(user):
-    (last, first) = user.sortable_name.split(",", maxsplit=1)
+    last, first = user.sortable_name.split(",", maxsplit=1)
     return (first.strip(), last.strip())
