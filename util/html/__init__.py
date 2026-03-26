@@ -256,8 +256,9 @@ class HTMLTableRenderer[Row, C: HTMLColumn[Row]]:
 
     def thead(self) -> None:
         with dominate.tags.thead():
-            for column in self.actual_columns.values():
-                self.th(column)
+            with dominate.tags.tr():
+                for column in self.actual_columns.values():
+                    self.th(column)
 
     def render(self) -> dominate.tags.table:
         table = dominate.tags.table()
