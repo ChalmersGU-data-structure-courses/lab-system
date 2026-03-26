@@ -3,7 +3,6 @@ import logging
 
 import canvas.client_rest as module_canvas_client_rest
 
-
 _logger = logging.getLogger(__name__)
 
 
@@ -58,11 +57,13 @@ class GradingManager:
                 )
 
             grade_old = self.grades[user_id]
-            grade_new = grading.grade
+            grade_new = str(grading.grade)  # Canvas score is returned as a string.
             if not grade_new == grade_old:
                 if not grade_old is None:
                     self.logger.warn(
                         f"Overriding grade for {self.course.user_str(user_id)}: "
-                        f"{grade_old} -> {grade_new}"
+                        f"{grade_old}: {type(grade_old)}"
+                        " -> "
+                        f"{grade_new}: {type(grade_new)}"
                     )
                 self.grades[user_id] = self.assignment.set_grade(user_id, grading)
