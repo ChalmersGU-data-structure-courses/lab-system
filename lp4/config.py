@@ -71,7 +71,7 @@ class Outcome(util.enum.EnumSpec[OutcomeSpec]):
     )
     INDIVIDUAL_ASSESSMENT = OutcomeSpec.smart(
         name="individual assessment needed",
-        color="green",
+        color="brown",
         as_cell="I",
         canvas_grade=None,
     )
