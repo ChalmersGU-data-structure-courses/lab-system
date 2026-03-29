@@ -47,7 +47,7 @@ GroupId = int
 
 
 group_set: GroupSetConfig[GroupId] = GroupSetConfig[GroupId](
-    name=util.print_parse.regex_int("Lab group {}", flags=re.IGNORECASE),
+    name=util.print_parse.regex_int("Lab Group {}", flags=re.IGNORECASE),
     canvas_group_set_name="Lab groups",
 )
 
