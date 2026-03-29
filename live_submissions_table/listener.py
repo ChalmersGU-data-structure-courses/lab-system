@@ -139,10 +139,10 @@ class LiveSubmissionsTableLabUpdateListener[LabId, GroupId](
             self.update()
 
 
-class UnifiedLiveSubmissionsTableLabUpdateListener[LabId, GroupId](
-    lab_interfaces.LabUpdateListener[GroupId]
+class UnifiedLiveSubmissionsTableLabUpdateListener[LabId](
+    lab_interfaces.LabUpdateListener
 ):
-    lab: module_lab.Lab[LabId, GroupId, Any]
+    lab: module_course.Course[LabId]
     logger: logging.Logger
     table: live_submissions_table.UnifiedLiveSubmissionsTable
 
@@ -157,7 +157,7 @@ class UnifiedLiveSubmissionsTableLabUpdateListener[LabId, GroupId](
             / self.course.config.live_submissions_table_unified
         )
 
-    def __init__(self, course: module_course.Course):
+    def __init__(self, course: module_course.Course[LabId]):
         """
         Setup the unified live submissions table.
         Request handlers should be set up before calling this method.
@@ -188,6 +188,6 @@ class UnifiedLiveSubmissionsTableLabUpdateListener[LabId, GroupId](
             logging_name="unified live submissions table",
         )
 
-    def groups_changed(self, ids: list[GroupId]) -> None:
-        if ids:
+    def groups_changed(self, ids: list) -> None:
+        if ids and self.table.updated:
             self.update()

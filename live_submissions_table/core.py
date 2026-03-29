@@ -698,7 +698,7 @@ class LiveSubmissionsTable:
             for (column_name, column_type) in column_types.items()
         }
         self.group_rows = {}
-        self.need_push = False
+        self.updated = False
 
     def update_row(self, group_id):
         """
@@ -725,6 +725,7 @@ class LiveSubmissionsTable:
         group_ids = self.lab.normalize_group_ids(group_ids)
         for group_id in group_ids:
             self.update_row(group_id)
+        self.updated = True
 
     def build(self, path: Path, group_ids=None):
         """
@@ -877,6 +878,12 @@ class UnifiedLiveSubmissionsTable:
             assert name in self.columns_inner_set
         self.columns_pre = columns_pre
         self.sort_order = sort_order
+
+        self.built_by_lab = {table.lab.id: False for table in tables}
+
+    @property
+    def updated(self) -> bool:
+        return all(table.updated for table in self.tables.values())
 
     @cached_property
     def some_table(self) -> LiveSubmissionsTable:
