@@ -2,12 +2,12 @@ import bisect
 import contextlib
 import datetime
 import functools
-import gitlab
 import logging
 import time
 from collections.abc import Generator
 from dataclasses import dataclass
 
+import gitlab
 import more_itertools
 from gitlab.v4.objects import ProjectMergeRequestNote
 
@@ -228,7 +228,11 @@ class GradingViaMergeRequest:
 
     @property
     def assignee(self):
-        return self.merge_request.assignee
+        user = self.merge_request.assignee
+        if user is None:
+            return None
+
+        return user["username"]
 
     @functools.cached_property
     def notes(self):
