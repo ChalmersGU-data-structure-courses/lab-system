@@ -1664,6 +1664,7 @@ class GroupProject:
         def f():
             for m in self.grading_via_merge_request.values():
                 yield m.update_outcomes()
+                yield m.update_assignee()
 
         return any(list(f()))
 
