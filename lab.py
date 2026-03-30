@@ -1290,6 +1290,8 @@ class Lab[LabId, GroupId, Variant]:
                 self.repo_fetch_all()
             self.parse_request_tags(False)
             self.process_requests()
+        for group in self.groups.values():
+            group.unassign_if_needed()
         self.update_manager.mark_dirty(self.groups.keys())
         self.update_manager.process(deadline=deadline)
 
@@ -1311,9 +1313,12 @@ class Lab[LabId, GroupId, Variant]:
             self.parse_request_tags(from_gitlab=False)
             new_submissions = frozenset(self.process_requests())
 
-        # Update submission system.
         self.logger.info(f"Groups with new submissions: {new_submissions}")
         self.logger.info(f"Groups with review updates: {review_updates}")
+
+        # Update submission system.
+        for group_id in review_updates:
+            self.groups[group_id].unassign_if_needed()
         self.update_manager.mark_dirty(review_updates)
         self.update_manager.process(deadline=deadline)
 
@@ -1367,8 +1372,9 @@ class Lab[LabId, GroupId, Variant]:
             self.logger.info("New submissions received.")
         if grading_updates:
             self.logger.info("Grading updates received.")
+            group.unassign_if_needed()
 
-        if grading_updates:
+        if new_submissions or grading_updates:
             self.update_manager.mark_dirty([group.id])
         self.update_manager.process()
 

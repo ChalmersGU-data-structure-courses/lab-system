@@ -228,6 +228,21 @@ class GradingViaMergeRequest:
         self.assignee_last_checked = self.assignee
         return True
 
+    def unassign(self):
+        if self.merge_request is None:
+            return None
+
+        if self.merge_request.assignee is None:
+            return False
+
+        if self.assignee is None:
+            return False
+
+        self.merge_request.assignee_ids = None
+        self.merge_request.save()
+        self.assignee_last_checked = None
+        return True
+
     @functools.cached_property
     def notes(self):
         return gitlab_.tools.list_all(self.merge_request.notes, sort="asc")
