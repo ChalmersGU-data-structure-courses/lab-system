@@ -40,7 +40,10 @@ class CanvasGradingLabUpdateListener[GroupId, Outcome](
     def course(self) -> "module_course.Course":
         return self.lab.course
 
-    def groups_changed(self, ids: list[GroupId]) -> None:
+    def groups_changed(self, ids, only_meta):
+        if only_meta:
+            return
+
         groups = [self.lab.groups[id] for id in ids]
         for group in groups:
             submission = group.submission_outcome()
