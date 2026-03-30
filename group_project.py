@@ -10,7 +10,6 @@ from pathlib import PurePosixPath
 
 import git
 import gitlab
-import gitlab.v4.objects
 
 import events
 import gitlab_.tools
@@ -401,8 +400,23 @@ class RequestAndResponses:
 
         raise ValueError("no outcome")
 
+    @property
+    def assignee_informal_name(self) -> str | None:
+        """
+        Get the informal name of the assigned grader, if any.
+        Returns None unless grading via merge request.
+        """
+        if self.grading_merge_request is None:
+            return None
+
+        assignee = self.grading_merge_request.assignee
+        if assignee is None:
+            return None
+
+        return self.course.canvas_user_informal_name_from_gitlab_user(assignee)
+
     @functools.cached_property
-    def grader_informal_name(self):
+    def grader_informal_name(self) -> str | None:
         """
         Get the informal name of the reviewer, or 'Lab system' for an outcome with no reviewer.
         Only valid for submission requests with an outcome.
@@ -410,22 +424,12 @@ class RequestAndResponses:
         if self.outcome_with_issue and self.review is None:
             return "Lab system"
 
-        if self.grader_username:
-            try:
-                canvas_user = self.course.canvas_user_by_gitlab_username[
-                    self.grader_username
-                ]
-            except KeyError as e:
-                if self.grader_username in self.course.config.gitlab.lab_system_users:
-                    return "Lab system"
-                raise ValueError(
-                    f"Unknown GitLab grader username {self.grader_username}. "
-                    "If different from CID, consider adding as override"
-                    " in _cid_to_gitlab_username in course configuration file."
-                ) from e
-            return self.course.canvas_user_informal_name(canvas_user)
+        if self.grader_username is None:
+            raise ValueError("no outcome")
 
-        raise ValueError("no outcome")
+        return self.course.canvas_user_informal_name_from_gitlab_user(
+            self.grader_username
+        )
 
     # TODO:
     # Shelved for now.
@@ -859,7 +863,7 @@ class HandlerData:
         return set(f())
 
 
-class GroupProject:
+class GroupProject[Variant]:
     """
     This class abstracts over:
     * a lab project of a student or lab group,
@@ -1462,6 +1466,43 @@ class GroupProject:
             for variant in self.lab.config.variants.variants
         }
 
+    def mark_dirty_and_process(self, only_meta: bool):
+        self.lab.update_manager.mark_dirty([self.id], only_meta)
+        self.lab.update_manager.process()
+
+    def parse_grading_merge_request(self, author_id, title) -> Variant | None:
+        if not author_id in self.course.lab_system_users:
+            return None
+
+        with contextlib.suppress(ValueError):
+            return self.lab.config.variants.submission_grading_title.parse(title)
+
+        self.logger.warning(f"Unrecognized merge request title {title}")
+        return None
+
+    def list_grading_merge_requests(
+        self,
+    ) -> dict[Variant, gitlab.v4.objects.MergeRequest]:
+        def args():
+            try:
+                id = util.general.from_singleton(self.course.lab_system_users)
+            except util.general.UniquenessError:
+                pass
+            else:
+                yield ("author_id", id)
+            yield ("scope", "all")
+
+        def values():
+            for m in gitlab_.tools.list_all(
+                self.project.lazy.mergerequests,
+                **dict(args()),
+            ):
+                variant = self.parse_grading_merge_request(m.author["id"], m.title)
+                if variant is not None:
+                    yield (variant, m)
+
+        return dict(values())
+
     def tags_from_gitlab(self):
         self.logger.debug(f"Parsing request tags in {self.name} from Chalmers GitLab.")
         x = [
@@ -1836,27 +1877,54 @@ class GroupProject:
         # So keeping this as is for now.
         if author_is_grader and title_change_:
             yield (
-                events.GroupProjectWebhookResponseEvent(
-                    events.GroupProjectIssueEvent()
-                ),
+                events.GroupProjectIssueEvent(),
                 lambda: self.lab.refresh_group(self, refresh_issue_responses=True),
             )
 
     def parse_hook_event_grading_merge_request(self, hook_event, _strict):
         self.logger.debug("Received a grading merge request event.")
+        attrs = hook_event["object_attributes"]
+        variant = self.parse_grading_merge_request(attrs["author_id"], attrs["title"])
+        if variant is None:
+            return
+
         changes = hook_event.get("changes")
-        if changes and "labels" in changes:
-            # self.logger.debug(f'Detected label change from {} to {}')
-            self.logger.debug("Detected label change")
-            yield (
-                events.GroupProjectWebhookResponseEvent(
-                    events.GroupProjectGradingMergeRequestEvent()
-                ),
-                lambda: self.lab.refresh_group(
-                    self,
-                    refresh_grading_merge_request=True,
-                ),
-            )
+        if changes is None:
+            return
+
+        def process_labels():
+            self.logger.debug("processing label change")
+            self.lab.refresh_group(self, refresh_grading_merge_request=True)
+
+        def process_assignee():
+            self.logger.debug("processing assignee change")
+            m = self.grading_via_merge_request[variant]
+            m.merge_request_clear()
+            if m.update_assignee():
+                self.mark_dirty_and_process(only_meta=True)
+
+        event_types = {
+            "assignees": (
+                events.GradingMergeRequestAssigneeEvent,
+                process_assignee,
+            ),
+            "labels": (
+                events.GradingMergeRequestLabelEvent,
+                process_labels,
+            ),
+        }
+
+        for change in changes:
+            try:
+                event_type, process = event_types[change]
+            except LookupError:
+                pass
+            else:
+                self.logger.debug(f"{change} change detected")
+                yield (
+                    events.GroupProjectGradingMergeRequestEvent(variant, event_type()),
+                    process,
+                )
 
     def parse_hook_event(self, hook_event, strict=False):
         """
@@ -1885,7 +1953,6 @@ class GroupProject:
                 )
 
         handler = dict(handlers()).get((project_name, event_type))
-
         if handler is not None:
             yield from handler(hook_event, strict)
         else:

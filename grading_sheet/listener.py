@@ -30,8 +30,9 @@ class GradingSheetLabUpdateListener[LabId, GroupId](
     def course(self) -> "module_course.Course":
         return self.lab.course
 
-    def groups_changed(self, ids: list[GroupId]) -> None:
-        self.update(ids)
+    def groups_changed(self, ids, only_meta):
+        if not only_meta:
+            self.update(ids)
 
     def include_group(self, id: GroupId) -> bool:
         """
