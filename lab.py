@@ -8,7 +8,7 @@ import logging
 import os
 import shutil
 from pathlib import Path, PurePosixPath
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, ClassVar, Optional, TYPE_CHECKING
 
 import dateutil.parser
 import git
@@ -25,6 +25,7 @@ import util.git
 import util.path
 import util.print_parse
 import webhook_listener
+from util.print_parse import PrinterParser
 
 if TYPE_CHECKING:
     import course as module_course
@@ -148,9 +149,24 @@ class StudentConnectorGroupSet(StudentConnector):
         return False
 
 
+@util.print_parse.dataclass_json
+@dataclasses.dataclass
+class LabUpdateManagerData[GroupId]:
+    pp_json: "ClassVar[PrinterParser[LabUpdateManagerData[GroupId], str]]"
+
+    dirty: set[GroupId] = dataclasses.field(
+        default_factory=set,
+        metadata={"pp": util.print_parse.SetAsList()},
+    )
+    only_meta: bool = True
+
+    def is_dirty(self) -> bool:
+        return bool(self.dirty)
+
+
 class LabUpdateManager[GroupId]:
     lab: "Lab[GroupId, Any, Any]"
-    dirty: set[GroupId]
+    data: LabUpdateManagerData[GroupId]
     listeners: dict[lab_interfaces.LabUpdateListener[GroupId], None]
 
     def __init__(self, lab: "Lab[GroupId, Any, Any]"):
@@ -159,50 +175,55 @@ class LabUpdateManager[GroupId]:
         self.listeners = {}
 
     @functools.cached_property
-    def pp(self) -> util.print_parse.PrinterParser[set[GroupId], str]:
-        return util.print_parse.compose(
-            util.print_parse.SetAsList(),
-            util.print_parse.json_coding_nice,
-        )
-
-    @functools.cached_property
     def path(self) -> Path:
         return self.lab.dir / "update_groups.json"
 
+    @property
+    def pp(self) -> PrinterParser[LabUpdateManagerData, str]:
+        return LabUpdateManagerData.pp_json
+
+    def clear(self):
+        self.data = LabUpdateManagerData()
+
     def read(self):
         try:
-            self.dirty = self.pp.parse(self.path.read_text())
+            self.data = self.pp.parse(self.path.read_text())
         except FileNotFoundError:
-            self.dirty = set()
+            self.clear()
 
     def write(self):
-        if self.dirty:
-            self.path.write_text(self.pp.print(self.dirty))
+        if self.data.is_dirty:
+            self.path.write_text(self.pp.print(self.data))
         else:
             self.path.unlink(missing_ok=True)
 
-    def mark_dirty(self, ids: Iterable[GroupId]):
+    def mark_dirty(self, ids: Iterable[GroupId], only_meta=False):
         """
         Called by RequestAndResponses.process_request().
         Called in Lab upon response issues or grading merge request updates.
         """
-        self.dirty.update(ids)
+        self.data.dirty.update(ids)
+        self.data.only_meta |= only_meta
         self.write()
 
     def process(self, deadline=None):
+        if not self.data.is_dirty():
+            return
+
         # Clear group members cache.
-        for id in self.dirty:
-            self.lab.groups[id].members_clear()
+        if not self.data.only_meta:
+            for id in self.data.dirty:
+                self.lab.groups[id].members_clear()
 
         for listener in self.listeners:
-            listener.groups_changed_prepare(list(self.dirty))  # , deadline=deadline)
+            listener.groups_changed_prepare(list(self.data.dirty), self.data.only_meta)
 
         self.lab.repo_push()
 
         for listener in self.listeners:
-            listener.groups_changed(list(self.dirty))  # , deadline=deadline)
+            listener.groups_changed(list(self.data.dirty), self.data.only_meta)
 
-        self.dirty.clear()
+        self.clear()
         self.write()
 
 

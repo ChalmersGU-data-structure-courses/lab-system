@@ -922,7 +922,7 @@ class Dataclass(Protocol):
 
 
 def dataclass_dict[T: Dataclass](cls: type[T]) -> type[T]:
-    fields = cls.__dataclass_fields__
+    fields = dataclasses.fields(cls)
 
     def pp_field(field):
         # Don't use exceptions because this may lie on the critical path.
@@ -934,13 +934,13 @@ def dataclass_dict[T: Dataclass](cls: type[T]) -> type[T]:
     # pylint: disable-next=redefined-builtin
     def print(x):
         return {
-            name: pp_field(field).print(getattr(x, name))
-            for (name, field) in fields.items()
+            field.name: pp_field(field).print(getattr(x, field.name))
+            for field in fields
         }
 
     def parse(u):
         return cls(
-            **{name: pp_field(field).parse(u[name]) for (name, field) in fields.items()}
+            **{field.name: pp_field(field).parse(u[field.name]) for field in fields}
         )
 
     cls.pp_dict = PrintParse(print=print, parse=parse)  # type: ignore

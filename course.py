@@ -626,6 +626,25 @@ class Course[LabId]:
         except KeyError:
             return self.canvas_course.user_str_informal(user.id)
 
+    def canvas_user_informal_name_from_gitlab_user(
+        self,
+        gitlab_username: str | None,
+    ) -> str | None:
+        if gitlab_username is None:
+            return None
+
+        try:
+            canvas_user = self.canvas_user_by_gitlab_username[gitlab_username]
+        except KeyError as e:
+            if gitlab_username in self.config.gitlab.lab_system_users:
+                return "Lab system"
+            raise ValueError(
+                f"Unknown GitLab grader username {gitlab_username}. "
+                "If different from CID, consider adding as override"
+                " in _cid_to_gitlab_username in course configuration file."
+            ) from e
+        return self.canvas_user_informal_name(canvas_user)
+
     @contextlib.contextmanager
     def invitation_history(self, path):
         try:
