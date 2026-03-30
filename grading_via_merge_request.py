@@ -227,7 +227,7 @@ class GradingViaMergeRequest:
     def with_merge_request_url(self, line):
         return util.general.join_lines([line, f"* {self.merge_request.web_url}"])
 
-    @functools.cached_property
+    @property
     def assignee(self):
         user = self.merge_request.assignee
         if user is None:
@@ -235,17 +235,11 @@ class GradingViaMergeRequest:
 
         return user["username"]
 
-    def assignee_clear(self):
-        with contextlib.suppress(AttributeError):
-            del self.assignee
-
-    def update_assignee(self, clear_cache=True) -> bool:
+    def update_assignee(self) -> bool:
         """Checks if there has been an assignee change since the last time this method was called."""
         if self.merge_request is None:
             return None
 
-        if clear_cache:
-            self.assignee_clear()
         if self.assignee == self.assignee_last_checked:
             return False
 
