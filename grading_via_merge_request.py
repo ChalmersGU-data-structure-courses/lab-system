@@ -2,6 +2,7 @@ import bisect
 import contextlib
 import datetime
 import functools
+import gitlab
 import logging
 import time
 from collections.abc import Generator
