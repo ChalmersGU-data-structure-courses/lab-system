@@ -456,6 +456,9 @@ class SubmissionFilesNewstyleColumn(Column):
         request_name = submission.request_name
         grading_merge_request = submission.grading_merge_request
         synced_submission = grading_merge_request.synced_submissions[request_name]
+        self.logger.info(
+            f"XXX {group_id} {grading_merge_request.assignee} {submission.assignee_informal_name}"
+        )
         return self.Value(
             submission.request_name,
             grading_merge_request.note_url(synced_submission),
