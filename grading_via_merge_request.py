@@ -117,9 +117,9 @@ class GradingViaMergeRequest:
         self.logger = logger
 
         self.notes_suppress_cache_clear_counter = 0
+        self.outcome_last_checked = object()
+        self.assignee_last_checked = object()
         self.non_grader_change = False
-        self.outcome_last_checked = None
-        self.assignee_last_checked = None
 
     @property
     def config(self):
@@ -246,7 +246,12 @@ class GradingViaMergeRequest:
 
         if clear_cache:
             self.assignee_clear()
-        return self.assignee != self.assignee_last_checked
+        if self.assignee == self.assignee_last_checked:
+            return False
+
+        self.logger.info(f"Assignee updated: {self.assignee}")
+        self.assignee_last_checked = self.assignee
+        return True
 
     @functools.cached_property
     def notes(self):
