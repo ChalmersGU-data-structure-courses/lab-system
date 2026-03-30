@@ -1884,6 +1884,7 @@ class GroupProject[Variant]:
             return
 
         event_types = {
+            "assignee": events.GradingMergeRequestAssigneeEvent,
             "labels": events.GradingMergeRequestLabelEvent,
         }
 

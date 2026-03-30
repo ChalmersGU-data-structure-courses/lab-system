@@ -140,6 +140,9 @@ class GroupProjectGradingMergeRequestEvent(GroupProjectEvent):
 ## Instances of GradingMergeRequestEvent
 
 
+@_dataclass_no_eq
+class GradingMergeRequestAssigneeEvent(GradingMergeRequestEvent):
+    _key: ClassVar = util.ordering.DiscreteOrder(0)
 
 
 @_dataclass_no_eq
