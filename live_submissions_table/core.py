@@ -459,7 +459,7 @@ class SubmissionFilesNewstyleColumn(Column):
         return self.Value(
             submission.request_name,
             grading_merge_request.note_url(synced_submission),
-            submission.assignee,
+            submission.assignee_informal_name,
         )
 
 
