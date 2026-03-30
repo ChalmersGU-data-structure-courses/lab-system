@@ -1664,10 +1664,10 @@ class GroupProject:
         def f():
             for m in self.grading_via_merge_request.values():
                 v = m.update_outcomes()
-                self.logger(f"update_outcomes: {v}")
+                self.logger.info(f"update_outcomes: {v}")
                 yield v
                 v = m.update_assignee()
-                self.logger(f"update_assignee: {v}")
+                self.logger.info(f"update_assignee: {v}")
                 yield v
 
         return any(list(f()))
