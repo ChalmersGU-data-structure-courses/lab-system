@@ -446,8 +446,9 @@ class SubmissionFilesNewstyleColumn(Column):
                 with dominate.tags.p():
                     util.html.format_url(self.title, self.target)
                 if self.assignee is not None:
-                    with dominate.tags.p():
-                        dominate.util.text(f"↑ {self.assignee}")
+                    with dominate.tags.p(style="color: darkgreen"):
+                        with dominate.tags.b():
+                            dominate.util.text(f"↑ {self.assignee}")
 
     def cell(self, group_id):
         assert self.lab.config.grading_via_merge_request
@@ -456,9 +457,6 @@ class SubmissionFilesNewstyleColumn(Column):
         request_name = submission.request_name
         grading_merge_request = submission.grading_merge_request
         synced_submission = grading_merge_request.synced_submissions[request_name]
-        self.logger.info(
-            f"XXX {group_id} {grading_merge_request.assignee} {submission.assignee_informal_name}"
-        )
         return self.Value(
             submission.request_name,
             grading_merge_request.note_url(synced_submission),
