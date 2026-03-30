@@ -1,4 +1,4 @@
-aimport bisect
+import bisect
 import contextlib
 import datetime
 import functools
