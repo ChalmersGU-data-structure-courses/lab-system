@@ -1850,7 +1850,7 @@ class GroupProject:
     def parse_hook_event_grading_merge_request(self, hook_event, _strict):
         self.logger.debug("Received a grading merge request event.")
         changes = hook_event.get("changes")
-        if changes and "labels" in changes:
+        if changes and any(change in changes for change in ["assignees", "labels"]):
             # self.logger.debug(f'Detected label change from {} to {}')
             self.logger.debug("Detected label change")
             yield (
