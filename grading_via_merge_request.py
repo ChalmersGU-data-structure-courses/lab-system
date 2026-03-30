@@ -1,4 +1,4 @@
-import bisect
+aimport bisect
 import contextlib
 import datetime
 import functools
@@ -107,6 +107,8 @@ class GradingViaMergeRequest:
     non_grader_change_message = util.general.join_lines(
         ["⚠️**WARNING**⚠️ Grading label change by non-grader detected."]
     )
+
+    merge_request: gitlab.v4.objects.MergeRequest
 
     def __init__(self, setup_data, group, logger=logging.getLogger(__name__)):
         self.setup_data = setup_data
@@ -222,6 +224,10 @@ class GradingViaMergeRequest:
 
     def with_merge_request_url(self, line):
         return util.general.join_lines([line, f"* {self.merge_request.web_url}"])
+
+    @property
+    def assignee(self):
+        return self.merge_request.assignee
 
     @functools.cached_property
     def notes(self):
