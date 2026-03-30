@@ -1868,9 +1868,7 @@ class GroupProject[Variant]:
         # So keeping this as is for now.
         if author_is_grader and title_change_:
             yield (
-                events.GroupProjectWebhookResponseEvent(
-                    events.GroupProjectIssueEvent()
-                ),
+                events.GroupProjectIssueEvent(),
                 lambda: self.lab.refresh_group(self, refresh_issue_responses=True),
             )
 
@@ -1882,18 +1880,26 @@ class GroupProject[Variant]:
             return
 
         changes = hook_event.get("changes")
-        if changes and "labels" in changes:
-            # self.logger.debug(f'Detected label change from {} to {}')
-            self.logger.debug("Detected label change")
-            yield (
-                events.GroupProjectWebhookResponseEvent(
-                    events.GroupProjectGradingMergeRequestEvent()
-                ),
-                lambda: self.lab.refresh_group(
-                    self,
-                    refresh_grading_merge_request=True,
-                ),
-            )
+        if changes is None:
+            return
+
+        event_types = {
+            "labels": events.GradingMergeRequestLabelEvent,
+        }
+
+        for change in changes:
+            try:
+                event_type = event_types[change]
+            except LookupError:
+                pass
+            else:
+                yield (
+                    events.GroupProjectGradingMergeRequestEvent(variant, event_type()),
+                    lambda: self.lab.refresh_group(
+                        self,
+                        refresh_grading_merge_request=True,
+                    ),
+                )
 
     def parse_hook_event(self, hook_event, strict=False):
         """
@@ -1922,7 +1928,6 @@ class GroupProject[Variant]:
                 )
 
         handler = dict(handlers()).get((project_name, event_type))
-
         if handler is not None:
             yield from handler(hook_event, strict)
         else:
