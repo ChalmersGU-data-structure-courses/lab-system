@@ -1893,9 +1893,11 @@ class GroupProject[Variant]:
             return
 
         def process_labels():
+            self.logger.debug("processing label change")
             self.lab.refresh_group(self, refresh_grading_merge_request=True)
 
         def process_assignee():
+            self.logger.debug("processing assignee change")
             if self.grading_via_merge_request[variant].update_assignee():
                 self.mark_dirty_and_process(only_meta=True)
 
@@ -1916,6 +1918,7 @@ class GroupProject[Variant]:
             except LookupError:
                 pass
             else:
+                self.logger.debug(f"{change} change detected")
                 yield (
                     events.GroupProjectGradingMergeRequestEvent(variant, event_type()),
                     process,
