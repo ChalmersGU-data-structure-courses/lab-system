@@ -10,7 +10,6 @@ from pathlib import PurePosixPath
 
 import git
 import gitlab
-import gitlab.v4.objects
 
 import events
 import gitlab_.tools
@@ -859,7 +858,7 @@ class HandlerData:
         return set(f())
 
 
-class GroupProject:
+class GroupProject[Variant]:
     """
     This class abstracts over:
     * a lab project of a student or lab group,
@@ -1462,6 +1461,39 @@ class GroupProject:
             for variant in self.lab.config.variants.variants
         }
 
+    def parse_grading_merge_request(self, author_id, title) -> Variant | None:
+        if not author_id in self.course.lab_system_users:
+            return None
+
+        with contextlib.suppress(ValueError):
+            return self.lab.config.variants.submission_grading_title.parse(title)
+
+        self.logger.warning(f"Unrecognized merge request title {title}")
+        return None
+
+    def list_grading_merge_requests(
+        self,
+    ) -> dict[Variant, gitlab.v4.objects.MergeRequest]:
+        def args():
+            try:
+                id = util.general.from_singleton(self.course.lab_system_users)
+            except util.general.UniquenessError:
+                pass
+            else:
+                yield ("author_id", id)
+            yield ("scope", "all")
+
+        def values():
+            for m in gitlab_.tools.list_all(
+                self.project.lazy.mergerequests,
+                **dict(args()),
+            ):
+                variant = self.parse_grading_merge_request(m.author["id"], m.title)
+                if variant is not None:
+                    yield (variant, m)
+
+        return dict(values())
+
     def tags_from_gitlab(self):
         self.logger.debug(f"Parsing request tags in {self.name} from Chalmers GitLab.")
         x = [
@@ -1844,6 +1876,11 @@ class GroupProject:
 
     def parse_hook_event_grading_merge_request(self, hook_event, _strict):
         self.logger.debug("Received a grading merge request event.")
+        attrs = hook_event["object_attributes"]
+        variant = self.parse_grading_merge_request(attrs["author"], attrs["title"])
+        if variant is None:
+            return
+
         changes = hook_event.get("changes")
         if changes and "labels" in changes:
             # self.logger.debug(f'Detected label change from {} to {}')

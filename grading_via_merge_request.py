@@ -188,26 +188,7 @@ class GradingViaMergeRequest:
 
     @functools.cached_property
     def merge_request(self):
-        def f():
-            for merge_request in gitlab_.tools.list_all(self.project.mergerequests):
-                if all(
-                    [
-                        merge_request.author["id"] in self.course.lab_system_users,
-                        merge_request.title == self.setup_data.title,
-                    ]
-                ):
-                    yield merge_request
-
-        merge_requests = list(f())
-        try:
-            merge_request_maybe = util.general.from_singleton_maybe(merge_requests)
-        except ValueError:
-            raise ValueError(
-                "More than one lab system merge request"
-                f" detected in {self.group.path_name}"
-            ) from None
-
-        return merge_request_maybe
+        return self.group.list_grading_merge_requests().get(self.setup_data.variant)
 
     def merge_request_ensure(self):
         if self.merge_request is None:
