@@ -1466,6 +1466,10 @@ class GroupProject[Variant]:
             for variant in self.lab.config.variants.variants
         }
 
+    def mark_dirty_and_process(self, only_meta: bool):
+        self.lab.update_manager.mark_dirty([self.id], only_meta)
+        self.lab.update_manager.process()
+
     def parse_grading_merge_request(self, author_id, title) -> Variant | None:
         if not author_id in self.course.lab_system_users:
             return None
@@ -1888,23 +1892,33 @@ class GroupProject[Variant]:
         if changes is None:
             return
 
+        def process_labels():
+            self.lab.refresh_group(self, refresh_grading_merge_request=True)
+
+        def process_assignee():
+            if self.grading_via_merge_request[variant].update_assignee():
+                self.mark_dirty_and_process(only_meta=True)
+
         event_types = {
-            "assignee": events.GradingMergeRequestAssigneeEvent,
-            "labels": events.GradingMergeRequestLabelEvent,
+            "assignee": (
+                events.GradingMergeRequestAssigneeEvent,
+                process_assignee,
+            ),
+            "labels": (
+                events.GradingMergeRequestLabelEvent,
+                process_labels,
+            ),
         }
 
         for change in changes:
             try:
-                event_type = event_types[change]
+                event_type, process = event_types[change]
             except LookupError:
                 pass
             else:
                 yield (
                     events.GroupProjectGradingMergeRequestEvent(variant, event_type()),
-                    lambda: self.lab.refresh_group(
-                        self,
-                        refresh_grading_merge_request=True,
-                    ),
+                    process,
                 )
 
     def parse_hook_event(self, hook_event, strict=False):
