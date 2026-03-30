@@ -400,7 +400,7 @@ class RequestAndResponses:
 
         raise ValueError("no outcome")
 
-    @functools.cached_property
+    @property
     def assignee_informal_name(self) -> str | None:
         """
         Get the informal name of the assigned grader, if any.
