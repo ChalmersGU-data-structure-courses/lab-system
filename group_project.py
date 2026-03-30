@@ -1884,7 +1884,7 @@ class GroupProject[Variant]:
     def parse_hook_event_grading_merge_request(self, hook_event, _strict):
         self.logger.debug("Received a grading merge request event.")
         attrs = hook_event["object_attributes"]
-        variant = self.parse_grading_merge_request(attrs["author"], attrs["title"])
+        variant = self.parse_grading_merge_request(attrs["author_id"], attrs["title"])
         if variant is None:
             return
 
