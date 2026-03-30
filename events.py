@@ -124,6 +124,7 @@ class GroupProjectIssueEvent(GroupProjectEvent):
     _key: ClassVar = util.ordering.DiscreteOrder(1)
 
 
+@_dataclass_no_eq
 class GroupProjectGradingMergeRequestEvent(GroupProjectEvent):
     variant: Any
     grading_merge_request_event: GradingMergeRequestEvent
@@ -140,6 +141,9 @@ class GroupProjectGradingMergeRequestEvent(GroupProjectEvent):
 ## Instances of GradingMergeRequestEvent
 
 
+@_dataclass_no_eq
+class GradingMergeRequestAssigneeEvent(GradingMergeRequestEvent):
+    _key: ClassVar = util.ordering.DiscreteOrder(0)
 
 
 @_dataclass_no_eq
