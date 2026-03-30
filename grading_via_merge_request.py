@@ -7,6 +7,7 @@ import time
 from collections.abc import Generator
 from dataclasses import dataclass
 
+import gitlab
 import more_itertools
 from gitlab.v4.objects import ProjectMergeRequestNote
 
@@ -108,14 +109,17 @@ class GradingViaMergeRequest:
         ["⚠️**WARNING**⚠️ Grading label change by non-grader detected."]
     )
 
+    merge_request: gitlab.v4.objects.MergeRequest
+
     def __init__(self, setup_data, group, logger=logging.getLogger(__name__)):
         self.setup_data = setup_data
         self.group = group
         self.logger = logger
 
         self.notes_suppress_cache_clear_counter = 0
+        self.outcome_last_checked = object()
+        self.assignee_last_checked = object()
         self.non_grader_change = False
-        self.outcome_last_checked = None
 
     @property
     def config(self):
@@ -203,6 +207,26 @@ class GradingViaMergeRequest:
 
     def with_merge_request_url(self, line):
         return util.general.join_lines([line, f"* {self.merge_request.web_url}"])
+
+    @property
+    def assignee(self):
+        user = self.merge_request.assignee
+        if user is None:
+            return None
+
+        return user["username"]
+
+    def update_assignee(self) -> bool:
+        """Checks if there has been an assignee change since the last time this method was called."""
+        if self.merge_request is None:
+            return None
+
+        if self.assignee == self.assignee_last_checked:
+            return False
+
+        self.logger.info(f"Assignee updated: {self.assignee}")
+        self.assignee_last_checked = self.assignee
+        return True
 
     @functools.cached_property
     def notes(self):
@@ -454,13 +478,6 @@ class GradingViaMergeRequest:
 
         return dict(f())
 
-    @property
-    def last_outcome(self):
-        if not self.submission_outcomes:
-            return None
-
-        return list(self.submission_outcomes.values())[-1]
-
     def set_labels(self, outcome_new):
         for outcome in self.lab.config.outcomes.outcomes:
             with contextlib.suppress(ValueError):
@@ -473,6 +490,13 @@ class GradingViaMergeRequest:
     # TODO: can't use because of race conditions.
     def reset_labels(self):
         self.set_labels(self.last_outcome)
+
+    @property
+    def last_outcome(self):
+        if not self.submission_outcomes:
+            return None
+
+        return list(self.submission_outcomes.values())[-1]
 
     def update_outcomes(self, clear_cache=True):
         """
