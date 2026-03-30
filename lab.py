@@ -670,6 +670,8 @@ class Lab[LabId, GroupId, Variant]:
             for project in gitlab_.tools.list_all(self.gitlab_group.lazy.projects):
                 if project.marked_for_deletion_at is None:
                     id = self.group_slug_to_id(project.path)
+                    if not id == "sattler":
+                        continue
                     if id is not None:
                         yield id
 
