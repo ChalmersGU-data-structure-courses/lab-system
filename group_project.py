@@ -1902,7 +1902,7 @@ class GroupProject[Variant]:
                 self.mark_dirty_and_process(only_meta=True)
 
         event_types = {
-            "assignee": (
+            "assignees": (
                 events.GradingMergeRequestAssigneeEvent,
                 process_assignee,
             ),
