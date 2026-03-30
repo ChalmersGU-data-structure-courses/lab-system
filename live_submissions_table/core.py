@@ -446,8 +446,9 @@ class SubmissionFilesNewstyleColumn(Column):
                 with dominate.tags.p():
                     util.html.format_url(self.title, self.target)
                 if self.assignee is not None:
-                    with dominate.tags.p():
-                        dominate.util.text(f"↑ {self.assignee}")
+                    with dominate.tags.p(style="color: darkgreen"):
+                        with dominate.tags.b():
+                            dominate.util.text(f"↑ {self.assignee}")
 
     def cell(self, group_id):
         assert self.lab.config.grading_via_merge_request
