@@ -1898,7 +1898,9 @@ class GroupProject[Variant]:
 
         def process_assignee():
             self.logger.debug("processing assignee change")
-            if self.grading_via_merge_request[variant].update_assignee():
+            m = self.grading_via_merge_request[variant]
+            m.merge_request_clear()
+            if m.update_assignee():
                 self.mark_dirty_and_process(only_meta=True)
 
         event_types = {
