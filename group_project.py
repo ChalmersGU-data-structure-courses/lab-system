@@ -401,7 +401,7 @@ class RequestAndResponses:
         raise ValueError("no outcome")
 
     @functools.cached_property
-    def grader_informal_name(self):
+    def grader_informal_name(self) -> str | None:
         """
         Get the informal name of the reviewer, or 'Lab system' for an outcome with no reviewer.
         Only valid for submission requests with an outcome.
@@ -409,22 +409,12 @@ class RequestAndResponses:
         if self.outcome_with_issue and self.review is None:
             return "Lab system"
 
-        if self.grader_username:
-            try:
-                canvas_user = self.course.canvas_user_by_gitlab_username[
-                    self.grader_username
-                ]
-            except KeyError as e:
-                if self.grader_username in self.course.config.gitlab.lab_system_users:
-                    return "Lab system"
-                raise ValueError(
-                    f"Unknown GitLab grader username {self.grader_username}. "
-                    "If different from CID, consider adding as override"
-                    " in _cid_to_gitlab_username in course configuration file."
-                ) from e
-            return self.course.canvas_user_informal_name(canvas_user)
+        if self.grader_username is None:
+            raise ValueError("no outcome")
 
-        raise ValueError("no outcome")
+        return self.course.canvas_user_informal_name_from_gitlab_user(
+            self.grader_username
+        )
 
     # TODO:
     # Shelved for now.
