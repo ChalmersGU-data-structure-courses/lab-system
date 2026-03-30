@@ -1663,8 +1663,12 @@ class GroupProject:
     def parse_grading_merge_request_responses(self):
         def f():
             for m in self.grading_via_merge_request.values():
-                yield m.update_outcomes()
-                yield m.update_assignee()
+                v = m.update_outcomes()
+                self.logger(f"update_outcomes: {v}")
+                yield v
+                v = m.update_assignee()
+                self.logger(f"update_assignee: {v}")
+                yield v
 
         return any(list(f()))
 
