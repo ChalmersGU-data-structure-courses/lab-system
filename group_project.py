@@ -401,6 +401,21 @@ class RequestAndResponses:
         raise ValueError("no outcome")
 
     @functools.cached_property
+    def assignee_informal_name(self) -> str | None:
+        """
+        Get the informal name of the assigned grader, if any.
+        Returns None unless grading via merge request.
+        """
+        if self.grading_merge_request is None:
+            return None
+
+        assignee = self.grading_merge_request.assignee
+        if assignee is None:
+            return None
+
+        return self.course.canvas_user_informal_name_from_gitlab_user(assignee)
+
+    @functools.cached_property
     def grader_informal_name(self) -> str | None:
         """
         Get the informal name of the reviewer, or 'Lab system' for an outcome with no reviewer.

@@ -439,10 +439,15 @@ class SubmissionFilesNewstyleColumn(Column):
     class Value(ColumnValue):
         title: str
         target: str
+        assignee: str | None
 
         def format(self, cell):
             with cell:
-                util.html.format_url(self.title, self.target)
+                with dominate.tags.p():
+                    util.html.format_url(self.title, self.target)
+                if self.assignee is not None:
+                    with dominate.tags.p():
+                        dominate.util.text(f"↑ {self.assignee}")
 
     def cell(self, group_id):
         assert self.lab.config.grading_via_merge_request
@@ -454,6 +459,7 @@ class SubmissionFilesNewstyleColumn(Column):
         return self.Value(
             submission.request_name,
             grading_merge_request.note_url(synced_submission),
+            submission.assignee_informal_name,
         )
 
 
