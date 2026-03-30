@@ -1809,6 +1809,11 @@ class GroupProject[Variant]:
             return None
         return submissions[-1]
 
+    def unassign_if_needed(self):
+        if self.submission_current() is None:
+            for m in self.grading_via_merge_request.values():
+                m.unassign()
+
     def parse_hook_event_tag(self, hook_event, _strict):
         """
         For a tag push event, we always generate a queue event.
