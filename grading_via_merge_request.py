@@ -104,6 +104,14 @@ class SyncMessagePrinterParser(util.print_parse.RegexComposition):
         )
 
 
+@dataclass
+class NamedSentinel:
+    name: str
+
+    def __str__(self):
+        return self.name
+
+
 class GradingViaMergeRequest:
     non_grader_change_message = util.general.join_lines(
         ["⚠️**WARNING**⚠️ Grading label change by non-grader detected."]
@@ -117,8 +125,8 @@ class GradingViaMergeRequest:
         self.logger = logger
 
         self.notes_suppress_cache_clear_counter = 0
-        self.outcome_last_checked = object()
-        self.assignee_last_checked = object()
+        self.outcome_last_checked = NamedSentinel("not queried")
+        self.assignee_last_checked = NamedSentinel("not queried")
         self.non_grader_change = False
 
     @property
