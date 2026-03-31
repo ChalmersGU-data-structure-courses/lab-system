@@ -15,7 +15,6 @@ from pathlib import Path, PurePath, PurePosixPath
 
 import util.general
 
-
 # ## Type annotations.
 
 PathLike = typing.TypeVar("PathLike", str, os.PathLike)
