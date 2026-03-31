@@ -1124,10 +1124,11 @@ class Lab[LabId, GroupId, Variant]:
 
             def f():
                 for group in self.groups_known():
-                    if group.parse_grading_merge_request_responses():
-                        yield group.id
-                    for m in group.grading_via_merge_request.values():
-                        stack.enter_context(m.notes_suppress_cache_clear())
+                    with group.grading_merge_request_query_manager():
+                        if group.parse_grading_merge_request_responses():
+                            yield group.id
+                        for m in group.grading_via_merge_request.values():
+                            stack.enter_context(m.notes_suppress_cache_clear())
 
             yield frozenset(f())
 
@@ -1349,16 +1350,17 @@ class Lab[LabId, GroupId, Variant]:
                 if x:
                     self.logger.info("found response issue update")
                     yield x
-                if self.config.grading_via_merge_request:
-                    x = (
-                        refresh_grading_merge_request
-                        and group.parse_grading_merge_request_responses()
-                    )
-                    if x:
-                        self.logger.info("found merge request update")
-                        for m in group.grading_via_merge_request.values():
-                            stack.enter_context(m.notes_suppress_cache_clear())
-                        yield x
+                if (
+                    self.config.grading_via_merge_request
+                    and refresh_grading_merge_request
+                ):
+                    with group.grading_merge_request_query_manager():
+                        x = group.parse_grading_merge_request_responses()
+                        if x:
+                            self.logger.info("found merge request update")
+                            for m in group.grading_via_merge_request.values():
+                                stack.enter_context(m.notes_suppress_cache_clear())
+                            yield x
 
             grading_updates = any(f())
             group.repo_fetch()
