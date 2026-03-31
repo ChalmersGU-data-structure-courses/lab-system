@@ -10,6 +10,7 @@ from pathlib import Path, PurePosixPath
 from tempfile import NamedTemporaryFile
 from typing import Iterator, IO
 
+import util.path
 from util.general import JSON
 
 logger = logging.getLogger(__name__)
@@ -87,7 +88,7 @@ class DirectoryFileStore:
 
     def _get_path(self, key: PurePosixPath) -> Path:
         assert not key.is_absolute()
-        assert all(part not in [".", ".."] for part in key.parts)
+        assert util.path.is_normal(key)
         return self.path / key
 
     def _open_args(self, mode: str):

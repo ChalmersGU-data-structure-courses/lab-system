@@ -23,18 +23,17 @@ PathLike = typing.TypeVar("PathLike", str, os.PathLike)
 # ## Operations on pure paths.
 
 
-def with_stem(path, stem):
-    """In Python 3.9, equivalent to path.with_stem(stem)."""
-    return path.with_name(stem + path.suffix)
-
-
-def add_suffix(path, suffix):
+def add_suffix(path, suffix: str):
     return path.parent / (path.name + suffix)
 
 
 def format_path(path):
     """Quote a path for use in a user message."""
     return shlex.quote(str(PurePosixPath(path)))
+
+
+def is_normal(path: PurePosixPath) -> bool:
+    return all(part not in [".", ".."] for part in path.parts)
 
 
 # ## Operations interacting with the working directory.
