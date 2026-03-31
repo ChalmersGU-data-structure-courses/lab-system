@@ -1456,6 +1456,10 @@ class GroupProject[Variant]:
             secret_token=self.course.auth.gitlab_webhook_secret_token,
         )
 
+    def mark_dirty_and_process(self, only_meta: bool):
+        self.lab.update_manager.mark_dirty([self.id], only_meta)
+        self.lab.update_manager.process()
+
     @functools.cached_property
     def grading_via_merge_request(self):
         return {
@@ -1465,10 +1469,6 @@ class GroupProject[Variant]:
             )
             for variant in self.lab.config.variants.variants
         }
-
-    def mark_dirty_and_process(self, only_meta: bool):
-        self.lab.update_manager.mark_dirty([self.id], only_meta)
-        self.lab.update_manager.process()
 
     def parse_grading_merge_request(self, author_id, title) -> Variant | None:
         if not author_id in self.course.lab_system_users:
@@ -1502,6 +1502,42 @@ class GroupProject[Variant]:
                     yield (variant, m)
 
         return dict(values())
+
+    class GradingMergeRequestQueryManager:
+        outer: "GroupProject[Variant]"
+
+        @functools.cached_property
+        def grading_merge_requests(
+            self,
+        ) -> dict[Variant, gitlab.v4.objects.MergeRequest]:
+            return self.outer.list_grading_merge_requests
+
+    _grading_merge_request_query_manager: GradingMergeRequestQueryManager = None
+
+    def query_grading_merge_request(
+        self,
+        variant: Variant,
+    ) -> gitlab.v4.objects.MergeRequest:
+        if self._grading_merge_request_query_manager is not None:
+            u = self._grading_merge_request_query_manager.grading_merge_requests
+            return u.get(variant)
+
+        return self.list_grading_merge_requests().get(variant)
+
+    @contextlib.contextmanager
+    def grading_merge_request_query_manager(self):
+        # Make it re-entrant.
+        if self._grading_merge_request_query_manager is not None:
+            yield
+            return
+
+        self._grading_merge_request_query_manager = (
+            self.GradingMergeRequestQueryManager()
+        )
+        try:
+            yield
+        finally:
+            self._grading_merge_request_query_manager = None
 
     def tags_from_gitlab(self):
         self.logger.debug(f"Parsing request tags in {self.name} from Chalmers GitLab.")
