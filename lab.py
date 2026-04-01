@@ -69,6 +69,13 @@ class StudentConnector[GroupId](abc.ABC):
         Currently only used in the grading spreadsheet.
         """
 
+    @abc.abstractmethod
+    def course_group_id_sort_key(self, id: GroupId) -> util.general.Comparable:
+        """
+        Return a course-level sort key for the given group id.
+        Needs to be able to compare with course-level sort keys for other labs in the course.
+        """
+
 
 class StudentConnectorIndividual(StudentConnector):
     course: "module_course.Course"
@@ -112,6 +119,9 @@ class StudentConnectorIndividual(StudentConnector):
     def gdpr_link_problematic(self):
         return True
 
+    def course_group_id_sort_key(self, id):
+        return (0, id)
+
 
 class StudentConnectorGroupSet(StudentConnector):
     group_set: "module_group_set.GroupSet"
@@ -147,6 +157,9 @@ class StudentConnectorGroupSet(StudentConnector):
 
     def gdpr_link_problematic(self):
         return False
+
+    def course_group_id_sort_key(self, id):
+        return (1, self.group_set.config.canvas_group_set_name, id)
 
 
 @util.print_parse.dataclass_json

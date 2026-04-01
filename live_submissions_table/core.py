@@ -117,6 +117,10 @@ class Column(abc.ABC):
     def sortable(self) -> bool:
         return False
 
+    def course_sort_key(self, x):
+        """Turn a sort key for the table for a lab into a sort key for the table for the course."""
+        return x
+
     @abc.abstractmethod
     def format_header(self, cell: dominate.tags.th) -> None: ...
 
@@ -233,6 +237,9 @@ class GroupColumn(Column):
             sort_key = (2, gdpr_coding.sort_key(group.id))
 
         return StandardColumnValue(encoded_id, sort_key)
+
+    def course_sort_key(self, x):
+        return self.lab.student_connector.course_group_id_sort_key(x)
 
 
 class MembersColumn(Column):
@@ -810,6 +817,48 @@ class LiveSubmissionsTable:
         self.logger.info("building live submissions table: done")
 
 
+@dataclasses.dataclass
+class WrapCell(util.html.HTMLCell):
+    column: Column
+    cell: util.html.HTMLCell
+
+    def inhabited(self):
+        return self.cell.inhabited()
+
+    def sort_key(self):
+        return self.column.course_sort_key(self.cell.sort_key())
+
+    def format(self, cell):
+        self.cell.format(cell)
+
+
+class WrapColumn(util.html.HTMLColumn):
+    name_: str
+    columns: "dict[Any, module_lab.Lab]"
+
+    def __init__(self, outer: "UnifiedLiveSubmissionsTable", name: str):
+        self.name_ = name
+        self.columns = outer.shared_columns[name]
+
+    @cached_property
+    def some_column(self) -> Column:
+        return next(iter(self.columns.values()))
+
+    def name(self) -> str:
+        return self.name_
+
+    def sortable(self) -> bool:
+        return self.some_column.sortable()
+
+    def format_header(self, cell: dominate.tags.th) -> None:
+        self.some_column.format_header(cell)
+
+    def cell(self, row) -> util.html.HTMLCell:
+        lab_id, group_id = row
+        column = self.columns[lab_id]
+        return WrapCell(column, column.cell(group_id))
+
+
 class UnifiedLiveSubmissionsTable:
     @dataclasses.dataclass
     class LabColumn(util.html.HTMLColumn):
@@ -832,31 +881,6 @@ class UnifiedLiveSubmissionsTable:
                 self.course.config.lab_id.id.print(lab_id),
                 key=lab_id,
             )
-
-    class WrapColumn(util.html.HTMLColumn):
-        name_: str
-        columns: "dict[Any, module_lab.Lab]"
-
-        def __init__(self, outer: "UnifiedLiveSubmissionsTable", name: str):
-            self.name_ = name
-            self.columns = outer.shared_columns[name]
-
-        @cached_property
-        def some_column(self) -> Column:
-            return next(iter(self.columns.values()))
-
-        def name(self) -> str:
-            return self.name_
-
-        def sortable(self) -> bool:
-            return self.some_column.sortable()
-
-        def format_header(self, cell: dominate.tags.th) -> None:
-            self.some_column.format_header(cell)
-
-        def cell(self, row) -> util.html.HTMLCell:
-            lab_id, group_id = row
-            return self.columns[lab_id].cell(group_id)
 
     def __init__(
         self,
@@ -921,12 +945,15 @@ class UnifiedLiveSubmissionsTable:
 
     @cached_property
     def columns(self) -> dict[str, util.html.HTMLColumn]:
+        def wrap(name):
+            return WrapColumn(self, name)
+
         def gen():
             for name in self.columns_pre:
-                yield self.WrapColumn(self, name)
+                yield wrap(name)
             yield self.LabColumn(self.course)
             for name in self.columns_post:
-                yield self.WrapColumn(self, name)
+                yield wrap(name)
 
         return {column.name(): column for column in gen()}
 
