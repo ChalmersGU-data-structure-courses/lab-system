@@ -195,24 +195,21 @@ def run(
                     )
 
         # Set up lab refresh event timers and add initial lab refreshes.
-        def refresh_lab(lab):
-            event_queue.add(
-                (
-                    lab.course.program_event(lab.course_event(events.RefreshLab())),
-                    lab.refresh_lab,
-                )
-            )
+        def refresh_lab(lab, full: bool):
+            event = lab.course.program_event(lab.course_event(events.RefreshLab()))
+            method = lab.initial_run if full else lab.refresh_lab
+            event_queue.add((event, method))
 
         delay = datetime.timedelta()
         for c in courses:
             for lab in c.labs.values():
                 if lab.config.request_handlers:
-                    refresh_lab(lab)
+                    refresh_lab(lab, True)
                     if lab.config.refresh_period is not None:
                         refresh_timer = util.threading.Timer(
                             lab.config.refresh_period + delay,
                             refresh_lab,
-                            args=[lab],
+                            args=[lab, False],
                             name=f"lab-refresh-timer<{c.config.gitlab_path}, {lab.name}>",
                             repeat=True,
                         )
@@ -238,7 +235,7 @@ def run(
         # The event loop.
         while True:
             logger.info("Waiting for event.")
-            (event, callback) = event_queue.remove()
+            event, callback = event_queue.remove()
             if isinstance(event, events.TerminateProgram):
                 logger.info("Program termination event received, shutting down.")
                 return

@@ -1333,7 +1333,7 @@ class Lab[LabId, GroupId, Variant]:
         # Update submission system.
         for group_id in review_updates:
             self.groups[group_id].unassign_if_needed()
-        self.update_manager.mark_dirty(review_updates)
+        self.update_manager.mark_dirty(review_updates | new_submissions)
         self.update_manager.process(deadline=deadline)
 
     def refresh_group(
