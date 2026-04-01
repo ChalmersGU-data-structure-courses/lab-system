@@ -37,7 +37,7 @@ class Query(util.directory_cache.Query[PurePosixPath, JSON]):
 
 @dataclass
 class FunctionProxy:
-    proxy: CachedClient
+    proxy: "CachedClient"
     fun_name: str
 
     def doc(self):
