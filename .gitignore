@@ -10,6 +10,8 @@ __pycache__/
 # See template/secrets.toml
 secrets.toml
 
-# Canvas cache.
+# Caches.
 # Always safe to delete, regenerated on demand.
+# cache is Canvas cache.
 cache
+cache_pdb
