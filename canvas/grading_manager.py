@@ -57,7 +57,7 @@ class GradingManager:
                 )
 
             grade_old = self.grades[user_id]
-            grade_new = str(grading.grade)  # Canvas score is returned as a string.
+            grade_new = grading.grade
             if not grade_new == grade_old:
                 if not grade_old is None:
                     self.logger.warn(

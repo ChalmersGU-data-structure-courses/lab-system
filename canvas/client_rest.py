@@ -736,7 +736,8 @@ class Grading:
 
     @property
     def fields(self) -> Generator[tuple[str, Any]]:
-        yield ("submission[posted_grade]", self.grade)
+        posted_grade = "-" if self.grade is None else self.grade
+        yield ("submission[posted_grade]", posted_grade)
         if self.comment is not None:
             yield ("comment[text_comment]", self.comment)
 
