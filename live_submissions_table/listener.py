@@ -115,7 +115,7 @@ class LiveSubmissionsTableLabUpdateListener[LabId, GroupId](
             logging_name="live submissions table",
         )
 
-    def groups_changed_prepare(self, ids, only_meta):
+    def groups_changed_prepare(self, ids, non_meta):
         self.table.update_rows(group_ids=ids)
         # with util.path.temp_dir() as dir:
         #     shutil.copyfile(self.path_staging, 'index.html')
@@ -134,7 +134,7 @@ class LiveSubmissionsTableLabUpdateListener[LabId, GroupId](
         #     self.repo_updated = True
         #     self.repo_push()
 
-    def groups_changed(self, ids, only_meta) -> None:
+    def groups_changed(self, ids, non_meta) -> None:
         if self.course.config.live_submissions_table_split and ids:
             self.update()
 
@@ -188,6 +188,6 @@ class UnifiedLiveSubmissionsTableLabUpdateListener[LabId](
             logging_name="unified live submissions table",
         )
 
-    def groups_changed(self, ids, only_meta):
+    def groups_changed(self, ids, non_meta):
         if ids and self.table.updated:
             self.update()

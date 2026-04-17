@@ -1142,7 +1142,7 @@ class LabUpdateListener[GroupId]:
     * new response.
     """
 
-    def groups_changed_prepare(self, ids: list[GroupId], only_meta: bool) -> None:
+    def groups_changed_prepare(self, ids: list[GroupId], non_meta: bool) -> None:
         """
         Called before the collection repository is pushed.
         Use this to add tags.
@@ -1150,7 +1150,7 @@ class LabUpdateListener[GroupId]:
         only_meta is set for updates unrelated to submission and outcome changes (such as assigned graders).
         """
 
-    def groups_changed(self, ids: list[GroupId], only_meta: bool) -> None:
+    def groups_changed(self, ids: list[GroupId], non_meta: bool) -> None:
         """
         Called after the collection repository is pushed.
         Use this to update other systems.

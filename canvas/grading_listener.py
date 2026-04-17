@@ -40,8 +40,8 @@ class CanvasGradingLabUpdateListener[GroupId, Outcome](
     def course(self) -> "module_course.Course":
         return self.lab.course
 
-    def groups_changed(self, ids, only_meta):
-        if only_meta:
+    def groups_changed(self, ids, non_meta):
+        if not non_meta:
             return
 
         groups = [self.lab.groups[id] for id in ids]

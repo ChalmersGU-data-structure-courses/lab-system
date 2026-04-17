@@ -171,7 +171,7 @@ class LabUpdateManagerData[GroupId]:
         default_factory=set,
         metadata={"pp": util.print_parse.SetAsList()},
     )
-    only_meta: bool = True
+    non_meta: bool = False
 
     def is_dirty(self) -> bool:
         return bool(self.dirty)
@@ -210,13 +210,13 @@ class LabUpdateManager[GroupId]:
         else:
             self.path.unlink(missing_ok=True)
 
-    def mark_dirty(self, ids: Iterable[GroupId], only_meta=False):
+    def mark_dirty(self, ids: Iterable[GroupId], non_meta=True):
         """
         Called by RequestAndResponses.process_request().
         Called in Lab upon response issues or grading merge request updates.
         """
         self.data.dirty.update(ids)
-        self.data.only_meta |= only_meta
+        self.data.non_meta |= non_meta
         self.write()
 
     def process(self, deadline=None):
@@ -224,17 +224,17 @@ class LabUpdateManager[GroupId]:
             return
 
         # Clear group members cache.
-        if not self.data.only_meta:
+        if self.data.non_meta:
             for id in self.data.dirty:
                 self.lab.groups[id].members_clear()
 
         for listener in self.listeners:
-            listener.groups_changed_prepare(list(self.data.dirty), self.data.only_meta)
+            listener.groups_changed_prepare(list(self.data.dirty), self.data.non_meta)
 
         self.lab.repo_push()
 
         for listener in self.listeners:
-            listener.groups_changed(list(self.data.dirty), self.data.only_meta)
+            listener.groups_changed(list(self.data.dirty), self.data.non_meta)
 
         self.clear()
         self.write()

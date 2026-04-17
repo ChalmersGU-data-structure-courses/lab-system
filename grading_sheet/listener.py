@@ -30,8 +30,8 @@ class GradingSheetLabUpdateListener[LabId, GroupId](
     def course(self) -> "module_course.Course":
         return self.lab.course
 
-    def groups_changed(self, ids, only_meta):
-        if not only_meta:
+    def groups_changed(self, ids, non_meta):
+        if non_meta:
             self.update(ids)
 
     def include_group(self, id: GroupId) -> bool:
@@ -70,7 +70,7 @@ class GradingSheetLabUpdateListener[LabId, GroupId](
         self.sheet.data_clear()
 
         # Setup groups.
-        self.sheet.ensure_and_setup_groups(groups=ids, group_link=self.group_link)
+        self.sheet.ensure_and_setup_groups(group_ids=ids, group_link=self.group_link)
 
         # Ensure grading sheet has sufficient query group columns.
         query_counts = (
