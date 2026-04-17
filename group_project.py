@@ -1456,8 +1456,8 @@ class GroupProject[Variant]:
             secret_token=self.course.auth.gitlab_webhook_secret_token,
         )
 
-    def mark_dirty_and_process(self, only_meta: bool):
-        self.lab.update_manager.mark_dirty([self.id], only_meta)
+    def mark_dirty_and_process(self, non_meta: bool):
+        self.lab.update_manager.mark_dirty([self.id], non_meta)
         self.lab.update_manager.process()
 
     @functools.cached_property
@@ -1942,7 +1942,7 @@ class GroupProject[Variant]:
             m = self.grading_via_merge_request[variant]
             m.merge_request_clear()
             if m.update_assignee():
-                self.mark_dirty_and_process(only_meta=True)
+                self.mark_dirty_and_process(non_meta=False)
 
         event_types = {
             "assignees": (
