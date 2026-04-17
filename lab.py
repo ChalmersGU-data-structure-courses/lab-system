@@ -680,6 +680,9 @@ class Lab[LabId, GroupId, Variant]:
     @functools.cached_property
     def groups(self):
         def group_ids():
+            yield "sattler"
+            return
+
             for project in gitlab_.tools.list_all(self.gitlab_group.lazy.projects):
                 if project.marked_for_deletion_at is None:
                     id = self.group_slug_to_id(project.path)

@@ -256,18 +256,20 @@ labs: list[tuple[LabId, LabConfig]] = [
     # fmt: off
     #        id folder                        group  robo   grad.. refresh_minutes
     lab_item(1, Path("binary-search"       ), False, True , True , 60),
-    lab_item(2, Path("indexing"            ), True , True , False, 15, grader_overrides={
-        ( 1, 'status-update'): 'ezzah',
-        ( 8, 'status-update'): 'ezzah',
-        (12, 'submission0'): 'jeannec',
-        (15, 'status-update'): 'jeannec',
-        (16, 'status-update'): 'villevi',
-        (21, 'status-update'): 'linda.erlenhov',
-        (26, 'status-update'): 'ezzah',
-        (30, 'status-update'): 'villevi',
-        (33, 'status-update-1'): 'ezzah',
-    }),
-    lab_item(3, Path("plagiarism-detection"), True , True , False, 15),
+    # lab_item(2, Path("indexing"            ), True , True , False, 15, grader_overrides={
+    #     ( 1, 'status-update'): 'ezzah',
+    #     ( 8, 'status-update'): 'ezzah',
+    #     (12, 'submission0'): 'jeannec',
+    #     (15, 'status-update'): 'jeannec',
+    #     (16, 'status-update'): 'villevi',
+    #     (21, 'status-update'): 'linda.erlenhov',
+    #     (26, 'status-update'): 'ezzah',
+    #     (30, 'status-update'): 'villevi',
+    #     (33, 'status-update-1'): 'ezzah',
+    # }),
+    # lab_item(3, Path("plagiarism-detection"), True , True , False, 15),
+    # lab_item(2, Path("indexing"            ), True , True , False, 15),
+    # lab_item(3, Path("plagiarism-detection"), True , True , False, 15),
     # lab_item(4, Path("path-finder"         ), True , True , True , 15),
     # fmt: on
 ]
