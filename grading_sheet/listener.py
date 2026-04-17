@@ -70,7 +70,7 @@ class GradingSheetLabUpdateListener[LabId, GroupId](
         self.sheet.data_clear()
 
         # Setup groups.
-        self.sheet.ensure_and_setup_groups(groups=ids, group_link=self.group_link)
+        self.sheet.ensure_and_setup_groups(group_ids=ids, group_link=self.group_link)
 
         # Ensure grading sheet has sufficient query group columns.
         query_counts = (

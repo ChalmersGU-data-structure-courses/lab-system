@@ -216,7 +216,7 @@ class LabUpdateManager[GroupId]:
         Called in Lab upon response issues or grading merge request updates.
         """
         self.data.dirty.update(ids)
-        self.data.only_meta |= only_meta
+        self.data.non_meta &= only_meta
         self.write()
 
     def process(self, deadline=None):
