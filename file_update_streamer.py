@@ -337,6 +337,7 @@ def cli() -> int:
     )
 
     logger = logging.getLogger(__name__)
+    logger.debug("started")
 
     bind = util.url.netloc_formatter.parse(args.bind)
 
@@ -347,13 +348,21 @@ def cli() -> int:
     if args.cert_letsencrypt:
         dir_cert = util.openssl.detect_cert_dir_lets_encrypt()
 
-    logger.debug(f"Path matcher: {matcher}")
-    logger.debug(f"Bind address: {bind}.")
-    logger.debug(f"Certificate directory {dir_cert}.")
-    logger.debug(f"Heartbeat period (in seconds): {args.heartbeat}")
+    logger.debug(f"path matcher: {matcher}")
+    logger.debug(f"bind address: {bind}")
+    logger.debug(f"certificate directory {dir_cert}")
+    logger.debug(f"heartbeat period (in seconds): {args.heartbeat}")
 
-    with Server(bind, matcher, dir_cert=dir_cert, heartbeat=args.heartbeat) as server:
-        server.serve_forever()
+    try:
+        with Server(
+            bind,
+            matcher,
+            dir_cert=dir_cert,
+            heartbeat=args.heartbeat,
+        ) as server:
+            server.serve_forever()
+    finally:
+        logger.debug("stopped")
     return 0
 
 
