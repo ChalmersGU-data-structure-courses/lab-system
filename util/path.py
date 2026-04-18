@@ -23,6 +23,10 @@ PathLike = typing.TypeVar("PathLike", str, os.PathLike)
 # ## Operations on pure paths.
 
 
+def is_normal(path):
+    return all(not (part in [".", ".."]) for part in path.parts)
+
+
 def with_stem(path, stem):
     """In Python 3.9, equivalent to path.with_stem(stem)."""
     return path.with_name(stem + path.suffix)
