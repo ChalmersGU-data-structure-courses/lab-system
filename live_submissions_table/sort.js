@@ -1,39 +1,58 @@
-// Inspired by "sortable 1.0" by Jonas Earendel
-document.addEventListener('click', event => {
-  var sortable = 'sortable'
-  var th = event.target
-  if (!(th.nodeName === 'TH' && th.classList.contains(sortable)))
-		return
+const sortable = 'sortable';
+const order_asc = 'sortable-order-asc';
+const order_desc = 'sortable-order-desc';
 
-  var tr = th.parentNode
-  var table = tr.parentNode.parentNode
-  var tbody = table.tBodies[0]
+var sort_column = null;
+var sort_order = null;
 
-	var column_index = th.cellIndex
+// Inspired by "sortable 1.0" by Jonas Earendel.
+function sort() {
+  if (sort_column == null)
+    return;
 
-  var order_asc = 'sortable-order-asc'
-  var order_desc = 'sortable-order-desc'
-  var order = th.classList.contains(order_asc) ? order_desc : order_asc
+  r = document.getElementsByClassName(sort_column)[0];
+  if (!r)
+    return;
+
+  const th = r[0];
+  const tr = th.parentNode;
+  const table = tr.parentNode.parentNode;
+  const tbody = table.tBodies[0];
+  const column_index = th.cellIndex;
+
   for (let header of tr.cells)
     if (header.classList.contains(sortable))
       for (let order of [order_asc, order_desc])
-        header.classList.remove(order)
-  th.classList.add(order)
+        header.classList.remove(order);
+  th.classList.add(sort_order);
 
   function key(row) {
-    s = row.cells[column_index].dataset.sortKey
+    s = row.cells[column_index].dataset.sortKey;
     if (s === NaN)
-      throw 'invalid sort key ' + row[column_index].dataset.sortKey
-    return s
+      throw 'invalid sort key ' + row[column_index].dataset.sortKey;
+    return s;
   }
 
-  var rows = Array.prototype.slice.call(tbody.rows)
-  rows.sort(function (a, b) {
-    var key_a = key(a)
-    var key_b = key(b)
-    return order == order_asc ? key_a - key_b : key_b - key_a
-  })
+  function compare(a, b) {
+    var key_a = key(a);
+    var key_b = key(b);
+    return sort_order == order_asc ? key_a - key_b : key_b - key_a;
+  }
 
+  var rows = Array.prototype.slice.call(tbody.rows);
+  rows.sort(compare);
   for (let row of rows)
-    tbody.appendChild(row)
-})
+    tbody.appendChild(row);
+}
+
+function handle(event) {
+  var th = event.target;
+  if (!(th.nodeName === 'TH' && th.classList.contains(sortable)))
+		return;
+
+  sort_column = th.classList[0];
+  sort_order = th.classList.contains(order_asc) ? order_desc : order_asc;
+  sort();
+}
+
+document.addEventListener('click', handle);
