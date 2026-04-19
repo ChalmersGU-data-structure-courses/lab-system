@@ -452,6 +452,20 @@ class GradingViaMergeRequest:
                 )
         return None
 
+    def override_outcome(self, request_name: str, x):
+        outcome, (date, (username, _system)) = x
+        if not _system:
+            try:
+                username_new = self.config.grader_overrides.get(
+                    (self.group.id, request_name),
+                    username,
+                )
+            except KeyError:
+                pass
+            else:
+                x = (outcome, (date, (username_new, _system)))
+        return x
+
     @functools.cached_property
     def submission_outcomes(self):
         outcome_status = {}
@@ -478,6 +492,11 @@ class GradingViaMergeRequest:
                     request_name,
                     not request_name_next,
                 )
+                if consolidated_outcome is not None:
+                    consolidated_outcome = self.override_outcome(
+                        request_name,
+                        consolidated_outcome,
+                    )
                 if consolidated_outcome:
                     yield (request_name, consolidated_outcome)
             more_itertools.consume(it)
