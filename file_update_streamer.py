@@ -279,6 +279,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 
 class Server(socketserver.ThreadingMixIn, util.http.HTTPSServer):
+    daemon_threads = True
+
     def __init__(
         self,
         netloc: util.url.NetLoc,
