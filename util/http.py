@@ -7,7 +7,7 @@ import util.url
 class HTTPSServer(http.server.HTTPServer):
     def __init__(
         self,
-        netloc: util.url.Netloc,
+        netloc: util.url.NetLoc,
         RequestHandlerClass: http.server.BaseHTTPRequestHandler,
         dir_cert: Path | None = None,
         update_cert: bool = False,

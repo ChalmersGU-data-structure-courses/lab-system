@@ -32,6 +32,10 @@ def socket_remote(s: socket.socket) -> util.url.NetLoc:
     return util.url.NetLoc(*s.getpeername())
 
 
+def format_exception_short(e: Exception) -> str:
+    return f"{type(e).__name__}: {e}"
+
+
 @dataclass
 class PathMatchResult:
     path: Path
@@ -141,11 +145,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             try:
                 data = self.result.path.read_bytes()
             except OSError as e:
-                error_msg = str(e)
+                error_msg = format_exception_short(e)
                 self.error(error_msg)
-                self.sse.write_message("error", error_msg.encode())
+                self.sse.write_message(b"error", error_msg.encode())
                 self.set_event(self.event_close_requested)
-            self.sse.write_message("update", data)
+            else:
+                self.sse.write_message(b"update", data)
 
         return False
 
@@ -236,7 +241,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         if xs:
                             break
                 except OSError as e:
-                    self.warning(f"read error: {e}")
+                    self.warning(f"read error: {format_exception_short(e)}")
 
                 self.debug("requesting close")
                 self.set_event(self.event_close_requested)
@@ -265,17 +270,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.event_loop()
             # pylint: disable-next=broad-exception-caught
             except Exception as e:
-                self.error(f"{e}")
+                self.error(format_exception_short(e))
+                raise
             finally:
                 self.debug("close connection")
-                self.connection.close()
+                self.close_connection = True
                 stop_reading_w.close()
 
 
-class Server(util.http.HTTPSServer, socketserver.ThreadingMixIn):
+class Server(socketserver.ThreadingMixIn, util.http.HTTPSServer):
     def __init__(
         self,
-        netloc: util.url.Netloc,
+        netloc: util.url.NetLoc,
         path_matcher: PathMatcher,
         dir_cert: Path | None = None,
         heartbeat: float | None = 60,
