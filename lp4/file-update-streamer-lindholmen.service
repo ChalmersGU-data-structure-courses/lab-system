@@ -1,0 +1,31 @@
+# To deploy this on the lab server:
+# * Symlink to this file in ~/.config/systemd/user/
+# * Enable lingering for the user:
+#     loginctl enable-linger
+# * Inspect/enable/start/stop/restart the service using
+#     systemctl --user status/enable/start/stop/restart.
+# * After editing this file, run
+#     systemd --user daemon-reload
+#   and restart for changes to take effect.
+
+[Unit]
+Description=Server-sent events streamer for live request tables.
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=900s
+KillSignal=SIGINT
+WorkingDirectory=%h/lindholmen/lab-system
+ExecStart=%h/lindholmen/lab-system/file_update_streamer.py \
+  --matcher lp4/file-update-streamer/path-matcher.toml \
+  --bind :4275 \
+  --cert-letsencrypt \
+  --heartbeat 60 \
+  --log lp4/file-update-streamer/log \
+  --verbose --verbose
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Open requests</title>
+    <meta charset="utf-8">
+    <link crossorigin="anonymous" href="https://fonts.gstatic.com/" rel="preconnect">
+    <link href="https://du11hjcvx0uqb.cloudfront.net/dist/brandable_css/no_variables/bundles/lato_extended-f5a83bde37.css" media="screen" rel="stylesheet">
+    <style>
+/* Emulating Canvas. */
+body {
+  font-family: 'Lato Extended',Lato,'Helvetica Neue',Helvetica,Arial,sans-serif;
+}
+
+/* Not used at the moment. */
+.controls {
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+#results {
+  border-collapse: collapse;
+  border: 1px solid;
+}
+#results th, #results td {
+  /* We don't include border-right as this would interfere with the modifications
+		 to border-left for right neighbour cells with class .extension-column. */
+  border-top: 1px solid;
+  border-bottom: 1px solid;
+  border-left: 1px solid;
+  padding: 6px;
+  vertical-align: top;
+}
+#results p {
+  margin: 0px;
+}
+#results pre {
+  font-size: smaller;
+  margin: 0px;
+  white-space: pre-wrap;
+}
+
+/* Not used at the moment. */
+#results .files {
+  border-collapse: collapse
+}
+#results .files td {
+  border: 0px;
+  padding: 0px;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+#results .extension-column {
+  border-left-color: lightgrey;
+}
+#results .block {
+  display: block;
+}
+#results .grayed-out {
+  opacity: 0.5;
+}
+#results .error {
+  color: #af0000;
+}
+#results .hidden {
+  display: none;
+}
+#results .to-load {
+  background-color: #eeeeee;
+}
+</style>
+    <script>
+url = "https://ds-labs.cse.chalmers.se:4275/requests?initial=1&password=fnH53BB/0LnrY9Sy";</script>
+    <script>
+if (typeof url === 'undefined') {
+  obj_url = new URL(document.URL);
+  obj_url.searchParams.delete("fetch");
+  obj_url.searchParams.append("initial", "1");
+  url = obj_url.toString();
+}
+
+const event_source = new EventSource(url);
+const title = document.title;
+
+document.title = title + " (connecting)";
+
+event_source.onopen = function() {
+  console.log("Connection to server opened.");
+  document.title = title + " (updating automatically)";
+};
+
+event_source.addEventListener("update", (e) => {
+  console.log("Update received.");
+  var body = new DOMParser().parseFromString(e.data, "text/html").body;
+  document.body.replaceWith(body);
+  sort();
+});
+
+event_source.addEventListener("error", (e) => {
+  console.log("Error: " + e.data);
+  var b = document.createElement("b");
+  b.appendChild(document.createTextNode("Error:"))
+  var p = document.createElement("p");
+  p.appendChild(b)
+  p.appendChild(document.createTextNode(" " + e.data))
+  var body = document.createElement("body");
+  body.appendChild(p);
+  document.body.replaceWith(body);
+  event_source.close();
+});
+
+event_source.onerror = function() {
+  console.log("Connection failed.");
+  document.title = title + " (connection failed)";
+  document.body.innerHTML += "<p>Connection failed.</p>";
+};
+</script>
+    <style>
+th.sortable {
+  cursor: pointer;
+}
+
+th.sortable:hover::after {
+  color: inherit;
+  content: ' \025B8';
+}
+
+th.sortable::after {
+  color: transparent;
+  content: ' \025B8';
+}
+
+th.sortable.sortable-order-asc::after {
+  color: inherit;
+  content: ' \025BE';
+}
+
+th.sortable.sortable-order-desc::after {
+  color: inherit;
+  content: ' \025B4';
+}
+</style>
+    <script>
+const sortable = 'sortable';
+const order_asc = 'sortable-order-asc';
+const order_desc = 'sortable-order-desc';
+
+var sort_column = null;
+var sort_order = null;
+
+// Inspired by "sortable 1.0" by Jonas Earendel.
+function sort() {
+  if (sort_column == null)
+    return;
+
+  r = document.getElementsByClassName(sort_column)[0];
+  if (!r)
+    return;
+
+  const th = r[0];
+  const tr = th.parentNode;
+  const table = tr.parentNode.parentNode;
+  const tbody = table.tBodies[0];
+  const column_index = th.cellIndex;
+
+  for (let header of tr.cells)
+    if (header.classList.contains(sortable))
+      for (let order of [order_asc, order_desc])
+        header.classList.remove(order);
+  th.classList.add(sort_order);
+
+  function key(row) {
+    s = row.cells[column_index].dataset.sortKey;
+    if (s === NaN)
+      throw 'invalid sort key ' + row[column_index].dataset.sortKey;
+    return s;
+  }
+
+  function compare(a, b) {
+    var key_a = key(a);
+    var key_b = key(b);
+    return sort_order == order_asc ? key_a - key_b : key_b - key_a;
+  }
+
+  var rows = Array.prototype.slice.call(tbody.rows);
+  rows.sort(compare);
+  for (let row of rows)
+    tbody.appendChild(row);
+}
+
+function handle(event) {
+  var th = event.target;
+  if (!(th.nodeName === 'TH' && th.classList.contains(sortable)))
+		return;
+
+  sort_column = th.classList[0];
+  sort_order = th.classList.contains(order_asc) ? order_desc : order_asc;
+  sort();
+}
+
+document.addEventListener('click', handle);
+</script>
+  </head>
+  <body>
+    <p>Loading...</p>
+  </body>
+</html>
