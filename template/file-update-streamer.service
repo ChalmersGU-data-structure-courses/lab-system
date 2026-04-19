@@ -1,0 +1,38 @@
+# To deploy this on the lab server:
+# * Create a copy of this file somewhere, perhaps in the local course directory.
+# * Deal with the ACTION items below.
+# * Symlink to this file in ~/.config/systemd/user/
+# * Enable lingering for the user:
+#     loginctl enable-linger
+# * Inspect/enable/start/stop/restart the service using
+#     systemctl --user status/enable/start/stop/restart.
+# * After editing this file, run
+#     systemd --user daemon-reload
+#   and restart for changes to take effect.
+
+[Unit]
+Description=Server-sent events streamer for live request tables.
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=900s
+KillSignal=SIGINT
+# ACTION: fix working directory
+WorkingDirectory=%h/lab-system
+# ACTION: replace as follows:
+# * fix script path,
+# * replace COURSE_CODE by lower case course code,
+# * replace PORT by listening port,
+ExecStart=%h/lab-system/file_update_streamer.py \
+  --matcher COURSE_CODE/file-update-streamer/path-matcher.toml \
+  --bind :PORT \
+  --cert-letsencrypt \
+  --heartbeet 60 \
+  --log COURSE_CODE/file-update-streamer/log `#create this as a directory to enable log rotation` \
+  --verbose
+
+[Install]
+WantedBy=default.target
