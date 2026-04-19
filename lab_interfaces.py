@@ -668,7 +668,7 @@ class RepositoryConfig:
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class GradingViaMergeRequestConfig:
+class GradingViaMergeRequestConfig[GroupId]:
     """
     Configuration of new-style grading via merge requests.
     This makes it much easier for graders to reference particular lines of code.
@@ -690,6 +690,12 @@ class GradingViaMergeRequestConfig:
     sync_message: util.print_parse.RegexPrinterParser[
         grading_via_merge_request.SyncMessage
     ] = grading_via_merge_request.SyncMessagePrinterParser()
+
+    grader_overrides: Mapping[tuple[GroupId, str], str] = util.general.empty_mapping
+    """
+    Override for the grader-detection logic.
+    Takes a pair of a group id and a submission and sets the grader username on GitLab.
+    """
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -794,7 +800,7 @@ class LabConfig[GroupId, Outcome, Variant]:
     * Values of several hours are acceptable if webhook notifications work reliably.
     """
 
-    grading_via_merge_request: GradingViaMergeRequestConfig | None = (
+    grading_via_merge_request: GradingViaMergeRequestConfig[GroupId] | None = (
         GradingViaMergeRequestConfig()
     )
     """
