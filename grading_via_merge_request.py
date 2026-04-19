@@ -219,7 +219,7 @@ class GradingViaMergeRequest:
     @property
     def assignee(self):
         user = self.merge_request.assignee
-        if user is None:
+        if user is None or not user["id"] in self.course.graders:
             return None
 
         return user["username"]
