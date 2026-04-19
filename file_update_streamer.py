@@ -305,7 +305,8 @@ def parser() -> argparse.ArgumentParser:
         The request path selects the file according to the configured matcher.
         Supported query parameters:
         * password: password if required by the matcher,
-        * initial: if set, serve initial file content.  
+        * initial: if set, serve initial file content,
+        * fetch: if set, serve file as usual instead of using server-side events.
         """,
     )
     p.add_argument(
