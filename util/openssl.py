@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 FILENAME_CERT: str = "cert.pem"
-FILENAME_KEY: str = "key.pem"
+FILENAME_KEY: str = "privkey.pem"
 
 
 def generate_cert(file_cert, file_key):
