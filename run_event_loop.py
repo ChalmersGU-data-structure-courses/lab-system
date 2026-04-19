@@ -7,7 +7,6 @@ from pathlib import Path
 
 import argcomplete
 
-
 p = argparse.ArgumentParser(
     add_help=False,
     description="Manage labs for specified courses in an event loop.",
@@ -230,7 +229,7 @@ g.add_argument(
     dest="log_file",
     help="""
 An optional log file to append debug level logging to.
-This is in addition to the the logging printed to standard error by the --verbose option.
+This is in addition to the logging printed to standard error by the --verbose option.
 If this is an existing directory, it will be used for rotating log files.
 """,
 )

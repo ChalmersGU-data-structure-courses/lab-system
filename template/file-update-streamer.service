@@ -11,7 +11,7 @@
 #   and restart for changes to take effect.
 
 [Unit]
-Description=Event loop service for lab system.
+Description=Server-sent events streamer for live request tables.
 After=network.target
 StartLimitIntervalSec=0
 
@@ -20,26 +20,19 @@ Type=simple
 Restart=always
 RestartSec=900s
 KillSignal=SIGINT
-# ACTION: set to lab system directory
+# ACTION: fix working directory
 WorkingDirectory=%h/lab-system
 # ACTION: replace as follows:
 # * fix script path,
 # * replace COURSE_CODE by lower case course code,
-# * specify labs to sync from Canvas:
-#   - initially usually just -s 1,
-#   - remember to remove flags for labs where the grading has already begun.
-ExecStart=%h/lab-system/run_event_loop.py \
-  --dir COURSE_CODE \
-  --sync-from-canvas 1 \
-  --start-with-sync \
-  --sync-period 900 \
-  --error-spreadsheet 1qnG1Lfp8Y-_0MpsncASBljDb_NTn1pFk6b0pgjQwka4 \
-  --log COURSE_CODE/log `#create this as a directory to enable log rotation` \
-  --verbose \
-  run
-
-# Use this for debugging to disable student sync and error notification spam
-#ExecStart=%h/lab-system/run_event_loop.py --dir COURSE_CODE --log COURSE_CODE/log --verbose run
+# * replace PORT by listening port,
+ExecStart=%h/lab-system/file_update_streamer.py \
+  --matcher COURSE_CODE/file-update-streamer/path-matcher.toml \
+  --bind :PORT \
+  --cert-letsencrypt \
+  --heartbeet 60 \
+  --log COURSE_CODE/file-update-streamer/log `#create this as a directory to enable log rotation` \
+  --verbose
 
 [Install]
 WantedBy=default.target

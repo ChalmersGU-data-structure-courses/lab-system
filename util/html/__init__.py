@@ -141,6 +141,18 @@ def embed_js(s: str) -> dominate.tags.script:
     return dominate.tags.script(embed_raw(s))
 
 
+def resource(rel_path: PurePosixPath) -> str:
+    return importlib.resources.files(__name__).joinpath(rel_path).read_text()
+
+
+PATH_DATA_LOADER: PurePosixPath = PurePosixPath("loader.js")
+
+
+def add_loader(head: dominate.tags.head) -> None:
+    with head:
+        embed_js(resource(PATH_DATA_LOADER))
+
+
 @dataclass
 class HTMLTableRenderer[Row, C: HTMLColumn[Row]]:
     columns: Iterable[C]
@@ -151,18 +163,14 @@ class HTMLTableRenderer[Row, C: HTMLColumn[Row]]:
     sort_order: list[C] | None = None
     id: str | None = None
 
-    PATH_DATA_SORT_JS: ClassVar[PurePosixPath] = "sort.js"
-    PATH_DATA_SORT_CSS: ClassVar[PurePosixPath] = "sort.css"
-
-    @classmethod
-    def resource(cls, rel_path: PurePosixPath) -> str:
-        return importlib.resources.files(__name__).joinpath(rel_path).read_text()
+    PATH_DATA_SORT_JS: ClassVar[PurePosixPath] = PurePosixPath("sort.js")
+    PATH_DATA_SORT_CSS: ClassVar[PurePosixPath] = PurePosixPath("sort.css")
 
     @classmethod
     def format_head(cls, head: dominate.tags.head) -> None:
         with head:
-            embed_css(cls.resource(cls.PATH_DATA_SORT_CSS))
-            embed_js(cls.resource(cls.PATH_DATA_SORT_JS))
+            embed_css(resource(cls.PATH_DATA_SORT_CSS))
+            embed_js(resource(cls.PATH_DATA_SORT_JS))
 
     @cached_property
     def column_names(self) -> set[str]:
