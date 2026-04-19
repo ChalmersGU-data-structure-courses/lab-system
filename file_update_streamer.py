@@ -72,7 +72,7 @@ class PathMatcherTOML(PathMatcher):
         self.mapping
 
 
-class Handler(http.server.BaseHTTPRequestHandler):
+class Handler(http.server.SimpleHTTPRequestHandler):
     wbufsize = 65536
 
     result: PathMatcher
@@ -157,6 +157,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if self.handle_event():
                 return
 
+    def translate_path(self, path):
+        """Overrides function of SimpleHTTPRequestHandler."""
+        return str(self.result.path)
+
     def do_GET(self):
         self.debug("open connection")
 
@@ -173,33 +177,38 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
 
         path = PurePosixPath(url.path)
+        fetch = "fetch" in url.query
         initial = "initial" in url.query
         try:
             password = url.query["password"][0]
         except LookupError:
             password = None
 
-        self.info(f"path {path}, initial {initial}, password {password}")
+        self.info(f"path {path}, fetch {fetch}, initial {initial}, password {password}")
 
-        result = self.server.path_matcher.match(url.path)
-        self.debug(f"match result {result}")
+        self.result = self.server.path_matcher.match(url.path)
+        self.debug(f"match result {self.result}")
 
-        if result is None:
+        if self.result is None:
             self.warning("forbidden")
             self.send_error(403, "forbidden")
             return
 
-        if result.password is not None and not password == result.password:
+        if self.result.password is not None and not password == self.result.password:
             self.warning("incorrect password")
-            self.send_error(403, "forbidden")
+            self.send_error(401, "incorrect password")
             return
 
-        if not result.path.parent.is_dir():
+        if fetch:
+            super().do_GET()
+            return
+
+        if not self.result.path.parent.is_dir():
             self.warning("parent directory does not exist")
             self.send_error(404, "parent directory does not exist")
             return
 
-        if initial and not result.path.is_file():
+        if initial and not self.result.path.is_file():
             self.warning("file does not exist")
             self.send_error(404, "file does not exist")
             return
@@ -208,8 +217,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-cache")
+        self.send_header("Content-Type", "text/event-stream")
         self.end_headers()
         self.debug("sent headers")
 
@@ -244,13 +253,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     yield util.threading.timer_manager(timer)
 
                 yield util.watchdog.callback_on_file_changed_positive(
-                    result.path,
+                    self.result.path,
                     lambda: self.set_event(self.event_file_changed),
                 )
 
             try:
                 for manager in managers():
                     stack.enter_context(manager)
+                if initial:
+                    self.set_event(self.event_file_changed)
                 self.event_loop()
             # pylint: disable-next=broad-exception-caught
             except Exception as e:
