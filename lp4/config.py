@@ -2,7 +2,7 @@ import datetime
 import enum
 import re
 from pathlib import Path, PurePosixPath
-from typing import Callable
+from typing import Any, Callable
 
 import dominate
 
@@ -16,11 +16,13 @@ import testers.general
 import testers.java
 import testers.podman
 import util.enum
+import util.general
 import util.print_parse
 import util.this_dir
 from lab_interfaces import (
     CourseConfig,
     DefaultLabId,
+    GradingViaMergeRequestConfig,
     GroupSetConfig,
     LabConfig,
     LabIdConfig,
@@ -137,6 +139,7 @@ def lab_item(
     robo: bool,
     grader_instead_of_tester: bool,
     refresh_minutes: int,
+    grader_overrides: dict[tuple[Any, str], str] = util.general.empty_mapping,
 ) -> tuple[LabId, LabConfig]:
     def submission_handler(v: Variant) -> type[handlers.general.SubmissionHandler]:
         match v:
@@ -242,6 +245,9 @@ def lab_item(
         report_key="report",
         refresh_period=datetime.timedelta(minutes=refresh_minutes),
         canvas_assignment_name=f"{lab_id.name.print(id)}: {name_semantic}",
+        grading_via_merge_request=GradingViaMergeRequestConfig(
+            grader_overrides=grader_overrides
+        ),
     )
     return (id, lab_config)
 
@@ -250,7 +256,17 @@ labs: list[tuple[LabId, LabConfig]] = [
     # fmt: off
     #        id folder                        group  robo   grad.. refresh_minutes
     lab_item(1, Path("binary-search"       ), False, True , True , 15),
-    lab_item(2, Path("indexing"            ), True , True , False, 15),
+    lab_item(2, Path("indexing"            ), True , True , False, 15, grader_overrides={
+        ( 1, 'status-update'): 'ezzah',
+        ( 8, 'status-update'): 'ezzah',
+        (12, 'submission0'): 'jeannec',
+        (15, 'status-update'): 'jeannec',
+        (16, 'status-update'): 'villevi',
+        (21, 'status-update'): 'linda.erlenhov',
+        (26, 'status-update'): 'ezzah',
+        (30, 'status-update'): 'villevi',
+        (33, 'status-update-1'): 'ezzah',
+    }),
     # lab_item(3, Path("plagiarism-detection"), True , True , False, 15),
     # lab_item(4, Path("path-finder"         ), True , True , True , 15),
     # fmt: on
