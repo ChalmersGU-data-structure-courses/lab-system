@@ -741,7 +741,7 @@ class LiveSubmissionsTable:
             self.update_row(group_id)
         self.updated = True
 
-    def build(self, path: Path, group_ids=None):
+    def build(self, path: Path, group_ids=None, loader: bool = False):
         """
         Build the live submissions table.
 
@@ -810,6 +810,8 @@ class LiveSubmissionsTable:
 
         # Build the HTML document.
         doc = doc_with_head(f"Open requests: {self.lab.name_full}")
+        if loader:
+            util.html.add_loader(doc.head)
         renderer.format_head(doc.head)
         with doc.body:
             renderer.render()
@@ -957,10 +959,13 @@ class UnifiedLiveSubmissionsTable:
 
         return {column.name(): column for column in gen()}
 
-    def build(self, path: Path):
+    def build(self, path: Path, loader: bool = False) -> None:
         """
         Build the unified live submissions table.
         The generated HTML file is self-contained and only contains absolute links.
+
+        If loader is set, include Javascript code for watching for file updates.
+        Suitable for serving via a file update streamer.
         """
         self.logger.info("building unified live submissions table...")
 
@@ -993,8 +998,26 @@ class UnifiedLiveSubmissionsTable:
 
         # Build the HTML document.
         doc = doc_with_head("Open requests")
+        if loader:
+            util.html.add_loader(doc.head)
         renderer.format_head(doc.head)
         with doc.body:
             renderer.render()
         path.write_text(doc.render(pretty=True))
         self.logger.info("building unified live submissions table: done")
+
+
+def build_dynamic(path: Path, url: str) -> None:
+    """
+    Build a dynamically loading unified live submissions table.
+    The given URL must be served by a file update streamer.
+    """
+    doc = doc_with_head("Open requests")
+    with doc.head:
+        util.html.embed_js(f'url = "{url}";')
+    util.html.add_loader(doc.head)
+    util.html.HTMLTableRenderer.format_head(doc.head)
+    with doc.body:
+        with dominate.tags.p():
+            dominate.util.text("Loading...")
+    path.write_text(doc.render(pretty=True))
