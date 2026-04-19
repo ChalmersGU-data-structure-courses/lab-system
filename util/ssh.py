@@ -18,7 +18,6 @@ import util.print_parse
 import util.url
 import util.watchdog
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -460,7 +459,7 @@ class ConnectionMaster:
                     logger.debug(util.general.join_lines(result.stderr.splitlines()))
 
                 # Unfortunately, the SSH control master exits with a non-zero
-                # return code after it receives a stop or exit control comman.
+                # return code after it receives a stop or exit control command.
                 if self.stop_requested:
                     logger.debug("Stop listening request received.")
                 else:
@@ -712,7 +711,7 @@ class Multiplexer:
         kwargs["env"] = self.git_env(kwargs.get("env"))
         # This method is documented in the API of GitPython.
         # pylint: disable-next=protected-access
-        (status, stdout, stderr) = repo.git._call_process(
+        status, stdout, stderr = repo.git._call_process(
             *command,
             as_process=False,
             with_extended_output=True,

@@ -15,13 +15,16 @@ from pathlib import Path, PurePath, PurePosixPath
 
 import util.general
 
-
 # ## Type annotations.
 
 PathLike = typing.TypeVar("PathLike", str, os.PathLike)
 
 
 # ## Operations on pure paths.
+
+
+def is_normal(path):
+    return all(not (part in [".", ".."]) for part in path.parts)
 
 
 def with_stem(path, stem):

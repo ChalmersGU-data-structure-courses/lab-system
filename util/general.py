@@ -4,6 +4,7 @@ import dataclasses
 import decimal
 import fcntl
 import functools
+import io
 import itertools
 import json
 import logging
@@ -499,12 +500,15 @@ def check_process(p):
     assert p.returncode == 0
 
 
-# Only implemented for linux.
-def pipe(min_size):
+def pipe():
     r, w = os.pipe()
+    return (os.fdopen(r), os.fdopen(w))
+
+
+def set_pipe_min_size(pipe_in: int, size: int):
+    """The optional argument min_size is only supported under Linux."""
     F_SETPIPE_SZ = 1031
-    fcntl.fcntl(r, F_SETPIPE_SZ, min_size)
-    return (r, w)
+    fcntl.fcntl(pipe_in, F_SETPIPE_SZ, size)
 
 
 def log_command(logger, cmd, working_dir=False):
@@ -1022,3 +1026,11 @@ def merge[X](iterables: Iterable[Iterable[X]], key=None) -> Iterable[X]:
             yield next(iterators[i])
         except StopIteration:
             break
+
+
+def discard(in_: io.IOBase, buffer_size=1024) -> None:
+    while True:
+        r = in_.read(buffer_size)
+        print(f"Discard result {r}...\n")
+        if len(r) == 0:
+            return

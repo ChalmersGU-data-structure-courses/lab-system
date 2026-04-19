@@ -3,10 +3,10 @@ import http.server
 import json
 import logging
 import shlex
-import ssl
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
+import util.http
 import util.openssl
 import util.path
 import util.print_parse
@@ -70,35 +70,12 @@ def server_manager(
         The argumented passed is the JSON-decoded body of the notification.
     * logger:
         Logger to use in the handler.
-
-    This method does not return.
     """
-    address = (netloc.host, netloc.port)
-
-    with util.path.temp_dir() as dir:
-        # Generate an SSL certificate.
-        # This is needed for GitLab to connect to our webhook listener.
-        # (Only HTTPS listener addresses are allowed, not HTTP.).
-        file_cert = dir / "cert.pem"
-        file_key = dir / "key.pem"
-        util.openssl.generate_cert(file_cert, file_key)
-
-        # Create the server.
-        with http.server.HTTPServer(address, Handler) as server:
-            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-            context.load_cert_chain(file_cert, file_key)
-            server.socket = context.wrap_socket(
-                server.socket,
-                server_side=True,
-                do_handshake_on_connect=False,
-            )
-
-            # Set the server attributes used by the handler.
-            server.secret_token = secret_token
-            server.callback = callback
-            server.logger = logger
-
-            yield server
+    with util.http.HTTPSServer(netloc, Handler) as server:
+        server.secret_token = secret_token
+        server.callback = callback
+        server.logger = logger
+        yield server
 
 
 class ParsingError(Exception):
