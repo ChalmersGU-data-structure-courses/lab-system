@@ -5,84 +5,31 @@ import abc
 import argparse
 import contextlib
 import http.server
-import io
 import logging
+import logging.handlers
 import select
 import socket
 import socketserver
 import sys
+import threading
 import tomllib
 from collections.abc import Generator
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path, PurePosixPath
 
-import watchdog.observers
-from watchdog.events import FileClosedEvent, FileMovedEvent
-
 import util.http
 import util.openssl
 import util.path
 import util.print_parse
+import util.sse
+import util.threading
 import util.url
-
-
-@contextlib.contextmanager
-def socket_timeout(s: socket.socket, timeout: float | None):
-    saved = s.gettimeout()
-    s.settimeout(timeout)
-    try:
-        yield
-    finally:
-        s.settimeout(saved)
-
-
-@contextlib.contextmanager
-def socket_blocking(s: socket.socket, blocking: bool):
-    yield from socket_timeout(s, None if blocking else 0)
+import util.watchdog
 
 
 def socket_remote(s: socket.socket) -> util.url.NetLoc:
     return util.url.NetLoc(*s.getpeername())
-
-
-class ContentHandler(abc.ABC):
-    @abc.abstractmethod
-    def handle(self, content: str) -> None: ...
-
-
-@contextlib.contextmanager
-def watch_file(
-    path: Path,
-    handler: ContentHandler,
-    trigger_initial: bool = False,
-) -> None:
-    def handle():
-        handler.handle(path.read_text())
-
-    class FileEventHandler(watchdog.events.FileSystemEventHandler):
-        def match(self, e) -> bool:
-            def conditions():
-                yield isinstance(e, FileClosedEvent) and Path(e.src_path) == path
-                yield isinstance(e, FileMovedEvent) and Path(e.dest_path) == path
-
-            return any(conditions())
-
-        def on_any_event(self, event):
-            if self.match(event):
-                handle()
-
-    if trigger_initial:
-        handle()
-
-    observer = watchdog.observers.Observer()
-    observer.schedule(FileEventHandler(), path.parent)
-    observer.start()
-    try:
-        yield
-    finally:
-        observer.stop()
-        observer.join()
 
 
 @dataclass
@@ -128,6 +75,8 @@ class PathMatcherTOML(PathMatcher):
 class Handler(http.server.BaseHTTPRequestHandler):
     wbufsize = 65536
 
+    result: PathMatcher
+
     @cached_property
     def log_prefix(self):
         return util.url.netloc_formatter.print(socket_remote(self.connection)) + ": "
@@ -144,15 +93,80 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def warning(self, message):
         return self.log(logging.WARNING, message)
 
+    def error(self, message):
+        return self.log(logging.ERROR, message)
+
+    @cached_property
+    def sse(self) -> util.sse.ServerSideEvents:
+        return util.sse.ServerSideEvents(self.wfile)
+
+    @cached_property
+    def event_any(self) -> threading.Event:
+        return threading.Event()
+
+    def set_event(self, event: threading.Event) -> None:
+        event.set()
+        self.event_any.set()
+
+    @cached_property
+    def event_close_requested(self) -> threading.Event:
+        return threading.Event()
+
+    @cached_property
+    def event_heartbeat_requested(self) -> threading.Event:
+        return threading.Event()
+
+    @cached_property
+    def event_file_changed(self) -> threading.Event:
+        return threading.Event()
+
     def handle(self):
         self.connection.settimeout(15)
         self.connection.do_handshake()
         super().handle()
 
+    def handle_event(self) -> bool:
+        """Returns True if termination is desired."""
+        if self.event_close_requested.is_set():
+            return True
+
+        if self.event_heartbeat_requested.is_set():
+            self.debug("write heartbeat")
+            self.event_heartbeat_requested.clear()
+            self.sse.write_heartbeat()
+
+        if self.event_file_changed.is_set():
+            self.debug("file changed")
+            self.event_file_changed.clear()
+            try:
+                data = self.result.path.read_bytes()
+            except OSError as e:
+                error_msg = str(e)
+                self.error(error_msg)
+                self.sse.write_message("error", error_msg.encode())
+                self.set_event(self.event_close_requested)
+            self.sse.write_message("update", data)
+
+        return False
+
+    def event_loop(self):
+        while True:
+            self.debug("waiting")
+            self.event_any.wait()
+            self.event_any.clear()
+            if self.handle_event():
+                return
+
     def do_GET(self):
         self.debug("open connection")
 
-        url: util.url.URL = util.url.url_formatter.parse(self.path)
+        try:
+            url: util.url.URL = util.url.url_formatter.parse(self.path)
+        except ValueError:
+            self.warning(f"malformed url {self.path}")
+            self.send_error(400, "URL malformed")
+            return
+
         if not util.path.is_normal(url.path):
             self.warning(f"malformed path {self.path}")
             self.send_error(400, "path malformed")
@@ -180,6 +194,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_error(403, "forbidden")
             return
 
+        if not result.path.parent.is_dir():
+            self.warning("parent directory does not exist")
+            self.send_error(404, "parent directory does not exist")
+            return
+
+        if initial and not result.path.is_file():
+            self.warning("file does not exist")
+            self.send_error(404, "file does not exist")
+            return
+
         self.connection.settimeout(None)
 
         self.send_response(200)
@@ -187,31 +211,54 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-cache")
         self.end_headers()
+        self.debug("sent headers")
 
-        @dataclass
-        class EchoHandler(ContentHandler):
-            wfile: io.BufferedIOBase
+        with contextlib.ExitStack() as stack:
+            stop_reading_r, stop_reading_w = util.general.pipe()
+            stack.enter_context(stop_reading_r)
+            stack.enter_context(stop_reading_w)
 
-            def handle(self, content):
-                for line in content.splitlines():
-                    self.wfile.write(b"data: ")
-                    self.wfile.write(line.encode())
-                    self.wfile.write(b"\n")
-                self.wfile.write(b"\n")
-                self.wfile.flush()
+            def reader():
+                try:
+                    while True:
+                        self.debug("selecting...")
+                        to_read = [self.connection, stop_reading_r]
+                        xs, _, _ = select.select(to_read, [], [])
+                        if xs:
+                            break
+                except OSError as e:
+                    self.warning(f"read error: {e}")
 
-        with watch_file(result.path, EchoHandler(self.wfile), trigger_initial=initial):
-            while True:
-                timeout = self.server.heartbeat
-                xs, _, _ = select.select([self.connection], [], [], timeout)
-                if xs:
-                    break
+                self.debug("requesting close")
+                self.set_event(self.event_close_requested)
 
-                self.wfile.write(b":heartbeat\n")
-                self.wfile.flush()
+            def managers():
+                thread = threading.Thread(target=reader)
+                yield util.threading.thread_manager(thread)
 
-        self.debug("close connection")
-        self.connection.close()
+                if self.server.heartbeat is not None:
+                    timer = util.threading.RepeatTimer(
+                        self.server.heartbeat,
+                        lambda: self.set_event(self.event_heartbeat_requested),
+                    )
+                    yield util.threading.timer_manager(timer)
+
+                yield util.watchdog.callback_on_file_changed_positive(
+                    result.path,
+                    lambda: self.set_event(self.event_file_changed),
+                )
+
+            try:
+                for manager in managers():
+                    stack.enter_context(manager)
+                self.event_loop()
+            # pylint: disable-next=broad-exception-caught
+            except Exception as e:
+                self.error(f"{e}")
+            finally:
+                self.debug("close connection")
+                self.connection.close()
+                stop_reading_w.close()
 
 
 class Server(util.http.HTTPSServer, socketserver.ThreadingMixIn):
@@ -322,7 +369,7 @@ def cli() -> int:
         if args.log:
             if args.log.is_dir():
                 yield logging.handlers.RotatingFileHandler(
-                    args.log_file / "log",
+                    args.log / "log",
                     maxBytes=1024 * 1024 * 8,
                     backupCount=16,
                 )
