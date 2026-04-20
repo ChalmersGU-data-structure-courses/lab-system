@@ -267,7 +267,7 @@ labs: list[tuple[LabId, LabConfig]] = [
         (30, 'status-update'): 'villevi',
         (33, 'status-update-1'): 'ezzah',
     }),
-    # lab_item(3, Path("plagiarism-detection"), True , True , False, 15),
+    lab_item(3, Path("plagiarism-detection"), True , True , False, 15),
     # lab_item(4, Path("path-finder"         ), True , True , True , 15),
     # fmt: on
 ]
