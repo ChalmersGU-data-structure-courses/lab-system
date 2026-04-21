@@ -255,7 +255,7 @@ def lab_item(
 labs: list[tuple[LabId, LabConfig]] = [
     # fmt: off
     #        id folder                        group  robo   grad.. refresh_minutes
-    lab_item(1, Path("binary-search"       ), False, True , True , 15),
+    lab_item(1, Path("binary-search"       ), False, True , True , 60),
     lab_item(2, Path("indexing"            ), True , True , False, 15, grader_overrides={
         ( 1, 'status-update'): 'ezzah',
         ( 8, 'status-update'): 'ezzah',
