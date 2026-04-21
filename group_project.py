@@ -1981,15 +1981,18 @@ class GroupProject[Variant]:
 
     def parse_hook_event_note(self, hook_event, _strict):
         attrs = hook_event["object_attributes"]
+        self.logger.info(attrs)
         if not attrs["noteable_type"] == "MergeRequest":
             return
 
         merge_request = hook_event["merge_request"]
+        self.logger.info(merge_request)
 
         variant = self.parse_grading_merge_request(
             merge_request["author_id"],
             merge_request["title"],
         )
+        self.logger.info(variant)
         if variant is None:
             return
 
@@ -2000,21 +2003,26 @@ class GroupProject[Variant]:
                 attrs["action"] == "create" and attrs["note"].startswith("!info ")
             ) or attrs["action"] == "update"
 
+        self.logger.info(list(checks()))
+
         if not all(checks()):
             return
 
         def process_info_change():
-            self.logger.debug("processing possible info change")
+            self.logger.info("processing possible info change")
             m = self.grading_via_merge_request[variant]
             m.discussions_clear()
-            if m.update_info():
+            r = m.update_info()
+            self.logger.info(f"info updated: {r}")
+            self.logger.info(m.info)
+            if r:
                 self.mark_dirty_and_process(non_meta=False)
 
         event = events.GroupProjectGradingMergeRequestEvent(
             variant,
             events.GradingMergeRequestNoteEvent,
         )
-        yield (event, process_info_change())
+        yield (event, process_info_change)
 
     def parse_hook_event(self, hook_event, strict=False):
         """

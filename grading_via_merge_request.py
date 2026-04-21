@@ -258,8 +258,14 @@ class GradingViaMergeRequest:
         return "discussions" in self.__dict__
 
     def discussions_clear(self):
-        with contextlib.suppress(AttributeError):
-            del self.discussions
+        for x in [
+            "discussions",
+            "discussion_notes_relevant",
+            "info_note",
+            "info",
+        ]:
+            with contextlib.suppress(AttributeError):
+                delattr(self, x)
 
     @functools.cached_property
     def discussions(self):
@@ -307,7 +313,7 @@ class GradingViaMergeRequest:
                     yield (note, content)
 
         try:
-            return next(infos())
+            return next(reversed(list(infos())))
         except StopIteration:
             return None
 
