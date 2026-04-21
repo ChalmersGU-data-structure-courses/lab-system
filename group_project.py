@@ -401,6 +401,17 @@ class RequestAndResponses:
         raise ValueError("no outcome")
 
     @property
+    def info(self) -> str | None:
+        """
+        Gets grader-written info message, if any.
+        Returns None unless grading via merge request.
+        """
+        if self.grading_merge_request is None:
+            return None
+
+        return self.grading_merge_request.info
+
+    @property
     def assignee_informal_name(self) -> str | None:
         """
         Get the informal name of the assigned grader, if any.
@@ -1448,6 +1459,7 @@ class GroupProject[Variant]:
             yield "tag_push"
             if self.lab.config.grading_via_merge_request:
                 yield "merge_requests"
+                yield "note"
 
         yield gitlab_.tools.HookSpec(
             project=self.project.lazy,
@@ -1967,6 +1979,43 @@ class GroupProject[Variant]:
                     process,
                 )
 
+    def parse_hook_event_note(self, hook_event, _strict):
+        attrs = hook_event["object_attributes"]
+        if not attrs["noteable_type"] == "MergeRequest":
+            return
+
+        merge_request = hook_event["merge_request"]
+
+        variant = self.parse_grading_merge_request(
+            merge_request["author_id"],
+            merge_request["title"],
+        )
+        if variant is None:
+            return
+
+        def checks():
+            yield not attrs["system"]
+            yield attrs["author_id"] in self.course.graders
+            yield (
+                attrs["action"] == "create" and attrs["note"].startswith("!info ")
+            ) or attrs["action"] == "update"
+
+        if not all(checks()):
+            return
+
+        def process_info_change():
+            self.logger.debug("processing possible info change")
+            m = self.grading_via_merge_request[variant]
+            m.discussions_clear()
+            if m.update_info():
+                self.mark_dirty_and_process(non_meta=False)
+
+        event = events.GroupProjectGradingMergeRequestEvent(
+            variant,
+            events.GradingMergeRequestNoteEvent,
+        )
+        yield (event, process_info_change())
+
     def parse_hook_event(self, hook_event, strict=False):
         """
         Arguments:
@@ -1991,6 +2040,10 @@ class GroupProject[Variant]:
                 yield (
                     (self.project.name, "merge_request"),
                     self.parse_hook_event_grading_merge_request,
+                )
+                yield (
+                    (self.project.name, "note"),
+                    self.parse_hook_event_note,
                 )
 
         handler = dict(handlers()).get((project_name, event_type))
