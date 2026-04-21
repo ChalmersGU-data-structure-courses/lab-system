@@ -149,3 +149,8 @@ class GradingMergeRequestAssigneeEvent(GradingMergeRequestEvent):
 @_dataclass_no_eq
 class GradingMergeRequestLabelEvent(GradingMergeRequestEvent):
     _key: ClassVar = util.ordering.DiscreteOrder(1)
+
+
+@_dataclass_no_eq
+class GradingMergeRequestNoteEvent(GradingMergeRequestEvent):
+    _key: ClassVar = util.ordering.DiscreteOrder(1)

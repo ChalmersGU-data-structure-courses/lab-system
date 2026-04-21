@@ -6,6 +6,7 @@ import logging
 import time
 from collections.abc import Generator
 from dataclasses import dataclass
+from typing import Any
 
 import gitlab
 import more_itertools
@@ -117,8 +118,6 @@ class GradingViaMergeRequest:
         ["⚠️**WARNING**⚠️ Grading label change by non-grader detected."]
     )
 
-    merge_request: gitlab.v4.objects.MergeRequest
-
     def __init__(self, setup_data, group, logger=logging.getLogger(__name__)):
         self.setup_data = setup_data
         self.group = group
@@ -127,6 +126,7 @@ class GradingViaMergeRequest:
         self.notes_suppress_cache_clear_counter = 0
         self.outcome_last_checked = NamedSentinel("not queried")
         self.assignee_last_checked = NamedSentinel("not queried")
+        self.info_last_checked = NamedSentinel("not queried")
         self.non_grader_change = False
 
     @property
@@ -199,7 +199,7 @@ class GradingViaMergeRequest:
         self.merge_request = self.project.mergerequests.create(merge_request_data)
 
     @functools.cached_property
-    def merge_request(self):
+    def merge_request(self) -> gitlab.v4.objects.MergeRequest:
         return self.group.list_grading_merge_requests().get(self.setup_data.variant)
 
     def merge_request_ensure(self):
@@ -218,6 +218,9 @@ class GradingViaMergeRequest:
 
     @property
     def assignee(self):
+        if self.merge_request is None:
+            return None
+
         user = self.merge_request.assignee
         if user is None or not user["id"] in self.course.graders:
             return None
@@ -249,6 +252,83 @@ class GradingViaMergeRequest:
         self.merge_request.assignee_ids = None
         self.merge_request.save()
         self.assignee_last_checked = None
+        return True
+
+    def discussions_cached(self):
+        return "discussions" in self.__dict__
+
+    def discussions_clear(self):
+        with contextlib.suppress(AttributeError):
+            del self.discussions
+
+    @functools.cached_property
+    def discussions(self):
+        if self.merge_request is None:
+            return None
+
+        return gitlab_.tools.list_all(self.merge_request.discussions, sort="asc")
+
+    def discussion_note_is_relevant(self, note: dict[str, Any]) -> bool:
+        return (
+            not note["internal"]
+            and note["author"]["id"] in self.course.graders
+            and note["body"].startswith("!")
+        )
+
+    @functools.cached_property
+    def discussion_notes_relevant(self):
+        if self.merge_request is None:
+            return None
+
+        def f():
+            for d in self.discussions:
+                # pylint: disable-next=protected-access
+                for n in d._attrs["notes"]:
+                    if self.discussion_note_is_relevant(n):
+                        yield n
+
+        def key(n):
+            return n["created_at"]
+
+        return sorted(f(), key=key)
+
+    @functools.cached_property
+    def info_note(self) -> tuple[dict[str, Any], str] | None:
+        if self.merge_request is None:
+            return None
+
+        def infos():
+            for note in self.discussion_notes_relevant:
+                try:
+                    content = util.general.remove_prefix(note["body"], "!info ")
+                except ValueError:
+                    continue
+                else:
+                    yield (note, content)
+
+        try:
+            return next(infos())
+        except StopIteration:
+            return None
+
+    @functools.cached_property
+    def info(self) -> str | None:
+        if self.info_note is None:
+            return None
+
+        _note, info = self.info_note
+        return info
+
+    def update_info(self) -> bool:
+        """Checks if there has been an info change since the last time this method was called."""
+        if self.merge_request is None:
+            return None
+
+        if self.info == self.info_last_checked:
+            return False
+
+        self.logger.info(f"Info updated: {self.info}")
+        self.info_last_checked = self.info
         return True
 
     @functools.cached_property
