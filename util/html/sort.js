@@ -10,11 +10,10 @@ function sort() {
   if (sort_column == null)
     return;
 
-  r = document.getElementsByClassName(sort_column)[0];
-  if (!r)
+  const th = document.getElementsByClassName(sort_column)[0];
+  if (!th)
     return;
 
-  const th = r[0];
   const tr = th.parentNode;
   const table = tr.parentNode.parentNode;
   const tbody = table.tBodies[0];
