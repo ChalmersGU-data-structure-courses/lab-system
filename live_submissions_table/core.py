@@ -154,12 +154,15 @@ class CallbackColumnValue(ColumnValue):
 class StandardColumnValue(ColumnValue):
     """A simple column value implementation using just a string-convertible value and a sort key."""
 
-    def __init__(self, value="", key=None):
+    def __init__(self, value=None, key=None):
         """
         Arguments:
         * value: A string-convertible value.
         * key: An optional sort key (defaulting to the given value).
         """
+        if value is None:
+            value = ""
+
         self.value = value
         self.key = key if key is not None else value
 
@@ -361,6 +364,20 @@ class MessageColumn(Column):
             default_to_commit_message=True,
         )
         return MessageColumn.Value(message)
+
+
+class InfoColumn(Column):
+    def sortable(self) -> bool:
+        return True
+
+    def format_header(self, cell):
+        with cell:
+            dominate.util.text("Info")
+
+    def cell(self, group_id):
+        group = self.lab.groups[group_id]
+        submission = group.submission_current(deadline=self.config.deadline)
+        return StandardColumnValue(submission.info)
 
 
 def float_left_and_right(cell, left, right):
@@ -637,6 +654,7 @@ def with_standard_columns(
 
         yield from columns.items()
         yield ("message", MessageColumn)
+        yield ("info", InfoColumn)
 
     return dict(f())
 
