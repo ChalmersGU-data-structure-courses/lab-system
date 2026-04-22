@@ -5,6 +5,7 @@ from pathlib import Path, PurePosixPath
 from typing import Callable
 
 import dominate
+import inflect
 
 import grading_sheet.config
 import handlers.java
@@ -16,6 +17,7 @@ import testers.general
 import testers.java
 import testers.podman
 import util.enum
+import util.general
 import util.print_parse
 import util.this_dir
 from lab_interfaces import (
@@ -128,6 +130,42 @@ def parse_request_type(request_name) -> RequestType:
         if name.startswith(request_type):
             return request_type
     raise ValueError(f"Cannot parse request type of {request_name}")
+
+
+def _format_count(n):
+    p = inflect.engine()
+
+    def f():
+        ord = p.number_to_words(p.ordinal(n + 1))
+        yield f"This is your {ord} robograding."
+        if n < 3:
+            pass
+        elif n < 5:
+            yield "You can feel that Robograder is starting to overheat."
+            if n < 4:
+                pass
+            else:
+                yield "Maybe you should slow down and think things through?"
+        elif n < 6:
+            yield 'You remember the advice of your old teacher: "understand what causes the error before trying to fix it.".'
+            yield "You feel guilty about resorting to Robograder once again."
+        elif n < 7:
+            yield "You are starting to feel nervous."
+            yield "Was it really necessary to invoke Robograder that often?"
+        elif n < 8:
+            yield "You feel a gaze from the sky."
+            yield "Are the gods displeased with your heavy use of Robograder?"
+        elif n < 9:
+            yield "Loud alarms ring from inside of Robograder after it prints your latest report."
+            yield "Run away before the guardian arrives!"
+            yield "You should probably not come back."
+        else:
+            yield "[insert scary message]"
+
+    return util.general.join_lines(f())
+
+
+handlers.general.RobogradingHandler.format_count = staticmethod(_format_count)
 
 
 def lab_item(
