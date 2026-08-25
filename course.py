@@ -469,20 +469,18 @@ class Course[LabId]:
         """
         return self.gitlab_users_cache.id_from_username.get(gitlab_username)
 
-    # HACK
     def rectify_gitlab_username_to_cid(self, gitlab_username):
-        return gitlab_username.removesuffix("1")
+        """
+        Since 2026-08-20, the GitLab username for a Chalmers ID is just the Chalmers ID.
+        There is a single exception: a professor from F2 who objected to the change.
+        """
+        if gitlab_username == "christian.forssen":
+            return "f2bcf"
+        return gitlab_username
 
-    # HACK
     def rectify_cid_to_gitlab_username(self, cid):
-        keys = self.gitlab_users_cache.id_from_username.keys()
-        weird = cid + "1"
-        if weird in keys:
-            return weird
-
-        if cid in keys:
-            return cid
-
+        if cid == "f2bcf":
+            return "christian.forssen"
         return cid
 
     def internal_chalmers_id_from_canvas_user_id(self, user_id: int) -> str:

@@ -39,7 +39,6 @@ from lab_interfaces import (
     VariantSpec,
 )
 
-
 # Delete this
 # -----------
 
@@ -220,12 +219,6 @@ course = CourseConfig(
     grading_spreadsheet=grading_sheet.config.ConfigExternal(spreadsheet=ACTION_MISSING),
     lab_id=lab_id,
     labs=dict(labs),
-    chalmers_id_to_gitlab_username_override=ACTION_EXAMPLE(
-        {
-            "peb": "peter.ljunglof",
-            "e9linda": "linda.erlenhov",
-        }
-    ),
     # ACTION: choose a unique port of the form 42??
     webhook_netloc_listen=util.url.NetLoc(port=ACTION_EXAMPLE(4253)),
 )
