@@ -14,7 +14,6 @@ from pathlib import Path
 from course import Course
 from lab_interfaces import CourseAuth
 
-
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 
@@ -30,8 +29,10 @@ print("Defined variables:")
 # c = Course(auth=auth, config=config, dir=Path("<course code>"))
 # print(f"  c: Course <{c.dir}>")
 
-# l = c.labs[1]
-# print(f"  l: Lab <{l.name}>")
+# for k, lab in c.labs.items():
+#     name = f"l{k}"
+#     locals()[name] = lab
+#     print(f"  {name}: Lab <{lab.name}>")
 
 # How to deploy a lab in the data structure course cluster:
 # 1. Make sure repository ~/labs is up to date.
