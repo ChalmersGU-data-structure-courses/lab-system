@@ -63,8 +63,8 @@ outcomes: OutcomesConfig[Outcome] = OutcomesConfig.from_enum_spec(Outcome)
 
 
 class Variant(util.enum.EnumSpec[VariantSpec]):
-    JAVA = VariantSpec(name="Java", branch="java")
     PYTHON = VariantSpec(name="Python", branch="python")
+    JAVA = VariantSpec(name="Java", branch="java")
 
 
 variants: VariantsConfig[Variant] = VariantsConfig.from_enum_spec(Variant)
