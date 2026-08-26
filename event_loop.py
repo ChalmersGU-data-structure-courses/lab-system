@@ -1,10 +1,8 @@
 import contextlib
-import dataclasses
 import datetime
 import faulthandler
 import logging
 import threading
-from typing import Optional
 
 import events
 import util.general
@@ -15,27 +13,6 @@ import util.threading
 import util.url
 import webhook_listener
 
-
-@dataclasses.dataclass
-class CanvasSyncConfig:
-    """Configuration for synchronizing teachers, students, and groups from Canvas to GitLab."""
-
-    labs_to_sync: tuple
-    """Tuple of lab ids to synchronize."""
-
-    sync_interval: Optional[datetime.timedelta]
-    """
-    How often to synchronize.
-    If not set, don't synchronize except potentially at the start.
-    """
-
-    start_with_sync: bool
-    """
-    Whether to start with a synchronization.
-    If false, the first synchronization occurs after sync_interval.
-    """
-
-
 logger = logging.getLogger(__name__)
 
 
@@ -43,7 +20,6 @@ def run(
     courses,
     enable_webhooks: bool = None,
     run_time: datetime.timedelta | None = None,
-    canvas_sync_config: CanvasSyncConfig | None = None,
 ):
     """
     Run the event loop.
@@ -65,9 +41,6 @@ def run(
     * run_time:
         If set, the event loop will exit after this period has elapsed.
         This is the only way for this function to return.
-    * canvas_sync_config:
-        Configuration for the mechanism synchronizing graders, students, and groups from Canvas to GitLab.
-        Set to None to disable.
     """
     # Resource management.
     exit_stack = contextlib.ExitStack()
@@ -169,25 +142,21 @@ def run(
             event_queue.add(
                 (
                     course.program_event(events.SyncFromCanvas()),
-                    lambda: course.sync_teachers_and_lab_projects(
-                        canvas_sync_config.labs_to_sync
-                    ),
+                    course.sync_teachers_and_lab_projects,
                 )
             )
 
-        if canvas_sync_config is not None:
-            for course in courses:
-                if canvas_sync_config.start_with_sync:
+        for course in courses:
+            config_canvas_sync = course.config.canvas_sync
+            if config_canvas_sync is not None:
+                if config_canvas_sync.at_start:
                     sync_from_canvas(course)
-                if canvas_sync_config.sync_interval is not None:
+                if config_canvas_sync.sync_period is not None:
                     course.sync_timer = util.threading.Timer(
-                        canvas_sync_config.sync_interval,
+                        config_canvas_sync.sync_period,
                         sync_from_canvas,
                         args=[course],
-                        name=(
-                            "course-sync-from-canvas-timer"
-                            f"<{course.config.gitlab_path}>"
-                        ),
+                        name=("course-canvas-sync-timer<{course.config.gitlab_path}>"),
                         repeat=True,
                     )
                     thread_managers.append(

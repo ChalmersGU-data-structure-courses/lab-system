@@ -14,7 +14,7 @@ import threading
 import traceback
 import types
 from pathlib import Path, PurePosixPath
-from typing import TYPE_CHECKING
+from typing import Generator, TYPE_CHECKING
 
 import atomicwrites
 import gitlab
@@ -933,14 +933,24 @@ class Course[LabId]:
     #         self.parse_issues, "grading template", parser, parsed_issues
     #     )
 
-    def sync_teachers_and_lab_projects(self, lab_ids):
+    @property
+    def labs_with_sync(self) -> Generator["module_lab.Lab"]:
+        if self.config.canvas_sync is not None:
+            for lab in self.labs.values():
+                if lab.config.canvas_sync:
+                    yield lab
+
+    def sync_teachers_and_lab_projects(self, lab_ids: Iterable[LabId] = None):
         """
         Update graders group and student lab membership on GitLab according to information on Canvas.
         Synchronizes only those labs whose ids are specified in the set self.config.labs_to_sync.
 
         Arguments:
-        * lab_ids: iterable of lab ids to synchronize.
+        * lab_ids: iterable of lab ids to synchronize (defaults to the labs configured to sync, if enabled).
         """
+        if lab_ids is None:
+            lab_ids = self.labs_with_sync
+
         self.logger.info("synchronizing teachers and students from Canvas to GitLab")
 
         # Update the user information.
