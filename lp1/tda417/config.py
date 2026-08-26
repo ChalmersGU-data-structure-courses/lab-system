@@ -38,16 +38,6 @@ from lab_interfaces import (
     VariantSpec,
 )
 
-# Delete this
-# -----------
-
-ACTION_MISSING = None
-
-
-def ACTION_EXAMPLE(_) -> None:
-    return None
-
-
 # Groups
 # ------
 
@@ -182,7 +172,7 @@ gitlab_path = PurePosixPath() / "courses" / "data-structures" / "lp1" / "2026"
 course: CourseConfig
 course = CourseConfig(
     canvas_domain="chalmers.instructure.com",
-    canvas_course_id=ACTION_EXAMPLE(12345),
+    canvas_course_id=40799,
     canvas_sync=CanvasSync(),
     gitlab_path=gitlab_path,
     gitlab_path_graders=gitlab_path / "graders",
