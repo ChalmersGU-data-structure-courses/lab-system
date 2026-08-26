@@ -141,7 +141,6 @@ def lab_item(
         variants=variants,
         request_handlers={"submission": submission_handler, "testing": testing_handler},
         refresh_period=datetime.timedelta(minutes=refresh_minutes),
-        canvas_assignment_name=f"{lab_id.name.print(id)}: {name_semantic}",
     )
     return (id, lab_config)
 
