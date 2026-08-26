@@ -2,6 +2,7 @@
 # PYTHON_ARGCOMPLETE_OK
 
 import argparse
+import dataclasses
 import os
 from pathlib import Path
 
@@ -326,7 +327,7 @@ else:
 
 def disable_canvas_sync():
     for c in courses.values():
-        c.config.canvas_sync = None
+        c.config = dataclasses.replace(c.config, canvas_sync=None)
 
 
 # Parse Canvas sync configuration.
