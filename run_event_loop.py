@@ -148,7 +148,7 @@ g = p.add_argument_group(title="Canvas sync")
 g.add_argument(
     "--disable-canvas-sync",
     action="store_true",
-    dest="disable_camvas_sync",
+    dest="disable_canvas_sync",
     help="""
 Disable the periodic user synchronization from Canvas.
 Overrides the course configuration option CourseConfig.canvas_sync.
