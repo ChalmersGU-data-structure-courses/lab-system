@@ -7,6 +7,7 @@
 #   - Instantiate template/lab-system.service as <course code>/lab-system.service.
 #   - Create a symlink to this in e.g. ~/.local/share/systemd/user.
 
+import importlib
 import logging
 from pathlib import Path
 
@@ -21,17 +22,21 @@ auth = CourseAuth.from_secrets(Path("secrets.toml"))
 
 
 # pylint: disable=wrong-import-position
-from lp1.config import course as config
+from lp1.dat525.config import course as config_dat525
+from lp1.tda417.config import course as config_tda417
 
 print("Defined variables:")
 
-c = Course(auth=auth, config=config, dir=Path("lp1"))
-print(f"  c: Course <{c.dir}>")
-
-for k, lab in c.labs.items():
-    name = f"l{k}"
-    locals()[name] = lab
-    print(f"  {name}: Lab <{lab.name}>")
+for course_code in ["tda417", "dat525"]:
+    course_path = Path("lp1") / course_code
+    config_module = importlib.import_module(f"lp1.{course_code}.config")
+    course = Course(auth=auth, config=config_module.course, dir=course_path)
+    locals()[course_code] = course
+    print(f"  {course_code}: Course <{course.dir}>")
+    for k, lab in course.labs.items():
+        name = f"{course_code}_{k}"
+        locals()[name] = lab
+        print(f"  {name}: Lab <{lab.name}>")
 
 # How to deploy a lab in the data structure course cluster:
 # 1. Make sure repository ~/labs is up to date.
