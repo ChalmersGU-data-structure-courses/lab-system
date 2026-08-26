@@ -165,17 +165,15 @@ labs: list[tuple[LabId, LabConfig]] = [
 # Course
 # ------
 
-gitlab_path = (
-    PurePosixPath() / "courses" / "data-structures" / "lp1" / "2026" / "dat525"
-)
+shared_path = PurePosixPath() / "courses" / "data-structures" / "lp1" / "2026"
 
 course: CourseConfig
 course = CourseConfig(
     canvas_domain="chalmers.instructure.com",
     canvas_course_id=41110,
     canvas_sync=CanvasSync(),
-    gitlab_path=gitlab_path,
-    gitlab_path_graders=gitlab_path / "graders",
+    gitlab_path=shared_path / "dat525",
+    gitlab_path_graders=shared_path / "graders",
     lab_id=lab_id,
     labs=dict(labs),
     webhook_netloc_listen=util.url.NetLoc(port=4211),
