@@ -139,6 +139,7 @@ def lab_item(
         canvas_sync=canvas_sync,
         outcomes=outcomes,
         variants=variants,
+        grading_via_merge_request=None,
         request_handlers={"submission": submission_handler, "testing": testing_handler},
         refresh_period=datetime.timedelta(minutes=refresh_minutes),
     )
