@@ -940,7 +940,7 @@ class Course[LabId]:
                 if lab.config.canvas_sync:
                     yield lab
 
-    def sync_teachers_and_lab_projects(self, lab_ids: Iterable[LabId] = None):
+    def sync_teachers_and_lab_projects(self, labs: Iterable["module_lab.Lab"] = None):
         """
         Update graders group and student lab membership on GitLab according to information on Canvas.
         Synchronizes only those labs whose ids are specified in the set self.config.labs_to_sync.
@@ -948,8 +948,8 @@ class Course[LabId]:
         Arguments:
         * lab_ids: iterable of lab ids to synchronize (defaults to the labs configured to sync, if enabled).
         """
-        if lab_ids is None:
-            lab_ids = self.labs_with_sync
+        if labs is None:
+            labs = self.labs_with_sync
 
         self.logger.info("synchronizing teachers and students from Canvas to GitLab")
 
@@ -964,8 +964,8 @@ class Course[LabId]:
 
         # Sync students.
         synced_group_sets = set()
-        for lab_id in lab_ids:
-            self.labs[lab_id].sync_projects_and_students_from_canvas(synced_group_sets)
+        for lab in labs:
+            lab.sync_projects_and_students_from_canvas(synced_group_sets)
 
     def setup(self):
         """Sets up all labs."""
