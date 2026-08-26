@@ -156,7 +156,7 @@ def lab_item(
 labs: list[tuple[LabId, LabConfig]] = [
     # fmt: off
     #        id folder                        group  robo   grad.. sync   refresh_minutes
-    lab_item(1, Path("binary-search"       ), False, True , True , False, 15),
+    lab_item(1, Path("binary-search"       ), False, True , True , True , 15),
     # lab_item(2, Path("indexing"            ), False, True , False, False, 15),
     # lab_item(3, Path("plagiarism-detection"), False, True , False, False, 15),
     # fmt: on
