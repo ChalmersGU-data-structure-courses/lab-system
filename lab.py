@@ -7,6 +7,7 @@ import functools
 import logging
 import os
 import shutil
+import time
 from pathlib import Path, PurePosixPath
 from typing import Any, ClassVar, Optional, TYPE_CHECKING
 
@@ -727,6 +728,8 @@ class Lab[LabId, GroupId, Variant]:
             if not id in ids_old:
                 self.group_create(id)
 
+        self.unprotect_main_branches_ensure()
+
     @functools.cached_property
     def repo(self):
         """
@@ -892,11 +895,34 @@ class Lab[LabId, GroupId, Variant]:
         for variant in self.config.variants.variants:
             gitlab_.tools.protect_branch(project, self.config.branch_problem(variant))
 
-    def unprotect_main_branches(self):
+    def unprotect_main_branches(self) -> bool:
+        """
+        Ordinarily, the protection status of branches in forked projects should be that of the parent project.
+        However, for 2-10% of cases, the main branch remains protected.
+        This bug is probably due to some race condition in GitLab.
+
+        To work around it, we provide this function.
+        It checks if any protected main branches remain and, if so, unprotects them.
+        The return value indicates if any changes were made.
+        """
+        changed = False
         for g in self.groups.values():
             with gitlab_.tools.exist_ok():
                 g.project.lazy.protectedbranches.delete("main")
+                changed = True
                 self.logger.info(f"WARNING: unprotected branch main for group {g.name}")
+        return changed
+
+    def unprotect_main_branches_ensure(self, max_repeats=3) -> bool:
+        """
+        Repeatedly invokes self.unprotect_main_branches().
+        Raises an exception if any protected branches remain.
+        """
+        for _ in range(max_repeats):
+            if not self.unprotect_main_branches():
+                return
+            time.sleep(1)
+        raise RuntimeError("repeatedly failed to unprotect the main branch")
 
     def create_group_projects(self, exist_ok=False):
         for group in self.groups_known():
