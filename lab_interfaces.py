@@ -727,6 +727,17 @@ class LabConfig[GroupId, Outcome, Variant]:
     If None, the lab is individual.
     """
 
+    canvas_sync: bool = False
+    """
+    Only used if Canvas syncing is configured in the course configuration.
+    WHether to synchronize student membership in projects for this lab from Canvas.
+    Uses the group set if configured.
+    Recommendations:
+    * Switch to true only once you confirm that the student lab repositories have been created correctly.
+    * Set to false for group labs once moving between lab groups should no longer be automatic for this lab.
+      For example, once a new lab comes out and a student moves between groups, you probably do not want this to affect older labs.
+    """
+
     repository: RepositoryConfig = RepositoryConfig()
     """Configuration of git repositories used for the lab."""
 
@@ -893,6 +904,27 @@ class SingleLabIdConfig(LabIdConfig[SingleLabId]):
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
+class CanvasSync:
+    """
+    Configuration of user synchronization from Canvas.
+    This synchronizes student membership in lab projects from Canvas for those labs havingLabConfig.canvas_sync set.
+    It also adds teachers and teaching assistants on Canvas to the course grader group (which must exist, see Course.graders_group.create).
+    """
+
+    sync_period: datetime.timedelta | None = datetime.timedelta(minutes=15)
+    """
+    Unfortunately, Canvas does not offer a webhook notification API.
+    Therefore, if set, we poll with the specified period.
+    """
+
+    at_start: bool = True
+    """
+    Whether to start with a Canvas sync.
+    If not set, waits for a whole sync period before the first sync (useful for quick restarts).
+    """
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
 class CourseConfig[LabId]:
     """
     Configuration of a course in the lab system.
@@ -922,6 +954,12 @@ class CourseConfig[LabId]:
     """
     The Canvas course identifier.
     Found in the URL when opening the Canvas course in the browser.
+    """
+
+    canvas_sync: CanvasSync | None = None
+    """
+    Synchronization of users from Canvas.
+    See CanvasSync.
     """
 
     canvas_grading_path: PurePosixPath | None = None
@@ -1092,9 +1130,9 @@ class CourseAuth:
             secrets = tomllib.load(file)
 
         def args():
-            canvas = secrets.get("canvas")
-            if canvas:
-                yield ("canvas_auth_token", canvas["auth_token"])
+            canvas_ = secrets.get("canvas")
+            if canvas_:
+                yield ("canvas_auth_token", canvas_["auth_token"])
 
             gitlab = secrets.get("gitlab")
             if gitlab:

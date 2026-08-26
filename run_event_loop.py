@@ -128,7 +128,8 @@ g.add_argument(
 # The port defaults to the value for --port.
 # ---
 # This option is useful if you are behind network address translation (NAT).
-# In that case, you can specify a public network location on some server you have access to and use SSH port forwarding to forward connections to the specified network location to the computer running this program.
+# In that case, you can specify a public network location on some server you have access to.
+# Then use SSH port forwarding to forward connections to the specified network location to the computer running this program.
 # For example, you may specify `--netloc <public address>:<public port>` and run `ssh -R *:<public port>:localhost:4200 <user>@<public address>`.
 # ---
 # This option is also useful if you have a dynamic IP that changes frequently and no fixed domain name that resolves to it.
@@ -145,38 +146,12 @@ g.add_argument(
 g = p.add_argument_group(title="Canvas sync")
 
 g.add_argument(
-    "-s",
-    "--sync-from-canvas",
-    action="append",
-    default=[],
-    metavar="LAB_ID",
-    dest="sync_from_canvas",
-    help="""
-Specify a lab id for which project membership should be synced from Canvas.
-Only has an effect with --start-with-sync and/or --sync-period.
-""",
-).completer = complete_nothing
-
-g.add_argument(
-    "--start-with-sync",
+    "--disable-canvas-sync",
     action="store_true",
-    dest="start_with_sync",
+    dest="disable_camvas_sync",
     help="""
-Synchronize user information from Canvas at the start of the event loop.
-Teachers and teaching assistants on Canvas will be added or invited the course grader group.
-Students will be added or invited to the lab(s) specified by --sync-from-canvas.
-""",
-).completer = complete_nothing
-
-g.add_argument(
-    "--sync-period",
-    type=int,
-    metavar="SECONDS",
-    dest="sync_period",
-    help="""
-Synchronize user information from Canvas after every interval of this many seconds.
-Teachers and teaching assistants on Canvas will be added or invited the course grader group.
-Students will be added or invited to the lab(s) specified by --sync-from-canvas.
+Disable the periodic user synchronization from Canvas.
+Overrides the course configuration option CourseConfig.canvas_sync.
 """,
 ).completer = complete_nothing
 
@@ -348,21 +323,15 @@ if args.disable_webhooks:
 else:
     logger.debug("Webhooks are enabled.")
 
+
+def disable_canvas_sync():
+    for c in courses.values():
+        c.config.canvas_sync = None
+
+
 # Parse Canvas sync configuration.
-if not args.start_with_sync and args.sync_period is None:
-    canvas_sync_config = None
-else:
-    # We assume all courses share the same labs.
-    # TODO: if we want to continue supporting multiple courses in this script, find way of passing lab-specific config.
-    canvas_sync_config = event_loop.CanvasSyncConfig(
-        labs_to_sync=tuple(map(course_.config.lab_id.id.parse, args.sync_from_canvas)),
-        sync_interval=(
-            None
-            if args.sync_period is None
-            else datetime.timedelta(seconds=args.sync_period)
-        ),
-        start_with_sync=bool(args.start_with_sync),
-    )
+if args.disable_canvas_sync:
+    disable_canvas_sync()
 
 
 def create_webhooks():
@@ -388,7 +357,6 @@ def run():
             run_time=util.general.with_default(
                 lambda x: datetime.timedelta(hours=x), args.run_time
             ),
-            canvas_sync_config=canvas_sync_config,
         )
 
 

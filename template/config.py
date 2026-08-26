@@ -26,6 +26,7 @@ import util.enum
 import util.print_parse
 import util.this_dir
 from lab_interfaces import (
+    CanvasSync,
     CourseConfig,
     DefaultLabId,
     DefaultOutcome,
@@ -121,6 +122,7 @@ def ACTION_EXAMPLE_lab_item(
     group: bool,
     robo: bool,
     grader_instead_of_tester: bool,
+    canvas_sync: bool,
     refresh_minutes: int,
 ) -> tuple[LabId, LabConfig]:
     def submission_handler(v: Variant) -> type[handlers.general.SubmissionHandler]:
@@ -177,6 +179,7 @@ def ACTION_EXAMPLE_lab_item(
         path_source=path,
         name_semantic=name_semantic,
         group_set=group_set if group else None,
+        canvas_sync=canvas_sync,
         outcomes=outcomes,
         variants=variants,
         has_solution=True,
@@ -187,13 +190,20 @@ def ACTION_EXAMPLE_lab_item(
     return (id, lab_config)
 
 
+# ACTION for each lab, once ready to be published:
+# * Make sure the lab sources are ready in the folder specified below.
+# * Cncomment the lab below.
+# * Run `course.lab[k].deploy_via_lab_sources_and_canvas()` (e.g., using `python -i prelude.py`).
+# * Check if the primary project on GitLab looks good.
+# * Set the canvas_sync argument for this lab and clear it for any previous group labs.
+# * Restart the lab system service.
 labs: list[tuple[LabId, LabConfig]] = [
     # fmt: off
-    #                       id folder                        group  robo   grad.. refresh_minutes
-    ACTION_EXAMPLE_lab_item(1, Path("binary-search"       ), False, True , True , 15),
-    ACTION_EXAMPLE_lab_item(2, Path("indexing"            ), False, True , False, 15),
-    ACTION_EXAMPLE_lab_item(3, Path("plagiarism-detection"), False, True , False, 15),
-    ACTION_EXAMPLE_lab_item(4, Path("path-finder"         ), False, True , True , 15),
+    #                       id folder                        group  robo   grad.. sync   refresh_minutes
+    ACTION_EXAMPLE_lab_item(1, Path("binary-search"       ), False, True , True , False, 15),
+    ACTION_EXAMPLE_lab_item(2, Path("indexing"            ), False, True , False, False, 15),
+    ACTION_EXAMPLE_lab_item(3, Path("plagiarism-detection"), False, True , False, False, 15),
+    ACTION_EXAMPLE_lab_item(4, Path("path-finder"         ), False, True , True , False, 15),
     # fmt: on
 ]
 
@@ -213,6 +223,7 @@ course: CourseConfig
 course = CourseConfig(
     canvas_domain=ACTION_EXAMPLE("chalmers.instructure.com"),
     canvas_course_id=ACTION_EXAMPLE(12345),
+    canvas_sync=CanvasSync(),
     canvas_grading_path=PurePosixPath() / "lab-grading",  # ACTION: create on Canvas
     gitlab_path=gitlab_path,
     gitlab_path_graders=gitlab_path / "graders",
