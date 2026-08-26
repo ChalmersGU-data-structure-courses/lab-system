@@ -128,7 +128,7 @@ def lab_item(
 
     # Stub submission handler that matches nothing.
     submission_handler = handlers.general.SubmissionHandlerStub()
-    submission_handler = RegexRequestMatcher([], ".^")
+    submission_handler.request_matcher = RegexRequestMatcher([], ".^")
 
     path = util.this_dir.this_dir.parent / "labs" / "labs" / folder
     name_semantic = (path / "name").read_text().strip()
