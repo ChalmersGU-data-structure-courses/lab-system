@@ -907,7 +907,7 @@ class SingleLabIdConfig(LabIdConfig[SingleLabId]):
 class CanvasSync:
     """
     Configuration of user synchronization from Canvas.
-    This synchronizes student membership in lab projects from Canvas for those labs havingLabConfig.canvas_sync set.
+    This synchronizes student membership in lab projects from Canvas for those labs having LabConfig.canvas_sync set.
     It also adds teachers and teaching assistants on Canvas to the course grader group (which must exist, see Course.graders_group.create).
     """
 
