@@ -167,7 +167,9 @@ labs: list[tuple[LabId, LabConfig]] = [
 # Course
 # ------
 
-gitlab_path = PurePosixPath() / "courses" / "data-structures" / "lp1" / "2026"
+gitlab_path = (
+    PurePosixPath() / "courses" / "data-structures" / "lp1" / "2026" / "tda417"
+)
 
 course: CourseConfig
 course = CourseConfig(
