@@ -934,7 +934,7 @@ class Course[LabId]:
     #     )
 
     @property
-    def labs_with_sync(self) -> Generator["module_lab.Lab"]:
+    def labs_with_sync(self) -> Generator["module_lab.Lab", None, None]:
         if self.config.canvas_sync is not None:
             for lab in self.labs.values():
                 if lab.config.canvas_sync:
