@@ -142,6 +142,7 @@ def lab_item(
         grading_via_merge_request=None,
         request_handlers={"submission": submission_handler, "testing": testing_handler},
         refresh_period=datetime.timedelta(minutes=refresh_minutes),
+        has_solution=True,
     )
     return (id, lab_config)
 
@@ -157,9 +158,9 @@ labs: list[tuple[LabId, LabConfig]] = [
     # fmt: off
     #        id folder                        group  robo   grad.. sync   refresh_minutes
     lab_item(1, Path("binary-search"       ), False, True , True , True , 15),
-    # lab_item(2, Path("indexing"            ), False, True , False, False, 15),
-    # lab_item(3, Path("plagiarism-detection"), False, True , False, False, 15),
-    # lab_item(4, Path("path-finder"         ), False, True , True , False, 15),
+    lab_item(2, Path("indexing"            ), True , True , False, True , 15),
+    # lab_item(3, Path("plagiarism-detection"), True , True , False, False, 15),
+    # lab_item(4, Path("path-finder"         ), True , True , True , False, 15),
     # fmt: on
 ]
 
