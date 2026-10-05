@@ -22,12 +22,17 @@ auth = CourseAuth.from_secrets(Path("secrets.toml"))
 
 # ACION: instantiate and uncomment below statements for concrete instance.
 # pylint: disable=wrong-import-position
-# from <course code>.config import course as config
+from dat516.config import course as config
 
 print("Defined variables:")
 
-# c = Course(auth=auth, config=config, dir=Path("<course code>"))
-# print(f"  c: Course <{c.dir}>")
+c = Course(auth=auth, config=config, dir=Path("dat516"))
+print(f"  c: Course <{c.dir}>")
+
+(lab1, lab2, lab3) = c.labs.values()
+print(f"  lab1: {lab1}")
+print(f"  lab2: {lab2}")
+print(f"  lab3: {lab3}")
 
 # for k, lab in c.labs.items():
 #     name = f"l{k}"
