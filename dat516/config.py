@@ -91,6 +91,7 @@ def lab_item(
         request_handlers={"submission": handlers.general.SubmissionHandlerStub()},
         refresh_period=datetime.timedelta(minutes=refresh_minutes),
         canvas_assignment_name=f"{lab_id.name.print(id)}: {name}",
+        canvas_sync=True,
     )
     return (id, lab_config)
 
