@@ -34,6 +34,7 @@ from lab_interfaces import (
     LabConfig,
     LabIdConfig,
     OutcomesConfig,
+    StandardVariant,
     VariantsConfig,
     VariantSpec,
 )
@@ -124,7 +125,7 @@ gitlab_path = (
 
 course: CourseConfig
 course = CourseConfig(
-    canvas_domain=ACTION_EXAMPLE("canvas.chalmers.se"),
+    canvas_domain="canvas.chalmers.se",
     canvas_course_id=41383,
     canvas_sync=CanvasSync(),
     canvas_grading_path=PurePosixPath() / "lab-system",
