@@ -13,7 +13,7 @@ ExecStart=%h/lab-system/run_event_loop.py \
   --verbose \
   --dir lp2 \
   --sync-from-canvas 1 \
-  --sync-from-canvas 2 \
+  --sync-from-canvas 4 \
   --start-with-sync \
   --sync-period 900 \
   --error-spreadsheet 1Mx2K4Tl3hgw7cww0cKHFoAP-tNNdXPF2LlhTWa35KeA \

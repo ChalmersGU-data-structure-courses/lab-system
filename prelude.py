@@ -36,6 +36,12 @@ print(f"  l1: Lab <{l1.name}>")
 l2 = c.labs[2]
 print(f"  l2: Lab <{l2.name}>")
 
+l3 = c.labs[3]
+print(f"  l3; Kab <{l3.name}>")
+
+l4 = c.labs[4]
+print(f"  l4; Kab <{l4.name}>")
+
 # How to deploy a lab in the data structure course cluster:
 # 1. Make sure repository ~/labs is up to date.
 # 2. Run `make problem solution robotester-python` in the labs repository.
