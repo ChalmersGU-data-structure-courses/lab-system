@@ -336,20 +336,81 @@ Personal configuration (as opposed to simply course-specific configuration) such
 We have filled out the access key options above.
 Fill out the remaining options according to their documentation.
 
-## Performing tasks
+## Performing tasks using the interactive Python shell
 
-We describe here common workflows occuring throughout a course.
-We will do so at the level of an interactive Python environment (*Python shell*).
+We describe here common workflows occuring throughout a course, including the initial setup.
+We do so at the level of an interactive Python environment (*Python shell*).
+I recommend having a basic Python module `prelude.py` that:
+* sets up logging,
+* loads your course configuration,
+* creates a course object,
+* exposes course and lab objects as variables.
 
-There is a Python module `prelude.py` for a general-purpose interactive Python script that loads the course and labs instances and exposes them as variables.
-To use it, you have to fill in the `ACTION` points.
-My usual workflow is load it interactively via
+You can then load the module interactively via
 ```
 python -i prelude.py
 ```
-and then perform the needed tasks by calling some methods of the exposed course and lab variables.
-Most of these methods are documented by docstring in `course.py` and `lab.py`.
-You can access this documentation in the Python shell, for example `help(c.add_teachers_to_gitlab)`.
+and use it to perform the needed tasks by calling some methods of the exposed course and lab variables.
+
+In fact, there such a Pythom file in the repository.
+You just have to fill in the `ACTION` points to use it.
+Here is what it does.
+
+### Logging
+
+The `Course` and `Lab` classes support logging.
+You may pass a customized logger as constructor arguments, otherwise a default logger is used.
+
+To globally setup logging via standard error, we do the following:
+```python
+import logging
+logging.basicConfig()
+logging.getLogger().setLevel(logging.INFO)
+```
+Use log level `logging.DEBUG` for more detailed log messages.
+Use `logging.WARNING` if you only want to see messages for unexpected events.
+
+### Load course configuration
+
+We assume that you have defined a course configuration object `config` (of type `lab_interfaces.CourseConfig`) as described under [Configuration](#configuration).
+We suppose it lives in some module `<course-code>/config.py` that we can easily import it:
+```python
+from <course-code>/config.py import config
+```
+
+### Create course object
+
+We create a course object using the course configuration:
+```python
+from course import Course
+course = Course(config, dir = `<course-code>`)
+```
+The argument `dir` is a local directory used by some course operations to store data locally.
+For example, each local git repository used by a Lab instance to manage remote repositories on GitLab Chalmers will be created as a subdirectory named according to their full id.
+The dictionary `course.lab` allows you to access Lab instances by their id, for example `course.lab[3]` for the lab with id 3.
+
+The prelude calls the course variable `c` for brevity.
+It also defines abbreviations `l<id> = c.lab[id]`, for example `l2` for `c.lab[2]`.
+
+### Getting help
+
+Most of the classes and methods of lab system are documented using docstrings in `course.py` and `lab.py` and `group_project.py`.
+This includes all of the methods discussed below.
+You can access this documentation in the Python shell using `help`, for example:
+* `help(course)` for the course class,
+* `help(course.lab[2])`for the lab class,
+* `help(course.add_teachers_to_gitlab)` for a particular function.
+
+This will usually give you a full explanation of the the parameters.
+
+### Autocompletion
+
+The Python shell supports autocompletion.
+Beware that the course and lab classes make use of cached properties that can be expensive to compute.
+Because of this, it may appear that the autocompletion hangs.
+It is always safe to cancel using Control-C.
+
+### Repetitive workflows
 
 If a particular workflow needs to executed repeatedly, it can be time-saving to save it as a Python script, for example `do_this_and_that.py`.
 You can execute it using `python3 do_this_and_that.py`.
@@ -361,81 +422,31 @@ If you give it a header
 and executable permission, you may execute directly, e.g. `./do_this_and_that.py` in a shell.
 You can also execute it in interactive mode using `python3 -i do_this_and_that.py`.
 
-The classes relevant to our workflows are `Course` defined in `course.py` and `Lab` defined in `lab.py`.
-You must import these modules before you can use these classes, e.g.
-```
-from course import Course
-```
-
-All functions of `Course` and `Lab` objects discussed below come with their own documentation.
-This is the so-called docstring of the respective method in `course.py` and `lab.py`.
-You may look it up to for example get a full explanation of possible parameters.
-
-### Logging
-
-The `Course` and `Lab` classes support logging.
-You may pass a customized logger as constructor arguments, otherwise a default logger is used.
-
-To globally setup logging via standard error, we do the following:
-```
-import logging
-logging.basicConfig()
-logging.getLogger().setLevel(logging.INFO)
-
-```
-Use log level `logging.DEBUG` for more detailed log messages.
-Use `logging.WARNING` if you only want to see messages for unexpected events.
-
-### Basic setup
-
-We initialize the course object by passing it a course configuration module derived from `gitlab_config.py.template` as described under Configuration.
-We may also pass it a local directory used by some course operations to store data locally.
-For example, each local git repository used by a Lab instance to manage remote repositories on GitLab Chalmers will be created as a subdirectory named according to their full id.
-An example is:
-```
-import <your course config> as config
-course = Course(config, dir = <local course directory>)
-```
-The dictionary `course.lab` allows you to access Lab instances according to their id, for example `course.lab[3]` for the lab with id 3.
-
-In summary, a basic setup may look like this:
-```
-import logging
-logging.basicConfig()
-logging.getLogger().setLevel(logging.INFO)
-
-from course import Course
-import <your course config> as config
-course = Course(config, dir = <local course directory>)
-
-```
-You may wish to save this as a Python file `<my course>.py`.
-To operate on the course in the future, you can then start an interpreter with `python -i <my course>.py` with the object `course` preloaded.
-
-The Python interpreter supports autocompletion.
-To get help on (e.g., course or lab) function `f`, run `help(f)`.
+## Basic setup
 
 ### Adding graders on GitLab
 
-To add or invite teachers from Canvas to the GitLab graders group, run:
-```
+The lab system automatically adds or invites teachers to the GitLab graders group every time it syncs with Canvas.
+In this context, every examiner, teacher, and teaching assistant on Canvas counts as a teacher.
+If you have not already created this group, you can do so using `course.graders_group.create()`.
+Remember to add it as a group member with the desired permissions to your course hierarchy on Chalmers GitLab.
+
+You can also manually add or invite teachers:
+```python
 course.add_teachers_to_gitlab()
 ```
-Every examiner, teacher, and teaching assistant on Canvas counts as a teacher in this context.
-You can run this method repeatedly to add teachers who arrive on Canvas later.
-The lab system now calls this method automatically when it syncs with Canvas.
 
 ### Creating labs on GitLab
 
 Suppose we want to create on GitLab the lab with id 3.
 Let us select this lab as a variable:
-```
+```python
 lab = course.labs[3]
 ```
 
 Let us first assume that you are deploying a lab with default locations for problems and solutions.
 In that case, you can deploy it to GitLab using the following all-in-one method:
-```
+```python
 lab.deploy_via_lab_sources_and_canvas()
 ```
 
@@ -446,12 +457,12 @@ If you mess up, you can freshen the plate using `lab.remove(force=True)`.
 ---
 
 We start by running:
-```
+```python
 lab.gitlab_group.create()
 ```
 This will create the group for the lab.
 Next, we run:
-```
+```python
 lab.primary_project.create()
 lab.collection_project.create()
 ```
@@ -462,14 +473,14 @@ You can clone it from GitLab and push the problem branch (or branches).
 Set the main branch to the default problem branch and make it the default branch.
 
 To automate this, you can use:
-```
+```python
 lab.primary_project_problem_branch_create(<path to sources>, 'Initial version.')
 ```
 The second argument will be used as commit message.
 
 For multiple problem branches, use `lab.primary_project_problem_branches_create`.
 For example:
-```
+```python
 lab.primary_project_problem_branches_create({
   'java': (<path to sources>, 'Initial Java version.'),
   'python': (<path to sources>, 'Initial Python version.'),
@@ -479,7 +490,7 @@ lab.primary_project_problem_branches_create({
 The lab system will in any case attempt to fix problems with protected branches in forked student projects.
 Infrequently, this goes wrong because of some unknown GitLab bug triggered by a race between forking and project configuration.
 This can be fixed by calling
-```
+```python
 lab.configure_student_project(project)
 ```
 or manually fixing the protected status.
@@ -488,7 +499,7 @@ Double-check that the official project has the correct content.
 The student projects will be derived from it.
 
 Initialize the local collection repository using
-```
+```python
 lab.repo_init()
 ```
 This pulls from the official project.
@@ -496,12 +507,12 @@ You may add an argument `bare = True` to make it a so-called bare git repository
 This is useful for automated task that don't need a repository with an actual working directory.
 
 If you have official solutions, You may now want ask the to create the solutions project:
-```
+```python
 lab.create_group('solution')
 ```
 and upload the official solutions as tags.
 You can do all of that in one step using:
-```
+```python
 lab.solution_create_and_populate()
 ```
 If your solutions are in non-standard locations, you can use `lab.group['solution'].upload_solution`.
@@ -510,7 +521,7 @@ If your solutions are in non-standard locations, you can use `lab.group['solutio
 
 Suppose you have configured the group set for a lab (or designated it as an individual lab).
 Then you may create the corresponding student projects on GitLab by calling:
-```
+```python
 lab.groups_create_desired()
 ```
 You can call this method repeatedly.
@@ -518,7 +529,7 @@ Unless you use non-default arguments, it will ignore existing groups.
 
 Suppose now that students have signed up for groups or were divided into them by teachers (or the lab is individual).
 Then you can add or invite students (depending on whether we recognize an account on Chalmers GitLab for them) as follows:
-```
+```python
 lab.sync_students_to_gitlab()
 ```
 You may wish to call this command repeatedly over the beginning part of your course.
@@ -529,11 +540,11 @@ If students have changed group membership after the last invocation, they will b
 If you notice in mistake in the lab problem, but students may have already begun working on it, you can perform a *hotfix*.
 Push fix commits to the problem branches in the primary project as desired.
 Make sure the local repository is up to date by calling:
-```
+```python
 lab.repo_fetch()
 ```
 Then hotfix the student projects using
-```
+```python
 lab.update_groups_problem()
 lab.merge_groups_problem_into_main()
 ```

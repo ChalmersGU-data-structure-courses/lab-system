@@ -10,29 +10,25 @@
 import logging
 from pathlib import Path
 
-# pylint: disable=unused-import
 from course import Course
 from lab_interfaces import CourseAuth
+
+# ACION: load course config.
+# from <course code>.config import course as config
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 
 auth = CourseAuth.from_secrets(Path("secrets.toml"))
 
-
-# ACION: instantiate and uncomment below statements for concrete instance.
-# pylint: disable=wrong-import-position
-# from <course code>.config import course as config
+c = Course(auth=auth, config=config, dir=Path("<course code>"))
 
 print("Defined variables:")
-
-# c = Course(auth=auth, config=config, dir=Path("<course code>"))
-# print(f"  c: Course <{c.dir}>")
-
-# for k, lab in c.labs.items():
-#     name = f"l{k}"
-#     locals()[name] = lab
-#     print(f"  {name}: Lab <{lab.name}>")
+print(f"  c: Course <{c.dir}>")
+for k, lab in c.labs.items():
+    name = f"l{k}"
+    locals()[name] = lab
+    print(f"  {name}: Lab <{lab.name}>")
 
 # How to deploy a lab in the data structure course cluster:
 # 1. Make sure repository ~/labs is up to date.
