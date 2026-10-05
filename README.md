@@ -319,25 +319,39 @@ Its output is made available to the student group via a new issue in the Chalmer
 
 ## Configuration
 
-The lab scripts take as argument a configuration module.
-A template for this module can be found in `gitlab_config.py.template`.
-It includes documentation for each configuration parameter in the form of comments.
-You should be able to follow these explanations after having read this document.
-
+The core classes of the lab system are configured using configuration dataclasses (`CourseConfig`, `LabConfig`, ...) defined and documented in `lab_interfaces.py`.
+This is the source of truth for all available features (this readme only describes some of them).
+You should be able to follow their documentation after having read this document.
 Most options have default values that are generally suitable.
-Fill in and/or change them according to your needs.
-Note that this is a Python file, so you may use logic to dynamically generate configuration values.
 
-By default, personal configuration (as opposed to simply course-specific configuration) such as access keys and local directories is imported from the separate module `gitlab_config_personal.py`.
+For running the lab system, you will need a course directory containing a configuration module `config.py` that defines a variable `course` of type `CourseConfig`.
+Since this is a Python file, you may use your own logic to dynamically generate configuration values.
+A template for this configuration file can be found in `template/config.py`.
+
+I recommend adding your configuration module to version control under a branch for your instance.
+You can for example a subdirectory `<course-code>` of this repository and then track the configuration module `<course-code>/config.py`.
+This also makes it easy to load the configuration module in interactive Python scripts such as `prelude.py` for performing maintenance tasks.
+
+Personal configuration (as opposed to simply course-specific configuration) such as access keys and local directories is loaded from `secrets.toml`.
 We have filled out the access key options above.
 Fill out the remaining options according to their documentation.
 
 ## Performing tasks
 
 We describe here common workflows occuring throughout a course.
-We will do so at the level of an interactive Python environment.
+We will do so at the level of an interactive Python environment (*Python shell*).
 
-If a particular workflow needs to executed repeatedly, it can be time-saving to save it as a Python file, for example `do_this_and_that.py`.
+There is a Python module `prelude.py` for a general-purpose interactive Python script that loads the course and labs instances and exposes them as variables.
+To use it, you have to fill in the `ACTION` points.
+My usual workflow is load it interactively via
+```
+python -i prelude.py
+```
+and then perform the needed tasks by calling some methods of the exposed course and lab variables.
+Most of these methods are documented by docstring in `course.py` and `lab.py`.
+You can access this documentation in the Python shell, for example `help(c.add_teachers_to_gitlab)`.
+
+If a particular workflow needs to executed repeatedly, it can be time-saving to save it as a Python script, for example `do_this_and_that.py`.
 You can execute it using `python3 do_this_and_that.py`.
 (If `python` defaults to version 3 on your system, you may also write `python` instead of `python3`.)
 If you give it a header
