@@ -9,7 +9,6 @@ import robograder_java
 import submission_java
 import util.path
 
-
 dir_executable = Path(sys.argv[0]).parent
 
 p = argparse.ArgumentParser(
@@ -44,6 +43,16 @@ p.add_argument(
     help=f"""
 Compile the robograder before executing.
 For convenience, this also compiles the robograding library in {util.path.format_path(robograder_java.dir_lib)}.
+""",
+)
+p.add_argument(
+    "--use-security-manager",
+    action="store_true",
+    help=f"""
+Whether to use the Java Security Manager.
+This was the perfect mechanism to limit permissions when running student code.
+Unfortunately, it was deprecated after Java 17 (which is a LTS release supported until 2029).
+Versions after at least OpenJDK Java 26 raise an error when this option is enabled.
 """,
 )
 p.add_argument(
@@ -139,7 +148,6 @@ args = p.parse_args()
 # pylint: disable-next=wrong-import-order,wrong-import-position
 import logging
 
-
 logging_level = {
     0: logging.WARNING,
     1: logging.INFO,
@@ -166,6 +174,9 @@ def params():
         f"Problem directory (relative to lab directory): {util.path.format_path(args.problem)}"
     )
     yield ("dir_problem", args.problem)
+
+    logger.debug(f"Use Security Manager: {args.use_security_manager}")
+    yield ("use_security_manager", args.use_security_manager)
 
     logger.debug(f"Machine speed: {args.machine_speed}")
     yield ("machine_speed", args.machine_speed)
