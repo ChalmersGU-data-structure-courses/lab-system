@@ -586,7 +586,7 @@ class Regex(RegexNoncanonical):
             formatter = util.re.RegexFormatter(capturing=capturing)
             return formatter.format(holed_string, *regexes, **regexes_keyed)
 
-        super().__init__(holed_string, format(True), format(False))
+        super().__init__(holed_string, format(True), format(False), **kwargs)
 
 
 class RegexSmart(RegexComposition):
