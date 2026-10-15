@@ -12,7 +12,6 @@ import util.markdown
 import util.path
 from util.this_dir import this_dir
 
-
 logger = logging.getLogger(__name__)
 
 # ## Exceptions and function for running a robograder.
@@ -62,6 +61,7 @@ def run(
     classpath,
     entrypoint,
     arguments=None,
+    use_security_manager: bool = False,
     permissions=None,
 ):
     """
@@ -86,7 +86,13 @@ def run(
         List of string arguments to pass to the robograder.
         A list of strings.
         Defaults to the empty list.
+    * use_security_manager:
+        Whether to use the Java Security Manager.
+        This was the perfect mechanism to limit permissions when running student code.
+        Unfortunately, it was deprecated after Java 17 (which is a LTS release supported until 2029).
+        Versions after at least OpenJDK Java 26 raise an error when this option is enabled.
     * permissions:
+        Only relevant when use_security_manager is set.
         Specifies additional permission statements to apply in the security policy to the submission code.
         See util.java.permission_file for an example such permission statement.
         By default, the only permission granted is to read within the submission source directory.
@@ -97,6 +103,7 @@ def run(
         classpath=classpath,
         entrypoint=entrypoint,
         arguments=arguments,
+        use_security_manager=use_security_manager,
         permissions=permissions,
         check_conflict=True,
     ) as cmd:
@@ -113,6 +120,7 @@ def run(
             check=False,
         )
         if process.returncode != 0:
+            print(process.returncode)
             raise ExecutionError(process.stderr)
 
         logger.debug("Robograder output:\n" + process.stdout)
@@ -264,6 +272,7 @@ class LabRobograder:
         dir_robograder=rel_dir_robograder,
         dir_submission_src=Path(),
         dir_problem=Path("problem"),
+        use_security_manager: bool = False,
         machine_speed=1,
     ):
         """
@@ -278,6 +287,8 @@ class LabRobograder:
             Relative path of the source code hierarchy in submissions.
         * dir_problem:
             Relative path to the lab problem.
+        * use_security_manager:
+            Whether to use the Java Security Manager (deprecated after Java 17).
         * machine_speed:
             Floating-point number.
             The machine speed relative to a 2015 Desktop machine.
@@ -287,6 +298,7 @@ class LabRobograder:
         """
         self.dir_lab = dir_lab
         self.dir_submission_src = dir_submission_src
+        self.use_security_manager = use_security_manager
         self.machine_speed = machine_speed
 
         self.robograder_src = self.dir_lab / dir_robograder
@@ -325,6 +337,7 @@ class LabRobograder:
             classpath=[dir.resolve() for dir in [self.robograder_src, dir_lib_src]],
             entrypoint=entrypoint_default,
             arguments=[str(self.machine_speed)],
+            use_security_manager=self.use_security_manager,
         )
 
 
