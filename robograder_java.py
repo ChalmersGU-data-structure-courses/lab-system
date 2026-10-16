@@ -272,7 +272,7 @@ class LabRobograder:
         dir_robograder=rel_dir_robograder,
         dir_submission_src=Path(),
         dir_problem=Path("problem"),
-        use_security_manager: bool = False,
+        use_security_manager: bool = True,
         machine_speed=1,
     ):
         """
