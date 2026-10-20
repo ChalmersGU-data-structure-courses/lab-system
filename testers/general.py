@@ -17,7 +17,6 @@ import util.markdown
 import util.overlay
 import util.path
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -158,8 +157,9 @@ class LabTester:
         logger.debug(f"Detected tester in {util.path.format_path(self.dir_tester)}.")
         self.tests = parse_tests(self.TestSpec, file_tests)
 
-        self.dir_test = self.dir_tester / "test"
+        self.dir_test = self.dir_tester / "overlay"
         self.has_test_overlay = self.dir_test.exists()
+        logger.debug(f"Test overlay: {self.has_test_overlay}")
 
     # TODO: monitor program output and kill as soon as max_output is reached.
     def record_process(
