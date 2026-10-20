@@ -13,15 +13,14 @@ from pathlib import Path
 from course import Course
 from lab_interfaces import CourseAuth
 
-# ACION: load course config.
-# from <course code>.config import course as config
+from dat710.config import course as config
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 
 auth = CourseAuth.from_secrets(Path("secrets.toml"))
 
-c = Course(auth=auth, config=config, dir=Path("<course code>"))
+c = Course(auth=auth, config=config, dir=Path("dat710"))
 
 print("Defined variables:")
 print(f"  c: Course <{c.dir}>")
