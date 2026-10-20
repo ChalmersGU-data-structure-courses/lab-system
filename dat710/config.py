@@ -12,15 +12,9 @@ The default lab configuration is as needed for the data structures course cluste
 import datetime
 import re
 from pathlib import Path, PurePosixPath
-from typing import Callable
 
-import grading_sheet.config
-import handlers.java
-import handlers.python
 import handlers.variants
-import robograder_java
 import testers.general
-import testers.java
 import testers.podman
 import util.enum
 import util.print_parse
@@ -34,21 +28,10 @@ from lab_interfaces import (
     LabConfig,
     LabIdConfig,
     OutcomesConfig,
-    # OutcomeSpec,
-    # StandardVariant,
+    RegexRequestMatcher,
+    StandardVariant,
     VariantsConfig,
-    VariantSpec,
 )
-
-# Delete this
-# -----------
-
-ACTION_MISSING = None
-
-
-def ACTION_EXAMPLE(_) -> None:
-    return None
-
 
 # Groups
 # ------
@@ -67,41 +50,15 @@ group_set: GroupSetConfig[GroupId] = GroupSetConfig[GroupId](
 # Outcome.INCOMPLETE and Outcome.PASS
 Outcome = DefaultOutcome
 
-# # Example outcome type with more outcomes.
-# class Outcome(util.enum.EnumSpec[OutcomeSpec]):
-#     INCOMPLETE = OutcomeSpec.smart(
-#         name="incomplete",
-#         color="red",
-#         as_cell=0,
-#     )
-#     PASS = OutcomeSpec.smart(
-#         name="pass",
-#         color="green",
-#         as_cell=1,
-#     )
-#     PASS_WITH_DISTINCTION = OutcomeSpec.smart(
-#         name="distinction",
-#         color="blue",
-#         as_cell=2,
-#     )
-
 outcomes: OutcomesConfig[Outcome] = OutcomesConfig.from_enum_spec(Outcome)
 
 
 # Variants
 # --------
 
-# Variant = StandardVariant
+Variant = StandardVariant
 
-# variants: VariantsConfig[Variant] = VariantsConfig.no_variants()
-
-
-class Variant(util.enum.EnumSpec[VariantSpec]):
-    JAVA = VariantSpec(name="Java", branch="java")
-    PYTHON = VariantSpec(name="Python", branch="python")
-
-
-variants: VariantsConfig[Variant] = VariantsConfig.from_enum_spec(Variant)
+variants: VariantsConfig[Variant] = VariantsConfig.no_variants()
 
 
 # Lab ids
@@ -116,76 +73,37 @@ lab_id = LabIdConfig()
 # ----
 
 
-def ACTION_EXAMPLE_lab_item(
+def lab_item(
     id: LabId,
-    folder: Path,
-    group: bool,
-    robo: bool,
-    grader_instead_of_tester: bool,
+    name: str,
     canvas_sync: bool,
     refresh_minutes: int,
 ) -> tuple[LabId, LabConfig]:
-    def submission_handler(v: Variant) -> type[handlers.general.SubmissionHandler]:
-        match v:
-            case Variant.JAVA:
-                return handlers.java.SubmissionHandler
-            case Variant.PYTHON:
-                return handlers.python.SubmissionHandler
+    folder: Path
+    folder = Path() / ".." / "labs" / str(id)
 
-    def robograding_handler(v: Variant) -> type[handlers.general.RobogradingHandler]:
-        if v == Variant.JAVA and grader_instead_of_tester:
-            return handlers.java.RobogradingHandler
-        return handlers.general.GenericTestingHandler
-
-    def tester_factory(v: Variant) -> Callable[..., testers.general.LabTester]:
-        match v:
-            case Variant.JAVA:
-                return testers.java.LabTester.factory
-            case Variant.PYTHON:
-                return testers.podman.LabTester.factory
-
-    def params(v: Variant):
-        if robo:
-            if v == Variant.JAVA and grader_instead_of_tester:
-                yield ("robograder_factory", robograder_java.factory)
-                yield ("dir_robograder", variants.source("robograder", v))
-            else:
-                yield ("tester_factory", tester_factory(v))
-                yield ("dir_tester", variants.source("robotester", v))
-            yield ("machine_speed", 1)
-
-        if v == Variant.JAVA:
-            yield ("dir_problem", Path() / "problem" / "java")
-
-    def sub_handlers(f):
-        return {v: f(v)(**dict(params(v))) for v in variants.variants}
-
-    request_handlers = {}
-    shared_columns = []
-    if robo:
-        shared_columns.append("robograding")
-        request_handlers["robograding"] = handlers.variants.RobogradingHandler(
-            sub_handlers=sub_handlers(robograding_handler),
-        )
-    request_handlers["submission"] = handlers.variants.SubmissionHandler(
-        sub_handlers=sub_handlers(submission_handler),
-        shared_columns=shared_columns,
-        show_solution=True,
+    # Robograding handler that matches everything.
+    testing_handler = handlers.general.GenericTestingHandler(
+        tester_factory=testers.podman.LabTester.factory,
+        dir_tester=folder,
+        machine_speed=1,
     )
+    testing_handler.request_matcher = RegexRequestMatcher(["*"], ".*")
+
+    # Stub submission handler that matches nothing.
+    submission_handler = handlers.general.SubmissionHandlerStub()
+    submission_handler.request_matcher = RegexRequestMatcher([], ".^")
 
     path = util.this_dir.this_dir.parent / "labs" / "labs" / folder
-    name_semantic = (path / "name").read_text().strip()
     lab_config = LabConfig(
         path_source=path,
-        name_semantic=name_semantic,
-        group_set=group_set if group else None,
+        name_semantic=name,
+        group_set=group_set,
         canvas_sync=canvas_sync,
         outcomes=outcomes,
-        variants=variants,
-        has_solution=True,
-        request_handlers=request_handlers,
+        request_handlers={"submission": submission_handler, "testing": testing_handler},
         refresh_period=datetime.timedelta(minutes=refresh_minutes),
-        canvas_assignment_name=f"{lab_id.name.print(id)}: {name_semantic}",
+        has_solution=True,
     )
     return (id, lab_config)
 
@@ -198,38 +116,26 @@ def ACTION_EXAMPLE_lab_item(
 # * Set the canvas_sync argument for this lab and clear it for any previous group labs.
 # * Restart the lab system service.
 labs: list[tuple[LabId, LabConfig]] = [
-    # fmt: off
-    #                       id folder                        group  robo   grad.. sync   refresh_minutes
-    ACTION_EXAMPLE_lab_item(1, Path("binary-search"       ), False, True , True , False, 15),
-    ACTION_EXAMPLE_lab_item(2, Path("indexing"            ), False, True , False, False, 15),
-    ACTION_EXAMPLE_lab_item(3, Path("plagiarism-detection"), False, True , False, False, 15),
-    ACTION_EXAMPLE_lab_item(4, Path("path-finder"         ), False, True , True , False, 15),
-    # fmt: on
+    (1, "Power to the People", False, 15),
+    (2, "Blackjack", False, 15),
+    (3, "Tetris", False, 15),
+    (4, "Simplify", False, 15),
 ]
 
 
 # Course
 # ------
 
-gitlab_path = (
-    PurePosixPath()
-    / "courses"
-    / ACTION_EXAMPLE("data-structures")
-    / ACTION_EXAMPLE("lp2")
-    / ACTION_EXAMPLE("2025")
-)
+gitlab_path = PurePosixPath() / "courses" / "dat710" / "2026"
 
 course: CourseConfig
 course = CourseConfig(
-    canvas_domain=ACTION_EXAMPLE("chalmers.instructure.com"),
-    canvas_course_id=ACTION_EXAMPLE(12345),
+    canvas_domain="chalmers.instructure.com",
+    canvas_course_id=41641,
     canvas_sync=CanvasSync(),
-    canvas_grading_path=PurePosixPath() / "lab-grading",  # ACTION: create on Canvas
     gitlab_path=gitlab_path,
     gitlab_path_graders=gitlab_path / "graders",
-    grading_spreadsheet=grading_sheet.config.ConfigExternal(spreadsheet=ACTION_MISSING),
     lab_id=lab_id,
     labs=dict(labs),
-    # ACTION: choose a unique port of the form 42??
-    webhook_netloc_listen=util.url.NetLoc(port=ACTION_EXAMPLE(4253)),
+    webhook_netloc_listen=util.url.NetLoc(port=4284),
 )
