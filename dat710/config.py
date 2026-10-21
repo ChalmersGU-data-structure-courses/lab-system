@@ -13,7 +13,6 @@ import datetime
 import re
 from pathlib import Path, PurePosixPath
 
-import handlers.variants
 import testers.general
 import testers.podman
 import util.enum
@@ -29,8 +28,6 @@ from lab_interfaces import (
     LabIdConfig,
     OutcomesConfig,
     RegexRequestMatcher,
-    StandardVariant,
-    VariantsConfig,
 )
 
 # Groups
@@ -53,14 +50,6 @@ Outcome = DefaultOutcome
 outcomes: OutcomesConfig[Outcome] = OutcomesConfig.from_enum_spec(Outcome)
 
 
-# Variants
-# --------
-
-Variant = StandardVariant
-
-variants: VariantsConfig[Variant] = VariantsConfig.no_variants()
-
-
 # Lab ids
 # -------
 
@@ -72,20 +61,16 @@ lab_id = LabIdConfig()
 # Labs
 # ----
 
-
 def lab_item(
     id: LabId,
     name: str,
     canvas_sync: bool,
     refresh_minutes: int,
 ) -> tuple[LabId, LabConfig]:
-    folder: Path
-    folder = Path() / ".." / "labs" / str(id)
-
     # Robograding handler that matches everything.
     testing_handler = handlers.general.GenericTestingHandler(
         tester_factory=testers.podman.LabTester.factory,
-        dir_tester=folder,
+        dir_tester=Path() / 'tester',
         machine_speed=1,
     )
     testing_handler.request_matcher = RegexRequestMatcher(["*"], ".*")
@@ -94,13 +79,14 @@ def lab_item(
     submission_handler = handlers.general.SubmissionHandlerStub()
     submission_handler.request_matcher = RegexRequestMatcher([], ".^")
 
-    path = util.this_dir.this_dir.parent / "labs" / "labs" / folder
+    path = util.this_dir.this_dir.parent / "labs" / str(id)
     lab_config = LabConfig(
         path_source=path,
         name_semantic=name,
         group_set=group_set,
         canvas_sync=canvas_sync,
         outcomes=outcomes,
+        grading_via_merge_request=None,
         request_handlers={"submission": submission_handler, "testing": testing_handler},
         refresh_period=datetime.timedelta(minutes=refresh_minutes),
         has_solution=True,
@@ -117,9 +103,9 @@ def lab_item(
 # * Restart the lab system service.
 labs: list[tuple[LabId, LabConfig]] = [
     lab_item(1, "Power to the People", False, 15),
-    lab_item(2, "Blackjack", False, 15),
-    lab_item(3, "Tetris", False, 15),
-    lab_item(4, "Simplify", False, 15),
+#    lab_item(2, "Blackjack", False, 15),
+#    lab_item(3, "Tetris", False, 15),
+#    lab_item(4, "Simplify", False, 15),
 ]
 
 

@@ -20,15 +20,11 @@ Type=simple
 Restart=always
 RestartSec=900s
 KillSignal=SIGINT
-# ACTION: set to lab system directory
 WorkingDirectory=%h/lab-system
-# ACTION: replace as follows:
-# * fix script path,
-# * replace COURSE_CODE by lower-case course code,
 ExecStart=%h/lab-system/run_event_loop.py \
   --dir dat710 \
   --error-spreadsheet 1qnG1Lfp8Y-_0MpsncASBljDb_NTn1pFk6b0pgjQwka4 \
-  --log dat710/log `#create this as a directory to enable log rotation` \
+  --log dat710/log \
   --verbose \
   run
 
