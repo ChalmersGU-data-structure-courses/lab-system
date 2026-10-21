@@ -10,6 +10,7 @@ from typing import Collection, Optional, Union
 import testers.general
 import util.general
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -118,7 +119,7 @@ class LabTester(testers.general.LabTester):
             yield from ["podman", "create"]
             yield from [
                 "--volume",
-                ":".join([volume_source_path(dir_src), "/submission", "O,U"]),
+                ":".join([volume_source_path(dir_src), "/submission", "O"]),
             ]
             if not test.allow_network:
                 yield from ["--network", "none"]
