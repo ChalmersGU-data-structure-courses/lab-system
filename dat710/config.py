@@ -58,9 +58,26 @@ LabId = DefaultLabId
 
 lab_id = LabIdConfig()
 
+# Tester class
+
+
+class Dat710Handler(handlers.general.GenericTestingHandler):
+    def handle_request(self, request_and_responses):
+        if self.counts_so_far(request_and_responses) < 5:
+            super().handle_request(request_and_responses)
+        else:
+            request_and_responses.post_response_issue(
+                response_key=self.response_key,
+                description="You have exceeded the maximum amount of submissions.",
+            )
+
+    def format_count(self, n):
+        return f"This is your try number {n} (of 5)."
+
 
 # Labs
 # ----
+
 
 def lab_item(
     id: LabId,
@@ -69,9 +86,9 @@ def lab_item(
     refresh_minutes: int,
 ) -> tuple[LabId, LabConfig]:
     # Robograding handler that matches everything.
-    testing_handler = handlers.general.GenericTestingHandler(
+    testing_handler = Dat710Handler(
         tester_factory=testers.podman.LabTester.factory,
-        dir_tester=Path() / 'tester',
+        dir_tester=Path() / "tester",
         machine_speed=1,
     )
     testing_handler.request_matcher = RegexRequestMatcher(["*"], ".*")
@@ -104,9 +121,9 @@ def lab_item(
 # * Restart the lab system service.
 labs: list[tuple[LabId, LabConfig]] = [
     lab_item(1, "Power to the People", False, 15),
-#    lab_item(2, "Blackjack", False, 15),
-#    lab_item(3, "Tetris", False, 15),
-#    lab_item(4, "Simplify", False, 15),
+    #    lab_item(2, "Blackjack", False, 15),
+    #    lab_item(3, "Tetris", False, 15),
+    #    lab_item(4, "Simplify", False, 15),
 ]
 
 
