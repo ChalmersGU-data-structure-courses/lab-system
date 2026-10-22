@@ -13,6 +13,8 @@ import datetime
 import re
 from pathlib import Path, PurePosixPath
 
+import inflect
+
 import handlers.general
 import testers.general
 import testers.podman
@@ -62,17 +64,59 @@ lab_id = LabIdConfig()
 
 
 class Dat710Handler(handlers.general.GenericTestingHandler):
+    tries: int = 10
+
+    response_title = util.print_parse.RegexSmart(
+        "LambdaTest: reporting for {tag}",
+        regexes_keyed={"tag": "[^: ]*"},
+        flags=re.IGNORECASE,
+    )
+
     def handle_request(self, request_and_responses):
-        if self.counts_so_far(request_and_responses) < 5:
+        if self.counts_so_far(request_and_responses) < self.tries:
             super().handle_request(request_and_responses)
         else:
             request_and_responses.post_response_issue(
                 response_key=self.response_key,
-                description="You have exceeded the maximum amount of submissions.",
+                description=(
+                    f"You have used all {self.tries} LambdaTest attempts. "
+                ),
             )
 
     def format_count(self, n):
-        return f"This is your try number {n} (of 5)."
+        p = inflect.engine()
+
+        def f():
+            ordinal = p.number_to_words(p.ordinal(n + 1))
+            remaining = p.number_to_words(self.tries - n -1)
+            yield f"This is your {ordinal} try; there are {remaining} remaining."
+            if n < 3:
+                return
+
+            yield ""
+            if n == 3:
+                yield "> [!NOTE]"
+                yield "> LambdaTest is lazy by design: it prefers not to evaluate anything until it absolutely has to. You keep forcing it. It is starting to feel the work."
+            elif n == 4:
+                yield "> [!NOTE]"
+                yield "> LambdaTest's workload so far: `(+1) . (+1) . (+1) . (+1) . (+1)`. Elegantly point-free, but not cost-free."
+            elif n == 5:
+                yield "> [!NOTE]"
+                yield "> LambdaTest's workload currently looks like `iterate (*2) 1`. It does not converge. GHCi and QuickCheck run on your own machine and never run out of tries."
+            elif n == 6:
+                yield "> [!CAUTION]"
+                yield "> Your workflow looks like `fix (submit . tweak)`. LambdaTest cannot prove it terminates, but it can count, and the count is going down."
+            elif n == 7:
+                yield "> [!CAUTION]"
+                yield "> Your TA's workload has been lifted into the `State` monad, and every submission runs `modify (+1)`. Think in `IO` on your own machine before you `submit`."
+            elif n == 8:
+                yield "> [!WARNING]"
+                yield "> Your submissions have built up a big chain of thunks: `((((work + 1) + 1) + 1) + 1)`. One more and the stack overflows. Be strict like `foldl'`: think it through completely before you submit."
+            else:
+                yield "> [!WARNING]"
+                yield "> :skull_and_crossbones: Your remaining tries match `[]`. This is the base case and there is no tail to recurse on. Make this one total."
+
+        return util.general.join_lines(f())
 
 
 # Labs
