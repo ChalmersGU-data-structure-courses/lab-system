@@ -64,7 +64,7 @@ outcomes: OutcomesConfig[Outcome] = OutcomesConfig.from_enum_spec(Outcome)
 
 Variant = StandardVariant
 
-variants: VariantsConfig[Variant] = VariantsConfig.no_variants()
+variants: VariantsConfig[Variant] = VariantsConfig.standard_variant()
 
 
 # Lab ids
@@ -82,13 +82,29 @@ lab_id = LabIdConfig()
 def lab_item(
     id: LabId,
     name: str,
+    robo: bool,
     refresh_minutes: int,
 ) -> tuple[LabId, LabConfig]:
+    path = Path(__file__).parent / "labs" / f"lab{id}"
+
+    request_handlers = {}
+    if robo:
+        request_handlers["submission"] = handlers.python.SubmissionHandler(
+            tester_factory=testers.podman.LabTester.factory,
+            show_solution=True,
+        )
+    else:
+        request_handlers["submission"] = handlers.general.SubmissionHandlerStub()
+
     lab_config = LabConfig(
+        path_source=path,
         name_semantic=name,
         group_set=group_set,
         outcomes=outcomes,
-        request_handlers={"submission": handlers.general.SubmissionHandlerStub()},
+        variants=variants,
+        has_solution=True,
+        report_key="report" if robo else None,
+        request_handlers=request_handlers,
         refresh_period=datetime.timedelta(minutes=refresh_minutes),
         canvas_assignment_name=f"{lab_id.name.print(id)}: {name}",
         canvas_sync=True,
@@ -106,10 +122,10 @@ def lab_item(
 
 labs: list[tuple[LabId, LabConfig]] = [
     # fmt: off
-    #        id name                                 refresh_minutes
-    lab_item(1, "Information extraction"           , 15),
-    lab_item(2, "Graphs and transport networks"    , 40),
-    lab_item(3, "Web application for tram networks", 50),
+    #        id name                                  robo   refresh_minutes
+    lab_item(1, "Information extraction"           , True , 15),
+    lab_item(2, "Graphs and transport networks"    , True , 40),
+    lab_item(3, "Web application for tram networks", False, 50),
     # fmt: on
 ]
 
