@@ -83,7 +83,8 @@ def lab_item(
     id: LabId,
     name: str,
     robo: bool,
-    refresh_minutes: int,
+    canvas_sync: bool,
+    refresh_period: datetime.datetime | None,
 ) -> tuple[LabId, LabConfig]:
     path = Path(__file__).parent / "labs" / f"lab{id}"
 
@@ -105,9 +106,9 @@ def lab_item(
         has_solution=True,
         report_key="report" if robo else None,
         request_handlers=request_handlers,
-        refresh_period=datetime.timedelta(minutes=refresh_minutes),
+        refresh_period=refresh_period,
         canvas_assignment_name=f"{lab_id.name.print(id)}: {name}",
-        canvas_sync=True,
+        canvas_sync=canvas_sync,
     )
     return (id, lab_config)
 
@@ -115,6 +116,7 @@ def lab_item(
 # ACTION for each lab, once ready to be published:
 # * Make sure the lab sources are ready in the folder specified below.
 # * Uncomment the lab below.
+# * Set canvas sync to True and refresh period to 15 minutes.
 # * Run `course.lab[k].deploy_via_lab_sources_and_canvas()` (e.g., using `python -i prelude.py`).
 # * Check if the primary project on GitLab looks good.
 # * Set the canvas_sync argument for this lab and clear it for any previous group labs.
@@ -122,10 +124,10 @@ def lab_item(
 
 labs: list[tuple[LabId, LabConfig]] = [
     # fmt: off
-    #        id name                                  robo   refresh_minutes
-    lab_item(1, "Information extraction"           , True , 15),
-    lab_item(2, "Graphs and transport networks"    , True , 40),
-    lab_item(3, "Web application for tram networks", False, 50),
+    #        id name                                 robo   sync   refresh_period
+    lab_item(1, "Information extraction"           , True , True , datetime.timedelta(minutes=15)),
+    lab_item(2, "Graphs and transport networks"    , True , False, None),
+    lab_item(3, "Web application for tram networks", False, False, None),
     # fmt: on
 ]
 
