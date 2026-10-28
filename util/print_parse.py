@@ -2,7 +2,7 @@
 Recommended to import qualified.
 """
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Container, Iterable, Mapping, Sequence
 import abc
 import ast
 import base64
@@ -37,7 +37,7 @@ class PrinterParser[I, O](Protocol):
     * `print(parse(y)) = y` for `y` in the output domain.
 
     The first of these invariants is the more important one.
-    The second is sometimes not be satisfied.
+    The second may sometimes not be satisfied.
     There may then be several ways of representing an element of the input domain in the output domain.
     For example, this happens with case-insensitive parsing.
 
@@ -449,19 +449,22 @@ escape_parens: CharEscape = CharEscape.standard(["(", ")"])
 escape_brackets: CharEscape = CharEscape.standard(["[", "]"])
 
 
+@dataclasses.dataclass(frozen=True)
 class PathSegmentSpecials(PrinterParser[str, str]):
-    """Escape special paths (see SPECIALS)."""
+    """Escape path segments with special meaning (see SPECIALS)."""
 
-    SPECIALS = ["", ".", ".."]
+    SPECIALS: ClassVar[Container[str]] = frozenset(["", ".", ".."])
+
+    escape: str
 
     def print(self, x: str, /) -> str:
         if x in self.SPECIALS:
-            return "#" + x
+            return self.escape + x
         return x
 
     def parse(self, y: str, /) -> str:
         with contextlib.suppress(ValueError):
-            x = util.general.remove_prefix(y, "#")
+            x = util.general.remove_prefix(y, self.escape)
             if x in self.SPECIALS:
                 return x
         return y
@@ -469,12 +472,12 @@ class PathSegmentSpecials(PrinterParser[str, str]):
 
 string_as_path_segment: PrinterParser[str, str] = Composition(
     CharEscape(escape="#", replacements={"/": "0", "\\": "1"}),
-    PathSegmentSpecials(),
+    PathSegmentSpecials(escape="#"),
 )
 
 
 class PathSegments(PrinterParser[PurePosixPath, Sequence[str]]):
-    """See a path a sequence of strings."""
+    """See a path as a sequence of strings."""
 
     def print(self, x: PurePosixPath, /):
         return x.parts
