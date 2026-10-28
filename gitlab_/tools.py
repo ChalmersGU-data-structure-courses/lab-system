@@ -178,13 +178,9 @@ class CachedGroup:
         return self.get
 
     def delete(self):
-        if self.logger:
-            self.logger.info(f"Deleting group {self.path}")
-        # Triggers a bug in python-gitlab:
-        # https://github.com/python-gitlab/python-gitlab/issues/1494
-        # self.get().delete()
-        # Workaround:
-        self.gl.groups.delete(str(self.path))
+        if logger:
+            logger.info("Deleting group %s", self.path)
+        self.lazy.delete()
         with contextlib.suppress(AttributeError):
             del self.get
 
@@ -257,11 +253,7 @@ class CachedProject:
     def delete(self):
         if self.logger:
             self.logger.info(f"Deleting project {self.path}")
-        # Triggers a bug in python-gitlab:
-        # https://github.com/python-gitlab/python-gitlab/issues/1494
-        # self.get().delete()
-        # Workaround:
-        self.gl.projects.delete(str(self.path))
+        self.lazy.delete()
         with contextlib.suppress(AttributeError):
             del self.get
 
