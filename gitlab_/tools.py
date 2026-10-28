@@ -2,15 +2,20 @@ import contextlib
 import dataclasses
 import functools
 import hashlib
+import itertools
 import logging
 import operator
 import time
 import urllib.parse
+from collections.abc import Generator
+from contextlib import AbstractContextManager, ExitStack
+from logging import Logger
 from pathlib import Path, PurePosixPath
-from typing import Any, Tuple
+from typing import Any, Callable, Tuple
 
 import dateutil.parser
 import gitlab
+import gitlab.v4.objects
 
 import util.general
 import util.path
@@ -136,126 +141,253 @@ def members_from_access(entity, levels):
     )
 
 
-class CachedGroup:
+class Deleting:
+    def __init__(self, entity: gitlab.mixins.ObjectDeleteMixin):
+        self.entity = entity
+
+    def __enter__(self):
+        return self.entity
+
+    def __exit__(self, *args):
+        self.entity.delete()
+
+
+@dataclasses.dataclass(frozen=True)
+class EntityHelper[
+    Type: gitlab.base.RESTObject,
+    Manager: gitlab.mixins.CRUDMixin[Type],
+]:
+    """Helper class abstracting out the commonalities between groups and projects."""
+
+    gl: gitlab.Gitlab
+    path: PurePosixPath
+
+    @property
+    def kind(self) -> str:
+        raise NotImplementedError
+
+    @functools.cached_property
+    def name(self) -> str:
+        return f"{self.kind} {self.path}"
+
+    def is_not_found_error(self, e: gitlab.exceptions.GitlabOperationError) -> bool:
+        return (
+            e.response_code == 404
+            and e.error_message == f"404 {self.kind.capitalize()} Not Found"
+        )
+
+    def is_name_already_taken_error(
+        self,
+        e: gitlab.exceptions.GitlabCreateError,
+    ) -> bool:
+        return e.response_code == 409 and e.error_message == [
+            f"{self.kind.capitalize()} namespace name has already been taken",
+            "Name has already been taken",
+        ]
+
+    @property
+    def manager(self) -> Manager:
+        raise NotImplementedError
+
+    def set_path(self, obj: Type) -> None:
+        raise NotImplementedError
+
+    def creation_data_parent(self, parent_id: id) -> dict[str, Any]:
+        raise NotImplementedError
+
+    def get(self) -> Type:
+        return self.manager.get(str(self.path), lazy=False)
+
+    def lazy(self) -> Type:
+        obj = self.manager.get(str(self.path), lazy=True)
+        self.set_path(obj)
+        obj.web_url = urllib.parse.urljoin(self.gl.url, str(self.path))
+        return obj
+
+
+class EntityHelperGroup(
+    EntityHelper[gitlab.v4.objects.Group, gitlab.v4.objects.GroupManager]
+):
+    @functools.cached_property
+    def kind(self) -> str:
+        return "group"
+
+    @functools.cached_property
+    def manager(self):
+        return self.gl.groups
+
+    def set_path(self, obj):
+        obj.namespace_path = str(self.path)
+
+    def creation_data_parent(self, parent_id):
+        return {"parent_id": parent_id}
+
+
+class EntityHelperProject(
+    EntityHelper[gitlab.v4.objects.Project, gitlab.v4.objects.ProjectManager]
+):
+    @functools.cached_property
+    def kind(self) -> str:
+        return "project"
+
+    @functools.cached_property
+    def manager(self):
+        return self.gl.projects
+
+    def set_path(self, obj):
+        obj.path_with_namespace = str(self.path)
+
+    def creation_data_parent(self, parent_id):
+        return {"namespace_id": parent_id}
+
+
+@dataclasses.dataclass
+class CachedEntity[Type: gitlab.base.RESTObject]:
+    gl: gitlab.Gitlab
+    path: PurePosixPath
+    name: str
     # pylint: disable-next=redefined-outer-name
-    def __init__(self, gl, path, name, logger=None):
-        self.gl = gl
-        self.path = path
-        self.name = name
-        self.logger = logger
+    logger: Logger = None
+
+    @property
+    def entity_helper_type(
+        self,
+    ) -> Callable[[gitlab.Gitlab, PurePosixPath], EntityHelper[Type, Any]]:
+        raise NotImplementedError()
 
     @functools.cached_property
-    def get(self):
-        if self.logger:
-            self.logger.debug(f"Getting group {self.path}")
-        return self.gl.groups.get(str(self.path), lazy=False)
+    def entity_helper(self) -> EntityHelper[Type, Any]:
+        return self.entity_helper_type(self.gl, self.path)
 
     @functools.cached_property
-    def lazy(self):
-        g = self.gl.groups.get(str(self.path), lazy=True)
-        g.namespace_path = str(self.path)
-        g.web_url = urllib.parse.urljoin(self.gl.url, str(self.path))
-        return g
-
-    # pylint: disable-next=method-hidden
-    def create(self, group=None, **kwargs):
+    def get(self) -> Type:
         if self.logger:
-            self.logger.info(f"Creating group {self.path}")
-        if group is None:
-            group = self.gl.groups.get(str(self.path.parent))
-        group_data = {
-            # The GitLab API should permit to give path instead of id.
-            # 'parent_path': str(self.path.parent),
-            "parent_id": group.id,
-            "path": self.path.name,
-            "name": self.name,
-        } | kwargs
-        self.get = self.gl.groups.create(group_data)
+            self.logger.debug("Getting %s", self.entity_helper.name)
+        return self.entity_helper.get()
+
+    @contextlib.contextmanager
+    def with_get(self, obj: Type) -> Generator[None]:
+        self.get = obj
+        try:
+            yield
+        finally:
+            del self.get
+
+    @functools.cached_property
+    def lazy(self) -> Type:
+        return self.entity_helper.lazy()
+
+    def initialize(self) -> None:
+        """
+        Callback for initializing the GitLab object `get` after it has been created.
+        If this raises an exception, the object is deleted.
+        The default implementation is empty.
+        """
+
+    def parent(self) -> gitlab.v4.objects.Namespace | gitlab.v4.objects.Group:
+        """
+        Subclasses can replace this with an optimized implementation.
+        Likely, the REST object for parent is already store somewhere.
+        """
+        return self.gl.namespaces.get(str(self.path.parent))
+
+    def creation_data_extra(self) -> dict[str, Any]:
+        return {}
+
+    def creation_data(
+        self,
+        parent: gitlab.v4.objects.Namespace | gitlab.v4.objects.Group,
+        disambiguator: int,
+    ) -> dict[str, Any]:
+        """
+        The argument `disambiguator` takes care of duplicate entity names.
+        GitLab does not allow these.
+        This will happen for individual labs where two students have the same name.
+        When creating, we retry with different values of `disambiguator`.
+        """
+        k = disambiguator
+        return (
+            self.entity_helper.creation_data_parent(parent.id)
+            | {
+                "path": self.path.name,
+                "name": self.name if k == 0 else f"{self.name} {k + 1}",
+            }
+            | self.creation_data_extra()
+        )
+
+    def create_internal(self, data) -> Type:
+        return self.entity_helper.manager.create(data)
+
+    def create(self):
+        if logger:
+            logger.info("Creating %s", self.entity_helper.name)
+        if "get" in self.__dict__:
+            raise ValueError(f"{self.entity_helper.name.capitalize()} already exists")
+        with ExitStack() as exit_stack:
+            parent = self.parent()
+            for k in itertools.count(0):
+                try:
+                    data = self.creation_data(parent, k)
+                    obj = exit_stack.enter_context(Deleting(self.create_internal(data)))
+                    exit_stack.enter_context(self.with_get(obj))
+                    break
+                except gitlab.exceptions.GitlabCreateError as e:
+                    if self.entity_helper.is_name_already_taken_error(e):
+                        continue
+                    raise
+            self.initialize()
+            exit_stack.pop_all()
+            return obj
+
+    def delete(self) -> None:
+        if logger:
+            logger.info("Deleting %s", self.entity_helper.name)
+        self.lazy.delete()
+        with contextlib.suppress(AttributeError):
+            del self.get
+
+    def exists(self) -> Type | None:
+        try:
+            return self.get
+        except gitlab.exceptions.GitlabGetError as e:
+            if self.entity_helper.is_not_found_error(e):
+                return None
+            raise
+
+    def create_ensured(self) -> Type:
+        try:
+            return self.get
+        except gitlab.exceptions.GitlabGetError as e:
+            if self.entity_helper.is_not_found_error(e):
+                return self.create()
+            raise
+
+    def delete_ensured(self) -> None:
+        try:
+            self.delete()
+        except gitlab.exceptions.GitlabDeleteError as e:
+            if self.entity_helper.is_not_found_error(e):
+                return
+            raise
+
+
+class CachedGroup(CachedEntity[gitlab.v4.objects.Group]):
+    @functools.cached_property
+    def entity_helper_type(self):
+        return EntityHelperGroup
+
+    def initialize(self):
+        super().initialize()
         # Creating a group seems to make you a member.
         # This does not seem to be documented in the GitLab API.
         # Working around this issue.
         self.get.members.get(self.gl.user.id).delete()
-        return self.get
-
-    def delete(self):
-        if logger:
-            logger.info("Deleting group %s", self.path)
-        self.lazy.delete()
-        with contextlib.suppress(AttributeError):
-            del self.get
-
-    def replace_create(self, f):
-        create_old = self.create
-        self.create = f(self, create_old)
-        return self
 
 
-class CachedProject:
-    # pylint: disable-next=redefined-outer-name
-    def __init__(self, gl, path, name, logger=None):
-        self.gl = gl
-        self.path = path
-        self.name = name
-        self.logger = logger
-
+class CachedProject(CachedEntity[gitlab.v4.objects.Group]):
     @functools.cached_property
-    def get(self):
-        if self.logger:
-            self.logger.debug(f"Getting project {self.path}")
-        return self.gl.projects.get(str(self.path), lazy=False)
-
-    @functools.cached_property
-    def lazy(self):
-        p = self.gl.projects.get(str(self.path), lazy=True)
-        p.path_with_namespace = str(self.path)
-        p.web_url = urllib.parse.urljoin(self.gl.url, str(self.path))
-        return p
-
-    def exists(self):
-        try:
-            return self.get
-        except gitlab.exceptions.GitlabGetError as e:
-            if e.error_message == "404 Project Not Found":
-                return None
-            raise
-
-    def create_ensured(self):
-        try:
-            return self.get
-        except gitlab.exceptions.GitlabGetError as e:
-            if e.error_message == "404 Project Not Found":
-                return self.create()
-            raise
-
-    def delete_ensured(self):
-        try:
-            self.delete()
-        except gitlab.exceptions.GitlabDeleteError as e:
-            if e.error_message == "404 Project Not Found":
-                return
-            raise
-
-    def create(self, group=None, **kwargs):
-        if self.logger:
-            self.logger.info(f"Creating project {self.path}")
-        if group is None:
-            group = self.gl.groups.get(str(self.path.parent))
-        project_data = {
-            # The GitLab API should permit to give path instead of id.
-            # 'namespace_path': str(self.path.parent),
-            "namespace_id": group.id,
-            "path": self.path.name,
-            "name": self.name,
-        } | kwargs
-        self.get = self.gl.projects.create(project_data)
-        return self.get
-
-    def delete(self):
-        if self.logger:
-            self.logger.info(f"Deleting project {self.path}")
-        self.lazy.delete()
-        with contextlib.suppress(AttributeError):
-            del self.get
+    def entity_helper_type(self):
+        return EntityHelperProject
 
 
 def users_dict(manager):

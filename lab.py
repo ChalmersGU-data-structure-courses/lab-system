@@ -441,22 +441,21 @@ class Lab[LabId, GroupId, Variant]:
     @functools.cached_property
     def gitlab_group(self):
         """The group for this lab on Chalmers GitLab."""
-        r = gitlab_.tools.CachedGroup(
+        outer = self
+
+        class CachedLabGroup(gitlab_.tools.CachedGroup):
+            def parent(self):
+                return outer.course.course_group.get
+
+            def creation_data_extra(self):
+                return {"description": outer.name_semantic}
+
+        return CachedLabGroup(
             gl=self.gl,
-            logger=self.logger,
             path=self.gitlab_path,
             name=self.name,
+            logger=self.logger,
         )
-
-        def create():
-            gitlab_.tools.CachedGroup.create(
-                r,
-                self.course.course_group.get,
-                description=self.name_semantic,
-            )
-
-        r.create = create
-        return r
 
     @functools.cached_property
     def primary_project(self):
@@ -479,55 +478,54 @@ class Lab[LabId, GroupId, Variant]:
         It is a good idea to check the contents of this project before forking any student projects.
         For example you may want to disable features that are distracting to students.
         """
-        r = gitlab_.tools.CachedProject(
+        outer = self
+
+        class CachedPrimaryProject(gitlab_.tools.CachedProject):
+            def parent(self):
+                return outer.gitlab_group.get
+
+            def creation_data_extra(self):
+                return {"description": outer.name_semantic}
+
+            def initialize(self):
+                self.get.lfs_enabled = False
+                self.get.wiki_enabled = False
+                self.get.packages_enabled = False
+                self.get.jobs_enabled = False
+                self.get.snippets_enabled = False
+                self.get.container_registry_enabled = False
+                self.get.service_desk_enabled = False
+                self.get.shared_runners_enabled = False
+                self.get.ci_forward_deployment_enabled = False
+                self.get.ci_job_token_scope_enabled = False
+                self.get.public_jobs = False
+                self.get.remove_source_branch_after_merge = False
+                self.get.auto_devops_enabled = False
+                self.get.keep_latest_artifact = False
+                self.get.requirements_enabled = False
+                self.get.security_and_compliance_enabled = False
+                self.get.request_access_enabled = False
+                self.get.analytics_access_level = "disabled"
+                self.get.operations_access_level = "disabled"
+                self.get.releases_access_level = "disabled"
+                self.get.pages_access_level = "disabled"
+                self.get.security_and_compliance_access_level = "disabled"
+                self.get.environments_access_level = "disabled"
+                self.get.feature_flags_access_level = "disabled"
+                self.get.infrastructure_access_level = "disabled"
+                self.get.monitor_access_level = "disabled"
+                self.get.model_experiments_access_level = "disabled"
+                self.get.model_registry_access_level = "disabled"
+                self.get.emails_disabled = False
+                self.get.permissions = {"project_access": None, "group_access": None}
+                self.get.save()
+
+        return CachedPrimaryProject(
             gl=self.gl,
-            logger=self.logger,
             path=self.gitlab_path / self.config.primary,
             name="Primary repository",
+            logger=self.logger,
         )
-
-        def create():
-            project = gitlab_.tools.CachedProject.create(r, self.gitlab_group.get)
-            try:
-                project.lfs_enabled = False
-                project.wiki_enabled = False
-                project.packages_enabled = False
-                project.jobs_enabled = False
-                project.snippets_enabled = False
-                project.container_registry_enabled = False
-                project.service_desk_enabled = False
-                project.shared_runners_enabled = False
-                project.ci_forward_deployment_enabled = False
-                project.ci_job_token_scope_enabled = False
-                project.public_jobs = False
-                project.remove_source_branch_after_merge = False
-                project.auto_devops_enabled = False
-                project.keep_latest_artifact = False
-                project.requirements_enabled = False
-                project.security_and_compliance_enabled = False
-                project.request_access_enabled = False
-                project.analytics_access_level = "disabled"
-                project.operations_access_level = "disabled"
-                project.releases_access_level = "disabled"
-                project.pages_access_level = "disabled"
-                project.security_and_compliance_access_level = "disabled"
-                project.environments_access_level = "disabled"
-                project.feature_flags_access_level = "disabled"
-                project.infrastructure_access_level = "disabled"
-                project.monitor_access_level = "disabled"
-                project.model_experiments_access_level = "disabled"
-                project.model_registry_access_level = "disabled"
-                project.emails_disabled = False
-                project.permissions = {"project_access": None, "group_access": None}
-                project.save()
-
-            except:  # noqa: E722
-                r.delete()
-                raise
-
-        r.create = create
-
-        return r
 
     def primary_project_branch_create(
         self,
@@ -635,18 +633,18 @@ class Lab[LabId, GroupId, Variant]:
         The collection project on Chalmers GitLab.
         When created, it is empty.
         """
-        r = gitlab_.tools.CachedProject(
+        outer = self
+
+        class CachedCollectionProject(gitlab_.tools.CachedProject):
+            def parent(self):
+                return outer.gitlab_group.get
+
+        return CachedCollectionProject(
             gl=self.gl,
-            logger=self.logger,
             path=self.gitlab_path / self.config.collection,
             name="Collection repository",
+            logger=self.logger,
         )
-
-        def create():
-            gitlab_.tools.CachedProject.create(r, self.gitlab_group.get)
-
-        r.create = create
-        return r
 
     @functools.cached_property
     def solutions(self):

@@ -926,28 +926,29 @@ class GroupProject[Variant]:
 
     @functools.cached_property
     def group(self):
-        r = gitlab_.tools.CachedGroup(
+        """Deprecated."""
+        outer = self
+
+        class CachedGroupGroup(gitlab_.tools.CachedGroup):
+            def create(self, parent=None, **kwargs):
+                if parent is None:
+                    parent = outer.lab.gitlab_group.get
+                r = super().create(parent, **kwargs)
+                with contextlib.suppress(AttributeError):
+                    del self.lab.groups
+                return r
+
+            def delete(self):
+                super().delete()
+                with contextlib.suppress(AttributeError):
+                    self.lab.groups.pop(outer.id)
+
+        return CachedGroupGroup(
             gl=self.gl,
-            logger=self.logger,
             path=self.gitlab_path,
             name=self.name,
+            logger=self.logger,
         )
-
-        def create():
-            gitlab_.tools.CachedGroup.create(r, self.lab.gitlab_group.get)
-            with contextlib.suppress(AttributeError):
-                del self.lab.groups
-
-        r.create = create
-
-        def delete():
-            gitlab_.tools.CachedGroup.delete(r)
-            with contextlib.suppress(AttributeError):
-                self.lab.groups.pop(self.id)
-
-        r.delete = delete
-
-        return r
 
     @functools.cached_property
     def project(self):
@@ -956,57 +957,34 @@ class GroupProject[Variant]:
         On creation, the repository is forked from the primary repository.
         That one needs to be initialized.
         """
-        r = gitlab_.tools.CachedProject(
-            gl=self.gl,
-            logger=self.logger,
-            path=self.gitlab_path,
-            name=self.name,
-        )
+        outer = self
 
-        def create():
-            # Handle duplicate project name.
-            # GitLab does not allow this.
-            # This will happen for individual labs where two students have the same name.
-            # Can just retry with 2, 3, 4, ... appended.
-            for i in itertools.count(0):
-                try:
-                    suffix = "" if i == 0 else " " + str(i + 1)
-                    project_data = {
-                        "namespace_path": str(r.path.parent),
-                        "path": r.path.name,
-                        "name": r.name + suffix,
-                    }
-                    project = self.lab.primary_project.get.forks.create(project_data)
-                    break
-                except gitlab.exceptions.GitlabCreateError as e:
-                    if e.response_code == 409 and e.error_message == [
-                        "Project namespace name has already been taken",
-                        "Name has already been taken",
-                    ]:
-                        continue
-                    raise
-            try:
-                project = self.gl.projects.get(project.id, lazy=True)
-                project.lfs_enabled = False
-                project.packages_enabled = False
-                project.save()
+        class CachedGroupProject(gitlab_.tools.CachedProject):
+            def create_internal(self, data):
+                project_fork = outer.lab.primary_project.get.forks.create(data)
+                return self.gl.projects.get(project_fork.id, lazy=True)
 
-                project = gitlab_.tools.wait_for_fork(self.gl, project)
-                self.lab.configure_student_project(project, self.is_solution)
+            def initialize(self):
+                self.get.lfs_enabled = False
+                self.get.packages_enabled = False
+                self.get.save()
 
-                r.get = project
-                self.repo_add_remote()
+                self.get = gitlab_.tools.wait_for_fork(self.gl, self.get)
+                outer.lab.configure_student_project(self.get, outer.is_solution)
+
+                outer.repo_add_remote()
 
                 # Set up webhooks if configured.
-                if self.course.hooks_enabled:
-                    for spec in self.hook_specs():
+                if outer.course.hooks_enabled:
+                    for spec in outer.hook_specs():
                         gitlab_.tools.hook_create(spec)
-            except:  # noqa: E722
-                r.delete()
-                raise
 
-        r.create = create
-        return r
+        return CachedGroupProject(
+            gl=self.gl,
+            path=self.gitlab_path,
+            name=self.name,
+            logger=self.logger,
+        )
 
     # TODO: parametrize over submission tag printing.
     def upload_solution(self, path=None, variant=None, force=False):
