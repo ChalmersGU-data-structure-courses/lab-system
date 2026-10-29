@@ -419,6 +419,12 @@ class Course[LabId]:
                     return outer.course_group.get
                 return super().parent()
 
+            def initialize(self):
+                outer.course_group.lazy.share(
+                    self.get.id,
+                    outer.config.gitlab_graders_access_level,
+                )
+
         return CachedGroupGraders(
             **self.entity_cached_params,
             path=self.config.gitlab_path_graders,
