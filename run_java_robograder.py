@@ -48,7 +48,7 @@ For convenience, this also compiles the robograding library in {util.path.format
 p.add_argument(
     "--use-security-manager",
     action="store_true",
-    help=f"""
+    help="""
 Whether to use the Java Security Manager.
 This was the perfect mechanism to limit permissions when running student code.
 Unfortunately, it was deprecated after Java 17 (which is a LTS release supported until 2029).
