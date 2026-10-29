@@ -1,4 +1,3 @@
-from collections.abc import Iterable
 import abc
 import contextlib
 import dataclasses
@@ -8,6 +7,7 @@ import logging
 import os
 import shutil
 import time
+from collections.abc import Generator, Iterable
 from pathlib import Path, PurePosixPath
 from typing import Any, ClassVar, Optional, TYPE_CHECKING
 
@@ -26,6 +26,7 @@ import util.git
 import util.path
 import util.print_parse
 import webhook_listener
+from util.lazy_mapping import LazyMutableMapping
 from util.print_parse import PrinterParser
 
 if TYPE_CHECKING:
@@ -166,7 +167,7 @@ class StudentConnectorGroupSet(StudentConnector):
 @util.print_parse.dataclass_json
 @dataclasses.dataclass
 class LabUpdateManagerData[GroupId]:
-    pp_json: "ClassVar[PrinterParser[LabUpdateManagerData[GroupId], str]]"
+    pp_json: ClassVar[PrinterParser[LabUpdateManagerData[GroupId], str]]
 
     dirty: set[GroupId] = dataclasses.field(
         default_factory=set,
@@ -239,6 +240,19 @@ class LabUpdateManager[GroupId]:
 
         self.clear()
         self.write()
+
+
+@dataclasses.dataclass
+class LabGroups[GroupId](LazyMutableMapping[GroupId, group_project.GroupProject]):
+    lab: Lab[Any, GroupId, Any]
+
+    def load_internal(self):
+        for project in gitlab_.tools.list_all(self.lab.gitlab_group.lazy.projects):
+            if project.marked_for_deletion_at is None:
+                id = self.lab.group_slug_to_id(project.path)
+                if id is not None and not id in self.mapping:
+                    self[id] = group_project.GroupProject(self, id)
+        self.complete = True
 
 
 class Lab[LabId, GroupId, Variant]:
@@ -677,17 +691,16 @@ class Lab[LabId, GroupId, Variant]:
         return None
 
     @functools.cached_property
-    def groups(self):
-        def group_ids():
-            for project in gitlab_.tools.list_all(self.gitlab_group.lazy.projects):
-                if project.marked_for_deletion_at is None:
-                    id = self.group_slug_to_id(project.path)
-                    if id is not None:
-                        yield id
+    def groups(self) -> LabGroups:
+        """The lab groups existing on GitLab."""
+        return LabGroups(lab=self)
 
-        return {id: group_project.GroupProject(self, id) for id in group_ids()}
-
-    def groups_known(self):
+    def groups_known(self) -> Generator[group_project.GroupProject]:
+        """
+        Lab groups on GitLab that are known to the lab system:
+        * specified by the student connector (e.g., as on Canvas),
+        * official solutions.
+        """
         # pylint: disable=use-yield-from
         for group in self.groups.values():
             # if group.is_known:
