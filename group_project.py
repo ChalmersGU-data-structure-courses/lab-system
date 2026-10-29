@@ -1,7 +1,6 @@
 from collections.abc import Iterable
 import contextlib
 import functools
-import itertools
 import json
 import logging
 import shlex
@@ -930,18 +929,18 @@ class GroupProject[Variant]:
         outer = self
 
         class CachedGroupGroup(gitlab_.tools.CachedGroup):
-            def create(self, parent=None, **kwargs):
-                if parent is None:
-                    parent = outer.lab.gitlab_group.get
-                r = super().create(parent, **kwargs)
-                with contextlib.suppress(AttributeError):
-                    del self.lab.groups
+            def parent(self):
+                return outer.lab.gitlab_group.get
+
+            def create(self):
+                r = super().create()
+                outer.lab.groups[outer.id] = outer
                 return r
 
             def delete(self):
                 super().delete()
                 with contextlib.suppress(AttributeError):
-                    self.lab.groups.pop(outer.id)
+                    del outer.lab.groups[outer.id]
 
         return CachedGroupGroup(
             gl=self.gl,
@@ -960,6 +959,9 @@ class GroupProject[Variant]:
         outer = self
 
         class CachedGroupProject(gitlab_.tools.CachedProject):
+            def parent(self):
+                return outer.lab.gitlab_group.get
+
             def create_internal(self, data):
                 project_fork = outer.lab.primary_project.get.forks.create(data)
                 return self.gl.projects.get(project_fork.id, lazy=True)
@@ -978,6 +980,16 @@ class GroupProject[Variant]:
                 if outer.course.hooks_enabled:
                     for spec in outer.hook_specs():
                         gitlab_.tools.hook_create(spec)
+
+            def create(self):
+                r = super().create()
+                outer.lab.groups[outer.id] = outer
+                return r
+
+            def delete(self):
+                super().delete()
+                with contextlib.suppress(AttributeError):
+                    del outer.lab.groups[outer.id]
 
         return CachedGroupProject(
             gl=self.gl,

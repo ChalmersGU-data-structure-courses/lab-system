@@ -167,7 +167,7 @@ class StudentConnectorGroupSet(StudentConnector):
 @util.print_parse.dataclass_json
 @dataclasses.dataclass
 class LabUpdateManagerData[GroupId]:
-    pp_json: ClassVar[PrinterParser[LabUpdateManagerData[GroupId], str]]
+    pp_json: "ClassVar[PrinterParser[LabUpdateManagerData[GroupId], str]]"
 
     dirty: set[GroupId] = dataclasses.field(
         default_factory=set,
@@ -244,14 +244,14 @@ class LabUpdateManager[GroupId]:
 
 @dataclasses.dataclass
 class LabGroups[GroupId](LazyMutableMapping[GroupId, group_project.GroupProject]):
-    lab: Lab[Any, GroupId, Any]
+    lab: "Lab[Any, GroupId, Any]"
 
     def load_internal(self):
         for project in gitlab_.tools.list_all(self.lab.gitlab_group.lazy.projects):
             if project.marked_for_deletion_at is None:
                 id = self.lab.group_slug_to_id(project.path)
                 if id is not None and not id in self.mapping:
-                    self[id] = group_project.GroupProject(self, id)
+                    self[id] = group_project.GroupProject(self.lab, id)
         self.complete = True
 
 
