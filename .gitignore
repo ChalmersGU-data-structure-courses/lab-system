@@ -15,4 +15,4 @@ secrets.toml
 # cache is Canvas cache.
 cache
 cache_pdb
-/dat710/lab-1
+/dat710/lab-*/
