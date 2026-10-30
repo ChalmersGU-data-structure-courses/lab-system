@@ -20,8 +20,8 @@ Type=simple
 Restart=always
 RestartSec=900s
 KillSignal=SIGINT
-WorkingDirectory=%h/lab-system
-ExecStart=%h/lab-system/run_event_loop.py \
+WorkingDirectory=%h/dat710-dit144/lab-system
+ExecStart=%h/dat710-dit144/lab-system/run_event_loop.py \
   --dir dat710 \
   --error-spreadsheet 1qnG1Lfp8Y-_0MpsncASBljDb_NTn1pFk6b0pgjQwka4 \
   --log dat710/log \
