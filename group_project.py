@@ -896,7 +896,7 @@ class GroupProject[Variant]:
             self.name = self.lab.solutions[self.id]
         else:
             c = self.lab.student_connector
-            self.is_known = self.id in self.lab.group_ids_desired
+            self.is_known = self.id in self.lab._group_ids_desired
             self.remote = c.gitlab_group_slug_pp().print(id)
             self.gitlab_path_name = f"{self.lab.group_prefix}{self.remote}"
             self.name = (

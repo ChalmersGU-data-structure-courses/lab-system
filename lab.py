@@ -675,7 +675,7 @@ class Lab[LabId, GroupId, Variant]:
         return id in self.solutions.keys()
 
     @functools.cached_property
-    def group_ids_desired(self):
+    def _group_ids_desired(self):
         def f():
             yield from self.student_connector.desired_groups()
             yield from self.solutions.keys()
@@ -733,9 +733,9 @@ class Lab[LabId, GroupId, Variant]:
 
         if refresh:
             with contextlib.suppress(AttributeError):
-                del self.group_ids_desired
+                del self._group_ids_desired
 
-        for id in self.group_ids_desired:
+        for id in self._group_ids_desired:
             if not id in ids_old:
                 self.group_create(id)
 
