@@ -27,7 +27,6 @@ import anthropic
 
 import util.markdown
 
-
 logger = logging.getLogger(__name__)
 
 system_prompt = """\
@@ -87,9 +86,9 @@ fix the failure.
 whether something is a problem, ask about it instead of asserting it.
 - Do not give a grade, do not say whether the submission will pass, and do \
 not guess how a teaching assistant will judge it.
-- Do not mention names or other personal details from the submission. You \
-may say whether the information the lab asks for (such as names and group \
-number) is present.
+- Never repeat names or other personal details from the submission. If the \
+reviewer guide says the submission should not contain them and it does, say \
+on which lines and ask the student to remove them.
 
 # Style
 
@@ -157,7 +156,7 @@ class GenAIFeedback:
         self.max_tokens = max_tokens
         self.timeout = timeout
         self.max_retries = max_retries
-        self.client = None
+        self.enabled = False
 
     def setup(self, lab):
         dir_lab = lab.config.path_source
@@ -166,20 +165,30 @@ class GenAIFeedback:
             logger.info(f"No feedback guide {file_guide}, feedback disabled.")
             return
 
-        api_key = lab.course.auth.anthropic_api_key
-        if api_key is None:
-            logger.warning("No Anthropic API key in secrets, feedback disabled.")
-            return
-
         self.dir_problem = dir_lab / self.path_problem
         task = (dir_lab / self.path_task).read_text()
         guide = file_guide.read_text()
         self.context = f"<task>\n{task}\n</task>\n\n<guide>\n{guide}\n</guide>"
+        self.enabled = self.setup_model(lab)
+
+    def setup_model(self, lab) -> bool:
+        """
+        Set up access to the model.
+        Returns whether this succeeded.
+        Subclasses can override this together with generate
+        to use a different way of calling the model.
+        """
+        api_key = lab.course.auth.anthropic_api_key
+        if api_key is None:
+            logger.warning("No Anthropic API key in secrets, feedback disabled.")
+            return False
+
         self.client = anthropic.Anthropic(
             api_key=api_key,
             timeout=self.timeout,
             max_retries=self.max_retries,
         )
+        return True
 
     def submission_files(self, src: Path):
         """
@@ -214,7 +223,7 @@ class GenAIFeedback:
         Generate feedback on the submission checked out in src.
         Returns a Markdown section, or None if no feedback was generated.
         """
-        if self.client is None:
+        if not self.enabled:
             return None
 
         submission = self.format_submission(src)
@@ -225,6 +234,25 @@ class GenAIFeedback:
             logger.warning("Submission too large, skipping feedback.")
             return None
 
+        text = self.generate(
+            f"<test_report>\n{test_report}\n</test_report>\n\n"
+            f"<submission>\n{submission}\n</submission>\n\n"
+            "Write your feedback on this submission."
+        )
+        if not text:
+            return None
+
+        return util.markdown.join_blocks(
+            [feedback_heading, feedback_disclaimer, text + "\n"]
+        )
+
+    def generate(self, message: str) -> str | None:
+        """
+        Ask the model for feedback.
+        The instructions are system_prompt and self.context.
+        The message contains the test report and the submission.
+        Returns the text of the answer, or None on failure.
+        """
         try:
             response = self.client.beta.messages.create(
                 model=self.model,
@@ -241,16 +269,7 @@ class GenAIFeedback:
                         "cache_control": {"type": "ephemeral"},
                     },
                 ],
-                messages=[
-                    {
-                        "role": "user",
-                        "content": (
-                            f"<test_report>\n{test_report}\n</test_report>\n\n"
-                            f"<submission>\n{submission}\n</submission>\n\n"
-                            "Write your feedback on this submission."
-                        ),
-                    }
-                ],
+                messages=[{"role": "user", "content": message}],
             )
         except anthropic.APIStatusError as e:
             logger.warning(
@@ -272,12 +291,6 @@ class GenAIFeedback:
             logger.warning(f"Feedback not used: stop reason {response.stop_reason}.")
             return None
 
-        text = "\n\n".join(
+        return "\n\n".join(
             block.text for block in response.content if block.type == "text"
         ).strip()
-        if not text:
-            return None
-
-        return util.markdown.join_blocks(
-            [feedback_heading, feedback_disclaimer, text + "\n"]
-        )
