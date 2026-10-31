@@ -89,31 +89,13 @@ class Dat710Handler(handlers.general.GenericTestingHandler):
             ordinal = p.number_to_words(p.ordinal(n + 1))
             remaining = p.number_to_words(self.tries - n - 1)
             yield f"This is your {ordinal} try; there are {remaining} remaining."
-            if n < 3:
-                return
-
-            yield ""
-            if n == 3:
-                yield "> [!NOTE]"
-                yield "> LambdaTest is lazy by design: it prefers not to evaluate anything until it absolutely has to. You keep forcing it. It is starting to feel the work."
-            elif n == 4:
-                yield "> [!NOTE]"
-                yield "> LambdaTest's workload so far: `(+1) . (+1) . (+1) . (+1) . (+1)`. Elegantly point-free, but not cost-free."
-            elif n == 5:
-                yield "> [!NOTE]"
-                yield "> LambdaTest's workload currently looks like `iterate (*2) 1`. It does not converge. GHCi and QuickCheck run on your own machine and never run out of tries."
-            elif n == 6:
-                yield "> [!CAUTION]"
-                yield "> Your workflow looks like `fix (submit . tweak)`. LambdaTest cannot prove it terminates, but it can count, and the count is going down."
-            elif n == 7:
-                yield "> [!CAUTION]"
-                yield "> Your TA's workload has been lifted into the `State` monad, and every submission runs `modify (+1)`. Think in `IO` on your own machine before you `submit`."
-            elif n == 8:
+            if self.tries - n - 1 < 4:
+                yield ""
                 yield "> [!WARNING]"
-                yield "> Your submissions have built up a big chain of thunks: `((((work + 1) + 1) + 1) + 1)`. One more and the stack overflows. Be strict like `foldl'`: think it through completely before you submit."
-            else:
-                yield "> [!WARNING]"
-                yield "> :skull_and_crossbones: Your remaining tries match `[]`. This is the base case and there is no tail to recurse on. Make this one total."
+                yield (
+                    "> You are running out of tries."
+                    " Test your code on your own machine before you submit again."
+                )
 
         return util.general.join_lines(f())
 
