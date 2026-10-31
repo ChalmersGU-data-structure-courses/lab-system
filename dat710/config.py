@@ -132,7 +132,7 @@ def lab_item(
     testing_handler = Dat710Handler(
         tester_factory=testers.podman.LabTester.factory,
         # Only active for labs with a guide in labs/<id>/feedback/guide.md.
-        feedback=handlers.genai_feedback.GenAIFeedback(),
+        feedback=handlers.genai_feedback.GenAIFeedback(model="claude-sonnet-5-5"),
         dir_tester=Path() / "tester",
         machine_speed=1,
     )
