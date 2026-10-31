@@ -1120,6 +1120,12 @@ class CourseAuth:
     Format: (username, password)
     """
 
+    anthropic_api_key: str | None = None
+    """
+    Anthropic API key.
+    Used for generated feedback on submissions (see handlers.genai_feedback).
+    """
+
     @classmethod
     def from_secrets(cls, path: Path) -> "CourseAuth":
         """
@@ -1155,6 +1161,10 @@ class CourseAuth:
                         password=pdb["password"],
                     ),
                 )
+
+            anthropic = secrets.get("anthropic")
+            if anthropic:
+                yield ("anthropic_api_key", anthropic["api_key"])
 
         return cls(**dict(args()))
 

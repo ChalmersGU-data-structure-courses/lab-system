@@ -15,6 +15,7 @@ from pathlib import Path, PurePosixPath
 
 import inflect
 
+import handlers.genai_feedback
 import handlers.general
 import testers.general
 import testers.podman
@@ -78,9 +79,7 @@ class Dat710Handler(handlers.general.GenericTestingHandler):
         else:
             request_and_responses.post_response_issue(
                 response_key=self.response_key,
-                description=(
-                    f"You have used all {self.tries} LambdaTest attempts. "
-                ),
+                description=(f"You have used all {self.tries} LambdaTest attempts. "),
             )
 
     def format_count(self, n):
@@ -88,7 +87,7 @@ class Dat710Handler(handlers.general.GenericTestingHandler):
 
         def f():
             ordinal = p.number_to_words(p.ordinal(n + 1))
-            remaining = p.number_to_words(self.tries - n -1)
+            remaining = p.number_to_words(self.tries - n - 1)
             yield f"This is your {ordinal} try; there are {remaining} remaining."
             if n < 3:
                 return
@@ -132,6 +131,8 @@ def lab_item(
     # Robograding handler that matches everything.
     testing_handler = Dat710Handler(
         tester_factory=testers.podman.LabTester.factory,
+        # Only active for labs with a guide in labs/<id>/feedback/guide.md.
+        feedback=handlers.genai_feedback.GenAIFeedback(),
         dir_tester=Path() / "tester",
         machine_speed=1,
     )

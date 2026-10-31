@@ -286,16 +286,22 @@ class GenericTestingHandler(TestingHandler):
     """
     A generic testing handler using the test framework (see test_lib).
     The tester is required to implement format_tests_output_as_markdown.
+
+    If feedback is given (see handlers.genai_feedback.GenAIFeedback),
+    its feedback on the submission is appended to the test report.
     """
 
-    def __init__(self, tester_factory, **kwargs):
+    def __init__(self, tester_factory, feedback=None, **kwargs):
         self.tester_factory = tester_factory
+        self.feedback = feedback
         self.kwargs = kwargs
 
     def setup(self, lab):
         super().setup(lab)
         # pylint: disable-next=attribute-defined-outside-init
         self.tester = self.tester_factory(dir_lab=lab.config.path_source, **self.kwargs)
+        if self.feedback is not None:
+            self.feedback.setup(lab)
 
     def get_test_report(self, dir_out):
         return util.markdown.join_blocks(
@@ -316,6 +322,10 @@ class GenericTestingHandler(TestingHandler):
                 with util.path.temp_dir() as dir_out:
                     self.tester.run_tests(dir_out, src)
                     report = self.get_test_report(dir_out)
+                if self.feedback is not None:
+                    feedback = self.feedback.get_feedback(src, report)
+                    if feedback is not None:
+                        report = util.markdown.join_blocks([report, feedback])
 
         logger.debug(report)
         self.post_response(
