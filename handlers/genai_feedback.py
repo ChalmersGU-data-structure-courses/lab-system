@@ -27,6 +27,7 @@ import anthropic
 
 import util.markdown
 
+
 logger = logging.getLogger(__name__)
 
 system_prompt = """\
@@ -127,6 +128,10 @@ class GenAIFeedback:
     * suffixes: suffixes of the submission files to review.
     * max_submission_chars: skip feedback for larger submissions.
     * model, effort, max_tokens: passed to the Anthropic API.
+    * timeout, max_retries:
+        Per request timeout in seconds and number of retries.
+        The event loop waits for feedback, so these bound how long
+        one submission can block the processing of all others.
     """
 
     def __init__(
@@ -139,6 +144,8 @@ class GenAIFeedback:
         model: str = "claude-opus-5-5",
         effort: str = "medium",
         max_tokens: int = 16000,
+        timeout: float = 60,
+        max_retries: int = 1,
     ):
         self.path_guide = path_guide
         self.path_task = path_task
@@ -148,6 +155,8 @@ class GenAIFeedback:
         self.model = model
         self.effort = effort
         self.max_tokens = max_tokens
+        self.timeout = timeout
+        self.max_retries = max_retries
         self.client = None
 
     def setup(self, lab):
@@ -166,7 +175,11 @@ class GenAIFeedback:
         task = (dir_lab / self.path_task).read_text()
         guide = file_guide.read_text()
         self.context = f"<task>\n{task}\n</task>\n\n<guide>\n{guide}\n</guide>"
-        self.client = anthropic.Anthropic(api_key=api_key, timeout=300)
+        self.client = anthropic.Anthropic(
+            api_key=api_key,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
+        )
 
     def submission_files(self, src: Path):
         """
