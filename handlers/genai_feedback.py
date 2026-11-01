@@ -13,7 +13,9 @@ Feedback is enabled for a lab by adding a reviewer guide at
 written for the model as if for a teaching assistant: what to look at in
 each part, common pitfalls, and what not to give away. The task description
 is read from <path_source>/problem/README.md. The model never sees the
-official solution or the hidden tests.
+official solution or the hidden tests. It does see the test report and the
+output of tests that are not in the report (in_report = False in the lab's
+tests.py), such as linter hints.
 
 Requires the Anthropic API key in the secrets file (section [anthropic]).
 If the guide or the key is missing, no feedback is generated.
@@ -82,6 +84,11 @@ say so briefly and do not invent problems.
 - Do not repeat the test results. If tests fail, you may mention once that \
 the report above shows what to work on first, but do not explain how to \
 fix the failure.
+- The message may contain the output of other tools, such as the hints of \
+a linter, in <tool_output>. The student does not see it. Use it to find \
+what to look at, not as a list to repeat: mention a hint only if it matters \
+for the student, and only as far as the rules above allow (a hint often \
+contains the fixed code).
 - Only point out what you can see in the submission. If you are not sure \
 whether something is a problem, ask about it instead of asserting it.
 - Do not give a grade, do not say whether the submission will pass, and do \
@@ -218,9 +225,12 @@ class GenAIFeedback:
 
         return "\n\n".join(blocks())
 
-    def get_feedback(self, src: Path, test_report: str) -> str | None:
+    def get_feedback(
+        self, src: Path, test_report: str, tool_output: str = ""
+    ) -> str | None:
         """
         Generate feedback on the submission checked out in src.
+        The tool output (such as linter hints) is given to the model only.
         Returns a Markdown section, or None if no feedback was generated.
         """
         if not self.enabled:
@@ -234,11 +244,14 @@ class GenAIFeedback:
             logger.warning("Submission too large, skipping feedback.")
             return None
 
-        text = self.generate(
-            f"<test_report>\n{test_report}\n</test_report>\n\n"
-            f"<submission>\n{submission}\n</submission>\n\n"
-            "Write your feedback on this submission."
-        )
+        def message():
+            yield f"<test_report>\n{test_report}\n</test_report>"
+            if tool_output:
+                yield f"<tool_output>\n{tool_output}\n</tool_output>"
+            yield f"<submission>\n{submission}\n</submission>"
+            yield "Write your feedback on this submission."
+
+        text = self.generate("\n\n".join(message()))
         if not text:
             return None
 

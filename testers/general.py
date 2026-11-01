@@ -35,6 +35,10 @@ class Test:
     * memory: Memory (in MB) the container is allowed to use (defaults to 1024).
     * markdown_output: True if this test's output is in Markdown format.
     * environment: Environment variables to set.
+    * in_report:
+        Whether the output is shown in the test report (defaults to True).
+        If False, the output is only given to the generated feedback
+        (see handlers.genai_feedback), for example the hints of a linter.
     """
 
     description: Optional[str] = None
@@ -42,6 +46,7 @@ class Test:
     memory: Optional[int] = 1024
     markdown_output: bool = False
     environment: Optional[dict[str, str]] = None
+    in_report: bool = True
 
 
 def get_description(name: str, test: Test) -> str:
@@ -392,8 +397,27 @@ class LabTester:
         Returns an iterable of Markdown blocks.
 
         The default implementation uses format_test_output_as_markdown.
+        Tests with in_report = False are left out.
         """
+        yield from self.format_selected_tests_output_as_markdown(dir_out, True)
+
+    def format_feedback_input_as_markdown(self, dir_out: Path) -> Iterable[str]:
+        """
+        Format the output of the tests with in_report = False as markdown.
+        For use as additional input of generated feedback
+        (see handlers.genai_feedback), not shown to students.
+
+        Returns an iterable of Markdown blocks.
+        """
+        yield from self.format_selected_tests_output_as_markdown(dir_out, False)
+
+    def format_selected_tests_output_as_markdown(
+        self, dir_out: Path, in_report: bool
+    ) -> Iterable[str]:
         for name, test in self.tests.items():
+            if test.in_report != in_report:
+                continue
+
             dir_out_test = dir_out / name
             yield util.general.join_lines(
                 [f"## {util.markdown.escape(get_description(name, test))}"]

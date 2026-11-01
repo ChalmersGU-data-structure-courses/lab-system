@@ -322,8 +322,11 @@ class GenericTestingHandler(TestingHandler):
                 with util.path.temp_dir() as dir_out:
                     self.tester.run_tests(dir_out, src)
                     report = self.get_test_report(dir_out)
+                    tool_output = util.markdown.join_blocks(
+                        self.tester.format_feedback_input_as_markdown(dir_out)
+                    )
                 if self.feedback is not None:
-                    feedback = self.feedback.get_feedback(src, report)
+                    feedback = self.feedback.get_feedback(src, report, tool_output)
                     if feedback is not None:
                         report = util.markdown.join_blocks([report, feedback])
 
