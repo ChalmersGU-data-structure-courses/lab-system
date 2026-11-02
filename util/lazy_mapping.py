@@ -50,13 +50,13 @@ class LazyMapping[Key, Value](Mapping[Key, Value]):
         return iter(self.mapping)
 
     def keys(self):
-        return KeysView(self.mapping)
+        return KeysView(self)
 
     def items(self):
-        return ItemsView(self.mapping)
+        return ItemsView(self)
 
     def values(self):
-        return ValuesView(self.mapping)
+        return ValuesView(self)
 
 
 # pylint: disable-next=abstract-method
