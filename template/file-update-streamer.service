@@ -30,7 +30,7 @@ ExecStart=%h/lab-system/file_update_streamer.py \
   --matcher COURSE_CODE/file-update-streamer/path-matcher.toml \
   --bind :PORT \
   --cert-letsencrypt \
-  --heartbeet 60 \
+  --heartbeat 60 \
   --log COURSE_CODE/file-update-streamer/log `#create this as a directory to enable log rotation` \
   --verbose
 
