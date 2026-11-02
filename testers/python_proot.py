@@ -12,9 +12,9 @@ from typing import Optional, Tuple, Union
 # pylint: disable-next=unused-import
 import seccomp  # noqa: F401
 
-import testers.general
 import util.proot
 
+import testers.general
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class Test(testers.general.Test):
     The Python program is run with minimal permissions.
     It may read arbitrary files.
 
-    The content of the test folder is overlaid on top of the submission folder.
+    The content of the overlay folder is overlaid on top of the submission folder.
 
     Fields ignored in testers.general.Test: memory
 
@@ -65,7 +65,7 @@ class LabTester(testers.general.LabTester):
     This is a self-contained Python script specifying
         tests : Dict[str, PythonTest].
 
-    Additionally, the lab may contain a subdirectory 'test'.
+    Additionally, the lab may contain a subdirectory 'overlay'.
     Its content is overlaid on top of each submission to be tested.
     """
 
