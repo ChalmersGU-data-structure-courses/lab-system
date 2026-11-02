@@ -22,21 +22,14 @@ auth = CourseAuth.from_secrets(Path("secrets.toml"))
 
 
 # pylint: disable=wrong-import-position
-from lp1.dat525.config import course as config_dat525
-from lp1.tda417.config import course as config_tda417
-
 print("Defined variables:")
-
-for course_code in ["tda417", "dat525"]:
-    course_path = Path("lp1") / course_code
-    config_module = importlib.import_module(f"lp1.{course_code}.config")
-    course = Course(auth=auth, config=config_module.course, dir=course_path)
-    locals()[course_code] = course
-    print(f"  {course_code}: Course <{course.dir}>")
-    for k, lab in course.labs.items():
-        name = f"{course_code}_{k}"
-        locals()[name] = lab
-        print(f"  {name}: Lab <{lab.name}>")
+course_path = Path("lp2")
+config_module = importlib.import_module(f"lp2.config")
+course = Course(auth=auth, config=config_module.course, dir=course_path)
+for k, lab in course.labs.items():
+    name = f"lab_{k}"
+    locals()[name] = lab
+    print(f"  {name}: Lab <{lab.name}>")
 
 # How to deploy a lab in the data structure course cluster:
 # 1. Make sure repository ~/labs is up to date.
