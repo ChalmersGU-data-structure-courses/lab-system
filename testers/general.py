@@ -104,7 +104,7 @@ class LabTester:
     where the type Test is specified by the class attribute TestSpec
     (and made available to the environment of the execution of tests.py).
 
-    Additionally, the lab may contain a subdirectory 'test'.
+    Additionally, the lab may contain a subdirectory 'overlay'.
     Its content is overlaid on top of each submission to be tested.
 
     Subclasses should instantiate the class attribute TestSpec
@@ -131,7 +131,10 @@ class LabTester:
             return None
 
     def __init__(
-        self, dir_lab: Path, dir_tester: Path = Path(), machine_speed: float = 1
+        self,
+        dir_lab: Path,
+        dir_tester: Path = Path(),
+        machine_speed: float = 1,
     ):
         """
         Arguments:
@@ -146,8 +149,7 @@ class LabTester:
             Floating-point number.
             The machine speed relative to a 2015 Desktop machine.
 
-        An instance of TesterMissingException is raised if the lab does
-        not have a tester, i.e. does not have test subdirectory.
+        An instance of TesterMissingException is raised if the lab does not have a tester.
         """
         self.dir_lab = dir_lab
         self.dir_tester = dir_lab / dir_tester
@@ -162,8 +164,8 @@ class LabTester:
         logger.debug(f"Detected tester in {util.path.format_path(self.dir_tester)}.")
         self.tests = parse_tests(self.TestSpec, file_tests)
 
-        self.dir_test = self.dir_tester / "overlay"
-        self.has_test_overlay = self.dir_test.exists()
+        self.dir_overlay = self.dir_tester / "overlay"
+        self.has_test_overlay = self.dir_overlay.exists()
         logger.debug(f"Test overlay: {self.has_test_overlay}")
 
     # TODO: monitor program output and kill as soon as max_output is reached.
@@ -317,7 +319,7 @@ class LabTester:
 
                 def dirs():
                     if self.has_test_overlay:
-                        yield (self.dir_test, True)
+                        yield (self.dir_overlay, True)
                     yield dir_src
 
                 dir_test = stack.enter_context(
