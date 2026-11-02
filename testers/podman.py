@@ -7,9 +7,9 @@ import subprocess
 from pathlib import Path
 from typing import Collection, Optional, Union
 
-import testers.general
 import util.general
 
+import testers.general
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class Test(testers.general.Test):
     * the return code.
 
     Inside the container:
-    * '/submission' has the lab submission together with the content of the test folder overlaid.
+    * '/submission' has the lab submission together with the content of the overlay folder overlaid.
       This is also the working directory for the program execution.
 
     Fields ignored in testers.general.Test: none
