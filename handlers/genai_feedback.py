@@ -20,13 +20,19 @@ tests.py), such as linter hints.
 Requires the Anthropic API key in the secrets file (section [anthropic]).
 If the guide or the key is missing, no feedback is generated.
 If generating feedback fails, the test report is posted without it.
+
+Personal information (email addresses, names of the group members, header
+fields such as "Authors:") is replaced by markers before anything is sent
+to the model (see handlers.redact).
 """
 
 import logging
 from pathlib import Path
+from typing import Iterable
 
 import anthropic
 
+import handlers.redact
 import util.markdown
 
 logger = logging.getLogger(__name__)
@@ -93,9 +99,13 @@ contains the fixed code).
 whether something is a problem, ask about it instead of asserting it.
 - Do not give a grade, do not say whether the submission will pass, and do \
 not guess how a teaching assistant will judge it.
-- Never repeat names or other personal details from the submission. If the \
-reviewer guide says the submission should not contain them and it does, say \
-on which lines and ask the student to remove them.
+- Personal details in the submission (names, email addresses, header fields \
+such as authors or group) have been replaced by the markers [name], [email] \
+and [removed] before you see it. Never repeat any personal details you still \
+find. If the reviewer guide says the submission should not contain them and \
+it does (also as markers), make this a single point with all line numbers, \
+and ask the student to remove them. Do not mention the markers: the student \
+does not see them, so say that these lines contain personal information.
 
 # Style
 
@@ -214,10 +224,11 @@ class GenAIFeedback:
                 continue
             yield path
 
-    def format_submission(self, src: Path) -> str:
+    def format_submission(self, src: Path, redact) -> str:
         def blocks():
             for path in self.submission_files(src):
-                lines = (src / path).read_text(errors="replace").splitlines()
+                text = redact((src / path).read_text(errors="replace"))
+                lines = text.splitlines()
                 numbered = "\n".join(
                     f"{i:4} | {line}" for (i, line) in enumerate(lines, start=1)
                 )
@@ -226,17 +237,27 @@ class GenAIFeedback:
         return "\n\n".join(blocks())
 
     def get_feedback(
-        self, src: Path, test_report: str, tool_output: str = ""
+        self,
+        src: Path,
+        test_report: str,
+        tool_output: str = "",
+        names: Iterable[str] = (),
     ) -> str | None:
         """
         Generate feedback on the submission checked out in src.
         The tool output (such as linter hints) is given to the model only.
+        The names (of the group members) are removed from everything
+        sent to the model, as are email addresses and header fields.
         Returns a Markdown section, or None if no feedback was generated.
         """
         if not self.enabled:
             return None
 
-        submission = self.format_submission(src)
+        redact = handlers.redact.Redactor(names)
+        submission = self.format_submission(src, redact)
+        test_report = redact(test_report)
+        tool_output = redact(tool_output)
+        logger.info(f"Removed personal information: {redact.summary()}.")
         if not submission:
             logger.info("No changed submission files, skipping feedback.")
             return None

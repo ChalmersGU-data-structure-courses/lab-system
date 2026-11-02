@@ -6,6 +6,7 @@ from pathlib import PurePosixPath
 import dominate
 
 import gitlab_.tools
+import handlers.redact
 import lab_interfaces
 import live_submissions_table
 import util.general
@@ -325,8 +326,13 @@ class GenericTestingHandler(TestingHandler):
                     tool_output = util.markdown.join_blocks(
                         self.tester.format_feedback_input_as_markdown(dir_out)
                     )
-                if self.feedback is not None:
-                    feedback = self.feedback.get_feedback(src, report, tool_output)
+                if self.feedback is not None and self.feedback.enabled:
+                    names = handlers.redact.group_member_names(
+                        request_and_responses.group
+                    )
+                    feedback = self.feedback.get_feedback(
+                        src, report, tool_output, names
+                    )
                     if feedback is not None:
                         report = util.markdown.join_blocks([report, feedback])
 
