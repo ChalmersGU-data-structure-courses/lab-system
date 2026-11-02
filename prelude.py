@@ -13,17 +13,20 @@ from pathlib import Path
 from course import Course
 from lab_interfaces import CourseAuth
 
-# ACION: load course config.
-# from <course code>.config import course as config
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 
 auth = CourseAuth.from_secrets(Path("secrets.toml"))
 
-c = Course(auth=auth, config=config, dir=Path("<course code>"))
+
+# ACION: instantiate and uncomment below statements for concrete instance.
+# pylint: disable=wrong-import-position
+from dat151.config import course as config
 
 print("Defined variables:")
+
+c = Course(auth=auth, config=config, dir=Path("dat151"))
 print(f"  c: Course <{c.dir}>")
 for k, lab in c.labs.items():
     name = f"l{k}"
