@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # PYTHON_ARGCOMPLETE_OK
-from collections.abc import Iterable
 import contextlib
 import dataclasses
 import inspect
 import logging
 import os
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Optional, Tuple, Union
 
@@ -15,7 +15,6 @@ import testers.general
 import util.general
 import util.java
 import util.markdown
-
 
 logger = logging.getLogger(__name__)
 
@@ -73,10 +72,10 @@ class LabTester(testers.general.LabTester):
     This is a self-contained Python script specifying
         tests : Dict[str, Test].
 
-    Additionally, the lab may contain a subdirectory 'test'.
+    Additionally, the lab may contain a subdirectory 'overlay'.
     Its content is overlaid on top of each submission to be tested.
 
-    Java files in 'test' are compiled independently of any submission (using the problem code instead).
+    Java files in 'overlay' are compiled independently of any submission (using the problem code instead).
     They take precedence in the classpath over classes in the submission.
 
     Warning:
@@ -111,8 +110,8 @@ class LabTester(testers.general.LabTester):
         if self.has_test_overlay:
             logger.debug("Compiling test code.")
             util.java.compile(
-                src=self.dir_test / self.dir_submission_src,
-                bin=self.dir_test / self.dir_submission_src,
+                src=self.dir_overlay / self.dir_submission_src,
+                bin=self.dir_overlay / self.dir_submission_src,
                 sourcepath=[self.problem_src / self.dir_submission_src],
                 implicit=False,
             )
@@ -146,8 +145,8 @@ class LabTester(testers.general.LabTester):
                 )
 
         def test_classpath():
-            if self.dir_test:
-                yield self.dir_test / self.dir_submission_src
+            if self.dir_overlay:
+                yield self.dir_overlay / self.dir_submission_src
 
         with submission_java.run_context(
             submission_dir=dir_src,
@@ -182,7 +181,7 @@ class LabTester(testers.general.LabTester):
             stack = contextlib.ExitStack()
             if dir_bin is None:
                 logger.debug("Checking and compiling submission.")
-                (dir_bin, compiler_report) = stack.enter_context(
+                dir_bin, compiler_report = stack.enter_context(
                     submission_java.submission_checked_and_compiled(dir_src)
                 )
                 (dir_out / file_compile_err).write_text(compiler_report)

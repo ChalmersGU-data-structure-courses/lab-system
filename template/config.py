@@ -191,7 +191,7 @@ def ACTION_EXAMPLE_lab_item(
 
 
 # ACTION for each lab, once ready to be published:
-# * Make sure the lab sources are ready in the folder specified below.
+# * Make sure the lab sources are ready in the specified folder.
 # * Cncomment the lab below.
 # * Run `course.lab[k].deploy_via_lab_sources_and_canvas()` (e.g., using `python -i prelude.py`).
 # * Check if the primary project on GitLab looks good.

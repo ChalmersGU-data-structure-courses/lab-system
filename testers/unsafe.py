@@ -6,7 +6,6 @@ from pathlib import Path
 import testers.general
 import testers.podman
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -18,7 +17,7 @@ class LabTester(testers.general.LabTester):
     This is a self-contained Python script specifying
         tests : Dict[str, Test].
 
-    Additionally, the lab may contain a subdirectory 'test'.
+    Additionally, the lab may contain a subdirectory 'overlay'.
     Its content is overlaid on top of each submission to be tested.
     """
 
