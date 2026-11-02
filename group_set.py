@@ -1,4 +1,5 @@
-from collections.abc import Generator, Iterable
+from collections.abc import Generator, Iterable, Mapping
+import contextlib
 import functools
 import logging
 from typing import TYPE_CHECKING
@@ -45,8 +46,18 @@ class GroupSet[GroupId]:
     def canvas_group_set(self):
         return self.canvas_group_set_get(True)
 
+    @functools.cached_property
+    def canvas_group_id_by_group_id(self) -> Mapping[GroupId, int]:
+        def gen():
+            for canvas_group in self.canvas_group_set.details.values():
+                yield (self.config.effective_canvas_name.parse(canvas_group.name), canvas_group.id)
+
+        return util.general.sdict(gen())
+
     def canvas_group_set_refresh(self):
         self.canvas_group_set = self.canvas_group_set_get(False)
+        with contextlib.suppress(AttributeError):
+            del self.canvas_group_id_by_group_id
 
     def create_groups_on_canvas(self, group_ids: Iterable[GroupId]):
         """
@@ -70,10 +81,8 @@ class GroupSet[GroupId]:
         self.canvas_group_set_refresh()
 
     def canvas_group_ids(self) -> Generator[GroupId]:
-        for canvas_group in self.canvas_group_set.details.values():
-            yield self.config.effective_canvas_name.parse(canvas_group.name)
+        yield from self.canvas_group_id_by_group_id.keys()
 
     def canvas_group_members(self, id: GroupId) -> Iterable[int]:
-        canvas_group_name = self.config.effective_canvas_name.print(id)
-        canvas_group_id = self.canvas_group_set.name_to_id[canvas_group_name]
+        canvas_group_id = self.canvas_group_id_by_group_id[id]
         yield from self.canvas_group_set.group_users[canvas_group_id]

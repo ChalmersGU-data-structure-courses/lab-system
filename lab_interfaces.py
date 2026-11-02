@@ -10,6 +10,7 @@ from types import MappingProxyType
 from typing import Callable, ClassVar, Mapping
 
 import dateutil.tz
+import gitlab as module_gitlab
 
 import canvas.client_rest
 import chalmers_pdb
@@ -987,6 +988,11 @@ class CourseConfig[LabId]:
 
     gitlab_path_graders: PurePosixPath
     """Path to the graders group on Chalmers GitLab."""
+
+    gitlab_graders_access_level: module_gitlab.const.AccessLevel = (
+        module_gitlab.const.AccessLevel.REPORTER
+    )
+    """Access level of graders to the course hierarchy on Chalmers GitLab."""
 
     grading_spreadsheet: grading_sheet_config.ConfigExternal | None = None
     """

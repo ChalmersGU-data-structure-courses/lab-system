@@ -12,7 +12,6 @@ import util.java
 import util.markdown
 import util.path
 
-
 logger = logging.getLogger(__name__)
 
 # ## Checking and compiling submissions.
@@ -133,6 +132,7 @@ def run_context(
     classpath: Iterable[Path],
     entrypoint: str,
     arguments: Iterable[str] = None,
+    use_security_manager: bool = False,
     permissions: Iterable[Any] = None,
     check_conflict=True,
 ):
@@ -156,7 +156,13 @@ def run_context(
     * arguments:
         Arguments to pass to the invocation.
         Defaults to the empty list.
+    * use_security_manager:
+        Whether to use the Java Security Manager.
+        This was the perfect mechanism to limit permissions when running student code.
+        Unfortunately, it was deprecated after Java 17 (which is a LTS release supported until 2029).
+        Versions after at least OpenJDK Java 26 raise an error when this option is enabled.
     * permissions:
+        Only relevant when use_security_manager is set.
         Specifies additional permission statements to apply in the security policy to the submission code.
         See util.java.permission_file for an example of such a permission statement.
         By default, the only permission granted is to read within the submission source directory.
@@ -179,18 +185,24 @@ def run_context(
                 if (submission_bin / file).exists():
                     raise FileConflict(file)
 
-    # Set up security policy to allow submission code to only read submission directory.
-    def policy_entries():
-        for dir in classpath:
-            yield (dir, [util.java.permission_all])
-        yield (
-            submission_bin,
-            [util.java.permission_file(submission_dir.resolve(), True), *permissions],
-        )
+    if use_security_manager:
+        # Set up security policy to allow submission code to only read submission directory.
+        def policy_entries():
+            for dir in classpath:
+                yield (dir, [util.java.permission_all])
+            yield (
+                submission_bin,
+                [
+                    util.java.permission_file(submission_dir.resolve(), True),
+                    *permissions,
+                ],
+            )
 
-    # Necessary if we call util.java.run in a different working directory
-    # and the generator resolves paths.
-    policy_entries_ = list(policy_entries())
+        # Necessary if we call util.java.run in a different working directory
+        # and the generator resolves paths.
+        policy_entries_ = list(policy_entries())
+    else:
+        policy_entries_ = None
 
     # Run the robograder.
     logger.debug("Running robograder.")
