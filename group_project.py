@@ -6,6 +6,7 @@ import logging
 import shlex
 import subprocess
 from pathlib import PurePosixPath
+from typing import ClassVar
 
 import git
 import gitlab
@@ -526,6 +527,8 @@ class RequestAndResponses:
             force=True,
         )
 
+    MAX_ISSUE_DESCRIPTION_SIZE: ClassVar[int] = 64 * 1024
+
     def post_response_issue(
         self,
         response_key,
@@ -548,6 +551,18 @@ class RequestAndResponses:
         # Make sure title_data is a dictionary and fill in request name.
         title_data = dict(title_data)
         title_data["tag"] = self.request_name
+
+        # Truncate huge descriptions
+        if len(description) > RequestAndResponses.MAX_ISSUE_DESCRIPTION_SIZE:
+            self.logger.warning(
+                "Issue description is too long and has to be truncated. "
+                f"Original description size: {len(description)}"
+            )
+
+            description = description[: RequestAndResponses.MAX_ISSUE_DESCRIPTION_SIZE]
+            description = (
+                "!!! This message was too long and has been truncated !!!" + description
+            )
 
         # Post the issue.
         title = self.handler_data.handler.response_titles[response_key].print(
