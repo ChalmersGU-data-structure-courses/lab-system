@@ -451,6 +451,7 @@ class Course[LabId]:
     def clear_graders(self):
         with contextlib.suppress(AttributeError):
             del self.graders
+        with contextlib.suppress(AttributeError):
             del self.graders_ids
 
     # @functools.cached_property
