@@ -16,3 +16,5 @@ secrets.toml
 cache
 cache_pdb
 /dat710/lab-*/
+/dat710/gitlab_users/
+/dat710/log
