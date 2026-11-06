@@ -561,7 +561,8 @@ class RequestAndResponses:
 
             description = description[: RequestAndResponses.MAX_ISSUE_DESCRIPTION_SIZE]
             description = (
-                "!!! This message was too long and has been truncated !!!" + description
+                "⚠️ This message was too long and has been truncated ⚠️\n\n"
+                + description
             )
 
         # Post the issue.
