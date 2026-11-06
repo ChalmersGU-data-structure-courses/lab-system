@@ -599,10 +599,19 @@ class Course[LabId]:
     # This thing is a mess.
     # TODO: refactor.
     def clear_user_assoc_caches(self):
-        with contextlib.suppress(AttributeError):
-            del self.gitlab_username_by_canvas_user_id
-            del self.canvas_user_by_gitlab_username
-            self.gitlab_users_cache.update()
+        """
+        Forget the cached associations between Canvas and GitLab users
+        and fetch new users from Chalmers GitLab.
+        Each cached property is cleared independently: previously, a property
+        not yet computed made the others and the users cache update be skipped,
+        so students creating a GitLab account were not added until a restart.
+        """
+        for name in [
+            "gitlab_username_by_canvas_user_id",
+            "canvas_user_by_gitlab_username",
+        ]:
+            self.__dict__.pop(name, None)
+        self.gitlab_users_cache.update()
 
     def gitlab_username_by_canvas_id(self, canvas_id):
         """Returns the Chalmers GitLab user ID for a given Canvas user id, or None if none is found."""
