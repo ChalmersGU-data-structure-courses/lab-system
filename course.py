@@ -616,6 +616,7 @@ class Course[LabId]:
     def clear_user_assoc_caches(self):
         with contextlib.suppress(AttributeError):
             del self.gitlab_username_by_canvas_user_id
+        with contextlib.suppress(AttributeError):
             del self.canvas_user_by_gitlab_username
             self.gitlab_users_cache.update()
 
