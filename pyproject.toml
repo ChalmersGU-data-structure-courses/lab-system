@@ -156,7 +156,6 @@ packages = [
 
 py-modules = [
   'course',
-  'course_basics',
   'event_loop',
   'events',
   'grading_protocol',
@@ -172,7 +171,6 @@ py-modules = [
   'run_event_loop',
   'run_java_robograder',
   'submission_java',
-  'test',
   'webhook_listener',
 ]
 

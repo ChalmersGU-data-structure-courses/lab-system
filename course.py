@@ -410,7 +410,22 @@ class Course[LabId]:
 
     @functools.cached_property
     def graders_group(self):
-        return gitlab_.tools.CachedGroup(
+        outer = self
+
+        class CachedGroupGraders(gitlab_.tools.CachedGroup):
+            def parent(self):
+                # Optimizing for the common case.
+                if self.path.parent == outer.course_group.path:
+                    return outer.course_group.get
+                return super().parent()
+
+            def initialize(self):
+                outer.course_group.lazy.share(
+                    self.get.id,
+                    outer.config.gitlab_graders_access_level,
+                )
+
+        return CachedGroupGraders(
             **self.entity_cached_params,
             path=self.config.gitlab_path_graders,
             name="Graders",
