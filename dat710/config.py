@@ -148,7 +148,7 @@ def lab_item(
 # * Restart the lab system service.
 labs: list[tuple[LabId, LabConfig]] = [
     lab_item(1, "Power to the People", False, 15),
-    lab_item(2, "Blackjack", False, 15),
+    lab_item(2, "Blackjack", True, 15),
     #    lab_item(3, "Tetris", False, 15),
     #    lab_item(4, "Simplify", False, 15),
 ]
