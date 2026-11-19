@@ -735,11 +735,10 @@ class Lab[LabId, GroupId, Variant]:
             with contextlib.suppress(AttributeError):
                 del self._group_ids_desired
 
-        for id in self._group_ids_desired:
-            if not id in ids_old:
-                self.group_create(id)
-
-        self.unprotect_main_branches_ensure()
+        ids = self._group_ids_desired - frozenset(ids_old)
+        for id in ids:
+            self.group_create(id)
+        self.unprotect_main_branches_ensure(ids)
 
     @functools.cached_property
     def repo(self):
@@ -906,7 +905,10 @@ class Lab[LabId, GroupId, Variant]:
         for variant in self.config.variants.variants:
             gitlab_.tools.protect_branch(project, self.config.branch_problem(variant))
 
-    def unprotect_main_branches(self) -> bool:
+    def unprotect_main_branches(
+        self,
+        group_ids: Iterable[GroupId] | None = None,
+    ) -> Generator[GroupId]:
         """
         Ordinarily, the protection status of branches in forked projects should be that of the parent project.
         However, for 2-10% of cases, the main branch remains protected.
@@ -914,23 +916,35 @@ class Lab[LabId, GroupId, Variant]:
 
         To work around it, we provide this function.
         It checks if any protected main branches remain and, if so, unprotects them.
-        The return value indicates if any changes were made.
+        Yields the group ids for which changes were made.
         """
-        changed = False
-        for g in self.groups.values():
-            with gitlab_.tools.exist_ok():
-                g.project.lazy.protectedbranches.delete("main")
-                changed = True
-                self.logger.info(f"WARNING: unprotected branch main for group {g.name}")
-        return changed
+        if group_ids is None:
+            group_ids = self.groups.keys()
 
-    def unprotect_main_branches_ensure(self, max_repeats=3) -> bool:
+        for group_id in group_ids:
+            group = self.groups[group_id]
+            with gitlab_.tools.exist_ok():
+                group.project.lazy.protectedbranches.delete("main")
+                yield group_id
+                self.logger.info(
+                    f"WARNING: had to unprotect branch main for group {group.name}"
+                )
+
+    def unprotect_main_branches_ensure(
+        self,
+        group_ids: Iterable[GroupId] | None = None,
+        max_repeats=3,
+    ) -> bool:
         """
         Repeatedly invokes self.unprotect_main_branches().
         Raises an exception if any protected branches remain.
         """
+        if group_ids is None:
+            group_ids = self.groups.keys()
+
         for _ in range(max_repeats):
-            if not self.unprotect_main_branches():
+            group_ids = list(self.unprotect_main_branches(group_ids))
+            if not group_ids:
                 return
             time.sleep(1)
         raise RuntimeError("repeatedly failed to unprotect the main branch")

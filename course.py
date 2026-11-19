@@ -451,6 +451,7 @@ class Course[LabId]:
     def clear_graders(self):
         with contextlib.suppress(AttributeError):
             del self.graders
+        with contextlib.suppress(AttributeError):
             del self.graders_ids
 
     # @functools.cached_property
@@ -616,8 +617,9 @@ class Course[LabId]:
     def clear_user_assoc_caches(self):
         with contextlib.suppress(AttributeError):
             del self.gitlab_username_by_canvas_user_id
+        with contextlib.suppress(AttributeError):
             del self.canvas_user_by_gitlab_username
-            self.gitlab_users_cache.update()
+        self.gitlab_users_cache.update()
 
     def gitlab_username_by_canvas_id(self, canvas_id):
         """Returns the Chalmers GitLab user ID for a given Canvas user id, or None if none is found."""

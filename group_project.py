@@ -6,6 +6,7 @@ import logging
 import shlex
 import subprocess
 from pathlib import PurePosixPath
+from typing import ClassVar
 
 import git
 import gitlab
@@ -526,6 +527,8 @@ class RequestAndResponses:
             force=True,
         )
 
+    MAX_ISSUE_DESCRIPTION_SIZE: ClassVar[int] = 64 * 1024
+
     def post_response_issue(
         self,
         response_key,
@@ -548,6 +551,19 @@ class RequestAndResponses:
         # Make sure title_data is a dictionary and fill in request name.
         title_data = dict(title_data)
         title_data["tag"] = self.request_name
+
+        # Truncate huge descriptions
+        if len(description) > RequestAndResponses.MAX_ISSUE_DESCRIPTION_SIZE:
+            self.logger.warning(
+                "Issue description is too long and has to be truncated. "
+                f"Original description size: {len(description)}"
+            )
+
+            description = description[: RequestAndResponses.MAX_ISSUE_DESCRIPTION_SIZE]
+            description = (
+                "⚠️ This message was too long and has been truncated ⚠️\n\n"
+                + description
+            )
 
         # Post the issue.
         title = self.handler_data.handler.response_titles[response_key].print(
@@ -1982,7 +1998,10 @@ class GroupProject[Variant]:
             merge_request["author_id"],
             merge_request["title"],
         )
-        self.logger.info(variant)
+        self.logger.debug(
+            f"webhook event variant %s",
+            self.lab.config.variants.name.print(variant),
+        )
         if variant is None:
             return
 
@@ -1993,8 +2012,7 @@ class GroupProject[Variant]:
                 attrs["action"] == "create" and attrs["note"].startswith("!info ")
             ) or attrs["action"] == "update"
 
-        self.logger.info(list(checks()))
-
+        self.logger.debug(f"webhook checks {list(checks())}")
         if not all(checks()):
             return
 
