@@ -1998,7 +1998,10 @@ class GroupProject[Variant]:
             merge_request["author_id"],
             merge_request["title"],
         )
-        self.logger.info(variant)
+        self.logger.debug(
+            f"webhook event variant %s",
+            self.lab.config.variants.name.print(variant),
+        )
         if variant is None:
             return
 
@@ -2009,8 +2012,7 @@ class GroupProject[Variant]:
                 attrs["action"] == "create" and attrs["note"].startswith("!info ")
             ) or attrs["action"] == "update"
 
-        self.logger.info(list(checks()))
-
+        self.logger.debug(f"webhook checks {list(checks())}")
         if not all(checks()):
             return
 
