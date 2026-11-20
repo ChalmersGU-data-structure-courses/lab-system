@@ -33,6 +33,7 @@ from lab_interfaces import (
     LabConfig,
     LabIdConfig,
     OutcomesConfig,
+    OutcomeSpec,
     VariantsConfig,
     VariantSpec,
 )
