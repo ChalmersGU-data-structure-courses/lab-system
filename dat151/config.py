@@ -51,7 +51,28 @@ group_set: GroupSetConfig[GroupId] = GroupSetConfig[GroupId](
 # Outcomes
 # --------
 
-Outcome = DefaultOutcome
+class DefaultOutcome(util.enum.EnumSpec[OutcomeSpec]):
+    INCOMPLETE = OutcomeSpec.smart(
+        name="incomplete",
+        color="red",
+        as_cell=0,
+        canvas_grade=0,
+    )
+    IN_PERSON_EXAMINATION = OutcomeSpec.smart(
+        name="in-person-examination",
+        color="blue",
+        as_cell='E',
+        canvas_grade=0,
+    )
+    PASS = OutcomeSpec.smart(
+        name="pass",
+        color="green",
+        as_cell=1,
+        canvas_grade=1,
+    )
+
+    def __str__(self) -> str:
+        raise RuntimeError("attempted to convert outcome to string - possible bug?")
 
 outcomes: OutcomesConfig[Outcome] = OutcomesConfig.from_enum_spec(Outcome)
 
@@ -156,8 +177,8 @@ def lab_item(
 labs: list[tuple[LabId, LabConfig]] = [
     # fmt: off
     #        id has_tester canvas_sync refresh_minutes
-    lab_item(1, True     , False     , 15),
-    # lab_item(2, True     , False     , 15),
+    lab_item(1, True     , False    , 15),
+    lab_item(2, True     , True     , 15),
     # lab_item(3, True     , False     , 15),
     # lab_item(4, True     , False     , 15),
     # fmt: on
