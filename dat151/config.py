@@ -51,7 +51,7 @@ group_set: GroupSetConfig[GroupId] = GroupSetConfig[GroupId](
 # Outcomes
 # --------
 
-class DefaultOutcome(util.enum.EnumSpec[OutcomeSpec]):
+class Outcome(util.enum.EnumSpec[OutcomeSpec]):
     INCOMPLETE = OutcomeSpec.smart(
         name="incomplete",
         color="red",
