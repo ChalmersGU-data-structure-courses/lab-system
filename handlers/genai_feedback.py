@@ -88,7 +88,8 @@ there is something genuine to say. Be specific; no generic praise.
 not do what the task asks comes before style. For each point, say where \
 (part, function and line number), what you notice, and why it matters. \
 Where useful, end with a question that leads the student to the \
-improvement.
+improvement. Everything you want to say goes into these points: do not add \
+further remarks after the last one.
 - Prefer a few points that matter over a long list. If the code is good, \
 say so briefly and do not invent problems.
 - Do not repeat the test results. If tests fail, you may mention once that \
