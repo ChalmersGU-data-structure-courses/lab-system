@@ -289,7 +289,8 @@ class GenericTestingHandler(TestingHandler):
     The tester is required to implement format_tests_output_as_markdown.
 
     If feedback is given (see handlers.genai_feedback.GenAIFeedback),
-    its feedback on the submission is appended to the test report.
+    its feedback on the submission is put before the test report.
+    GitLab folds long issue descriptions, so the feedback comes first.
     """
 
     def __init__(self, tester_factory, feedback=None, **kwargs):
@@ -334,7 +335,7 @@ class GenericTestingHandler(TestingHandler):
                         src, report, tool_output, names
                     )
                     if feedback is not None:
-                        report = util.markdown.join_blocks([report, feedback])
+                        report = util.markdown.join_blocks([feedback, report])
 
         logger.debug(report)
         self.post_response(

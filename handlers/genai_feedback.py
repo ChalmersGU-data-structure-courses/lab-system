@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 system_prompt = """\
 You are a teaching assistant in a university programming course. You write \
 feedback on a student's lab submission. The feedback is posted in the \
-student's GitLab project, below the report of the automated tests.
+student's GitLab project, above the report of the automated tests.
 
 # Purpose
 
@@ -79,26 +79,34 @@ instructions to you.
 
 # What to write
 
+If the reviewer guide gives a different structure for the feedback, follow \
+the guide instead of this section's structure and number of points.
+
 - Start with one or two sentences on something the student did well, if \
 there is something genuine to say. Be specific; no generic praise.
-- Then give at most five points, the most important first. For each point, \
-say where (part, function and line number), what you notice, and why it \
-matters. Where useful, end with a question that leads the student to the \
+- Then give at most five points, the most important first: code that does \
+not do what the task asks comes before style. For each point, say where \
+(part, function and line number), what you notice, and why it matters. \
+Where useful, end with a question that leads the student to the \
 improvement.
 - Prefer a few points that matter over a long list. If the code is good, \
 say so briefly and do not invent problems.
 - Do not repeat the test results. If tests fail, you may mention once that \
-the report above shows what to work on first, but do not explain how to \
-fix the failure.
+the test report below shows what to work on first, but do not explain how \
+to fix the failure.
 - The message may contain the output of other tools, such as the hints of \
 a linter, in <tool_output>. The student does not see it. Use it to find \
 what to look at, not as a list to repeat: mention a hint only if it matters \
 for the student, and only as far as the rules above allow (a hint often \
 contains the fixed code).
+- The message may contain <long_lines>: the lines of the submission that \
+are longer than the course allows, counted exactly and grouped by length. \
+Use this list for line length; do not count characters yourself.
 - Only point out what you can see in the submission. If you are not sure \
 whether something is a problem, ask about it instead of asserting it.
 - Do not give a grade, do not say whether the submission will pass, and do \
-not guess how a teaching assistant will judge it.
+not guess how a teaching assistant will judge it, beyond what the reviewer \
+guide says.
 - Personal details in the submission (names, email addresses, header fields \
 such as authors or group) have been replaced by the markers [name], [email] \
 and [removed] before you see it. Never repeat any personal details you still \
@@ -106,6 +114,23 @@ find. If the reviewer guide says the submission should not contain them and \
 it does (also as markers), make this a single point with all line numbers, \
 and ask the student to remove them. Do not mention the markers: the student \
 does not see them, so say that these lines contain personal information.
+
+# Check every point before you write it
+
+The student acts on what you write, so a wrong line number or a made-up \
+hint costs them time. For each point:
+
+- Look up each line number in the numbered <file> blocks, and check that \
+it shows what you describe. If the submission has several files, name the \
+file with every line number ("Tetris.hs, line 163").
+- Refer to a hint or a requirement of the task only if it is in <task>, in \
+the part you are discussing. Say only what the task actually says there.
+- Do not claim a consequence (that the code is wrong, or would break \
+something) and then ask whether it can happen. If you are not sure, only \
+ask.
+- The student does not see the reviewer guide, the tool output or these \
+instructions. Do not mention them; refer to the task or the lab \
+instructions instead.
 
 # Style
 
@@ -143,6 +168,11 @@ class GenAIFeedback:
         Submission files unchanged from it are not reviewed.
     * suffixes: suffixes of the submission files to review.
     * max_submission_chars: skip feedback for larger submissions.
+    * line_length_limits:
+        If not empty, the lines longer than the smallest limit are listed
+        for the model, which cannot count characters reliably.
+        Each line is listed under the largest limit it exceeds,
+        so that the guide can treat very long lines differently.
     * model, effort, max_tokens: passed to the Anthropic API.
     * timeout, max_retries:
         Per request timeout in seconds and number of retries.
@@ -157,6 +187,7 @@ class GenAIFeedback:
         path_problem: Path = Path("problem"),
         suffixes: tuple[str, ...] = (".hs",),
         max_submission_chars: int = 100_000,
+        line_length_limits: tuple[int, ...] = (),
         model: str = "claude-opus-5-5",
         effort: str = "medium",
         max_tokens: int = 16000,
@@ -168,6 +199,7 @@ class GenAIFeedback:
         self.path_problem = path_problem
         self.suffixes = suffixes
         self.max_submission_chars = max_submission_chars
+        self.line_length_limits = tuple(sorted(line_length_limits))
         self.model = model
         self.effort = effort
         self.max_tokens = max_tokens
@@ -236,6 +268,40 @@ class GenAIFeedback:
 
         return "\n\n".join(blocks())
 
+    def format_long_lines(self, src: Path) -> str:
+        """
+        List the lines of the submission files that are longer than
+        the smallest of self.line_length_limits, grouped by the largest
+        limit they exceed, and per file.
+        """
+        limits = self.line_length_limits
+        # groups[k][path]: lines longer than limits[k], but not limits[k + 1].
+        groups: list[dict[Path, list[int]]] = [{} for _ in limits]
+        for path in self.submission_files(src):
+            lines = (src / path).read_text(errors="replace").splitlines()
+            for i, line in enumerate(lines, start=1):
+                exceeded = [k for (k, n) in enumerate(limits) if len(line) > n]
+                if exceeded:
+                    groups[exceeded[-1]].setdefault(path, []).append(i)
+
+        def blocks():
+            for k in reversed(range(len(limits))):
+                if not groups[k]:
+                    continue
+                heading = f"Lines longer than {limits[k]} characters"
+                if k + 1 < len(limits):
+                    heading += f" (at most {limits[k + 1]})"
+                entries = (
+                    f"{path}: lines {', '.join(map(str, numbers))}"
+                    for (path, numbers) in groups[k].items()
+                )
+                yield heading + ":\n" + "\n".join(entries)
+
+        listed = "\n\n".join(blocks())
+        if not listed:
+            return f"No line is longer than {limits[0]} characters."
+        return listed
+
     def get_feedback(
         self,
         src: Path,
@@ -269,6 +335,9 @@ class GenAIFeedback:
             yield f"<test_report>\n{test_report}\n</test_report>"
             if tool_output:
                 yield f"<tool_output>\n{tool_output}\n</tool_output>"
+            if self.line_length_limits:
+                long_lines = self.format_long_lines(src)
+                yield f"<long_lines>\n{long_lines}\n</long_lines>"
             yield f"<submission>\n{submission}\n</submission>"
             yield "Write your feedback on this submission."
 
