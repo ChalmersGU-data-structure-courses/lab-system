@@ -52,6 +52,7 @@ group_set: GroupSetConfig[GroupId] = GroupSetConfig[GroupId](
 # Outcomes
 # --------
 
+
 class Outcome(util.enum.EnumSpec[OutcomeSpec]):
     INCOMPLETE = OutcomeSpec.smart(
         name="incomplete",
@@ -62,8 +63,8 @@ class Outcome(util.enum.EnumSpec[OutcomeSpec]):
     IN_PERSON_EXAMINATION = OutcomeSpec.smart(
         name="in-person-examination",
         color="blue",
-        as_cell='E',
-        canvas_grade=0,
+        as_cell="E",
+        canvas_grade=None,
     )
     PASS = OutcomeSpec.smart(
         name="pass",
@@ -74,6 +75,7 @@ class Outcome(util.enum.EnumSpec[OutcomeSpec]):
 
     def __str__(self) -> str:
         raise RuntimeError("attempted to convert outcome to string - possible bug?")
+
 
 outcomes: OutcomesConfig[Outcome] = OutcomesConfig.from_enum_spec(Outcome)
 
