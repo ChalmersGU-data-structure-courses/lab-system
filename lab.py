@@ -1119,6 +1119,11 @@ class Lab[LabId, GroupId, Variant]:
 
         self.update_manager.listeners = {listener: None for listener in listeners()}
 
+    def create_grading_merge_request_labels(self):
+        for group in self.groups_known():
+            for m in group.grading_via_merge_request.values():
+                m.labels_create()
+
     def parse_request_tags(self, from_gitlab=True):
         """
         Parse request tags for group projects in this lab.

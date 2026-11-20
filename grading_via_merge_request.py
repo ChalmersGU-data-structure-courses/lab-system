@@ -163,6 +163,16 @@ class GradingViaMergeRequest:
             # The edit note is not relevant for us.
         return update_needed
 
+    def labels_create(self):
+        if self.merge_request:
+            for label_spec in self.lab.config.outcomes.labels.values():
+                with gitlab_.tools.exist_ok():
+                    label_data = {
+                        "name": label_spec.name,
+                        "color": label_spec.color,
+                    }
+                    self.project.labels.create(label_data)
+    
     def merge_request_create(self):
         """
         Branches:
@@ -170,13 +180,7 @@ class GradingViaMergeRequest:
         * problem: lab problem stub,
         * submission: branch tracking submission tags in the student project,
         """
-        for label_spec in self.lab.config.outcomes.labels.values():
-            with gitlab_.tools.exist_ok():
-                label_data = {
-                    "name": label_spec.name,
-                    "color": label_spec.color,
-                }
-                self.project.labels.create(label_data)
+        self.labels_create()
 
         with gitlab_.tools.exist_ok():
             self.project.branches.create(
