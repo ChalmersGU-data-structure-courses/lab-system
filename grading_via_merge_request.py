@@ -172,7 +172,7 @@ class GradingViaMergeRequest:
                         "color": label_spec.color,
                     }
                     self.project.labels.create(label_data)
-    
+
     def merge_request_create(self):
         """
         Branches:
@@ -439,6 +439,9 @@ class GradingViaMergeRequest:
         for label_event in gitlab_.tools.list_all(
             self.merge_request.resourcelabelevents
         ):
+            # Handle deleted labels.
+            if label_event.label is None:
+                continue
             try:
                 outcome = self.setup_data.label_pp.parse(label_event.label["name"])
             except KeyError:
